@@ -9,174 +9,252 @@
     <link rel="stylesheet" href="assets/css/components/footer.css">
     <link rel="stylesheet" href="assets/css/animations.css">
     <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --secondary: #7C3AED;
+            --accent: #F59E0B;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --neutral-50: #F9FAFB;
+            --neutral-600: #4B5563;
+            --neutral-700: #374151;
+            --neutral-900: #111827;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #111827;
+        }
+
         .premium-hero {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
             color: white;
-            padding: var(--space-20) 0;
+            padding: 80px 20px;
             text-align: center;
         }
 
         .premium-hero h1 {
-            font-size: var(--text-4xl);
-            margin-bottom: var(--space-4);
+            font-size: 48px;
+            margin-bottom: 16px;
+            font-weight: 700;
         }
 
         .premium-hero p {
-            font-size: var(--text-lg);
+            font-size: 20px;
             opacity: 0.9;
         }
 
         .pricing-container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: var(--space-16) var(--space-4);
+            padding: 64px 16px;
         }
 
         .pricing-cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: var(--space-8);
-            margin-top: var(--space-12);
+            gap: 32px;
+            margin-top: 48px;
         }
 
         .pricing-card {
             background: white;
-            border-radius: var(--radius-xl);
-            padding: var(--space-8);
-            box-shadow: var(--shadow-lg);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             position: relative;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
-            border: 2px solid transparent;
+            border: 2px solid #e5e7eb;
         }
 
         .pricing-card:hover {
             transform: translateY(-8px);
-            box-shadow: var(--shadow-2xl);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
         }
 
         .pricing-card.featured {
-            border-color: var(--primary);
+            border-color: #4F46E5;
             transform: scale(1.05);
         }
 
         .popular-badge {
             position: absolute;
             top: -12px;
-            right: var(--space-6);
-            background: var(--accent);
+            right: 24px;
+            background: #F59E0B;
             color: white;
-            padding: var(--space-2) var(--space-4);
-            border-radius: var(--radius-full);
-            font-size: var(--text-sm);
-            font-weight: var(--font-semibold);
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .plan-name {
-            font-size: var(--text-2xl);
-            font-weight: var(--font-bold);
-            color: var(--neutral-900);
-            margin-bottom: var(--space-4);
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 16px;
         }
 
         .plan-price {
-            font-size: var(--text-4xl);
-            font-weight: var(--font-bold);
-            color: var(--primary);
-            margin-bottom: var(--space-2);
+            font-size: 48px;
+            font-weight: 700;
+            color: #4F46E5;
+            margin-bottom: 8px;
         }
 
         .plan-price small {
-            font-size: var(--text-base);
-            color: var(--neutral-600);
+            font-size: 18px;
+            color: #6B7280;
             font-weight: normal;
         }
 
         .plan-features {
             list-style: none;
             padding: 0;
-            margin: var(--space-6) 0;
+            margin: 24px 0;
         }
 
         .plan-features li {
-            padding: var(--space-3) 0;
+            padding: 12px 0;
             display: flex;
             align-items: center;
-            gap: var(--space-3);
-            color: var(--neutral-700);
+            gap: 12px;
+            color: #374151;
+            font-size: 16px;
         }
 
         .plan-features li::before {
             content: "✓";
-            color: var(--success);
+            color: #10B981;
             font-weight: bold;
-            font-size: var(--text-lg);
+            font-size: 20px;
+            flex-shrink: 0;
         }
 
         .btn-subscribe {
             width: 100%;
-            padding: var(--space-4);
-            background: var(--primary);
+            padding: 16px;
+            background: #4F46E5;
             color: white;
             border: none;
-            border-radius: var(--radius-lg);
-            font-size: var(--text-lg);
-            font-weight: var(--font-semibold);
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .btn-subscribe:hover {
-            background: var(--primary-dark);
+            background: #4338CA;
             transform: scale(1.02);
         }
 
         .savings-badge {
-            background: var(--success-light);
-            color: var(--success);
-            padding: var(--space-2) var(--space-4);
-            border-radius: var(--radius-md);
+            background: #D1FAE5;
+            color: #059669;
+            padding: 8px 16px;
+            border-radius: 8px;
             display: inline-block;
-            margin-bottom: var(--space-4);
-            font-weight: var(--font-semibold);
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 14px;
         }
 
-        .features-comparison {
-            margin-top: var(--space-20);
-            padding: var(--space-12) 0;
-            background: var(--neutral-50);
+        .payment-methods {
+            text-align: center;
+            margin-top: 48px;
+            padding: 32px;
+            background: #F9FAFB;
+            border-radius: 12px;
+        }
+
+        .payment-methods h3 {
+            margin-bottom: 16px;
+            color: #111827;
+        }
+
+        .payment-methods p {
+            color: #6B7280;
+            margin-bottom: 24px;
+        }
+
+        .payment-icons {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .payment-icon {
+            padding: 12px 24px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #374151;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
         .faq-section {
             max-width: 800px;
-            margin: var(--space-20) auto;
-            padding: 0 var(--space-4);
+            margin: 80px auto;
+            padding: 0 16px;
+        }
+
+        .faq-section h2 {
+            text-align: center;
+            margin-bottom: 32px;
+            color: #111827;
+            font-size: 36px;
         }
 
         .faq-item {
             background: white;
-            padding: var(--space-6);
-            margin-bottom: var(--space-4);
-            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 16px;
+            border-radius: 12px;
             cursor: pointer;
-            box-shadow: var(--shadow-sm);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
         }
 
         .faq-question {
-            font-weight: var(--font-semibold);
-            color: var(--neutral-900);
+            font-weight: 600;
+            color: #111827;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-size: 18px;
         }
 
         .faq-answer {
-            margin-top: var(--space-4);
-            color: var(--neutral-700);
+            margin-top: 16px;
+            color: #6B7280;
             display: none;
+            font-size: 16px;
+            line-height: 1.6;
         }
 
         .faq-item.active .faq-answer {
             display: block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-center h2 {
+            font-size: 36px;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .text-center p {
+            font-size: 18px;
+            color: #6B7280;
         }
     </style>
 </head>
@@ -194,7 +272,7 @@
 
     <!-- Pricing Section -->
     <section class="pricing-container">
-        <div class="text-center" style="margin-bottom: var(--space-12);">
+        <div class="text-center" style="margin-bottom: 48px;">
             <h2>Prêt à Transformer Votre Apprentissage ?</h2>
             <p>Rejoignez des milliers d'élèves qui réussissent avec Pedaclic Premium</p>
         </div>
@@ -204,7 +282,7 @@
             <div class="pricing-card">
                 <h3 class="plan-name">Mensuel</h3>
                 <div class="plan-price">2000 <small>FCFA</small></div>
-                <p style="color: var(--neutral-600); margin-bottom: var(--space-6);">par mois</p>
+                <p style="color: #6B7280; margin-bottom: 24px;">par mois</p>
                 
                 <ul class="plan-features">
                     <li>Accès illimité à tous les contenus</li>
@@ -227,7 +305,7 @@
                 <h3 class="plan-name">Annuel</h3>
                 <div class="savings-badge">Économisez 4000 FCFA (2 mois gratuits)</div>
                 <div class="plan-price">20000 <small>FCFA</small></div>
-                <p style="color: var(--neutral-600); margin-bottom: var(--space-6);">par an</p>
+                <p style="color: #6B7280; margin-bottom: 24px;">par an</p>
                 
                 <ul class="plan-features">
                     <li>Tout ce qui est dans le plan mensuel</li>
@@ -246,23 +324,21 @@
         </div>
 
         <!-- Moyens de paiement -->
-        <div style="text-align: center; margin-top: var(--space-12); padding: var(--space-8); background: var(--neutral-50); border-radius: var(--radius-lg);">
-            <h3 style="margin-bottom: var(--space-4);">💳 Moyens de paiement acceptés</h3>
-            <p style="color: var(--neutral-700); margin-bottom: var(--space-6);">
-                Paiement 100% sécurisé par PayTech
-            </p>
-            <div style="display: flex; justify-content: center; gap: var(--space-6); flex-wrap: wrap;">
-                <span style="padding: var(--space-3) var(--space-6); background: white; border-radius: var(--radius-md); font-weight: var(--font-semibold);">📱 Wave</span>
-                <span style="padding: var(--space-3) var(--space-6); background: white; border-radius: var(--radius-md); font-weight: var(--font-semibold);">📱 Orange Money</span>
-                <span style="padding: var(--space-3) var(--space-6); background: white; border-radius: var(--radius-md); font-weight: var(--font-semibold);">💳 Visa</span>
-                <span style="padding: var(--space-3) var(--space-6); background: white; border-radius: var(--radius-md); font-weight: var(--font-semibold);">💳 Mastercard</span>
+        <div class="payment-methods">
+            <h3>💳 Moyens de paiement acceptés</h3>
+            <p>Paiement 100% sécurisé par PayTech</p>
+            <div class="payment-icons">
+                <span class="payment-icon">📱 Wave</span>
+                <span class="payment-icon">📱 Orange Money</span>
+                <span class="payment-icon">💳 Visa</span>
+                <span class="payment-icon">💳 Mastercard</span>
             </div>
         </div>
     </section>
 
     <!-- FAQ Section -->
     <section class="faq-section">
-        <h2 style="text-align: center; margin-bottom: var(--space-8);">Questions Fréquentes</h2>
+        <h2>Questions Fréquentes</h2>
         
         <div class="faq-item" onclick="toggleFaq(this)">
             <div class="faq-question">
@@ -305,9 +381,8 @@
 
     <script>
         // Toggle FAQ
-        function toggleFaq(button) {
-            const faqItem = button.parentElement;
-            const isActive = faqItem.classList.contains('active');
+        function toggleFaq(element) {
+            const isActive = element.classList.contains('active');
             
             // Fermer tous les autres
             document.querySelectorAll('.faq-item').forEach(item => {
@@ -316,7 +391,7 @@
             
             // Ouvrir celui-ci si ce n'était pas déjà ouvert
             if (!isActive) {
-                faqItem.classList.add('active');
+                element.classList.add('active');
             }
         }
     </script>
