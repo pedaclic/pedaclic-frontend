@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculatrice - Pedaclic</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="../../assets/images/logo/favicon.ico">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="../../assets/css/design-system.css">
+    <link rel="stylesheet" href="../../assets/css/components/header.css">
+    <style>
+        /* CSS spécifique à cette page */
+        .calculator-display {
+            background: var(--gray-100);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            font-size: var(--text-3xl);
+            text-align: right;
+            margin-bottom: var(--space-4);
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            box-shadow: var(--shadow-inner);
+        }
+        
+        .calculator-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: var(--space-3);
+        }
+        
+        .calculator-btn {
+            padding: var(--space-6);
+            font-size: var(--text-xl);
+            font-weight: var(--font-semibold);
+            border: none;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            background: var(--white);
+            box-shadow: var(--shadow-base);
+        }
+        
+        .calculator-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .calculator-btn:active {
+            transform: translateY(0);
+        }
+        
+        .calculator-btn.operator {
+            background: var(--primary-600);
+            color: var(--white);
+        }
+        
+        .calculator-btn.equals {
+            background: var(--accent-500);
+            color: var(--white);
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header id="main-header"></header>
+    
+    <!-- Contenu Principal -->
+    <main class="container" style="padding: var(--space-12) var(--space-4);">
+        <!-- En-tête de Page -->
+        <div class="text-center" style="margin-bottom: var(--space-12);">
+            <h1 class="animate-fade-in-up" style="margin-bottom: var(--space-3);">
+                🧮 Calculatrice Scientifique
+            </h1>
+            <p class="text-gray animate-fade-in-up" style="animation-delay: 0.1s;">
+                Une calculatrice simple et élégante pour tous vos calculs
+            </p>
+        </div>
+        
+        <!-- Calculatrice -->
+        <div class="card animate-scale-in" style="max-width: 500px; margin: 0 auto;">
+            <!-- Affichage -->
+            <div class="calculator-display" id="display">0</div>
+            
+            <!-- Boutons -->
+            <div class="calculator-buttons">
+                <button class="calculator-btn" onclick="clearDisplay()">C</button>
+                <button class="calculator-btn" onclick="deleteLast()">←</button>
+                <button class="calculator-btn operator" onclick="appendOperator('/')">÷</button>
+                <button class="calculator-btn operator" onclick="appendOperator('*')">×</button>
+                
+                <button class="calculator-btn" onclick="appendNumber('7')">7</button>
+                <button class="calculator-btn" onclick="appendNumber('8')">8</button>
+                <button class="calculator-btn" onclick="appendNumber('9')">9</button>
+                <button class="calculator-btn operator" onclick="appendOperator('-')">−</button>
+                
+                <button class="calculator-btn" onclick="appendNumber('4')">4</button>
+                <button class="calculator-btn" onclick="appendNumber('5')">5</button>
+                <button class="calculator-btn" onclick="appendNumber('6')">6</button>
+                <button class="calculator-btn operator" onclick="appendOperator('+')">+</button>
+                
+                <button class="calculator-btn" onclick="appendNumber('1')">1</button>
+                <button class="calculator-btn" onclick="appendNumber('2')">2</button>
+                <button class="calculator-btn" onclick="appendNumber('3')">3</button>
+                <button class="calculator-btn" rowspan="2" onclick="calculate()">=</button>
+                
+                <button class="calculator-btn" style="grid-column: span 2;" onclick="appendNumber('0')">0</button>
+                <button class="calculator-btn" onclick="appendNumber('.')">.</button>
+                <button class="calculator-btn equals" onclick="calculate()">=</button>
+            </div>
+        </div>
+        
+        <!-- Retour -->
+        <div class="text-center" style="margin-top: var(--space-8);">
+            <a href="../../outils.html" class="btn btn-outline">
+                ← Retour aux Outils
+            </a>
+        </div>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="../../assets/js/components/header.js"></script>
+    <script>
+        let display = document.getElementById('display');
+        let currentValue = '0';
+        
+        function updateDisplay() {
+            display.textContent = currentValue;
+        }
+        
+        function clearDisplay() {
+            currentValue = '0';
+            updateDisplay();
+        }
+        
+        function deleteLast() {
+            currentValue = currentValue.slice(0, -1) || '0';
+            updateDisplay();
+        }
+        
+        function appendNumber(num) {
+            if (currentValue === '0') {
+                currentValue = num;
+            } else {
+                currentValue += num;
+            }
+            updateDisplay();
+        }
+        
+        function appendOperator(op) {
+            currentValue += op;
+            updateDisplay();
+        }
+        
+        function calculate() {
+            try {
+                currentValue = eval(currentValue.replace('×', '*').replace('÷', '/').replace('−', '-')).toString();
+                updateDisplay();
+            } catch (e) {
+                currentValue = 'Erreur';
+                updateDisplay();
+                setTimeout(() => {
+                    currentValue = '0';
+                    updateDisplay();
+                }, 1500);
+            }
+        }
+    </script>
+</body>
+</html>

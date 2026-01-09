@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration - Pedaclic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        
+        /* Écran de chargement */
+        .auth-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        
+        .auth-loading .spinner {
+            border: 4px solid #e2e8f0;
+            border-top: 4px solid #2563eb;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .auth-loading p {
+            color: #64748b;
+            font-size: 16px;
+        }
+        
+        /* Contenu principal (caché jusqu'à authentification) */
+        .admin-content {
+            display: none;
+        }
+        
+        /* Header */
+        .header {
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: #2563eb;
+            text-decoration: none;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .user-email {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .btn-logout {
+            background: #ef4444;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-size: 14px;
+        }
+        
+        .btn-logout:hover {
+            background: #dc2626;
+        }
+        
+        /* Main content */
+        .main-content {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .welcome-admin {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(37, 99, 235, 0.1);
+            padding: 40px;
+            margin-bottom: 30px;
+            border-left: 6px solid #2563eb;
+        }
+        
+        .welcome-admin h1 {
+            font-size: 32px;
+            color: #1e293b;
+            margin-bottom: 10px;
+        }
+        
+        .welcome-admin p {
+            color: #64748b;
+            font-size: 16px;
+        }
+        
+        .admin-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 25px;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            cursor: pointer;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .success-message {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #10b981;
+        }
+        
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            border-left: 4px solid #dc2626;
+        }
+        
+        .error-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .admin-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .quick-action {
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        
+        .quick-action:hover {
+            border-color: #2563eb;
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(37, 99, 235, 0.15);
+        }
+        
+        .quick-action-icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 15px;
+        }
+        
+        .quick-action-title {
+            font-weight: 700;
+            color: #2563eb;
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+        
+        .quick-action-desc {
+            font-size: 14px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Écran de chargement d'authentification -->
+    <div class="auth-loading" id="authLoading">
+        <div class="spinner"></div>
+        <p>Vérification de l'authentification...</p>
+    </div>
+
+    <!-- Contenu admin (caché jusqu'à authentification) -->
+    <div class="admin-content" id="adminContent">
+        <!-- Header -->
+        <header class="header">
+            <nav class="nav-container">
+                <a href="index.html" class="logo">Pedaclic Admin</a>
+                <div class="user-info">
+                    <span class="user-email" id="userEmail">admin@pedaclic.com</span>
+                    <button class="btn-logout" id="logoutBtn">Déconnexion</button>
+                </div>
+            </nav>
+        </header>
+
+        <!-- Main content -->
+        <main class="main-content">
+            <!-- Welcome -->
+            <div class="welcome-admin">
+                <h1>🎯 Tableau de bord administrateur</h1>
+                <p>Gérez le contenu et les paramètres de Pedaclic</p>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="admin-section">
+                <h2 class="section-title">⚡ Actions rapides</h2>
+                <div class="admin-grid">
+                    <div class="quick-action" onclick="document.getElementById('newsForm').scrollIntoView({behavior: 'smooth'})">
+                        <span class="quick-action-icon">📢</span>
+                        <div class="quick-action-title">Ajouter une actualité</div>
+                        <div class="quick-action-desc">Publier une nouvelle info</div>
+                    </div>
+                    <div class="quick-action" onclick="document.getElementById('statsForm').scrollIntoView({behavior: 'smooth'})">
+                        <span class="quick-action-icon">📊</span>
+                        <div class="quick-action-title">Mettre à jour les stats</div>
+                        <div class="quick-action-desc">Modifier les chiffres clés</div>
+                    </div>
+                    <div class="quick-action" onclick="window.open('https://console.firebase.google.com', '_blank')">
+                        <span class="quick-action-icon">🔧</span>
+                        <div class="quick-action-title">Console Firebase</div>
+                        <div class="quick-action-desc">Accès direct à Firebase</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire d'ajout d'actualité -->
+            <div class="admin-section" id="newsForm">
+                <h2 class="section-title">📢 Ajouter une actualité</h2>
+                <div id="newsSuccess" class="success-message"></div>
+                <div id="newsError" class="error-message"></div>
+                
+                <form id="addNewsForm">
+                    <div class="form-group">
+                        <label for="newsDate">Date</label>
+                        <input type="text" id="newsDate" placeholder="Ex: 3 janvier 2026" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newsTitle">Titre</label>
+                        <input type="text" id="newsTitle" placeholder="Titre de l'actualité" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newsText">Contenu</label>
+                        <textarea id="newsText" placeholder="Description de l'actualité..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="newsIsNew">
+                        <label for="newsIsNew" style="margin: 0;">Marquer comme "Nouveau"</label>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="addNewsBtn">
+                        ✅ Publier l'actualité
+                    </button>
+                </form>
+            </div>
+
+            <!-- Formulaire de mise à jour des statistiques -->
+            <div class="admin-section" id="statsForm">
+                <h2 class="section-title">📊 Mettre à jour une statistique</h2>
+                <div id="statsSuccess" class="success-message"></div>
+                <div id="statsError" class="error-message"></div>
+                
+                <form id="updateStatsForm">
+                    <div class="form-group">
+                        <label for="statIcon">Icône (emoji)</label>
+                        <input type="text" id="statIcon" placeholder="Ex: 📚" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="statValue">Valeur</label>
+                        <input type="text" id="statValue" placeholder="Ex: 250" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="statSuffix">Suffixe (optionnel)</label>
+                        <input type="text" id="statSuffix" placeholder="Ex: + ou %">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="statLabel">Libellé</label>
+                        <input type="text" id="statLabel" placeholder="Ex: Ressources disponibles" required>
+                    </div>
+                    
+                    <button type="submit" class="btn-primary" id="updateStatsBtn">
+                        ✅ Mettre à jour
+                    </button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // ⚠️ CONFIGURATION: Nom du fichier login (à modifier si vous renommez)
+        const LOGIN_PAGE = 'auth-x7k9m2.html';  // ← MODIFIEZ ICI si vous renommez le fichier login
+
+        // Configuration Firebase (IDENTIQUE)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgk_1graNBFkIURTJnyLZTZ1nyxi7slUo",
+            authDomain: "pedaclic.firebaseapp.com",
+            projectId: "pedaclic",
+            storageBucket: "pedaclic.firebasestorage.app",
+            messagingSenderId: "863649621890",
+            appId: "1:863649621890:web:6ab56a8c8db111e3a9119b",
+            measurementId: "G-20EGFVEM5M"
+        };
+
+        // Initialiser Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // ========================================
+        // VÉRIFICATION DE L'AUTHENTIFICATION
+        // ========================================
+        const authLoading = document.getElementById('authLoading');
+        const adminContent = document.getElementById('adminContent');
+        const userEmailSpan = document.getElementById('userEmail');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // L'utilisateur est connecté
+                console.log('Utilisateur connecté:', user.email);
+                
+                userEmailSpan.textContent = user.email;
+                
+                authLoading.style.display = 'none';
+                adminContent.style.display = 'block';
+                
+            } else {
+                // L'utilisateur n'est PAS connecté
+                console.log('Utilisateur non connecté - Redirection vers login');
+                
+                // ✅ REDIRECTION VERS LOGIN (nom du fichier configuré ci-dessus)
+                window.location.href = LOGIN_PAGE;
+            }
+        });
+
+        // ========================================
+        // DÉCONNEXION
+        // ========================================
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await signOut(auth);
+                console.log('Déconnexion réussie');
+                
+                // ✅ REDIRECTION VERS LOGIN (nom du fichier configuré ci-dessus)
+                window.location.href = LOGIN_PAGE;
+            } catch (error) {
+                console.error('Erreur de déconnexion:', error);
+                alert('Erreur lors de la déconnexion');
+            }
+        });
+
+        // ========================================
+        // AJOUTER UNE ACTUALITÉ
+        // ========================================
+        const addNewsForm = document.getElementById('addNewsForm');
+        const newsSuccess = document.getElementById('newsSuccess');
+        const newsError = document.getElementById('newsError');
+        
+        function showNewsMessage(element, message) {
+            element.textContent = message;
+            element.classList.add('show');
+            setTimeout(() => element.classList.remove('show'), 5000);
+        }
+        
+        addNewsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const addNewsBtn = document.getElementById('addNewsBtn');
+            addNewsBtn.disabled = true;
+            addNewsBtn.textContent = 'Publication en cours...';
+            
+            try {
+                const newsData = {
+                    date: document.getElementById('newsDate').value,
+                    title: document.getElementById('newsTitle').value,
+                    text: document.getElementById('newsText').value,
+                    isNew: document.getElementById('newsIsNew').checked,
+                    createdAt: serverTimestamp()
+                };
+                
+                await addDoc(collection(db, 'news'), newsData);
+                
+                showNewsMessage(newsSuccess, '✅ Actualité publiée avec succès !');
+                addNewsForm.reset();
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showNewsMessage(newsError, '❌ Erreur lors de la publication: ' + error.message);
+            } finally {
+                addNewsBtn.disabled = false;
+                addNewsBtn.textContent = '✅ Publier l\'actualité';
+            }
+        });
+
+        // ========================================
+        // METTRE À JOUR UNE STATISTIQUE
+        // ========================================
+        const updateStatsForm = document.getElementById('updateStatsForm');
+        const statsSuccess = document.getElementById('statsSuccess');
+        const statsError = document.getElementById('statsError');
+        
+        function showStatsMessage(element, message) {
+            element.textContent = message;
+            element.classList.add('show');
+            setTimeout(() => element.classList.remove('show'), 5000);
+        }
+        
+        updateStatsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const updateStatsBtn = document.getElementById('updateStatsBtn');
+            updateStatsBtn.disabled = true;
+            updateStatsBtn.textContent = 'Mise à jour en cours...';
+            
+            try {
+                const statData = {
+                    icon: document.getElementById('statIcon').value,
+                    value: document.getElementById('statValue').value,
+                    suffix: document.getElementById('statSuffix').value || '',
+                    label: document.getElementById('statLabel').value,
+                    updatedAt: serverTimestamp()
+                };
+                
+                await addDoc(collection(db, 'stats'), statData);
+                
+                showStatsMessage(statsSuccess, '✅ Statistique mise à jour avec succès !');
+                updateStatsForm.reset();
+                
+            } catch (error) {
+                console.error('Erreur:', error);
+                showStatsMessage(statsError, '❌ Erreur lors de la mise à jour: ' + error.message);
+            } finally {
+                updateStatsBtn.disabled = false;
+                updateStatsBtn.textContent = '✅ Mettre à jour';
+            }
+        });
+    </script>
+</body>
+</html>

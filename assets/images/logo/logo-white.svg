@@ -1,0 +1,23 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+    <!-- Icône Livre (version blanche) -->
+    <g id="book-icon-white">
+        <path d="M10 15 L10 45 L30 40 L30 10 Z" fill="#60a5fa" opacity="0.9"/>
+        <path d="M30 10 L30 40 L50 45 L50 15 Z" fill="#93c5fd" opacity="0.9"/>
+        <line x1="15" y1="20" x2="25" y2="18" stroke="#1f2937" stroke-width="1.5"/>
+        <line x1="15" y1="25" x2="25" y2="23" stroke="#1f2937" stroke-width="1.5"/>
+        <line x1="15" y1="30" x2="25" y2="28" stroke="#1f2937" stroke-width="1.5"/>
+        <line x1="35" y1="18" x2="45" y2="20" stroke="#1f2937" stroke-width="1.5"/>
+        <line x1="35" y1="23" x2="45" y2="25" stroke="#1f2937" stroke-width="1.5"/>
+        <line x1="35" y1="28" x2="45" y2="30" stroke="#1f2937" stroke-width="1.5"/>
+    </g>
+    
+    <!-- Texte PEDACLIC (blanc) -->
+    <text x="65" y="38" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="700" fill="white">
+        PEDACLIC
+    </text>
+    
+    <!-- Baseline (gris clair) -->
+    <text x="65" y="48" font-family="Inter, -apple-system, sans-serif" font-size="9" fill="#9ca3af" letter-spacing="0.5">
+        ÉDUCATION INTERACTIVE
+    </text>
+</svg>

@@ -1,0 +1,29 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+    <!-- Définitions -->
+    <defs>
+        <linearGradient id="gradient-p" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <!-- P stylisé en forme de porte-plume/crayon -->
+    <g id="p-icon">
+        <!-- Corps du P -->
+        <path d="M20 10 L35 10 Q45 10 45 20 Q45 30 35 30 L20 30 L20 50 Z" 
+              fill="url(#gradient-p)" stroke="#1d4ed8" stroke-width="2"/>
+        <!-- Étoile d'excellence -->
+        <path d="M42 15 L44 20 L49 20 L45 23 L47 28 L42 25 L37 28 L39 23 L35 20 L40 20 Z" 
+              fill="#f97316" opacity="0.9"/>
+    </g>
+    
+    <!-- Texte PEDACLIC -->
+    <text x="60" y="38" font-family="Inter, -apple-system, sans-serif" font-size="24" font-weight="700" fill="#1f2937">
+        PEDACLIC
+    </text>
+    
+    <!-- Baseline -->
+    <text x="60" y="48" font-family="Inter, -apple-system, sans-serif" font-size="9" fill="#6b7280" letter-spacing="0.5">
+        APPRENDRE EN S'AMUSANT
+    </text>
+</svg>

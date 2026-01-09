@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Titre de la Page - Pedaclic</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    
+    <!-- CSS Global -->
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    
+    <!-- CSS Spécifique (optionnel) -->
+    <style>
+        /* Styles spécifiques à cette page */
+        .page-hero {
+            padding: var(--space-16) var(--space-4);
+            text-align: center;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        .page-hero h1 {
+            font-size: var(--text-5xl);
+            margin-bottom: var(--space-4);
+            animation: fadeInUp var(--transition-base);
+        }
+        
+        .page-hero p {
+            font-size: var(--text-xl);
+            color: var(--gray-600);
+            max-width: 600px;
+            margin: 0 auto;
+            animation: fadeInUp var(--transition-base);
+            animation-delay: 0.1s;
+            opacity: 0;
+            animation-fill-mode: forwards;
+        }
+        
+        .page-content {
+            max-width: var(--max-w-7xl);
+            margin: var(--space-12) auto;
+            padding: 0 var(--space-4);
+        }
+        
+        .content-section {
+            background: var(--white);
+            padding: var(--space-8);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-base);
+            margin-bottom: var(--space-8);
+            animation: fadeInUp var(--transition-base);
+            animation-delay: 0.2s;
+            opacity: 0;
+            animation-fill-mode: forwards;
+        }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header (chargé dynamiquement) -->
+    <header id="main-header"></header>
+    
+    <!-- Hero Section -->
+    <section class="page-hero">
+        <h1>Titre de Votre Page</h1>
+        <p>Une brève description de ce que contient cette page</p>
+    </section>
+    
+    <!-- Contenu Principal -->
+    <main class="page-content">
+        <section class="content-section">
+            <h2>Section 1</h2>
+            <p>Votre contenu ici...</p>
+        </section>
+        
+        <section class="content-section">
+            <h2>Section 2</h2>
+            <p>Plus de contenu...</p>
+        </section>
+    </main>
+    
+    <!-- Footer -->
+    <footer style="background: var(--white); padding: var(--space-8); text-align: center; margin-top: var(--space-16); border-top: 1px solid var(--gray-200);">
+        <p style="color: var(--gray-600); margin-bottom: var(--space-3);">
+            © 2026 Pedaclic - L'école en un clic
+        </p>
+        <p style="font-size: var(--text-sm); color: var(--gray-500);">
+            <a href="#contact" style="color: var(--primary-600); text-decoration: none;">Contact</a> | 
+            <a href="#aide" style="color: var(--primary-600); text-decoration: none;">Aide</a> | 
+            <a href="#mentions" style="color: var(--primary-600); text-decoration: none;">Mentions légales</a>
+        </p>
+    </footer>
+    
+    <!-- Scripts -->
+    <script src="assets/js/components/header.js"></script>
+    
+    <!-- Script spécifique (optionnel) -->
+    <script>
+        // JavaScript spécifique à cette page
+        console.log('Page chargée !');
+    </script>
+</body>
+</html>

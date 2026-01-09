@@ -1,0 +1,27 @@
+#main-header {
+  background-color: var(--white);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  animation: fadeInDown var(--transition-base);
+}
+
+.nav-link {
+  color: var(--gray-700);
+  font-weight: var(--font-medium);
+  transition: color var(--transition-fast);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--primary-600);
+  text-decoration: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #main-header nav {
+    display: none; /* On verra le menu burger plus tard */
+  }
+}

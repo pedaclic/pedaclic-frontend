@@ -1,0 +1,19 @@
+<svg width="250" height="50" viewBox="0 0 250 50" xmlns="http://www.w3.org/2000/svg">
+    <!-- Icône compacte -->
+    <circle cx="25" cy="25" r="20" fill="#2563eb" opacity="0.1"/>
+    <path d="M18 18 L18 32 L25 30 L25 16 Z" fill="#2563eb"/>
+    <path d="M25 16 L25 30 L32 32 L32 18 Z" fill="#3b82f6" opacity="0.9"/>
+    
+    <!-- Texte -->
+    <text x="55" y="32" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="700" fill="#1f2937">
+        PEDACLIC.SN
+    </text>
+    
+    <!-- Séparateur -->
+    <line x1="180" y1="15" x2="180" y2="35" stroke="#d1d5db" stroke-width="2"/>
+    
+    <!-- Tagline -->
+    <text x="190" y="32" font-family="Inter, -apple-system, sans-serif" font-size="12" fill="#6b7280">
+        Éducation
+    </text>
+</svg>

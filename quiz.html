@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interactifs - Pedaclic</title>
+    
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    <link rel="stylesheet" href="assets/css/components/footer.css">
+    
+    <style>
+        .quiz-hero {
+            background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
+            padding: var(--space-16) var(--space-4);
+            color: var(--white);
+            text-align: center;
+        }
+        
+        .quiz-hero h1 {
+            font-size: var(--text-5xl);
+            font-weight: var(--font-extrabold);
+            margin-bottom: var(--space-4);
+        }
+        
+        .filters-section {
+            max-width: var(--max-w-7xl);
+            margin: calc(var(--space-8) * -1) auto var(--space-12);
+            padding: 0 var(--space-4);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .filters-card {
+            background: var(--white);
+            padding: var(--space-6);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            gap: var(--space-4);
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .filter-btn {
+            padding: var(--space-3) var(--space-6);
+            border: 2px solid var(--gray-300);
+            background: var(--white);
+            border-radius: var(--radius-full);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-weight: var(--font-semibold);
+        }
+        
+        .filter-btn.active {
+            background: var(--primary-600);
+            border-color: var(--primary-600);
+            color: var(--white);
+        }
+        
+        .quiz-container {
+            max-width: var(--max-w-7xl);
+            margin: 0 auto var(--space-20);
+            padding: 0 var(--space-4);
+        }
+        
+        .quiz-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: var(--space-6);
+        }
+        
+        .quiz-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-base);
+            transition: all var(--transition-base);
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .quiz-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--primary-600);
+        }
+        
+        .quiz-header {
+            padding: var(--space-6);
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+        
+        .quiz-difficulty {
+            display: inline-block;
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-3);
+        }
+        
+        .difficulty-easy { background: var(--accent-100); color: var(--accent-700); }
+        .difficulty-medium { background: #fef3c7; color: #92400e; }
+        .difficulty-hard { background: #fee2e2; color: #991b1b; }
+        
+        .quiz-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--gray-900);
+            margin-bottom: var(--space-2);
+        }
+        
+        .quiz-body {
+            padding: var(--space-6);
+        }
+        
+        .quiz-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--space-4);
+            margin-bottom: var(--space-6);
+        }
+        
+        .quiz-stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--primary-600);
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: var(--text-xs);
+            color: var(--gray-600);
+        }
+        
+        .quiz-action {
+            width: 100%;
+            padding: var(--space-4);
+            background: var(--primary-600);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: var(--font-bold);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .quiz-action:hover {
+            background: var(--primary-700);
+        }
+        
+        @media (max-width: 768px) {
+            .quiz-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <!-- Fonctionnalités avancées CSS -->
+    <link rel="stylesheet" href="assets/css/features/search.css">
+    <link rel="stylesheet" href="assets/css/features/dark-mode.css">
+    <link rel="stylesheet" href="assets/css/features/toast.css">
+    <link rel="stylesheet" href="assets/css/features/scroll-animations.css">
+</head>
+<body>
+    <header id="main-header"></header>
+    
+    <section class="quiz-hero">
+        <h1>🧠 Quiz Interactifs</h1>
+        <p>Testez vos connaissances dans toutes les matières</p>
+    </section>
+    
+    <section class="filters-section">
+        <div class="filters-card">
+            <button class="filter-btn active" onclick="filterQuiz('all')">Tous</button>
+            <button class="filter-btn" onclick="filterQuiz('maths')">Maths</button>
+            <button class="filter-btn" onclick="filterQuiz('francais')">Français</button>
+            <button class="filter-btn" onclick="filterQuiz('sciences')">Sciences</button>
+        </div>
+    </section>
+    
+    <section class="quiz-container">
+        <div class="quiz-grid" id="quizGrid">
+            <div class="quiz-card" data-subject="maths">
+                <div class="quiz-header">
+                    <span class="quiz-difficulty difficulty-easy">Facile</span>
+                    <h3 class="quiz-title">Les Nombres Relatifs</h3>
+                    <p class="quiz-subject">Mathématiques • 3ème</p>
+                </div>
+                <div class="quiz-body">
+                    <p class="quiz-description">Opérations avec les nombres relatifs.</p>
+                    <div class="quiz-stats">
+                        <div class="quiz-stat">
+                            <span class="stat-value">15</span>
+                            <span class="stat-label">Questions</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">10</span>
+                            <span class="stat-label">Minutes</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">234</span>
+                            <span class="stat-label">Joueurs</span>
+                        </div>
+                    </div>
+                    <button class="quiz-action" onclick="startQuiz('relatifs')">Commencer 🚀</button>
+                </div>
+            </div>
+            
+            <div class="quiz-card" data-subject="francais">
+                <div class="quiz-header">
+                    <span class="quiz-difficulty difficulty-medium">Moyen</span>
+                    <h3 class="quiz-title">Figures de Style</h3>
+                    <p class="quiz-subject">Français • 1ère</p>
+                </div>
+                <div class="quiz-body">
+                    <p class="quiz-description">Identifiez les figures littéraires.</p>
+                    <div class="quiz-stats">
+                        <div class="quiz-stat">
+                            <span class="stat-value">20</span>
+                            <span class="stat-label">Questions</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">15</span>
+                            <span class="stat-label">Minutes</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">189</span>
+                            <span class="stat-label">Joueurs</span>
+                        </div>
+                    </div>
+                    <button class="quiz-action" onclick="startQuiz('figures')">Commencer 🚀</button>
+                </div>
+            </div>
+            
+            <div class="quiz-card" data-subject="sciences">
+                <div class="quiz-header">
+                    <span class="quiz-difficulty difficulty-hard">Difficile</span>
+                    <h3 class="quiz-title">Équilibre Chimique</h3>
+                    <p class="quiz-subject">Chimie • Terminale</p>
+                </div>
+                <div class="quiz-body">
+                    <p class="quiz-description">Réactions chimiques avancées.</p>
+                    <div class="quiz-stats">
+                        <div class="quiz-stat">
+                            <span class="stat-value">25</span>
+                            <span class="stat-label">Questions</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">30</span>
+                            <span class="stat-label">Minutes</span>
+                        </div>
+                        <div class="quiz-stat">
+                            <span class="stat-value">98</span>
+                            <span class="stat-label">Joueurs</span>
+                        </div>
+                    </div>
+                    <button class="quiz-action" onclick="startQuiz('equilibre')">Commencer 🚀</button>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <footer id="main-footer"></footer>
+    
+    <script src="assets/js/components/header.js"></script>
+    <script src="assets/js/components/footer.js"></script>
+    
+    <script>
+        function filterQuiz(subject) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.quiz-card').forEach(card => {
+                const cardSubject = card.getAttribute('data-subject');
+                card.style.display = (subject === 'all' || cardSubject === subject) ? 'block' : 'none';
+            });
+        }
+        
+        function startQuiz(quizId) {
+            alert(`Lancement du quiz : ${quizId}`);
+        }
+    </script>
+    <!-- Fonctionnalités avancées JS -->
+    <script src="assets/js/features/search.js"></script>
+    <script src="assets/js/features/dark-mode.js"></script>
+    <script src="assets/js/features/toast.js"></script>
+    <script src="assets/js/features/scroll-animations.js"></script>
+</body>
+</html>
