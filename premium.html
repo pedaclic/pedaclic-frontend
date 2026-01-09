@@ -196,6 +196,14 @@
             font-weight: 600;
             color: #374151;
             box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .payment-icon img {
+            width: 24px;
+            height: 24px;
         }
 
         .faq-section {
@@ -328,10 +336,26 @@
             <h3>💳 Moyens de paiement acceptés</h3>
             <p>Paiement 100% sécurisé par PayTech</p>
             <div class="payment-icons">
-                <span class="payment-icon">📱 Wave</span>
-                <span class="payment-icon">📱 Orange Money</span>
-                <span class="payment-icon">💳 Visa</span>
-                <span class="payment-icon">💳 Mastercard</span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD700"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M6 12h12" stroke="#FFF" stroke-width="2"/></svg>
+                    Wave
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF6600"><circle cx="12" cy="12" r="10"/></svg>
+                    Orange Money
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#1A1F71"><rect width="24" height="16" rx="2"/></svg>
+                    Visa
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="10" cy="12" r="8" fill="#EB001B"/><circle cx="14" cy="12" r="8" fill="#F79E1B"/></svg>
+                    Mastercard
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#00C853"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Y</text></svg>
+                    Free Money (Yas)
+                </span>
             </div>
         </div>
     </section>
@@ -373,27 +397,6 @@
 
     <!-- Footer -->
     <footer id="main-footer"></footer>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-    <!-- Firebase Config -->
-    <script>
-        // Configuration Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyBxVv0Y_IqW8F3KZ9fX7Nq8jH5mL2pR4tU",
-            authDomain: "pedaclic.firebaseapp.com",
-            projectId: "pedaclic",
-            storageBucket: "pedaclic.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abcdef1234567890"
-        };
-        
-        // Initialiser Firebase
-        firebase.initializeApp(firebaseConfig);
-    </script>
 
     <!-- Scripts -->
     <script src="assets/js/components/header.js"></script>
