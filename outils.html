@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outils Pratiques - Pedaclic</title>
+    
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    <link rel="stylesheet" href="assets/css/components/footer.css">
+    
+    <style>
+        .tools-hero {
+            background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+            padding: var(--space-16) var(--space-4);
+            color: var(--white);
+            text-align: center;
+        }
+        
+        .tools-hero h1 {
+            font-size: var(--text-5xl);
+            font-weight: var(--font-extrabold);
+            margin-bottom: var(--space-4);
+        }
+        
+        .tools-hero p {
+            font-size: var(--text-xl);
+            opacity: 0.95;
+        }
+        
+        .tools-container {
+            max-width: var(--max-w-7xl);
+            margin: var(--space-12) auto var(--space-20);
+            padding: 0 var(--space-4);
+        }
+        
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: var(--space-6);
+        }
+        
+        .tool-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: var(--space-8);
+            box-shadow: var(--shadow-base);
+            transition: all var(--transition-base);
+            cursor: pointer;
+            border: 2px solid transparent;
+            text-align: center;
+        }
+        
+        .tool-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-2xl);
+            border-color: var(--primary-600);
+        }
+        
+        .tool-icon {
+            font-size: 80px;
+            margin-bottom: var(--space-4);
+            display: block;
+        }
+        
+        .tool-title {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            color: var(--gray-900);
+            margin-bottom: var(--space-3);
+        }
+        
+        .tool-description {
+            font-size: var(--text-base);
+            color: var(--gray-600);
+            line-height: var(--leading-relaxed);
+            margin-bottom: var(--space-6);
+        }
+        
+        .tool-action {
+            width: 100%;
+            padding: var(--space-3);
+            background: var(--primary-600);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: var(--font-semibold);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+        
+        .tool-action:hover {
+            background: var(--primary-700);
+        }
+        
+        .premium-tool {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+        
+        .premium-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: var(--white);
+            padding: var(--space-1) var(--space-3);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-3);
+        }
+        
+        @media (max-width: 768px) {
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <!-- Fonctionnalités avancées CSS -->
+    <link rel="stylesheet" href="assets/css/features/search.css">
+    <link rel="stylesheet" href="assets/css/features/dark-mode.css">
+    <link rel="stylesheet" href="assets/css/features/toast.css">
+    <link rel="stylesheet" href="assets/css/features/scroll-animations.css">
+</head>
+<body>
+    <header id="main-header"></header>
+    
+    <section class="tools-hero">
+        <h1>⚙️ Outils Pratiques</h1>
+        <p>Des outils pour faciliter votre apprentissage au quotidien</p>
+    </section>
+    
+    <section class="tools-container">
+        <div class="tools-grid">
+            <div class="tool-card" onclick="openTool('calculatrice')">
+                <span class="tool-icon">🧮</span>
+                <h3 class="tool-title">Calculatrice Scientifique</h3>
+                <p class="tool-description">Calculatrice complète avec fonctions trigonométriques.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card" onclick="openTool('convertisseur')">
+                <span class="tool-icon">🔄</span>
+                <h3 class="tool-title">Convertisseur d'Unités</h3>
+                <p class="tool-description">Convertissez longueurs, masses, températures.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card" onclick="openTool('tableau-periodique')">
+                <span class="tool-icon">⚛️</span>
+                <h3 class="tool-title">Tableau Périodique</h3>
+                <p class="tool-description">Tableau périodique interactif des éléments.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card" onclick="openTool('timer')">
+                <span class="tool-icon">⏱️</span>
+                <h3 class="tool-title">Timer & Chronomètre</h3>
+                <p class="tool-description">Gérez votre temps d'étude efficacement.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card" onclick="openTool('equations')">
+                <span class="tool-icon">📐</span>
+                <h3 class="tool-title">Résolution d'Équations</h3>
+                <p class="tool-description">Résolvez équations avec étapes détaillées.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card" onclick="openTool('conjugueur')">
+                <span class="tool-icon">📝</span>
+                <h3 class="tool-title">Conjugueur</h3>
+                <p class="tool-description">Conjugaison de tous les verbes français.</p>
+                <button class="tool-action">Utiliser</button>
+            </div>
+            
+            <div class="tool-card premium-tool" onclick="openTool('citations')">
+                <span class="premium-badge">👑 Premium</span>
+                <span class="tool-icon">💬</span>
+                <h3 class="tool-title">Citations Littéraires</h3>
+                <p class="tool-description">Base de données de citations classées.</p>
+                <button class="tool-action">Voir Premium</button>
+            </div>
+            
+            <div class="tool-card premium-tool" onclick="openTool('mindmap')">
+                <span class="premium-badge">👑 Premium</span>
+                <span class="tool-icon">🧠</span>
+                <h3 class="tool-title">Carte Mentale</h3>
+                <p class="tool-description">Créez des mind maps interactives.</p>
+                <button class="tool-action">Voir Premium</button>
+            </div>
+            
+            <div class="tool-card premium-tool" onclick="openTool('flashcards')">
+                <span class="premium-badge">👑 Premium</span>
+                <span class="tool-icon">🗂️</span>
+                <h3 class="tool-title">Flashcards</h3>
+                <p class="tool-description">Cartes de mémorisation personnalisées.</p>
+                <button class="tool-action">Voir Premium</button>
+            </div>
+        </div>
+    </section>
+    
+    <footer id="main-footer"></footer>
+    
+    <script src="assets/js/components/header.js"></script>
+    <script src="assets/js/components/footer.js"></script>
+    
+    <script>
+        function openTool(toolId) {
+            const premiumTools = ['citations', 'mindmap', 'flashcards'];
+            
+            if (premiumTools.includes(toolId)) {
+                alert(`🔒 Outil Premium\n\nDécouvrez Premium pour y accéder !`);
+                window.location.href = 'premium.html';
+            } else {
+                alert(`Ouverture de : ${toolId}`);
+                // TODO: pages/outils/${toolId}.html
+            }
+        }
+    </script>
+    <!-- Fonctionnalités avancées JS -->
+    <script src="assets/js/features/search.js"></script>
+    <script src="assets/js/features/dark-mode.js"></script>
+    <script src="assets/js/features/toast.js"></script>
+    <script src="assets/js/features/scroll-animations.js"></script>
+</body>
+</html>

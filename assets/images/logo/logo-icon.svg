@@ -1,0 +1,24 @@
+<svg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg">
+    <!-- Fond avec gradient -->
+    <defs>
+        <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#2563eb;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    
+    <!-- Rectangle de fond arrondi -->
+    <rect width="60" height="60" rx="12" fill="url(#gradient1)"/>
+    
+    <!-- Livre simplifié -->
+    <path d="M15 20 L15 45 L30 42 L30 17 Z" fill="white" opacity="0.9"/>
+    <path d="M30 17 L30 42 L45 45 L45 20 Z" fill="white" opacity="0.7"/>
+    
+    <!-- Lignes -->
+    <line x1="20" y1="26" x2="26" y2="25" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="20" y1="30" x2="26" y2="29" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="20" y1="34" x2="26" y2="33" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="34" y1="25" x2="40" y2="26" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="34" y1="29" x2="40" y2="30" stroke="#2563eb" stroke-width="1.5"/>
+    <line x1="34" y1="33" x2="40" y2="34" stroke="#2563eb" stroke-width="1.5"/>
+</svg>

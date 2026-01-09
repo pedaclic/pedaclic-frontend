@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedaclic Premium - Passez au niveau supérieur</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    <link rel="stylesheet" href="assets/css/components/footer.css">
+    
+    <style>
+        /* Hero Premium */
+        .premium-hero {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #60a5fa 100%);
+            padding: var(--space-20) var(--space-4);
+            text-align: center;
+            color: var(--white);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .premium-hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: rotate 20s linear infinite;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .premium-hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .premium-badge {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-full);
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            margin-bottom: var(--space-4);
+            animation: fadeInUp 0.6s ease;
+        }
+        
+        .premium-hero h1 {
+            font-size: var(--text-6xl);
+            font-weight: var(--font-extrabold);
+            margin-bottom: var(--space-4);
+            animation: fadeInUp 0.8s ease;
+        }
+        
+        .premium-hero p {
+            font-size: var(--text-xl);
+            opacity: 0.95;
+            margin-bottom: var(--space-8);
+            animation: fadeInUp 1s ease;
+        }
+        
+        /* Comparaison Gratuit vs Premium */
+        .comparison-section {
+            max-width: var(--max-w-5xl);
+            margin: var(--space-16) auto;
+            padding: 0 var(--space-4);
+        }
+        
+        .comparison-table {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-xl);
+        }
+        
+        .comparison-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: var(--space-4);
+            padding: var(--space-6);
+            background: var(--gray-50);
+            font-weight: var(--font-bold);
+            border-bottom: 2px solid var(--gray-200);
+        }
+        
+        .comparison-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: var(--space-4);
+            padding: var(--space-5);
+            border-bottom: 1px solid var(--gray-100);
+            align-items: center;
+        }
+        
+        .comparison-row:hover {
+            background: var(--gray-50);
+        }
+        
+        .feature-name {
+            font-weight: var(--font-medium);
+            color: var(--gray-800);
+        }
+        
+        .check {
+            color: var(--accent-600);
+            font-size: var(--text-2xl);
+            text-align: center;
+        }
+        
+        .cross {
+            color: var(--gray-400);
+            font-size: var(--text-2xl);
+            text-align: center;
+        }
+        
+        /* Plans d'abonnement */
+        .pricing-section {
+            max-width: var(--max-w-6xl);
+            margin: var(--space-16) auto;
+            padding: 0 var(--space-4);
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: var(--text-4xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-3);
+            color: var(--gray-900);
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            font-size: var(--text-lg);
+            color: var(--gray-600);
+            margin-bottom: var(--space-12);
+        }
+        
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: var(--space-8);
+        }
+        
+        .pricing-card {
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            padding: var(--space-8);
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            transition: all var(--transition-base);
+            border: 2px solid transparent;
+        }
+        
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-2xl);
+        }
+        
+        .pricing-card.popular {
+            border-color: var(--primary-600);
+            transform: scale(1.05);
+        }
+        
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            right: var(--space-6);
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: var(--white);
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+            text-transform: uppercase;
+        }
+        
+        .plan-name {
+            font-size: var(--text-2xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-2);
+            color: var(--gray-900);
+        }
+        
+        .plan-price {
+            font-size: var(--text-5xl);
+            font-weight: var(--font-extrabold);
+            color: var(--primary-600);
+            margin-bottom: var(--space-2);
+        }
+        
+        .plan-period {
+            font-size: var(--text-base);
+            color: var(--gray-600);
+            margin-bottom: var(--space-6);
+        }
+        
+        .plan-savings {
+            background: var(--accent-100);
+            color: var(--accent-700);
+            padding: var(--space-2) var(--space-3);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-sm);
+            font-weight: var(--font-semibold);
+            display: inline-block;
+            margin-bottom: var(--space-6);
+        }
+        
+        .plan-features {
+            list-style: none;
+            margin-bottom: var(--space-8);
+        }
+        
+        .plan-features li {
+            padding: var(--space-3) 0;
+            color: var(--gray-700);
+            display: flex;
+            align-items: start;
+            gap: var(--space-3);
+        }
+        
+        .plan-features li::before {
+            content: '✓';
+            color: var(--accent-600);
+            font-weight: var(--font-bold);
+            font-size: var(--text-xl);
+        }
+        
+        .plan-cta {
+            width: 100%;
+            padding: var(--space-4);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: var(--font-semibold);
+            font-size: var(--text-base);
+            cursor: pointer;
+            transition: all var(--transition-base);
+        }
+        
+        .plan-cta.primary {
+            background: var(--primary-600);
+            color: var(--white);
+        }
+        
+        .plan-cta.primary:hover {
+            background: var(--primary-700);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-primary);
+        }
+        
+        .plan-cta.secondary {
+            background: var(--gray-100);
+            color: var(--gray-700);
+        }
+        
+        .plan-cta.secondary:hover {
+            background: var(--gray-200);
+        }
+        
+        /* Moyens de paiement */
+        .payment-section {
+            max-width: var(--max-w-4xl);
+            margin: var(--space-16) auto;
+            padding: var(--space-12);
+            background: var(--white);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-lg);
+            text-align: center;
+        }
+        
+        .payment-methods {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: var(--space-6);
+            flex-wrap: wrap;
+            margin-top: var(--space-8);
+        }
+        
+        .payment-method {
+            background: var(--gray-50);
+            padding: var(--space-4) var(--space-6);
+            border-radius: var(--radius-lg);
+            font-weight: var(--font-semibold);
+            color: var(--gray-700);
+            border: 2px solid var(--gray-200);
+            transition: all var(--transition-fast);
+        }
+        
+        .payment-method:hover {
+            border-color: var(--primary-600);
+            background: var(--primary-50);
+            color: var(--primary-700);
+            transform: translateY(-2px);
+        }
+        
+        /* FAQ */
+        .faq-section {
+            max-width: var(--max-w-4xl);
+            margin: var(--space-16) auto var(--space-20);
+            padding: 0 var(--space-4);
+        }
+        
+        .faq-item {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            margin-bottom: var(--space-4);
+            box-shadow: var(--shadow-base);
+            overflow: hidden;
+        }
+        
+        .faq-question {
+            width: 100%;
+            text-align: left;
+            padding: var(--space-5);
+            border: none;
+            background: none;
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
+            color: var(--gray-900);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all var(--transition-fast);
+        }
+        
+        .faq-question:hover {
+            color: var(--primary-600);
+        }
+        
+        .faq-icon {
+            font-size: var(--text-xl);
+            transition: transform var(--transition-base);
+        }
+        
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+        
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height var(--transition-slow);
+        }
+        
+        .faq-item.active .faq-answer {
+            max-height: 500px;
+        }
+        
+        .faq-answer-content {
+            padding: 0 var(--space-5) var(--space-5);
+            color: var(--gray-600);
+            line-height: var(--leading-relaxed);
+        }
+        
+        /* CTA Final */
+        .final-cta {
+            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            padding: var(--space-16) var(--space-4);
+            text-align: center;
+            color: var(--white);
+            margin-top: var(--space-20);
+        }
+        
+        .final-cta h2 {
+            font-size: var(--text-4xl);
+            font-weight: var(--font-bold);
+            margin-bottom: var(--space-4);
+        }
+        
+        .final-cta p {
+            font-size: var(--text-xl);
+            margin-bottom: var(--space-8);
+            opacity: 0.95;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .premium-hero h1 {
+                font-size: var(--text-4xl);
+            }
+            
+            .comparison-header,
+            .comparison-row {
+                grid-template-columns: 2fr 1fr 1fr;
+                font-size: var(--text-sm);
+                padding: var(--space-3);
+            }
+            
+            .pricing-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .pricing-card.popular {
+                transform: scale(1);
+            }
+            
+            .payment-methods {
+                flex-direction: column;
+            }
+        }
+    </style>
+    <!-- Fonctionnalités avancées CSS -->
+    <link rel="stylesheet" href="assets/css/features/search.css">
+    <link rel="stylesheet" href="assets/css/features/dark-mode.css">
+    <link rel="stylesheet" href="assets/css/features/toast.css">
+    <link rel="stylesheet" href="assets/css/features/scroll-animations.css">
+</head>
+<body>
+    <!-- Header -->
+    <header id="main-header"></header>
+    
+    <!-- Hero Premium -->
+    <section class="premium-hero">
+        <div class="premium-hero-content">
+            <span class="premium-badge">✨ Offre de Lancement</span>
+            <h1>Passez à <span style="color: #fbbf24;">Premium</span></h1>
+            <p>Débloquez tout le potentiel de Pedaclic et boostez votre réussite scolaire</p>
+        </div>
+    </section>
+    
+    <!-- Comparaison Gratuit vs Premium -->
+    <section class="comparison-section">
+        <h2 class="section-title">Gratuit vs Premium</h2>
+        <p class="section-subtitle">Découvrez tout ce que Premium vous offre</p>
+        
+        <div class="comparison-table">
+            <div class="comparison-header">
+                <div>Fonctionnalité</div>
+                <div style="text-align: center;">Gratuit</div>
+                <div style="text-align: center; color: var(--primary-600);">Premium 👑</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Accès aux cours et ressources</div>
+                <div class="check">✓</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Quiz et exercices</div>
+                <div class="check">5 par jour</div>
+                <div class="check">Illimité</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Fiches de révision PDF</div>
+                <div class="check">3 par mois</div>
+                <div class="check">Illimité</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Outils pratiques</div>
+                <div class="check">Limité</div>
+                <div class="check">Complet</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Suivi de progression</div>
+                <div class="cross">✗</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Badges et certificats</div>
+                <div class="cross">✗</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Accès hors ligne</div>
+                <div class="cross">✗</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Contenus exclusifs</div>
+                <div class="cross">✗</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Support prioritaire</div>
+                <div class="cross">✗</div>
+                <div class="check">✓</div>
+            </div>
+            
+            <div class="comparison-row">
+                <div class="feature-name">Publicités</div>
+                <div class="check">Oui</div>
+                <div class="check" style="color: var(--accent-600);">Aucune</div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Plans d'abonnement -->
+    <section class="pricing-section">
+        <h2 class="section-title">Choisissez Votre Plan</h2>
+        <p class="section-subtitle">Un investissement pour votre réussite</p>
+        
+        <div class="pricing-cards">
+            <!-- Plan Mensuel -->
+            <div class="pricing-card">
+                <h3 class="plan-name">Mensuel</h3>
+                <div class="plan-price">2000<span style="font-size: 0.4em; font-weight: normal;"> FCFA</span></div>
+                <p class="plan-period">par mois</p>
+                
+                <ul class="plan-features">
+                    <li>Accès illimité à tous les contenus</li>
+                    <li>Quiz et exercices sans limite</li>
+                    <li>Fiches PDF illimitées</li>
+                    <li>Suivi de progression</li>
+                    <li>Badges et récompenses</li>
+                    <li>Pas de publicité</li>
+                    <li>Support prioritaire</li>
+                </ul>
+                
+                <button class="plan-cta secondary" onclick="subscribe('monthly')">
+                    Choisir Mensuel
+                </button>
+            </div>
+            
+            <!-- Plan Annuel (Populaire) -->
+            <div class="pricing-card popular">
+                <span class="popular-badge">🔥 Le Plus Populaire</span>
+                <h3 class="plan-name">Annuel</h3>
+                <div class="plan-price">20000<span style="font-size: 0.4em; font-weight: normal;"> FCFA</span></div>
+                <p class="plan-period">par an</p>
+                <span class="plan-savings">✨ Économisez 4000 FCFA (2 mois gratuits)</span>
+                
+                <ul class="plan-features">
+                    <li>Tous les avantages du plan mensuel</li>
+                    <li>2 mois offerts (17% d'économie)</li>
+                    <li>Contenus exclusifs premium</li>
+                    <li>Accès anticipé aux nouveautés</li>
+                    <li>Certificats personnalisés</li>
+                    <li>Coaching mensuel (optionnel)</li>
+                    <li>Garantie satisfait ou remboursé 30j</li>
+                </ul>
+                
+                <button class="plan-cta primary" onclick="subscribe('annual')">
+                    Choisir Annuel 🎉
+                </button>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Moyens de paiement -->
+    <section class="payment-section">
+        <h2 class="section-title">Paiement 100% Sécurisé</h2>
+        <p class="section-subtitle">Choisissez votre moyen de paiement préféré</p>
+        
+        <div class="payment-methods">
+            <div class="payment-method">📱 Wave</div>
+            <div class="payment-method">🍊 Orange Money</div>
+            <div class="payment-method">📲 Free Money</div>
+            <div class="payment-method">💳 Visa / Mastercard</div>
+        </div>
+        
+        <p style="margin-top: var(--space-6); color: var(--gray-600); font-size: var(--text-sm);">
+            🔒 Transactions cryptées et sécurisées | Aucune donnée bancaire stockée
+        </p>
+    </section>
+    
+    <!-- FAQ -->
+    <section class="faq-section">
+        <h2 class="section-title">Questions Fréquentes</h2>
+        <p class="section-subtitle">Tout ce que vous devez savoir sur Premium</p>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Comment fonctionne l'abonnement Premium ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Une fois votre paiement effectué, votre compte est immédiatement activé en Premium. 
+                    Vous avez accès à tous les contenus et fonctionnalités sans restriction pendant toute 
+                    la durée de votre abonnement.
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Puis-je annuler à tout moment ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Oui, vous pouvez annuler votre abonnement à tout moment depuis votre espace personnel. 
+                    Vous continuerez à bénéficier des avantages Premium jusqu'à la fin de votre période payée.
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Y a-t-il une période d'essai gratuite ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Actuellement, nous offrons une garantie satisfait ou remboursé de 30 jours sur 
+                    l'abonnement annuel. Si vous n'êtes pas satisfait, nous vous remboursons intégralement.
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Quels sont les moyens de paiement acceptés ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Nous acceptons Wave, Orange Money, Free Money et les cartes bancaires (Visa, Mastercard). 
+                    Tous les paiements sont 100% sécurisés et cryptés.
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Puis-je utiliser Premium sur plusieurs appareils ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Oui, votre compte Premium peut être utilisé sur tous vos appareils (ordinateur, tablette, 
+                    smartphone). Vos données et progression sont synchronisées automatiquement.
+                </div>
+            </div>
+        </div>
+        
+        <div class="faq-item">
+            <button class="faq-question" onclick="toggleFaq(this)">
+                <span>Est-ce que Premium convient à tous les niveaux ?</span>
+                <span class="faq-icon">▼</span>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-content">
+                    Absolument ! Pedaclic Premium couvre tous les niveaux du primaire au lycée, avec des 
+                    contenus adaptés à chaque classe et matière.
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- CTA Final -->
+    <section class="final-cta">
+        <h2>Prêt à Transformer Votre Apprentissage ?</h2>
+        <p>Rejoignez des milliers d'élèves qui réussissent avec Pedaclic Premium</p>
+        <button class="btn-primary" style="padding: var(--space-5) var(--space-10); font-size: var(--text-lg);" onclick="subscribe('annual')">
+            Commencer Maintenant 🚀
+        </button>
+    </section>
+    
+    <!-- Footer -->
+    <footer id="main-footer"></footer>
+    
+    <!-- Scripts -->
+    <script src="assets/js/components/header.js"></script>
+    <script src="assets/js/components/footer.js"></script>
+    
+    <script>
+        // Toggle FAQ
+        function toggleFaq(button) {
+            const faqItem = button.parentElement;
+            const isActive = faqItem.classList.contains('active');
+            
+            // Fermer tous les autres
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Ouvrir celui-ci si ce n'était pas déjà ouvert
+            if (!isActive) {
+                faqItem.classList.add('active');
+            }
+        }
+        
+        // Fonction d'abonnement (à remplacer par PayTech plus tard)
+        function subscribe(plan) {
+            const planNames = {
+                'monthly': 'Mensuel (2000 FCFA/mois)',
+                'annual': 'Annuel (20000 FCFA/an)'
+            };
+            
+            alert(`🎉 Vous avez choisi le plan ${planNames[plan]}!\n\n` +
+                  `Fonctionnalité de paiement en cours de développement.\n` +
+                  `Bientôt disponible avec Wave, Orange Money, et Free Money !`);
+            
+            // TODO: Intégrer PayTech ici
+            // window.location.href = 'payment.html?plan=' + plan;
+        }
+    </script>
+    <!-- Fonctionnalités avancées JS -->
+    <script src="assets/js/features/search.js"></script>
+    <script src="assets/js/features/dark-mode.js"></script>
+    <script src="assets/js/features/toast.js"></script>
+    <script src="assets/js/features/scroll-animations.js"></script>
+</body>
+</html>

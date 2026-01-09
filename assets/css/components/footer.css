@@ -1,0 +1,318 @@
+/* ========================================
+   FOOTER PEDACLIC - Styles
+   ======================================== */
+
+#main-footer {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  color: var(--white);
+  margin-top: var(--space-20);
+  padding: var(--space-16) var(--space-6) var(--space-8);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Effet de fond subtil */
+#main-footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 50%, rgba(37, 99, 235, 0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+/* ========================================
+   Container Principal
+   ======================================== */
+
+.footer-container {
+  max-width: var(--max-w-7xl);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-10);
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   Sections du Footer
+   ======================================== */
+
+.footer-section {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.footer-section:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.footer-section:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.footer-section:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.footer-section:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* ========================================
+   Logo et Description
+   ======================================== */
+
+.footer-logo {
+  display: inline-block;
+  margin-bottom: var(--space-4);
+  transition: transform var(--transition-base);
+}
+
+.footer-logo:hover {
+  transform: scale(1.05);
+}
+
+.footer-logo-img {
+  height: 35px;
+  width: auto;
+}
+
+.footer-description {
+  color: var(--gray-300);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+  margin-bottom: var(--space-6);
+}
+
+/* ========================================
+   Réseaux Sociaux
+   ======================================== */
+
+.footer-social {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  color: var(--white);
+  transition: all var(--transition-base);
+  backdrop-filter: blur(10px);
+}
+
+.social-link:hover {
+  background: var(--primary-600);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.4);
+}
+
+/* ========================================
+   Titres de Section
+   ======================================== */
+
+.footer-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--white);
+  margin-bottom: var(--space-4);
+  position: relative;
+  padding-bottom: var(--space-2);
+}
+
+.footer-title::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background: var(--primary-600);
+  border-radius: 2px;
+}
+
+/* ========================================
+   Liens
+   ======================================== */
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links li {
+  margin-bottom: var(--space-3);
+}
+
+.footer-links a {
+  color: var(--gray-300);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.footer-links a:hover {
+  color: var(--primary-400);
+  padding-left: var(--space-2);
+}
+
+/* ========================================
+   Séparateur
+   ======================================== */
+
+.footer-divider {
+  max-width: var(--max-w-7xl);
+  margin: var(--space-10) auto var(--space-8);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   Section Bas (Copyright)
+   ======================================== */
+
+.footer-bottom {
+  max-width: var(--max-w-7xl);
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  position: relative;
+  z-index: 1;
+}
+
+.footer-copyright {
+  color: var(--gray-400);
+  font-size: var(--text-sm);
+}
+
+.footer-copyright strong {
+  color: var(--primary-400);
+  font-weight: var(--font-semibold);
+}
+
+.footer-legal {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.footer-legal a {
+  color: var(--gray-400);
+  text-decoration: none;
+  font-size: var(--text-xs);
+  transition: color var(--transition-fast);
+}
+
+.footer-legal a:hover {
+  color: var(--primary-400);
+}
+
+.footer-legal .separator {
+  color: var(--gray-600);
+  font-size: var(--text-xs);
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 768px) {
+  #main-footer {
+    padding: var(--space-12) var(--space-4) var(--space-6);
+  }
+  
+  .footer-container {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+  
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: var(--space-3);
+  }
+  
+  .footer-legal {
+    justify-content: center;
+  }
+  
+  .footer-section:nth-child(1) {
+    text-align: center;
+  }
+  
+  .footer-logo {
+    display: block;
+    text-align: center;
+  }
+  
+  .footer-social {
+    justify-content: center;
+  }
+  
+  .footer-title::after {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-legal {
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+  
+  .footer-legal .separator {
+    display: none;
+  }
+}
+
+/* ========================================
+   Animation
+   ======================================== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   Mode Sombre (Optionnel)
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  /* Le footer est déjà sombre par défaut */
+}
+
+/* ========================================
+   Print (Cacher le footer à l'impression)
+   ======================================== */
+
+@media print {
+  #main-footer {
+    display: none;
+  }
+}

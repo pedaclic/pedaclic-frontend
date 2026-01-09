@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paiement Annulé - Pedaclic</title>
+    
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    <link rel="stylesheet" href="assets/css/components/footer.css">
+    
+    <style>
+        .cancel-container {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: var(--space-8) var(--space-4);
+        }
+        
+        .cancel-card {
+            max-width: 600px;
+            width: 100%;
+            background: var(--white);
+            border-radius: var(--radius-3xl);
+            padding: var(--space-12);
+            text-align: center;
+            box-shadow: var(--shadow-2xl);
+        }
+        
+        .cancel-icon {
+            font-size: 120px;
+            margin-bottom: var(--space-6);
+        }
+        
+        .cancel-title {
+            font-size: var(--text-4xl);
+            font-weight: var(--font-extrabold);
+            color: var(--gray-800);
+            margin-bottom: var(--space-4);
+        }
+        
+        .cancel-message {
+            font-size: var(--text-xl);
+            color: var(--gray-600);
+            margin-bottom: var(--space-8);
+            line-height: var(--leading-relaxed);
+        }
+        
+        .cancel-reasons {
+            background: var(--gray-50);
+            padding: var(--space-6);
+            border-radius: var(--radius-xl);
+            margin-bottom: var(--space-8);
+            text-align: left;
+        }
+        
+        .reason-title {
+            font-weight: var(--font-bold);
+            color: var(--gray-800);
+            margin-bottom: var(--space-4);
+        }
+        
+        .reason-item {
+            display: flex;
+            align-items: start;
+            gap: var(--space-3);
+            padding: var(--space-3) 0;
+        }
+        
+        .reason-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+        
+        .cancel-actions {
+            display: flex;
+            gap: var(--space-4);
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+    <header id="main-header"></header>
+    
+    <main class="cancel-container">
+        <div class="cancel-card">
+            <div class="cancel-icon">😕</div>
+            
+            <h1 class="cancel-title">Paiement Annulé</h1>
+            
+            <p class="cancel-message">
+                Vous avez annulé le processus de paiement. 
+                Aucun montant n'a été débité de votre compte.
+            </p>
+            
+            <div class="cancel-reasons">
+                <p class="reason-title">Pourquoi réessayer Premium ?</p>
+                
+                <div class="reason-item">
+                    <span class="reason-icon">🚀</span>
+                    <span>
+                        <strong>Accès illimité</strong> à toutes les ressources et quiz
+                    </span>
+                </div>
+                
+                <div class="reason-item">
+                    <span class="reason-icon">📚</span>
+                    <span>
+                        <strong>Contenus exclusifs</strong> réservés aux membres Premium
+                    </span>
+                </div>
+                
+                <div class="reason-item">
+                    <span class="reason-icon">🎯</span>
+                    <span>
+                        <strong>Suivi personnalisé</strong> de votre progression
+                    </span>
+                </div>
+                
+                <div class="reason-item">
+                    <span class="reason-icon">🏆</span>
+                    <span>
+                        <strong>Badges et certificats</strong> pour valoriser vos acquis
+                    </span>
+                </div>
+                
+                <div class="reason-item">
+                    <span class="reason-icon">💰</span>
+                    <span>
+                        <strong>Économisez 4,000 FCFA</strong> avec l'abonnement annuel
+                    </span>
+                </div>
+            </div>
+            
+            <div class="cancel-actions">
+                <a href="premium.html" class="btn-primary">
+                    👑 Réessayer Premium
+                </a>
+                <a href="index.html" class="btn-secondary">
+                    🏠 Retour à l'accueil
+                </a>
+            </div>
+            
+            <p style="margin-top: var(--space-6); color: var(--gray-500); font-size: var(--text-sm);">
+                Besoin d'aide ? Contactez-nous à <strong>support@pedaclic.sn</strong>
+            </p>
+        </div>
+    </main>
+    
+    <footer id="main-footer"></footer>
+    
+    <script src="assets/js/components/header.js"></script>
+    <script src="assets/js/components/footer.js"></script>
+    
+    <script>
+        // Nettoyer la référence en localStorage
+        localStorage.removeItem('pedaclic_payment_ref');
+    </script>
+</body>
+</html>
