@@ -7,8 +7,15 @@ const API_URL = 'https://api.pedaclic.sn';
  */
 async function initPayment(plan) {
     try {
-        // Vérifier si l'utilisateur est connecté (optionnel)
+        // Obtenir les infos utilisateur
         const userId = getCurrentUserId();
+        const userEmail = await getUserEmail();
+        const userName = getUserName();
+        
+        if (!userEmail) {
+            showError('Veuillez entrer votre adresse email pour continuer.');
+            return;
+        }
         
         // Afficher un message de chargement
         showLoading('Préparation du paiement...');
@@ -21,7 +28,9 @@ async function initPayment(plan) {
             },
             body: JSON.stringify({
                 plan: plan,
-                userId: userId || 'guest_' + Date.now()
+                userId: userId || 'guest_' + Date.now(),
+                userEmail: userEmail,
+                userName: userName || 'Étudiant Pedaclic'
             })
         });
         
@@ -45,13 +54,84 @@ async function initPayment(plan) {
 }
 
 /**
+ * Obtenir l'email de l'utilisateur
+ */
+async function getUserEmail() {
+    // Si Firebase Auth est disponible et utilisateur connecté
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+        const user = firebase.auth().currentUser;
+        if (user && user.email) {
+            return user.email;
+        }
+    }
+    
+    // Sinon, chercher dans localStorage
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        try {
+            const user = JSON.parse(storedUser);
+            if (user.email) {
+                return user.email;
+            }
+        } catch (e) {
+            console.error('Erreur lecture user:', e);
+        }
+    }
+    
+    // Si pas d'email, demander à l'utilisateur
+    const email = prompt('📧 Entrez votre adresse email pour continuer le paiement :');
+    
+    if (email && email.includes('@')) {
+        // Sauvegarder dans localStorage pour la prochaine fois
+        localStorage.setItem('pedaclic_user_email', email);
+        return email;
+    }
+    
+    return null;
+}
+
+/**
+ * Obtenir le nom de l'utilisateur
+ */
+function getUserName() {
+    // Si Firebase Auth est disponible
+    if (typeof firebase !== 'undefined' && firebase.auth) {
+        const user = firebase.auth().currentUser;
+        if (user && user.displayName) {
+            return user.displayName;
+        }
+    }
+    
+    // Sinon, chercher dans localStorage
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        try {
+            const user = JSON.parse(storedUser);
+            return user.name || user.displayName || user.userName;
+        } catch (e) {
+            console.error('Erreur lecture user:', e);
+        }
+    }
+    
+    // Email sauvegardé ?
+    const savedEmail = localStorage.getItem('pedaclic_user_email');
+    if (savedEmail) {
+        return savedEmail.split('@')[0]; // Utiliser la partie avant @ comme nom
+    }
+    
+    return 'Étudiant Pedaclic';
+}
+
+/**
  * Obtenir l'ID de l'utilisateur connecté
  */
 function getCurrentUserId() {
     // Si Firebase Auth est disponible
     if (typeof firebase !== 'undefined' && firebase.auth) {
         const user = firebase.auth().currentUser;
-        return user ? user.uid : null;
+        if (user) {
+            return user.uid;
+        }
     }
     
     // Sinon, chercher dans localStorage
@@ -65,7 +145,13 @@ function getCurrentUserId() {
         }
     }
     
-    return null;
+    // Créer un ID temporaire basé sur l'email
+    const savedEmail = localStorage.getItem('pedaclic_user_email');
+    if (savedEmail) {
+        return 'email_' + btoa(savedEmail).substring(0, 16);
+    }
+    
+    return 'guest_' + Date.now();
 }
 
 /**
