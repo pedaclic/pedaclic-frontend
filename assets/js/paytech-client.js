@@ -1,294 +1,176 @@
-// ========================================
-// CLIENT PAYTECH - Frontend
-// ========================================
+// Configuration
+const API_URL = 'https://api.pedaclic.sn';
 
-class PaytechClient {
-    constructor(apiUrl = 'http://localhost:3000/api') {
-        this.apiUrl = apiUrl;
-    }
-    
-    // ========================================
-    // INITIER UN PAIEMENT
-    // ========================================
-    async initiatePayment(plan, userId, userEmail, userName) {
-        try {
-            showToast('Initialisation du paiement...', 'info');
-            
-            const response = await fetch(`${this.apiUrl}/payment/initiate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    plan,
-                    userId,
-                    userEmail,
-                    userName
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de l\'initialisation');
-            }
-            
-            // Rediriger vers PayTech
-            if (data.paymentUrl) {
-                showToast('Redirection vers PayTech...', 'success');
-                
-                // Sauvegarder la référence en localStorage
-                localStorage.setItem('pedaclic_payment_ref', data.ref);
-                
-                // Redirection après 1 seconde
-                setTimeout(() => {
-                    window.location.href = data.paymentUrl;
-                }, 1000);
-            }
-            
-            return data;
-            
-        } catch (error) {
-            console.error('Erreur paiement:', error);
-            showToast(`Erreur: ${error.message}`, 'error');
-            throw error;
-        }
-    }
-    
-    // ========================================
-    // VÉRIFIER LE STATUT D'UNE TRANSACTION
-    // ========================================
-    async checkPaymentStatus(ref) {
-        try {
-            const response = await fetch(`${this.apiUrl}/payment/status/${ref}`);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de la vérification');
-            }
-            
-            return data.transaction;
-            
-        } catch (error) {
-            console.error('Erreur vérification:', error);
-            throw error;
-        }
-    }
-    
-    // ========================================
-    // VÉRIFIER L'ABONNEMENT D'UN UTILISATEUR
-    // ========================================
-    async checkSubscription(userId) {
-        try {
-            const response = await fetch(`${this.apiUrl}/subscription/${userId}`);
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(data.error || 'Erreur lors de la vérification');
-            }
-            
-            return {
-                isPremium: data.isPremium,
-                subscription: data.subscription
-            };
-            
-        } catch (error) {
-            console.error('Erreur abonnement:', error);
-            return { isPremium: false, subscription: null };
-        }
-    }
-}
-
-// ========================================
-// INTÉGRATION AVEC premium.html
-// ========================================
-
-// Initialiser le client
-const paytechClient = new PaytechClient('https://votre-domaine.com/api');
-
-// Fonction de souscription (à utiliser dans premium.html)
-async function subscribe(plan) {
+/**
+ * Initialiser un paiement PayTech
+ * @param {string} plan - 'mensuel' ou 'annuel'
+ */
+async function initPayment(plan) {
     try {
-        // Vérifier si l'utilisateur est connecté
-        const user = firebase.auth().currentUser;
+        // Vérifier si l'utilisateur est connecté (optionnel)
+        const userId = getCurrentUserId();
         
-        if (!user) {
-            showToast('Vous devez être connecté pour souscrire', 'warning');
-            window.location.href = 'login.html?redirect=premium.html';
-            return;
+        // Afficher un message de chargement
+        showLoading('Préparation du paiement...');
+        
+        // Appeler l'API backend pour initier le paiement
+        const response = await fetch(`${API_URL}/api/payment/initiate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                plan: plan,
+                userId: userId || 'guest_' + Date.now()
+            })
+        });
+        
+        const data = await response.json();
+        
+        hideLoading();
+        
+        if (data.success && data.paymentUrl) {
+            // Rediriger vers la page de paiement PayTech
+            window.location.href = data.paymentUrl;
+        } else {
+            showError('Erreur lors de l\'initialisation du paiement. Veuillez réessayer.');
+            console.error('Erreur PayTech:', data);
         }
-        
-        // Confirmer avant paiement
-        const planDetails = {
-            monthly: { name: 'Mensuel', price: '2,000 FCFA/mois' },
-            annual: { name: 'Annuel', price: '20,000 FCFA/an' }
-        };
-        
-        const confirmed = confirm(
-            `Confirmer l'abonnement ${planDetails[plan].name} pour ${planDetails[plan].price} ?`
-        );
-        
-        if (!confirmed) {
-            return;
-        }
-        
-        // Initier le paiement
-        await paytechClient.initiatePayment(
-            plan,
-            user.uid,
-            user.email,
-            user.displayName || user.email
-        );
         
     } catch (error) {
-        console.error('Erreur souscription:', error);
-        showToast('Erreur lors de la souscription', 'error');
+        hideLoading();
+        showError('Une erreur est survenue. Veuillez vérifier votre connexion internet.');
+        console.error('Erreur:', error);
     }
 }
 
-// ========================================
-// VÉRIFIER LE STATUT PREMIUM
-// ========================================
-
-async function checkPremiumStatus() {
-    try {
+/**
+ * Obtenir l'ID de l'utilisateur connecté
+ */
+function getCurrentUserId() {
+    // Si Firebase Auth est disponible
+    if (typeof firebase !== 'undefined' && firebase.auth) {
         const user = firebase.auth().currentUser;
-        
-        if (!user) {
-            return { isPremium: false };
+        return user ? user.uid : null;
+    }
+    
+    // Sinon, chercher dans localStorage
+    const storedUser = localStorage.getItem('currentUser');
+    if (storedUser) {
+        try {
+            const user = JSON.parse(storedUser);
+            return user.uid || user.id;
+        } catch (e) {
+            console.error('Erreur lecture user:', e);
         }
-        
-        const status = await paytechClient.checkSubscription(user.uid);
-        
-        // Mettre à jour l'UI
-        updatePremiumUI(status);
-        
-        return status;
-        
-    } catch (error) {
-        console.error('Erreur vérification Premium:', error);
-        return { isPremium: false };
+    }
+    
+    return null;
+}
+
+/**
+ * Afficher un message de chargement
+ */
+function showLoading(message) {
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'payment-loading';
+    loadingDiv.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+        font-size: 20px;
+        flex-direction: column;
+        gap: 20px;
+    `;
+    
+    loadingDiv.innerHTML = `
+        <div style="width: 50px; height: 50px; border: 5px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <div>${message}</div>
+        <style>
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+    
+    document.body.appendChild(loadingDiv);
+}
+
+/**
+ * Masquer le message de chargement
+ */
+function hideLoading() {
+    const loadingDiv = document.getElementById('payment-loading');
+    if (loadingDiv) {
+        loadingDiv.remove();
     }
 }
 
-// ========================================
-// METTRE À JOUR L'UI SELON LE STATUT
-// ========================================
-
-function updatePremiumUI(status) {
-    const body = document.body;
+/**
+ * Afficher un message d'erreur
+ */
+function showError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #EF4444;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        max-width: 400px;
+        font-size: 16px;
+    `;
     
-    if (status.isPremium) {
-        // Ajouter classe premium au body
-        body.classList.add('premium-user');
-        
-        // Afficher badge Premium dans le header
-        const header = document.querySelector('.header');
-        if (header && !document.querySelector('.premium-badge-header')) {
-            const badge = document.createElement('div');
-            badge.className = 'premium-badge-header';
-            badge.innerHTML = '👑 Premium';
-            badge.style.cssText = `
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                background: linear-gradient(135deg, #fbbf24, #f59e0b);
-                color: white;
-                padding: 8px 16px;
-                border-radius: 20px;
-                font-weight: bold;
-                font-size: 14px;
-                z-index: 1000;
-                box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
-            `;
-            document.body.appendChild(badge);
-        }
-        
-        // Afficher info d'abonnement
-        if (status.subscription) {
-            console.log(`Premium actif - Expire dans ${status.subscription.daysRemaining} jours`);
-        }
-        
-    } else {
-        body.classList.remove('premium-user');
-        
-        // Retirer le badge
-        const badge = document.querySelector('.premium-badge-header');
-        if (badge) {
-            badge.remove();
-        }
-    }
+    errorDiv.textContent = message;
+    document.body.appendChild(errorDiv);
+    
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 5000);
 }
 
-// ========================================
-// BLOQUER CONTENU PREMIUM
-// ========================================
-
-function restrictPremiumContent() {
-    // Vérifier tous les éléments marqués comme premium
-    const premiumElements = document.querySelectorAll('[data-premium="true"]');
+/**
+ * Afficher un message de succès
+ */
+function showSuccess(message) {
+    const successDiv = document.createElement('div');
+    successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10B981;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        max-width: 400px;
+        font-size: 16px;
+    `;
     
-    premiumElements.forEach(element => {
-        if (!document.body.classList.contains('premium-user')) {
-            // Ajouter overlay de verrouillage
-            const overlay = document.createElement('div');
-            overlay.className = 'premium-lock-overlay';
-            overlay.innerHTML = `
-                <div class="premium-lock-content">
-                    <div class="lock-icon">🔒</div>
-                    <h3>Contenu Premium</h3>
-                    <p>Abonnez-vous pour accéder à ce contenu</p>
-                    <button onclick="window.location.href='premium.html'" class="btn-primary">
-                        Voir Premium
-                    </button>
-                </div>
-            `;
-            overlay.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.9);
-                backdrop-filter: blur(10px);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10;
-                border-radius: inherit;
-            `;
-            
-            element.style.position = 'relative';
-            element.appendChild(overlay);
-            
-            // Rendre le contenu flou
-            Array.from(element.children).forEach(child => {
-                if (!child.classList.contains('premium-lock-overlay')) {
-                    child.style.filter = 'blur(8px)';
-                }
-            });
-        }
-    });
+    successDiv.textContent = message;
+    document.body.appendChild(successDiv);
+    
+    setTimeout(() => {
+        successDiv.remove();
+    }, 5000);
 }
 
-// ========================================
-// INITIALISATION AU CHARGEMENT
-// ========================================
-
-window.addEventListener('DOMContentLoaded', async () => {
-    // Attendre que Firebase soit initialisé
-    firebase.auth().onAuthStateChanged(async (user) => {
-        if (user) {
-            // Vérifier le statut Premium
-            await checkPremiumStatus();
-            
-            // Appliquer les restrictions
-            restrictPremiumContent();
-        }
-    });
-});
-
-// Exposer les fonctions globalement
-window.subscribe = subscribe;
-window.checkPremiumStatus = checkPremiumStatus;
-window.paytechClient = paytechClient;
+// Vérifier le statut du paiement au retour
+if (window.location.search.includes('payment=success')) {
+    showSuccess('🎉 Paiement réussi ! Votre compte Premium est maintenant actif.');
+} else if (window.location.search.includes('payment=cancel')) {
+    showError('❌ Paiement annulé. Vous pouvez réessayer quand vous voulez.');
+}
