@@ -352,7 +352,35 @@
 <body>
     <!-- Header -->
     <header id="main-header"></header>
-    
+
+<script>
+  firebase.auth().onAuthStateChanged((user) => {
+    if (user) {
+      // Vérifier le statut Premium
+      db.collection('users').doc(user.uid).get().then((doc) => {
+        if (doc.exists && doc.data().isPremium) {
+          // Afficher les liens Premium
+          document.getElementById('premium-links').style.display = 'block';
+        }
+      });
+    }
+  });
+</script>
+  
+<li id="premium-nav-item" style="display: none;">
+                    <a href="#" class="premium-dropdown">
+                        ⭐ Premium
+                        <span class="dropdown-icon">▼</span>
+                    </a>
+                    <ul class="premium-submenu">
+                        <li><a href="premium/generateur-contenus.html">📝 Générateur de Contenus</a></li>
+                        <li><a href="premium/cahier-textes.html">📚 Cahier de Textes</a></li>
+                    </ul>
+                </li>
+                
+                <li><a href="contact.html">Contact</a></li>
+            </ul>
+  
     <!-- Hero Section Moderne -->
     <section class="hero-modern">
         <div class="hero-content">
