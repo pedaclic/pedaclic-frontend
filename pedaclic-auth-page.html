@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - PedaClic</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px;
+            animation: slideUp 0.5s ease;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .logo h1 {
+            font-size: 32px;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .logo p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #334155;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 10px;
+        }
+        
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .success-message {
+            background: #e6ffe6;
+            color: #006600;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .success-message.show {
+            display: block;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 30px 0;
+            color: #94a3b8;
+            position: relative;
+        }
+        
+        .divider::before,
+        .divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        
+        .divider::before {
+            left: 0;
+        }
+        
+        .divider::after {
+            right: 0;
+        }
+        
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        
+        .back-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <h1>🎓 PedaClic</h1>
+            <p>L'école en un clic</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login')">Connexion</button>
+            <button class="tab" onclick="switchTab('signup')">Inscription</button>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <!-- Formulaire de connexion -->
+        <div id="login-form" class="tab-content active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="login-email">Adresse email</label>
+                    <input type="email" id="login-email" required placeholder="exemple@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-password">Mot de passe</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                
+                <button type="submit" class="btn-submit" id="login-btn">
+                    Se connecter
+                </button>
+            </form>
+        </div>
+        
+        <!-- Formulaire d'inscription -->
+        <div id="signup-form" class="tab-content">
+            <form onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label for="signup-email">Adresse email</label>
+                    <input type="email" id="signup-email" required placeholder="exemple@email.com">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup-password">Mot de passe</label>
+                    <input type="password" id="signup-password" required placeholder="••••••••" minlength="6">
+                </div>
+                
+                <div class="form-group">
+                    <label for="signup-password-confirm">Confirmer le mot de passe</label>
+                    <input type="password" id="signup-password-confirm" required placeholder="••••••••" minlength="6">
+                </div>
+                
+                <button type="submit" class="btn-submit" id="signup-btn">
+                    Créer mon compte
+                </button>
+            </form>
+        </div>
+        
+        <div class="divider">ou</div>
+        
+        <div class="back-link">
+            <a href="index.html">← Retour à l'accueil</a>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgk_1graNBFkIURTJnyLZTZ1nyxi7slUo",
+            authDomain: "pedaclic.firebaseapp.com",
+            projectId: "pedaclic",
+            storageBucket: "pedaclic.firebasestorage.app",
+            messagingSenderId: "863649621890",
+            appId: "1:863649621890:web:6ab56a8c8db111e3a9119b",
+            measurementId: "G-20EGFVEM5M"
+        };
+        
+        // Initialiser Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        // Changer d'onglet
+        function switchTab(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+            
+            tabs.forEach(t => t.classList.remove('active'));
+            contents.forEach(c => c.classList.remove('active'));
+            
+            if (tab === 'login') {
+                tabs[0].classList.add('active');
+                contents[0].classList.add('active');
+            } else {
+                tabs[1].classList.add('active');
+                contents[1].classList.add('active');
+            }
+            
+            hideMessages();
+        }
+        
+        // Afficher message d'erreur
+        function showError(message) {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            document.getElementById('success-message').classList.remove('show');
+        }
+        
+        // Afficher message de succès
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success-message');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+            document.getElementById('error-message').classList.remove('show');
+        }
+        
+        // Masquer les messages
+        function hideMessages() {
+            document.getElementById('error-message').classList.remove('show');
+            document.getElementById('success-message').classList.remove('show');
+        }
+        
+        // Gérer la connexion
+        async function handleLogin(event) {
+            event.preventDefault();
+            hideMessages();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showSuccess('✓ Connexion réussie ! Redirection...');
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            } catch (error) {
+                console.error('Erreur de connexion:', error);
+                
+                let message = 'Erreur de connexion. Veuillez réessayer.';
+                if (error.code === 'auth/user-not-found') {
+                    message = 'Aucun compte trouvé avec cet email.';
+                } else if (error.code === 'auth/wrong-password') {
+                    message = 'Mot de passe incorrect.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Adresse email invalide.';
+                }
+                
+                showError(message);
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        }
+        
+        // Gérer l'inscription
+        async function handleSignup(event) {
+            event.preventDefault();
+            hideMessages();
+            
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const passwordConfirm = document.getElementById('signup-password-confirm').value;
+            const btn = document.getElementById('signup-btn');
+            
+            // Vérifier que les mots de passe correspondent
+            if (password !== passwordConfirm) {
+                showError('Les mots de passe ne correspondent pas.');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+            
+            try {
+                // Créer le compte
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Créer le document utilisateur dans Firestore
+                await db.collection('users').doc(user.uid).set({
+                    email: email,
+                    isPremium: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                showSuccess('✓ Compte créé avec succès ! Redirection...');
+                
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            } catch (error) {
+                console.error('Erreur d\'inscription:', error);
+                
+                let message = 'Erreur lors de la création du compte.';
+                if (error.code === 'auth/email-already-in-use') {
+                    message = 'Cet email est déjà utilisé.';
+                } else if (error.code === 'auth/weak-password') {
+                    message = 'Le mot de passe doit contenir au moins 6 caractères.';
+                } else if (error.code === 'auth/invalid-email') {
+                    message = 'Adresse email invalide.';
+                }
+                
+                showError(message);
+                btn.disabled = false;
+                btn.textContent = 'Créer mon compte';
+            }
+        }
+        
+        // Vérifier si l'utilisateur est déjà connecté
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Utilisateur déjà connecté, rediriger vers l'accueil
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>
