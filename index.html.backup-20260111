@@ -255,9 +255,10 @@
         }
         
         /* ========================================
-           STYLES PREMIUM
+           NOUVEAUX STYLES PREMIUM
            ======================================== */
         
+        /* Section Outils Premium */
         .premium-tools-section {
             max-width: var(--max-w-7xl);
             margin: var(--space-20) auto;
@@ -305,7 +306,6 @@
             text-align: center;
             transition: all 0.3s ease;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
         }
         
         .premium-tool-card:hover {
@@ -365,7 +365,6 @@
             border-radius: var(--radius-full);
             font-weight: var(--font-bold);
             transition: all 0.3s ease;
-            pointer-events: none;
         }
         
         .tool-btn:hover {
@@ -373,7 +372,7 @@
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
         
-        /* Message d'upgrade */
+        /* Message d'upgrade pour non-Premium */
         .upgrade-message {
             background: rgba(255, 255, 255, 0.95);
             padding: var(--space-12);
@@ -437,6 +436,19 @@
         .upgrade-btn:hover {
             transform: scale(1.05);
             box-shadow: 0 15px 40px rgba(16, 185, 129, 0.5);
+        }
+        
+        /* Badge Premium dans le header (injecté via JS) */
+        .premium-badge-header {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: var(--white);
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-bold);
+            text-transform: uppercase;
+            margin-left: var(--space-2);
+            box-shadow: 0 4px 10px rgba(251, 191, 36, 0.3);
         }
         
         /* Premium CTA Banner */
@@ -586,6 +598,7 @@
     <!-- Statistics Section (Firebase) -->
     <section class="stats-section">
         <div class="stats-grid" id="statsContainer">
+            <!-- Loader pendant chargement -->
             <div class="loader" style="grid-column: 1 / -1;">
                 <div class="spinner"></div>
                 <p>Chargement des statistiques...</p>
@@ -593,7 +606,9 @@
         </div>
     </section>
     
-    <!-- SECTION OUTILS PREMIUM -->
+    <!-- ========================================
+         NOUVELLE SECTION : OUTILS PREMIUM
+         ======================================== -->
     <section class="premium-tools-section" id="premium-tools">
         <div class="premium-tools-container">
             <!-- Pour utilisateurs Premium -->
@@ -608,8 +623,8 @@
                 </div>
                 
                 <div class="premium-tools-grid">
-                    <!-- Générateur de Contenus - CARTE CLIQUABLE -->
-                    <a href="premium/generateur-contenus.html" class="premium-tool-card" style="text-decoration: none; color: inherit; display: block;">
+                    <!-- Générateur de Contenus -->
+                    <div class="premium-tool-card">
                         <span class="tool-icon">📝</span>
                         <h3 class="tool-title">Générateur de Contenus</h3>
                         <p class="tool-description">
@@ -621,13 +636,13 @@
                             <div class="tool-feature">Personnalisation complète</div>
                             <div class="tool-feature">En-têtes PedaClic inclus</div>
                         </div>
-                        <span class="tool-btn">
+                        <a href="premium/generateur-contenus.html" class="tool-btn">
                             Accéder au générateur →
-                        </span>
-                    </a>
+                        </a>
+                    </div>
                     
-                    <!-- Cahier de Textes - CARTE CLIQUABLE -->
-                    <a href="premium/cahier-textes.html" class="premium-tool-card" style="text-decoration: none; color: inherit; display: block;">
+                    <!-- Cahier de Textes -->
+                    <div class="premium-tool-card">
                         <span class="tool-icon">📚</span>
                         <h3 class="tool-title">Cahier de Textes & Notes</h3>
                         <p class="tool-description">
@@ -639,10 +654,10 @@
                             <div class="tool-feature">Calculs de moyennes</div>
                             <div class="tool-feature">Cahier de textes numérique</div>
                         </div>
-                        <span class="tool-btn">
+                        <a href="premium/cahier-textes.html" class="tool-btn">
                             Accéder au cahier →
-                        </span>
-                    </a>
+                        </a>
+                    </div>
                 </div>
             </div>
             
@@ -697,6 +712,7 @@
         </div>
         
         <div id="newsContainer">
+            <!-- Loader pendant chargement -->
             <div class="loader">
                 <div class="spinner"></div>
                 <p>Chargement des actualités...</p>
@@ -734,6 +750,9 @@
     
     <!-- Firebase SDK -->
     <script type="module">
+        // ========================================
+        // CONFIGURATION FIREBASE
+        // ========================================
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
         import { getFirestore, collection, getDocs, query, orderBy, limit, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
         import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
@@ -748,43 +767,107 @@
             measurementId: "G-20EGFVEM5M"
         };
 
+        // Initialiser Firebase
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
 
+        // ========================================
         // VÉRIFICATION STATUT PREMIUM
+        // ========================================
         onAuthStateChanged(auth, async (user) => {
             const premiumToolsContent = document.getElementById('premium-tools-content');
             const nonPremiumMessage = document.getElementById('non-premium-tools-message');
             
             if (user) {
+                console.log('✅ Utilisateur connecté:', user.email);
+                
                 try {
+                    // Récupérer les données utilisateur
                     const userDocRef = doc(db, 'users', user.uid);
                     const userDoc = await getDoc(userDocRef);
                     
-                    if (userDoc.exists() && userDoc.data().isPremium === true) {
-                        premiumToolsContent.style.display = 'block';
-                        nonPremiumMessage.style.display = 'none';
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        
+                        if (userData.isPremium === true) {
+                            // Utilisateur Premium
+                            console.log('🌟 Statut Premium vérifié');
+                            premiumToolsContent.style.display = 'block';
+                            nonPremiumMessage.style.display = 'none';
+                            
+                            // Afficher un badge Premium (optionnel)
+                            showPremiumBadge();
+                        } else {
+                            // Utilisateur standard
+                            console.log('⚠️ Utilisateur standard (non-Premium)');
+                            premiumToolsContent.style.display = 'none';
+                            nonPremiumMessage.style.display = 'block';
+                        }
                     } else {
+                        // Créer le document utilisateur s'il n'existe pas
+                        console.log('📝 Création du profil utilisateur...');
+                        await setDoc(userDocRef, {
+                            email: user.email,
+                            isPremium: false,
+                            createdAt: new Date().toISOString()
+                        });
+                        
                         premiumToolsContent.style.display = 'none';
                         nonPremiumMessage.style.display = 'block';
                     }
                 } catch (error) {
-                    console.error('Erreur Premium:', error);
+                    console.error('❌ Erreur lors de la vérification Premium:', error);
+                    // Par sécurité, masquer les outils Premium en cas d'erreur
                     premiumToolsContent.style.display = 'none';
                     nonPremiumMessage.style.display = 'block';
                 }
             } else {
+                // Utilisateur non connecté
+                console.log('👤 Utilisateur non connecté');
                 premiumToolsContent.style.display = 'none';
                 nonPremiumMessage.style.display = 'block';
             }
         });
 
-        // CHARGER LES ACTUALITÉS
+        // Fonction pour afficher un badge Premium
+        function showPremiumBadge() {
+            // Vérifier si le badge n'existe pas déjà
+            if (document.getElementById('premium-badge')) return;
+            
+            const badge = document.createElement('div');
+            badge.id = 'premium-badge';
+            badge.innerHTML = '⭐ Premium';
+            badge.style.cssText = `
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                background: linear-gradient(135deg, #fbbf24, #f59e0b);
+                color: white;
+                padding: 8px 16px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+                box-shadow: 0 4px 15px rgba(251, 191, 36, 0.4);
+                z-index: 1000;
+                animation: fadeIn 0.5s ease;
+            `;
+            document.body.appendChild(badge);
+        }
+
+        // ========================================
+        // CHARGER LES ACTUALITÉS DEPUIS FIREBASE
+        // ========================================
         async function loadNews() {
             const newsContainer = document.getElementById('newsContainer');
+            
             try {
-                const newsQuery = query(collection(db, 'news'), orderBy('date', 'desc'), limit(3));
+                const newsQuery = query(
+                    collection(db, 'news'),
+                    orderBy('date', 'desc'),
+                    limit(3)
+                );
+                
                 const querySnapshot = await getDocs(newsQuery);
                 
                 if (querySnapshot.empty) {
@@ -793,50 +876,147 @@
                 }
                 
                 let newsHTML = '<div class="news-grid">';
+                let index = 0;
+                
                 querySnapshot.forEach((doc) => {
                     const news = doc.data();
+                    const isNew = news.isNew || false;
+                    
                     newsHTML += `
-                        <div class="news-item">
-                            ${news.isNew ? '<span class="news-badge">Nouveau</span>' : ''}
+                        <div class="news-item" style="animation-delay: ${index * 0.2}s;">
+                            ${isNew ? '<span class="news-badge">Nouveau</span>' : ''}
                             <div class="news-date">🗓️ ${news.date}</div>
                             <div class="news-title">${news.title}</div>
                             <div class="news-text">${news.text}</div>
                         </div>
                     `;
+                    index++;
                 });
+                
                 newsHTML += '</div>';
                 newsContainer.innerHTML = newsHTML;
+                
             } catch (error) {
-                console.error("Erreur actualités:", error);
+                console.error("Erreur lors du chargement des actualités:", error);
+                newsContainer.innerHTML = `
+                    <p style="text-align:center; color:#ef4444;">
+                        ❌ Erreur de chargement. Vérifiez votre configuration Firebase.
+                    </p>
+                `;
             }
         }
 
-        // CHARGER LES STATISTIQUES
+        // ========================================
+        // CHARGER LES STATISTIQUES DEPUIS FIREBASE
+        // ========================================
         async function loadStats() {
             const statsContainer = document.getElementById('statsContainer');
+            
             try {
                 const statsSnapshot = await getDocs(collection(db, 'stats'));
-                let statsHTML = '';
                 
                 if (statsSnapshot.empty) {
-                    statsHTML = `
-                        <div class="stat-card-modern"><span class="stat-number">250+</span><span class="stat-label">Ressources</span></div>
-                        <div class="stat-card-modern"><span class="stat-number">80+</span><span class="stat-label">Quiz</span></div>
-                        <div class="stat-card-modern"><span class="stat-number">15</span><span class="stat-label">Matières</span></div>
-                        <div class="stat-card-modern"><span class="stat-number">24/7</span><span class="stat-label">Accès</span></div>
+                    // Valeurs par défaut si aucune statistique n'existe
+                    statsContainer.innerHTML = `
+                        <div class="stat-card-modern">
+                            <span class="stat-number" data-target="250">0</span>
+                            <span class="stat-label">Ressources Disponibles</span>
+                        </div>
+                        <div class="stat-card-modern">
+                            <span class="stat-number" data-target="80">0</span>
+                            <span class="stat-label">Quiz Interactifs</span>
+                        </div>
+                        <div class="stat-card-modern">
+                            <span class="stat-number" data-target="15">0</span>
+                            <span class="stat-label">Matières Couvertes</span>
+                        </div>
+                        <div class="stat-card-modern">
+                            <span class="stat-number">24/7</span>
+                            <span class="stat-label">Accès Illimité</span>
+                        </div>
                     `;
-                } else {
-                    statsSnapshot.forEach((doc) => {
-                        const stat = doc.data();
-                        statsHTML += `<div class="stat-card-modern"><span class="stat-number">${stat.value}${stat.suffix || ''}</span><span class="stat-label">${stat.label}</span></div>`;
-                    });
+                    
+                    // Animer les compteurs
+                    animateCounters();
+                    return;
                 }
+                
+                let statsHTML = '';
+                statsSnapshot.forEach((doc) => {
+                    const stat = doc.data();
+                    statsHTML += `
+                        <div class="stat-card-modern">
+                            <span class="stat-number" data-target="${stat.value}">${stat.value}${stat.suffix || ''}</span>
+                            <span class="stat-label">${stat.label}</span>
+                        </div>
+                    `;
+                });
+                
                 statsContainer.innerHTML = statsHTML;
+                
+                // Animer les compteurs
+                animateCounters();
+                
             } catch (error) {
-                console.error("Erreur stats:", error);
+                console.error("Erreur lors du chargement des statistiques:", error);
+                // Afficher valeurs par défaut en cas d'erreur
+                statsContainer.innerHTML = `
+                    <div class="stat-card-modern">
+                        <span class="stat-number">250+</span>
+                        <span class="stat-label">Ressources Disponibles</span>
+                    </div>
+                    <div class="stat-card-modern">
+                        <span class="stat-number">80+</span>
+                        <span class="stat-label">Quiz Interactifs</span>
+                    </div>
+                    <div class="stat-card-modern">
+                        <span class="stat-number">15</span>
+                        <span class="stat-label">Matières Couvertes</span>
+                    </div>
+                    <div class="stat-card-modern">
+                        <span class="stat-number">24/7</span>
+                        <span class="stat-label">Accès Illimité</span>
+                    </div>
+                `;
             }
         }
 
+        // ========================================
+        // ANIMATION DES COMPTEURS
+        // ========================================
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-number[data-target]');
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const counter = entry.target;
+                        const target = parseInt(counter.getAttribute('data-target'));
+                        const suffix = counter.textContent.replace(/[0-9]/g, '');
+                        let current = 0;
+                        const increment = target / 60;
+                        
+                        const timer = setInterval(() => {
+                            current += increment;
+                            if (current >= target) {
+                                counter.textContent = target + (suffix || '+');
+                                clearInterval(timer);
+                            } else {
+                                counter.textContent = Math.floor(current);
+                            }
+                        }, 16);
+                        
+                        observer.unobserve(counter);
+                    }
+                });
+            }, { threshold: 0.5 });
+            
+            counters.forEach(counter => observer.observe(counter));
+        }
+
+        // ========================================
+        // CHARGER TOUTES LES DONNÉES AU DÉMARRAGE
+        // ========================================
         window.addEventListener('DOMContentLoaded', () => {
             loadNews();
             loadStats();

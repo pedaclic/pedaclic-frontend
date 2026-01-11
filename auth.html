@@ -1,1 +1,258 @@
-[Copier le contenu de l'artifact "Page de Connexion/Inscription"]
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - PedaClic</title>
+    
+    <link rel="icon" type="image/svg+xml" href="assets/images/logo/logo-icon.svg">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px;
+        }
+        .logo { text-align: center; margin-bottom: 30px; }
+        .logo h1 { font-size: 32px; color: #667eea; margin-bottom: 5px; }
+        .logo p { color: #64748b; font-size: 14px; }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        .tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #64748b;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab.active { color: #667eea; border-bottom-color: #667eea; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #334155;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+        .error-message, .success-message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+        .error-message { background: #fee; color: #c00; }
+        .success-message { background: #e6ffe6; color: #006600; }
+        .error-message.show, .success-message.show { display: block; }
+        .back-link { text-align: center; margin-top: 20px; }
+        .back-link a { color: #667eea; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">
+            <h1>🎓 PedaClic</h1>
+            <p>L'école en un clic</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('login')">Connexion</button>
+            <button class="tab" onclick="switchTab('signup')">Inscription</button>
+        </div>
+        
+        <div id="error-message" class="error-message"></div>
+        <div id="success-message" class="success-message"></div>
+        
+        <div id="login-form" class="tab-content active">
+            <form onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>Adresse email</label>
+                    <input type="email" id="login-email" required placeholder="exemple@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn-submit" id="login-btn">Se connecter</button>
+            </form>
+        </div>
+        
+        <div id="signup-form" class="tab-content">
+            <form onsubmit="handleSignup(event)">
+                <div class="form-group">
+                    <label>Adresse email</label>
+                    <input type="email" id="signup-email" required placeholder="exemple@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Mot de passe</label>
+                    <input type="password" id="signup-password" required placeholder="••••••••" minlength="6">
+                </div>
+                <div class="form-group">
+                    <label>Confirmer le mot de passe</label>
+                    <input type="password" id="signup-password-confirm" required placeholder="••••••••" minlength="6">
+                </div>
+                <button type="submit" class="btn-submit" id="signup-btn">Créer mon compte</button>
+            </form>
+        </div>
+        
+        <div class="back-link">
+            <a href="index.html">← Retour à l'accueil</a>
+        </div>
+    </div>
+    
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgk_1graNBFkIURTJnyLZTZ1nyxi7slUo",
+            authDomain: "pedaclic.firebaseapp.com",
+            projectId: "pedaclic",
+            storageBucket: "pedaclic.firebasestorage.app",
+            messagingSenderId: "863649621890",
+            appId: "1:863649621890:web:6ab56a8c8db111e3a9119b"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            if (tab === 'login') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('login-form').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('signup-form').classList.add('active');
+            }
+            document.getElementById('error-message').classList.remove('show');
+            document.getElementById('success-message').classList.remove('show');
+        }
+        
+        function showError(msg) {
+            document.getElementById('error-message').textContent = msg;
+            document.getElementById('error-message').classList.add('show');
+            document.getElementById('success-message').classList.remove('show');
+        }
+        
+        function showSuccess(msg) {
+            document.getElementById('success-message').textContent = msg;
+            document.getElementById('success-message').classList.add('show');
+            document.getElementById('error-message').classList.remove('show');
+        }
+        
+        async function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.textContent = 'Connexion...';
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showSuccess('✓ Connexion réussie !');
+                setTimeout(() => window.location.href = 'index.html', 1500);
+            } catch (error) {
+                let msg = 'Erreur de connexion';
+                if (error.code === 'auth/user-not-found') msg = 'Aucun compte avec cet email';
+                if (error.code === 'auth/wrong-password') msg = 'Mot de passe incorrect';
+                showError(msg);
+                btn.disabled = false;
+                btn.textContent = 'Se connecter';
+            }
+        }
+        
+        async function handleSignup(e) {
+            e.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirm = document.getElementById('signup-password-confirm').value;
+            const btn = document.getElementById('signup-btn');
+            
+            if (password !== confirm) {
+                showError('Les mots de passe ne correspondent pas');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.textContent = 'Création...';
+            
+            try {
+                const result = await auth.createUserWithEmailAndPassword(email, password);
+                await db.collection('users').doc(result.user.uid).set({
+                    email: email,
+                    isPremium: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                showSuccess('✓ Compte créé avec succès !');
+                setTimeout(() => window.location.href = 'index.html', 1500);
+            } catch (error) {
+                let msg = 'Erreur lors de la création';
+                if (error.code === 'auth/email-already-in-use') msg = 'Cet email est déjà utilisé';
+                if (error.code === 'auth/weak-password') msg = 'Mot de passe trop faible (min 6 caractères)';
+                showError(msg);
+                btn.disabled = false;
+                btn.textContent = 'Créer mon compte';
+            }
+        }
+        
+        auth.onAuthStateChanged(user => {
+            if (user) window.location.href = 'index.html';
+        });
+    </script>
+</body>
+</html>
