@@ -45,8 +45,23 @@
       { "q": "La suite Un = 3n + 2 est...", "o": ["Géométrique", "Arithmétique", "Constante"], "c": 1 },
       { "q": "L'aire sous la courbe d'une fonction positive est donnée par...", "o": ["Sa dérivée", "Son intégrale", "Sa limite"], "c": 1 },
       { "q": "Dans une loi binomiale B(n, p), l'espérance est...", "o": ["np", "npq", "p/n"], "c": 0 }
-    ]
-  },
+    ],
+    
+    "moyen":
+    [
+  { "q": "Si 2x - 4 = 10, alors x est égal à :", "o": ["3", "7", "14"], "c": 1 },
+  { "q": "Le PGCD de 36 et 48 est :", "o": ["6", "12", "18"], "c": 1 },
+  { "q": "Quelle est la valeur de cos(60°) ?", "o": ["0,5", "0,86", "1"], "c": 0 },
+  { "q": "L'aire d'un triangle de base 6cm et hauteur 4cm est :", "o": ["24 cm²", "12 cm²", "10 cm²"], "c": 1 },
+  { "q": "Développez (x + 3)² :", "o": ["x² + 9", "x² + 3x + 9", "x² + 6x + 9"], "c": 2 },
+  { "q": "La racine carrée de 144 est :", "o": ["12", "14", "16"], "c": 0 },
+  { "q": "Un pantalon coûte 5000 FCFA. Après une baisse de 10%, il coûte :", "o": ["4000", "4500", "4900"], "c": 1 },
+  { "q": "Dans un triangle rectangle, le côté le plus long s'appelle :", "o": ["L'adjacent", "L'opposé", "L'hypoténuse"], "c": 2 },
+  { "q": "La somme des angles d'un triangle est toujours égale à :", "o": ["90°", "180°", "360°"], "c": 1 },
+  { "q": "Si un rectangle a une longueur de 8m et une largeur de 3m, son périmètre est :", "o": ["11m", "22m", "24m"], "c": 1 },
+  { "q": "Quelle est l'expression factorisée de x² - 16 ?", "o": ["(x-4)²", "(x-4)(x+4)", "(x-8)(x+2)"], "c": 1 },
+  { "q": "L'arrondi de 3,1415 à 10⁻² près est :", "o": ["3,1", "3,14", "3,15"], "c": 1 }
+] },
   "svt": {
     "defi": [
       { "q": "Quel est le génotype d'un individu de groupe O ?", "o": ["AO", "BO", "OO"], "c": 2 },
