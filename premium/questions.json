@@ -76,7 +76,22 @@
       { "q": "Le SIDA s'attaque principalement aux...", "o": ["Hématies", "Lymphocytes T4", "Plaquettes"], "c": 1 },
       { "q": "La dérive des continents a été proposée par...", "o": ["Darwin", "Wegener", "Newton"], "c": 1 },
       { "q": "L'arc réflexe médullaire passe par...", "o": ["Le cerveau", "La moelle épinière", "Le cœur"], "c": 1 }
-    ]
+    ],
+
+    "moyen":[[
+  { "q": "Quel organe produit la bile pour faciliter la digestion des graisses ?", "o": ["L'estomac", "Le foie", "Le pancréas"], "c": 1 },
+  { "q": "Laquelle de ces maladies est causée par une carence en Vitamine C ?", "o": ["Le scorbut", "Le rachitisme", "Le béribéri"], "c": 0 },
+  { "q": "Le passage des nutriments du tube digestif vers le sang s'appelle :", "o": ["L'ingestion", "L'absorption intestinale", "La défécation"], "c": 1 },
+  { "q": "Dans le sang, les cellules responsables du transport de l'oxygène sont :", "o": ["Les globules blancs", "Les plaquettes", "Les globules rouges"], "c": 2 },
+  { "q": "Quelle est la fonction principale des reins ?", "o": ["Digérer les protéines", "Filtrer le sang et produire l'urine", "Pomper le sang"], "c": 1 },
+  { "q": "Un microbe capable de provoquer une maladie est dit :", "o": ["Pathogène", "Inoffensif", "Antigène"], "c": 0 },
+  { "q": "La théorie expliquant le mouvement des continents s'appelle :", "o": ["La tectonique des plaques", "L'érosion", "Le volcanisme"], "c": 0 },
+  { "q": "Quel type de vaisseau ramène le sang des organes vers le cœur ?", "o": ["Les artères", "Les veines", "Les capillaires"], "c": 1 },
+  { "q": "La partie du système nerveux qui protège les centres réflexes est :", "o": ["Le cerveau", "La moelle épinière", "Le nerf optique"], "c": 1 },
+  { "q": "Laquelle de ces méthodes est une contraception hormonale ?", "o": ["Le préservatif", "La pilule", "Le stérilet en cuivre"], "c": 1 },
+  { "q": "L'ensemble des réactions de défense de l'organisme est appelé :", "o": ["La digestion", "La réponse immunitaire", "La respiration"], "c": 1 },
+  { "q": "Un séisme se mesure avec un appareil nommé :", "o": ["Baromètre", "Sismographe", "Thermomètre"], "c": 1 }
+]]
   },
   "pc": {
     "defi": [
@@ -92,6 +107,20 @@
       { "q": "Quelle est la charge d'un électron ?", "o": ["Positive", "Négative", "Neutre"], "c": 1 },
       { "q": "La poussée d'Archimède s'exerce dans...", "o": ["Le vide", "Les fluides", "Les solides"], "c": 1 },
       { "q": "Le fer réagit avec l'acide chlorhydrique pour donner du...", "o": ["Dioxyde de carbone", "Dihydrogène", "Dioxygène"], "c": 1 }
-    ]
+    ],
+    "moyen":[[
+  { "q": "Quelle est l'unité internationale de la force ?", "o": ["Le Joule", "Le Newton", "Le Watt"], "c": 1 },
+  { "q": "Une solution dont le pH est égal à 7 est dite :", "o": ["Acide", "Basique", "Neutre"], "c": 2 },
+  { "q": "L'instrument utilisé pour mesurer l'intensité d'un courant électrique est :", "o": ["Le voltmètre", "L'ampèremètre", "L'ohmmètre"], "c": 1 },
+  { "q": "La formule chimique de l'eau pure est :", "o": ["CO2", "H2O", "HO2"], "c": 1 },
+  { "q": "Un corps qui garde sa forme et son volume est à l'état :", "o": ["Solide", "Liquide", "Gazeux"], "c": 0 },
+  { "q": "Le passage de l'état liquide à l'état solide s'appelle :", "o": ["La fusion", "La vaporisation", "La solidification"], "c": 2 },
+  { "q": "Dans la formule P = m x g, que représente 'm' ?", "o": ["Le poids", "La masse", "La gravité"], "c": 1 },
+  { "q": "Laquelle de ces lampes consomme le moins d'énergie pour la même luminosité ?", "o": ["Incanescence", "Halogène", "LED"], "c": 2 },
+  { "q": "Le gaz qui trouble l'eau de chaux est :", "o": ["Le dioxygène", "Le diazote", "Le dioxyde de carbone"], "c": 2 },
+  { "q": "Une solution qui peut encore dissoudre du soluté est dite :", "o": ["Saturée", "Non saturée", "Concentrée"], "c": 1 },
+  { "q": "L'atome est composé d'un noyau et de particules appelées :", "o": ["Molécules", "Électrons", "Ions"], "c": 1 },
+  { "q": "La loi d'Ohm s'écrit mathématiquement :", "o": ["P = U x I", "U = R x I", "E = P x t"], "c": 1 }
+]]
   }
 }
