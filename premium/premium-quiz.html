@@ -177,14 +177,33 @@ let score = 0;
 let activeQuestions = [];
 
 function startQuiz() {
+    // 1. Récupération des choix de l'utilisateur
     const disc = document.getElementById('discipline').value;
     const lvl = document.getElementById('level').value;
-    activeQuestions = database[disc][lvl];
-    currentQ = 0;
-    score = 0;
-    document.getElementById('result-area').style.display = 'none';
-    document.getElementById('quiz-content').style.display = 'block';
-    showQuestion();
+    
+    // 2. Vérification : La catégorie existe-t-elle et contient-elle des questions ?
+    if (database[disc] && database[disc][lvl] && database[disc][lvl].length > 0) {
+        // Succès : On charge les questions
+        activeQuestions = database[disc][lvl];
+        currentQ = 0;
+        score = 0;
+        
+        // Mise à jour de l'affichage
+        document.getElementById('result-area').style.display = 'none';
+        document.getElementById('quiz-content').style.display = 'block';
+        showQuestion();
+    } else {
+        // Sécurité : On affiche un message amical si c'est vide
+        document.getElementById('quiz-content').innerHTML = `
+            <div style="text-align:center; padding:40px; color: var(--neutral-600);">
+                <div style="font-size: 3rem; margin-bottom: 20px;">🚧</div>
+                <h3 style="color:var(--neutral-900);">Quiz en cours de préparation</h3>
+                <p>Le module <b>${disc.toUpperCase()} (${lvl})</b> arrive bientôt sur Pedaclic Premium.</p>
+                <p style="font-size: 0.9rem;">En attendant, essayez le niveau <b>Défi</b> en Français !</p>
+            </div>`;
+        document.getElementById('next-btn').style.display = 'none';
+        document.getElementById('progress').style.width = "0%";
+    }
 }
 
 function showQuestion() {
