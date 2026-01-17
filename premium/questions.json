@@ -1,0 +1,82 @@
+{
+  "fr": {
+    "defi": [
+      { "q": "Dans 'L'Étranger' de Camus, quelle est la raison invoquée par Meursault pour le meurtre ?", "o": ["La vengeance", "À cause du soleil", "La légitime défense"], "c": 1 },
+      { "q": "Quel poète a écrit : 'L'homme y passe à travers des forêts de symboles' ?", "o": ["Baudelaire", "Rimbaud", "Verlaine"], "c": 0 },
+      { "q": "Identifiez l'anaphore dans un texte : c'est une répétition...", "o": ["En fin de phrase", "En début de phrase", "Au milieu"], "c": 1 },
+      { "q": "Qui a écrit 'L'Aventure Ambiguë' ?", "o": ["Cheikh Hamidou Kane", "Camara Laye", "Mongo Beti"], "c": 0 },
+      { "q": "Le mouvement de la Pléiade visait à...", "o": ["Simplifier la langue", "Enrichir la langue française", "Supprimer les rimes"], "c": 1 },
+      { "q": "Quelle est la fonction de 'que' dans : 'Le livre que je lis' ?", "o": ["Sujet", "COD", "Complément de nom"], "c": 1 },
+      { "q": "Le 'Vantardisme' est un trait caractéristique de quelle épopée ?", "o": ["L'Odyssée", "L'Épopée de Soundiata", "Le Cid"], "c": 1 },
+      { "q": "Qu'est-ce qu'une focalisation externe ?", "o": ["Le narrateur sait tout", "Le narrateur est témoin neutre", "Le narrateur est le héros"], "c": 1 },
+      { "q": "L'œuvre 'Une si longue lettre' est un roman...", "o": ["Épistolaire", "Autobiographique", "Historique"], "c": 0 },
+      { "q": "Quel est le mode de 'que nous sachions' ?", "o": ["Indicatif", "Subjonctif", "Conditionnel"], "c": 1 },
+      { "q": "Laquelle de ces pièces est une tragédie de Racine ?", "o": ["Le Tartuffe", "Phèdre", "L'Avare"], "c": 1 },
+      { "q": "Qui est le chef de file du Romantisme en France ?", "o": ["Victor Hugo", "Stendhal", "Balzac"], "c": 0 }
+    ]
+  },
+  "philo": {
+    "defi": [
+      { "q": "Pour Marx, quelle est l'infrastructure de la société ?", "o": ["Le Droit", "L'Économie", "La Religion"], "c": 1 },
+      { "q": "Quelle est la célèbre devise de l'Existentialisme de Sartre ?", "o": ["Je pense donc je suis", "L'existence précède l'essence", "Tout ce qui est réel est rationnel"], "c": 1 },
+      { "q": "Selon Freud, quelle partie du psychisme gère les pulsions ?", "o": ["Le Moi", "Le Surmoi", "Le Ça"], "c": 2 },
+      { "q": "Qui a théorisé la 'rupture épistémologique' ?", "o": ["Gaston Bachelard", "Karl Popper", "Auguste Comte"], "c": 0 },
+      { "q": "L'allégorie de la caverne de Platon traite de...", "o": ["La politique", "La connaissance et l'éducation", "La morale"], "c": 1 },
+      { "q": "Quel philosophe prône le 'retour aux choses mêmes' ?", "o": ["Husserl", "Kant", "Nietzsche"], "c": 0 },
+      { "q": "Pour Rousseau, l'homme est naturellement...", "o": ["Mauvais", "Bon", "Neutre"], "c": 1 },
+      { "q": "Qu'est-ce que l'impératif catégorique chez Kant ?", "o": ["Un conseil", "Une loi morale universelle", "Un désir"], "c": 1 },
+      { "q": "Qui a écrit 'Le Discours sur la méthode' ?", "o": ["Pascal", "Descartes", "Spinoza"], "c": 1 },
+      { "q": "Laquelle de ces notions est centrale chez Nietzsche ?", "o": ["La Volonté de puissance", "Le Contrat Social", "L'Aliénation"], "c": 0 },
+      { "q": "Pour Kierkegaard, l'angoisse est liée à...", "o": ["La mort", "La liberté", "La douleur"], "c": 1 },
+      { "q": "Qui est l'auteur de 'L'Abolition de l'Homme' ?", "o": ["C.S. Lewis", "Sartre", "Aron"], "c": 0 }
+    ]
+  },
+  "maths": {
+    "defi": [
+      { "q": "Quelle est la limite de (sin x)/x quand x tend vers 0 ?", "o": ["0", "1", "L'infini"], "c": 1 },
+      { "q": "La primitive de 1/x est...", "o": ["ln|x|", "exp(x)", "-1/x²"], "c": 0 },
+      { "q": "Si z = 1 + i, quel est son argument ?", "o": ["π/2", "π/4", "3π/4"], "c": 1 },
+      { "q": "Deux vecteurs sont colinéaires si leur produit vectoriel est...", "o": ["Égal à 1", "Nul", "Égal à leur norme"], "c": 1 },
+      { "q": "Le discriminant Δ est négatif, l'équation du second degré a...", "o": ["2 racines réelles", "0 racine réelle", "1 racine double"], "c": 1 },
+      { "q": "Quelle est la dérivée de e^(2x) ?", "o": ["e^(2x)", "2e^(2x)", "0.5e^(2x)"], "c": 1 },
+      { "q": "L'intégrale de 0 à 1 de x dx est...", "o": ["1", "0.5", "2"], "c": 1 },
+      { "q": "Combien vaut log(100) en base 10 ?", "o": ["1", "2", "10"], "c": 1 },
+      { "q": "Dans un repère, si u.v = 0, les vecteurs sont...", "o": ["Parallèles", "Orthogonaux", "Identiques"], "c": 1 },
+      { "q": "La suite Un = 3n + 2 est...", "o": ["Géométrique", "Arithmétique", "Constante"], "c": 1 },
+      { "q": "L'aire sous la courbe d'une fonction positive est donnée par...", "o": ["Sa dérivée", "Son intégrale", "Sa limite"], "c": 1 },
+      { "q": "Dans une loi binomiale B(n, p), l'espérance est...", "o": ["np", "npq", "p/n"], "c": 0 }
+    ]
+  },
+  "svt": {
+    "defi": [
+      { "q": "Quel est le génotype d'un individu de groupe O ?", "o": ["AO", "BO", "OO"], "c": 2 },
+      { "q": "La méiose produit combien de cellules filles ?", "o": ["2", "4", "8"], "c": 1 },
+      { "q": "Où se déroule la fécondation chez la femme ?", "o": ["L'utérus", "Les trompes", "Les ovaires"], "c": 1 },
+{ "q": "L'hormone hyperglycémiante produite par le pancréas est...", "o": ["L'insuline", "Le glucagon", "L'adrénaline"], "c": 1 },
+      { "q": "Quelle est l'unité de base du système nerveux ?", "o": ["Le néphron", "Le neurone", "L'axone"], "c": 1 },
+      { "q": "La synthèse des protéines a lieu dans...", "o": ["Le noyau", "Les ribosomes", "Les mitochondries"], "c": 1 },
+      { "q": "Un séisme est causé par la rupture brutale de...", "o": ["Magma", "Failles", "Cratères"], "c": 1 },
+      { "q": "La phase G1 du cycle cellulaire correspond à...", "o": ["La mitose", "La croissance cellulaire", "La réplication de l'ADN"], "c": 1 },
+      { "q": "Quel organite contient l'information génétique ?", "o": ["Le cytoplasme", "Le noyau", "La vacuole"], "c": 1 },
+      { "q": "Le SIDA s'attaque principalement aux...", "o": ["Hématies", "Lymphocytes T4", "Plaquettes"], "c": 1 },
+      { "q": "La dérive des continents a été proposée par...", "o": ["Darwin", "Wegener", "Newton"], "c": 1 },
+      { "q": "L'arc réflexe médullaire passe par...", "o": ["Le cerveau", "La moelle épinière", "Le cœur"], "c": 1 }
+    ]
+  },
+  "pc": {
+    "defi": [
+      { "q": "Quelle est l'unité de la constante de Planck ?", "o": ["Joule", "J.s", "Watt"], "c": 1 },
+      { "q": "Une solution de pH 3 est...", "o": ["Acide", "Basique", "Neutre"], "c": 0 },
+      { "q": "La vitesse de la lumière est d'environ...", "o": ["300 000 km/s", "3 000 km/s", "30 000 km/s"], "c": 0 },
+      { "q": "La loi de gravitation universelle a été établie par...", "o": ["Einstein", "Newton", "Galilée"], "c": 1 },
+      { "q": "Un alcane à 3 atomes de carbone s'appelle...", "o": ["Méthane", "Éthane", "Propane"], "c": 2 },
+      { "q": "L'énergie cinétique se calcule par...", "o": ["mgh", "1/2 mv²", "F x d"], "c": 1 },
+      { "q": "Quel est le symbole chimique de l'Or ?", "o": ["Ag", "Fe", "Au"], "c": 2 },
+      { "q": "Le passage de l'état solide à l'état gazeux est la...", "o": ["Fusion", "Sublimation", "Condensation"], "c": 1 },
+      { "q": "La résistance électrique s'exprime en...", "o": ["Volt", "Ampère", "Ohm"], "c": 2 },
+      { "q": "Quelle est la charge d'un électron ?", "o": ["Positive", "Négative", "Neutre"], "c": 1 },
+      { "q": "La poussée d'Archimède s'exerce dans...", "o": ["Le vide", "Les fluides", "Les solides"], "c": 1 },
+      { "q": "Le fer réagit avec l'acide chlorhydrique pour donner du...", "o": ["Dioxyde de carbone", "Dihydrogène", "Dioxygène"], "c": 1 }
+    ]
+  }
+}
