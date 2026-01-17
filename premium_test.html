@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pedaclic Premium - Passez au niveau supérieur</title>
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <link rel="stylesheet" href="assets/css/components/header.css">
+    <link rel="stylesheet" href="assets/css/components/footer.css">
+    <link rel="stylesheet" href="assets/css/animations.css">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-dark: #4338CA;
+            --secondary: #7C3AED;
+            --accent: #F59E0B;
+            --success: #10B981;
+            --success-light: #D1FAE5;
+            --neutral-50: #F9FAFB;
+            --neutral-600: #4B5563;
+            --neutral-700: #374151;
+            --neutral-900: #111827;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #111827;
+        }
+
+        .premium-hero {
+            background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+            color: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .premium-hero h1 {
+            font-size: 48px;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .premium-hero p {
+            font-size: 20px;
+            opacity: 0.9;
+        }
+
+        .pricing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 64px 16px;
+        }
+
+        .pricing-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 32px;
+            margin-top: 48px;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 2px solid #e5e7eb;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+
+        .pricing-card.featured {
+            border-color: #4F46E5;
+            transform: scale(1.05);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            right: 24px;
+            background: #F59E0B;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 9999px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .plan-name {
+            font-size: 28px;
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 16px;
+        }
+
+        .plan-price {
+            font-size: 48px;
+            font-weight: 700;
+            color: #4F46E5;
+            margin-bottom: 8px;
+        }
+
+        .plan-price small {
+            font-size: 18px;
+            color: #6B7280;
+            font-weight: normal;
+        }
+
+        .plan-features {
+            list-style: none;
+            padding: 0;
+            margin: 24px 0;
+        }
+
+        .plan-features li {
+            padding: 12px 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #374151;
+            font-size: 16px;
+        }
+
+        .plan-features li::before {
+            content: "✓";
+            color: #10B981;
+            font-weight: bold;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .btn-subscribe {
+            width: 100%;
+            padding: 16px;
+            background: #4F46E5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-subscribe:hover {
+            background: #4338CA;
+            transform: scale(1.02);
+        }
+
+        .savings-badge {
+            background: #D1FAE5;
+            color: #059669;
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 16px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .payment-methods {
+            text-align: center;
+            margin-top: 48px;
+            padding: 32px;
+            background: #F9FAFB;
+            border-radius: 12px;
+        }
+
+        .payment-methods h3 {
+            margin-bottom: 16px;
+            color: #111827;
+        }
+
+        .payment-methods p {
+            color: #6B7280;
+            margin-bottom: 24px;
+        }
+
+        .payment-icons {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .payment-icon {
+            padding: 12px 24px;
+            background: white;
+            border-radius: 8px;
+            font-weight: 600;
+            color: #374151;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .payment-icon img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .faq-section {
+            max-width: 800px;
+            margin: 80px auto;
+            padding: 0 16px;
+        }
+
+        .faq-section h2 {
+            text-align: center;
+            margin-bottom: 32px;
+            color: #111827;
+            font-size: 36px;
+        }
+
+        .faq-item {
+            background: white;
+            padding: 24px;
+            margin-bottom: 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e5e7eb;
+        }
+
+        .faq-question {
+            font-weight: 600;
+            color: #111827;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 18px;
+        }
+
+        .faq-answer {
+            margin-top: 16px;
+            color: #6B7280;
+            display: none;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-center h2 {
+            font-size: 36px;
+            color: #111827;
+            margin-bottom: 8px;
+        }
+
+        .text-center p {
+            font-size: 18px;
+            color: #6B7280;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header id="main-header"></header>
+
+    <!-- Hero Section -->
+    <section class="premium-hero">
+        <div class="container">
+            <h1>🎓 Pedaclic Premium</h1>
+            <p>Débloquez tout le potentiel de votre apprentissage</p>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing-container">
+        <div class="text-center" style="margin-bottom: 48px;">
+            <h2>Prêt à Transformer Votre Apprentissage ?</h2>
+            <p>Rejoignez des milliers d'élèves qui réussissent avec Pedaclic Premium</p>
+        </div>
+
+        <div class="pricing-cards">
+            <!-- Plan Mensuel -->
+            <div class="pricing-card">
+                <h3 class="plan-name">Mensuel</h3>
+                <div class="plan-price">2000 <small>FCFA</small></div>
+                <p style="color: #6B7280; margin-bottom: 24px;">par mois</p>
+                
+                <ul class="plan-features">
+                    <li>Accès illimité à tous les contenus</li>
+                    <li>Quiz et exercices sans limite</li>
+                    <li>Fiches PDF illimitées</li>
+                    <li>Suivi de progression</li>
+                    <li>Badges et récompenses</li>
+                    <li>Pas de publicité</li>
+                    <li>Support prioritaire</li>
+                </ul>
+                
+                <button class="btn-subscribe" onclick="initPayment('mensuel')">
+                    Commencer Maintenant 🚀
+                </button>
+            </div>
+
+            <!-- Plan Annuel (Populaire) -->
+            <div class="pricing-card featured">
+                <span class="popular-badge">🔥 LE PLUS POPULAIRE</span>
+                <h3 class="plan-name">Annuel</h3>
+                <div class="savings-badge">Économisez 4000 FCFA (2 mois gratuits)</div>
+                <div class="plan-price">20000 <small>FCFA</small></div>
+                <p style="color: #6B7280; margin-bottom: 24px;">par an</p>
+                
+                <ul class="plan-features">
+                    <li>Tout ce qui est dans le plan mensuel</li>
+                    <li>17% d'économie</li>
+                    <li>Contenus exclusifs premium</li>
+                    <li>Accès anticipé aux nouveautés</li>
+                    <li>Certificats personnalisés</li>
+                    <li>Coaching mensuel (optionnel)</li>
+                    <li>Garantie satisfait ou remboursé 30j</li>
+                </ul>
+                
+                <button class="btn-subscribe" onclick="initPayment('annuel')">
+                    Commencer Maintenant 🚀
+                </button>
+            </div>
+        </div>
+
+        <!-- Moyens de paiement -->
+        <div class="payment-methods">
+            <h3>💳 Moyens de paiement acceptés</h3>
+            <p>Paiement 100% sécurisé par PayTech</p>
+            <div class="payment-icons">
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#FFD700"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M6 12h12" stroke="#FFF" stroke-width="2"/></svg>
+                    Wave
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#FF6600"><circle cx="12" cy="12" r="10"/></svg>
+                    Orange Money
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#1A1F71"><rect width="24" height="16" rx="2"/></svg>
+                    Visa
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="10" cy="12" r="8" fill="#EB001B"/><circle cx="14" cy="12" r="8" fill="#F79E1B"/></svg>
+                    Mastercard
+                </span>
+                <span class="payment-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#00C853"><circle cx="12" cy="12" r="10"/><text x="12" y="16" text-anchor="middle" fill="white" font-size="10" font-weight="bold">Y</text></svg>
+                    Free Money (Yas)
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section class="faq-section">
+        <h2>Questions Fréquentes</h2>
+        
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Comment fonctionne l'abonnement ?</span>
+                <span>▼</span>
+            </div>
+            <div class="faq-answer">
+                Votre abonnement commence dès le paiement validé. Vous avez accès immédiat à tous les contenus premium.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Puis-je annuler à tout moment ?</span>
+                <span>▼</span>
+            </div>
+            <div class="faq-answer">
+                Oui, vous pouvez annuler votre abonnement à tout moment depuis votre espace personnel.
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="toggleFaq(this)">
+            <div class="faq-question">
+                <span>Le paiement est-il sécurisé ?</span>
+                <span>▼</span>
+            </div>
+            <div class="faq-answer">
+                Absolument ! Nous utilisons PayTech, une plateforme de paiement sécurisée et certifiée.
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Footer -->
+    <footer id="main-footer"></footer>
+
+    <!-- Scripts -->
+    <script src="assets/js/components/header.js"></script>
+    <script src="assets/js/components/footer.js"></script>
+    <script src="assets/js/paytech-client.js"></script>
+
+    <script>
+        // Toggle FAQ
+        function toggleFaq(element) {
+            const isActive = element.classList.contains('active');
+            
+            // Fermer tous les autres
+            document.querySelectorAll('.faq-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            
+            // Ouvrir celui-ci si ce n'était pas déjà ouvert
+            if (!isActive) {
+                element.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

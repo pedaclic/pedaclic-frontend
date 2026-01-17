@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Interactifs Premium - Pedaclic</title>
+    <link rel="stylesheet" href="assets/css/design-system.css">
+    <style>
+        /* DESIGN SYSTEM COMPLEMENTAIRE (S'adapte à Pedaclic) */
+        :root {
+            --quiz-bg: #f3f4f6;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            background-color: var(--neutral-50);
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .quiz-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        /* Barre de sélection Discipline & Niveau */
+        .quiz-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: var(--card-shadow);
+        }
+
+        select {
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            font-size: 1rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        /* Carte du Quiz */
+        .quiz-card {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: var(--card-shadow);
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .badge-level {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .level-facile { background: var(--success-light); color: var(--success); }
+        .level-moyen { background: #FEF3C7; color: #D97706; }
+        .level-défi { background: #FEE2E2; color: #DC2626; }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            padding: 16px;
+            text-align: left;
+            background: var(--neutral-50);
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.1rem;
+        }
+
+        .option-btn:hover {
+            border-color: var(--primary);
+            background: #EEF2FF;
+        }
+
+        .option-btn.correct {
+            background-color: var(--success-light);
+            border-color: var(--success);
+        }
+
+        .option-btn.wrong {
+            background-color: #FEE2E2;
+            border-color: #DC2626;
+        }
+
+        .feedback {
+            margin-top: 20px;
+            font-weight: 600;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <header class="text-center" style="margin-bottom: 40px;">
+            <h1>Espace Quiz Premium 🏆</h1>
+            <p>Affinez vos connaissances avec nos tests interactifs.</p>
+        </header>
+
+        <div class="quiz-controls">
+            <select id="subjectSelect" onchange="loadQuestion()">
+                <option value="maths">Mathématiques</option>
+                <option value="francais">Français</option>
+                <option value="sciences">Sciences (PC & SVT)</option>
+            </select>
+
+            <select id="levelSelect" onchange="loadQuestion()">
+                <option value="facile">Niveau : Facile</option>
+                <option value="moyen">Niveau : Moyen</option>
+                <option value="defi">Niveau : Défi</option>
+            </select>
+        </div>
+
+        <div id="quiz-area" class="quiz-card">
+            </div>
+    </div>
+
+    <script>
+        // BASE DE DONNÉES DES QUESTIONS
+        const quizData = {
+            maths: {
+                facile: { q: "Quelle est la racine carrée de 64 ?", options: ["6", "8", "10", "12"], correct: 1 },
+                moyen: { q: "Si 3x + 5 = 20, quelle est la valeur de x ?", options: ["3", "4", "5", "6"], correct: 2 },
+                defi: { q: "Quel est l'aire d'un cercle de rayon 5 cm ? (π≈3,14)", options: ["15,7 cm²", "31,4 cm²", "78,5 cm²", "100 cm²"], correct: 2 }
+            },
+            francais: {
+                facile: { q: "Quel est le pluriel du mot 'Chacal' ?", options: ["Chacals", "Chacaux"], correct: 0 },
+                moyen: { q: "Complétez : 'Quoique vous ___ , je resterai.'", options: ["disiez", "dites", "disiez"], correct: 0 },
+                defi: { q: "Quel auteur a écrit 'Les Frasques d'Ebinto' ?", options: ["Amadou Kourouma", "Amadou Koné", "Léopold S. Senghor"], correct: 1 }
+            },
+            sciences: {
+                facile: { q: "Quel organe est responsable de la circulation du sang ?", options: ["Le Poumon", "Le Cerveau", "Le Coeur"], correct: 2 },
+                moyen: { q: "Quelle est la formule chimique de l'eau ?", options: ["CO2", "H2O", "O2"], correct: 1 },
+                defi: { q: "Quelle est l'unité de mesure de la force ?", options: ["Watt", "Joule", "Newton", "Pascal"], correct: 2 }
+            }
+        };
+
+        function loadQuestion() {
+            const subject = document.getElementById('subjectSelect').value;
+            const level = document.getElementById('levelSelect').value;
+            const data = quizData[subject][level];
+            const area = document.getElementById('quiz-area');
+
+            area.innerHTML = `
+                <div class="question-header">
+                    <span class="badge-level level-${level}">${level}</span>
+                    <span style="color: var(--neutral-600)">Discipline : ${subject.toUpperCase()}</span>
+                </div>
+                <h2 style="margin-top:0;">${data.q}</h2>
+                <div class="options-grid">
+                    ${data.options.map((opt, i) => `
+                        <button class="option-btn" onclick="checkAnswer(${i}, ${data.correct})">${opt}</button>
+                    `).join('')}
+                </div>
+                <div id="feedback" class="feedback"></div>
+            `;
+        }
+
+        function checkAnswer(selected, correct) {
+            const btns = document.querySelectorAll('.option-btn');
+            const feedback = document.getElementById('feedback');
+            
+            btns.forEach((btn, i) => {
+                btn.disabled = true;
+                if(i === correct) btn.classList.add('correct');
+                if(i === selected && selected !== correct) btn.classList.add('wrong');
+            });
+
+            feedback.style.display = "block";
+            feedback.innerHTML = (selected === correct) 
+                ? "✅ Excellent ! Bonne réponse." 
+                : "❌ Dommage, réessaie encore.";
+            feedback.style.color = (selected === correct) ? "var(--success)" : "#DC2626";
+        }
+
+        // Initialisation
+        window.onload = loadQuestion;
+    </script>
+</body>
+</html>
