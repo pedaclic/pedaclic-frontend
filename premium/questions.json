@@ -1,126 +1,210 @@
 {
   "fr": {
+    "facile": [
+      {
+        "q": "Quel est le genre du roman 'Une si longue lettre' de Mariama Bâ ?",
+        "o": ["Roman épistolaire", "Roman d'aventure", "Roman policier", "Autobiographie"],
+        "c": 0
+      },
+      {
+        "q": "Combien de syllabes contient un alexandrin ?",
+        "o": ["10", "12", "8", "14"],
+        "c": 1
+      },
+      {
+        "q": "Quel auteur sénégalais a écrit 'Le Docker Noir' ?",
+        "o": ["Mariama Bâ", "Ousmane Sembène", "Léopold Sédar Senghor", "Cheikh Hamidou Kane"],
+        "c": 1
+      },
+      {
+        "q": "Dans quelle catégorie grammaticale se trouve le mot 'rapidement' ?",
+        "o": ["Adjectif", "Adverbe", "Nom", "Verbe"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le mouvement littéraire de Léopold Sédar Senghor ?",
+        "o": ["Surréalisme", "Négritude", "Romantisme", "Réalisme"],
+        "c": 1
+      },
+      {
+        "q": "Quel signe de ponctuation marque une pause forte dans une phrase ?",
+        "o": ["La virgule", "Le point-virgule", "Le point", "Les deux-points"],
+        "c": 2
+      },
+      {
+        "q": "Dans 'L'Aventure ambiguë', qui est le héros principal ?",
+        "o": ["Samba Diallo", "Demba", "Malaw", "Bakary"],
+        "c": 0
+      },
+      {
+        "q": "Quel temps verbal exprime une action passée et terminée ?",
+        "o": ["L'imparfait", "Le passé composé", "Le futur simple", "Le présent"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le pluriel du mot 'cheval' ?",
+        "o": ["Chevals", "Chevaux", "Chevaus", "Chevales"],
+        "c": 1
+      },
+      {
+        "q": "Qui a écrit 'Les Soleils des indépendances' ?",
+        "o": ["Ahmadou Kourouma", "Mariama Bâ", "Sembène Ousmane", "Birago Diop"],
+        "c": 0
+      },
+      {
+        "q": "Quelle figure de style consiste à comparer deux éléments avec 'comme' ?",
+        "o": ["Métaphore", "Comparaison", "Hyperbole", "Personnification"],
+        "c": 1
+      },
+      {
+        "q": "Dans une phrase, quel est le groupe qui accompagne généralement le verbe ?",
+        "o": ["Le sujet", "Le complément d'objet", "L'adverbe", "Le déterminant"],
+        "c": 1
+      }
+    ],
+    "moyen": [
+      {
+        "q": "Dans 'Une si longue lettre', à qui Ramatoulaye écrit-elle ?",
+        "o": ["À sa fille", "À Aïssatou", "À son mari", "À sa mère"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le type de narrateur dans 'Batouala' de René Maran ?",
+        "o": ["Narrateur omniscient", "Narrateur interne", "Narrateur externe", "Narrateur témoin"],
+        "c": 0
+      },
+      {
+        "q": "Quelle est la fonction du groupe nominal souligné : 'Il mange une pomme' ?",
+        "o": ["Sujet", "COD", "COI", "Complément circonstanciel"],
+        "c": 1
+      },
+      {
+        "q": "Quel registre littéraire vise à émouvoir le lecteur ?",
+        "o": ["Comique", "Tragique", "Pathétique", "Ironique"],
+        "c": 2
+      },
+      {
+        "q": "Dans quel pays se déroule principalement 'L'Aventure ambiguë' ?",
+        "o": ["Sénégal et France", "Mali", "Côte d'Ivoire", "Guinée"],
+        "c": 0
+      },
+      {
+        "q": "Quelle est la valeur du présent dans : 'Demain, je pars en voyage' ?",
+        "o": ["Présent d'habitude", "Présent de vérité générale", "Présent de narration", "Présent à valeur de futur"],
+        "c": 3
+      },
+      {
+        "q": "Qu'est-ce qu'une proposition subordonnée relative ?",
+        "o": ["Une proposition introduite par 'que'", "Une proposition introduite par un pronom relatif", "Une proposition indépendante", "Une proposition coordonnée"],
+        "c": 1
+      },
+      {
+        "q": "Quel thème central traverse 'Les Soleils des indépendances' ?",
+        "o": ["La colonisation", "La désillusion post-indépendance", "L'amour", "La guerre"],
+        "c": 1
+      },
+      {
+        "q": "Quelle figure de style est utilisée dans : 'La vie est un long fleuve tranquille' ?",
+        "o": ["Comparaison", "Métaphore", "Hyperbole", "Oxymore"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la nature grammaticale de 'que' dans : 'Je pense que tu viendras' ?",
+        "o": ["Pronom relatif", "Conjonction de subordination", "Pronom interrogatif", "Adverbe"],
+        "c": 1
+      },
+      {
+        "q": "Quel auteur africain a reçu le Prix Goncourt pour 'Les Soleils des indépendances' ?",
+        "o": ["Ahmadou Kourouma", "Mariama Bâ", "Alain Mabanckou", "Tahar Ben Jelloun"],
+        "c": 0
+      },
+      {
+        "q": "Quel mode verbal exprime le doute ou l'incertitude ?",
+        "o": ["L'indicatif", "Le subjonctif", "L'impératif", "Le conditionnel"],
+        "c": 1
+      }
+    ],
     "defi": [
-      { "q": "Dans 'L'Étranger' de Camus, quelle est la raison invoquée par Meursault pour le meurtre ?", "o": ["La vengeance", "À cause du soleil", "La légitime défense"], "c": 1 },
-      { "q": "Quel poète a écrit : 'L'homme y passe à travers des forêts de symboles' ?", "o": ["Baudelaire", "Rimbaud", "Verlaine"], "c": 0 },
-      { "q": "Identifiez l'anaphore dans un texte : c'est une répétition...", "o": ["En fin de phrase", "En début de phrase", "Au milieu"], "c": 1 },
-      { "q": "Qui a écrit 'L'Aventure Ambiguë' ?", "o": ["Cheikh Hamidou Kane", "Camara Laye", "Mongo Beti"], "c": 0 },
-      { "q": "Le mouvement de la Pléiade visait à...", "o": ["Simplifier la langue", "Enrichir la langue française", "Supprimer les rimes"], "c": 1 },
-      { "q": "Quelle est la fonction de 'que' dans : 'Le livre que je lis' ?", "o": ["Sujet", "COD", "Complément de nom"], "c": 1 },
-      { "q": "Le 'Vantardisme' est un trait caractéristique de quelle épopée ?", "o": ["L'Odyssée", "L'Épopée de Soundiata", "Le Cid"], "c": 1 },
-      { "q": "Qu'est-ce qu'une focalisation externe ?", "o": ["Le narrateur sait tout", "Le narrateur est témoin neutre", "Le narrateur est le héros"], "c": 1 },
-      { "q": "L'œuvre 'Une si longue lettre' est un roman...", "o": ["Épistolaire", "Autobiographique", "Historique"], "c": 0 },
-      { "q": "Quel est le mode de 'que nous sachions' ?", "o": ["Indicatif", "Subjonctif", "Conditionnel"], "c": 1 },
-      { "q": "Laquelle de ces pièces est une tragédie de Racine ?", "o": ["Le Tartuffe", "Phèdre", "L'Avare"], "c": 1 },
-      { "q": "Qui est le chef de file du Romantisme en France ?", "o": ["Victor Hugo", "Stendhal", "Balzac"], "c": 0 }
-    ]
-  },
-  "philo": {
-    "defi": [
-      { "q": "Pour Marx, quelle est l'infrastructure de la société ?", "o": ["Le Droit", "L'Économie", "La Religion"], "c": 1 },
-      { "q": "Quelle est la célèbre devise de l'Existentialisme de Sartre ?", "o": ["Je pense donc je suis", "L'existence précède l'essence", "Tout ce qui est réel est rationnel"], "c": 1 },
-      { "q": "Selon Freud, quelle partie du psychisme gère les pulsions ?", "o": ["Le Moi", "Le Surmoi", "Le Ça"], "c": 2 },
-      { "q": "Qui a théorisé la 'rupture épistémologique' ?", "o": ["Gaston Bachelard", "Karl Popper", "Auguste Comte"], "c": 0 },
-      { "q": "L'allégorie de la caverne de Platon traite de...", "o": ["La politique", "La connaissance et l'éducation", "La morale"], "c": 1 },
-      { "q": "Quel philosophe prône le 'retour aux choses mêmes' ?", "o": ["Husserl", "Kant", "Nietzsche"], "c": 0 },
-      { "q": "Pour Rousseau, l'homme est naturellement...", "o": ["Mauvais", "Bon", "Neutre"], "c": 1 },
-      { "q": "Qu'est-ce que l'impératif catégorique chez Kant ?", "o": ["Un conseil", "Une loi morale universelle", "Un désir"], "c": 1 },
-      { "q": "Qui a écrit 'Le Discours sur la méthode' ?", "o": ["Pascal", "Descartes", "Spinoza"], "c": 1 },
-      { "q": "Laquelle de ces notions est centrale chez Nietzsche ?", "o": ["La Volonté de puissance", "Le Contrat Social", "L'Aliénation"], "c": 0 },
-      { "q": "Pour Kierkegaard, l'angoisse est liée à...", "o": ["La mort", "La liberté", "La douleur"], "c": 1 },
-      { "q": "Qui est l'auteur de 'L'Abolition de l'Homme' ?", "o": ["C.S. Lewis", "Sartre", "Aron"], "c": 0 }
+      {
+        "q": "Dans 'Xala' de Sembène Ousmane, que symbolise la xala (l'impuissance) du protagoniste ?",
+        "o": ["La corruption de la bourgeoisie africaine", "La maladie physique", "L'amour impossible", "La tradition ancestrale"],
+        "c": 0
+      },
+      {
+        "q": "Quelle est la structure narrative de 'Une si longue lettre' ?",
+        "o": ["Narration linéaire", "Narration à rebours", "Récit enchâssé dans une lettre", "Narration polyphonique"],
+        "c": 2
+      },
+      {
+        "q": "Analysez la phrase : 'Bien qu'il soit tard, nous partirons'. Quelle est la valeur de la subordonnée ?",
+        "o": ["Cause", "Conséquence", "Concession", "But"],
+        "c": 2
+      },
+      {
+        "q": "Quel procédé stylistique domine dans 'Femme nue, femme noire' de Senghor ?",
+        "o": ["L'anaphore et la répétition", "L'ironie", "Le réalisme", "La description objective"],
+        "c": 0
+      },
+      {
+        "q": "Dans 'L'Aventure ambiguë', quel conflit identitaire traverse Samba Diallo ?",
+        "o": ["Modernité occidentale vs tradition africaine", "Riches vs pauvres", "Hommes vs femmes", "Villes vs campagnes"],
+        "c": 0
+      },
+      {
+        "q": "Identifiez la fonction de 'dont' dans : 'Le livre dont je parle est intéressant'.",
+        "o": ["COD", "COI", "Complément du nom", "Sujet"],
+        "c": 2
+      },
+      {
+        "q": "Quel est l'enjeu central de la littérature de la Négritude ?",
+        "o": ["La revendication de l'identité noire et la critique du colonialisme", "La description de la nature africaine", "Le récit historique", "Le roman d'amour"],
+        "c": 0
+      },
+      {
+        "q": "Quelle est la valeur aspectuelle du passé simple dans un récit ?",
+        "o": ["Action en cours", "Action achevée et ponctuelle", "Action répétée", "Action future"],
+        "c": 1
+      },
+      {
+        "q": "Dans 'Batouala', comment René Maran critique-t-il la colonisation ?",
+        "o": ["Par un regard indigène sur les colonisateurs", "Par une apologie du système colonial", "Par des descriptions neutres", "Par des dialogues philosophiques"],
+        "c": 0
+      },
+      {
+        "q": "Qu'est-ce qu'une phrase nominale ?",
+        "o": ["Une phrase sans verbe conjugué", "Une phrase avec plusieurs noms", "Une phrase à l'impératif", "Une phrase interrogative"],
+        "c": 0
+      },
+      {
+        "q": "Quel rôle joue la polygamie dans 'Une si longue lettre' ?",
+        "o": ["Elle est présentée de manière positive", "Elle est critiquée comme source de souffrance pour les femmes", "Elle est ignorée", "Elle est secondaire"],
+        "c": 1
+      },
+      {
+        "q": "Identifiez le type de discours : 'Il m'a dit qu'il viendrait demain'.",
+        "o": ["Discours direct", "Discours indirect", "Discours indirect libre", "Discours narrativisé"],
+        "c": 1
+      }
     ]
   },
   "maths": {
-    "defi": [
-      { "q": "Quelle est la limite de (sin x)/x quand x tend vers 0 ?", "o": ["0", "1", "L'infini"], "c": 1 },
-      { "q": "La primitive de 1/x est...", "o": ["ln|x|", "exp(x)", "-1/x²"], "c": 0 },
-      { "q": "Si z = 1 + i, quel est son argument ?", "o": ["π/2", "π/4", "3π/4"], "c": 1 },
-      { "q": "Deux vecteurs sont colinéaires si leur produit vectoriel est...", "o": ["Égal à 1", "Nul", "Égal à leur norme"], "c": 1 },
-      { "q": "Le discriminant Δ est négatif, l'équation du second degré a...", "o": ["2 racines réelles", "0 racine réelle", "1 racine double"], "c": 1 },
-      { "q": "Quelle est la dérivée de e^(2x) ?", "o": ["e^(2x)", "2e^(2x)", "0.5e^(2x)"], "c": 1 },
-      { "q": "L'intégrale de 0 à 1 de x dx est...", "o": ["1", "0.5", "2"], "c": 1 },
-      { "q": "Combien vaut log(100) en base 10 ?", "o": ["1", "2", "10"], "c": 1 },
-      { "q": "Dans un repère, si u.v = 0, les vecteurs sont...", "o": ["Parallèles", "Orthogonaux", "Identiques"], "c": 1 },
-      { "q": "La suite Un = 3n + 2 est...", "o": ["Géométrique", "Arithmétique", "Constante"], "c": 1 },
-      { "q": "L'aire sous la courbe d'une fonction positive est donnée par...", "o": ["Sa dérivée", "Son intégrale", "Sa limite"], "c": 1 },
-      { "q": "Dans une loi binomiale B(n, p), l'espérance est...", "o": ["np", "npq", "p/n"], "c": 0 }
-    ],
-    
-    "moyen":
-    [
-  { "q": "Si 2x - 4 = 10, alors x est égal à :", "o": ["3", "7", "14"], "c": 1 },
-  { "q": "Le PGCD de 36 et 48 est :", "o": ["6", "12", "18"], "c": 1 },
-  { "q": "Quelle est la valeur de cos(60°) ?", "o": ["0,5", "0,86", "1"], "c": 0 },
-  { "q": "L'aire d'un triangle de base 6cm et hauteur 4cm est :", "o": ["24 cm²", "12 cm²", "10 cm²"], "c": 1 },
-  { "q": "Développez (x + 3)² :", "o": ["x² + 9", "x² + 3x + 9", "x² + 6x + 9"], "c": 2 },
-  { "q": "La racine carrée de 144 est :", "o": ["12", "14", "16"], "c": 0 },
-  { "q": "Un pantalon coûte 5000 FCFA. Après une baisse de 10%, il coûte :", "o": ["4000", "4500", "4900"], "c": 1 },
-  { "q": "Dans un triangle rectangle, le côté le plus long s'appelle :", "o": ["L'adjacent", "L'opposé", "L'hypoténuse"], "c": 2 },
-  { "q": "La somme des angles d'un triangle est toujours égale à :", "o": ["90°", "180°", "360°"], "c": 1 },
-  { "q": "Si un rectangle a une longueur de 8m et une largeur de 3m, son périmètre est :", "o": ["11m", "22m", "24m"], "c": 1 },
-  { "q": "Quelle est l'expression factorisée de x² - 16 ?", "o": ["(x-4)²", "(x-4)(x+4)", "(x-8)(x+2)"], "c": 1 },
-  { "q": "L'arrondi de 3,1415 à 10⁻² près est :", "o": ["3,1", "3,14", "3,15"], "c": 1 }
-] },
+    "facile": [],
+    "moyen": [],
+    "defi": []
+  },
   "svt": {
-    "defi": [
-      { "q": "Quel est le génotype d'un individu de groupe O ?", "o": ["AO", "BO", "OO"], "c": 2 },
-      { "q": "La méiose produit combien de cellules filles ?", "o": ["2", "4", "8"], "c": 1 },
-      { "q": "Où se déroule la fécondation chez la femme ?", "o": ["L'utérus", "Les trompes", "Les ovaires"], "c": 1 },
-{ "q": "L'hormone hyperglycémiante produite par le pancréas est...", "o": ["L'insuline", "Le glucagon", "L'adrénaline"], "c": 1 },
-      { "q": "Quelle est l'unité de base du système nerveux ?", "o": ["Le néphron", "Le neurone", "L'axone"], "c": 1 },
-      { "q": "La synthèse des protéines a lieu dans...", "o": ["Le noyau", "Les ribosomes", "Les mitochondries"], "c": 1 },
-      { "q": "Un séisme est causé par la rupture brutale de...", "o": ["Magma", "Failles", "Cratères"], "c": 1 },
-      { "q": "La phase G1 du cycle cellulaire correspond à...", "o": ["La mitose", "La croissance cellulaire", "La réplication de l'ADN"], "c": 1 },
-      { "q": "Quel organite contient l'information génétique ?", "o": ["Le cytoplasme", "Le noyau", "La vacuole"], "c": 1 },
-      { "q": "Le SIDA s'attaque principalement aux...", "o": ["Hématies", "Lymphocytes T4", "Plaquettes"], "c": 1 },
-      { "q": "La dérive des continents a été proposée par...", "o": ["Darwin", "Wegener", "Newton"], "c": 1 },
-      { "q": "L'arc réflexe médullaire passe par...", "o": ["Le cerveau", "La moelle épinière", "Le cœur"], "c": 1 }
-    ],
-
-    "moyen":[[
-  { "q": "Quel organe produit la bile pour faciliter la digestion des graisses ?", "o": ["L'estomac", "Le foie", "Le pancréas"], "c": 1 },
-  { "q": "Laquelle de ces maladies est causée par une carence en Vitamine C ?", "o": ["Le scorbut", "Le rachitisme", "Le béribéri"], "c": 0 },
-  { "q": "Le passage des nutriments du tube digestif vers le sang s'appelle :", "o": ["L'ingestion", "L'absorption intestinale", "La défécation"], "c": 1 },
-  { "q": "Dans le sang, les cellules responsables du transport de l'oxygène sont :", "o": ["Les globules blancs", "Les plaquettes", "Les globules rouges"], "c": 2 },
-  { "q": "Quelle est la fonction principale des reins ?", "o": ["Digérer les protéines", "Filtrer le sang et produire l'urine", "Pomper le sang"], "c": 1 },
-  { "q": "Un microbe capable de provoquer une maladie est dit :", "o": ["Pathogène", "Inoffensif", "Antigène"], "c": 0 },
-  { "q": "La théorie expliquant le mouvement des continents s'appelle :", "o": ["La tectonique des plaques", "L'érosion", "Le volcanisme"], "c": 0 },
-  { "q": "Quel type de vaisseau ramène le sang des organes vers le cœur ?", "o": ["Les artères", "Les veines", "Les capillaires"], "c": 1 },
-  { "q": "La partie du système nerveux qui protège les centres réflexes est :", "o": ["Le cerveau", "La moelle épinière", "Le nerf optique"], "c": 1 },
-  { "q": "Laquelle de ces méthodes est une contraception hormonale ?", "o": ["Le préservatif", "La pilule", "Le stérilet en cuivre"], "c": 1 },
-  { "q": "L'ensemble des réactions de défense de l'organisme est appelé :", "o": ["La digestion", "La réponse immunitaire", "La respiration"], "c": 1 },
-  { "q": "Un séisme se mesure avec un appareil nommé :", "o": ["Baromètre", "Sismographe", "Thermomètre"], "c": 1 }
-]]
+    "facile": [],
+    "moyen": [],
+    "defi": []
   },
   "pc": {
-    "defi": [
-      { "q": "Quelle est l'unité de la constante de Planck ?", "o": ["Joule", "J.s", "Watt"], "c": 1 },
-      { "q": "Une solution de pH 3 est...", "o": ["Acide", "Basique", "Neutre"], "c": 0 },
-      { "q": "La vitesse de la lumière est d'environ...", "o": ["300 000 km/s", "3 000 km/s", "30 000 km/s"], "c": 0 },
-      { "q": "La loi de gravitation universelle a été établie par...", "o": ["Einstein", "Newton", "Galilée"], "c": 1 },
-      { "q": "Un alcane à 3 atomes de carbone s'appelle...", "o": ["Méthane", "Éthane", "Propane"], "c": 2 },
-      { "q": "L'énergie cinétique se calcule par...", "o": ["mgh", "1/2 mv²", "F x d"], "c": 1 },
-      { "q": "Quel est le symbole chimique de l'Or ?", "o": ["Ag", "Fe", "Au"], "c": 2 },
-      { "q": "Le passage de l'état solide à l'état gazeux est la...", "o": ["Fusion", "Sublimation", "Condensation"], "c": 1 },
-      { "q": "La résistance électrique s'exprime en...", "o": ["Volt", "Ampère", "Ohm"], "c": 2 },
-      { "q": "Quelle est la charge d'un électron ?", "o": ["Positive", "Négative", "Neutre"], "c": 1 },
-      { "q": "La poussée d'Archimède s'exerce dans...", "o": ["Le vide", "Les fluides", "Les solides"], "c": 1 },
-      { "q": "Le fer réagit avec l'acide chlorhydrique pour donner du...", "o": ["Dioxyde de carbone", "Dihydrogène", "Dioxygène"], "c": 1 }
-    ],
-    "moyen":[[
-  { "q": "Quelle est l'unité internationale de la force ?", "o": ["Le Joule", "Le Newton", "Le Watt"], "c": 1 },
-  { "q": "Une solution dont le pH est égal à 7 est dite :", "o": ["Acide", "Basique", "Neutre"], "c": 2 },
-  { "q": "L'instrument utilisé pour mesurer l'intensité d'un courant électrique est :", "o": ["Le voltmètre", "L'ampèremètre", "L'ohmmètre"], "c": 1 },
-  { "q": "La formule chimique de l'eau pure est :", "o": ["CO2", "H2O", "HO2"], "c": 1 },
-  { "q": "Un corps qui garde sa forme et son volume est à l'état :", "o": ["Solide", "Liquide", "Gazeux"], "c": 0 },
-  { "q": "Le passage de l'état liquide à l'état solide s'appelle :", "o": ["La fusion", "La vaporisation", "La solidification"], "c": 2 },
-  { "q": "Dans la formule P = m x g, que représente 'm' ?", "o": ["Le poids", "La masse", "La gravité"], "c": 1 },
-  { "q": "Laquelle de ces lampes consomme le moins d'énergie pour la même luminosité ?", "o": ["Incanescence", "Halogène", "LED"], "c": 2 },
-  { "q": "Le gaz qui trouble l'eau de chaux est :", "o": ["Le dioxygène", "Le diazote", "Le dioxyde de carbone"], "c": 2 },
-  { "q": "Une solution qui peut encore dissoudre du soluté est dite :", "o": ["Saturée", "Non saturée", "Concentrée"], "c": 1 },
-  { "q": "L'atome est composé d'un noyau et de particules appelées :", "o": ["Molécules", "Électrons", "Ions"], "c": 1 },
-  { "q": "La loi d'Ohm s'écrit mathématiquement :", "o": ["P = U x I", "U = R x I", "E = P x t"], "c": 1 }
-]]
+    "facile": [],
+    "moyen": [],
+    "defi": []
+  },
+  "philo": {
+    "facile": [],
+    "moyen": [],
+    "defi": []
   }
 }

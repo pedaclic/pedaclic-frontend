@@ -3,22 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quiz Premium - Pedaclic</title>
-    <link rel="stylesheet" href="assets/css/design-system.css">
+    <title>Quiz Premium - PedaClic</title>
+
+    <!-- Lien vers le design system (si disponible, sinon on utilise les styles intégrés) -->
+    <!-- <link rel="stylesheet" href="assets/css/design-system.css"> -->
+    
     <style>
+        /* ==============================================
+           VARIABLES CSS - Palette de couleurs PedaClic
+           ============================================== */
         :root {
-            --primary: #4F46E5;
-            --success: #10B981;
-            --danger: #EF4444;
-            --neutral-100: #F3F4F6;
-            --neutral-800: #1F2937;
+            --primary-color: #4F46E5;      /* Indigo principal */
+            --success-color: #10B981;       /* Vert succès */
+            --danger-color: #EF4444;        /* Rouge erreur */
+            --warning-color: #F59E0B;       /* Orange alerte */
+            --neutral-50: #F9FAFB;          /* Fond très clair */
+            --neutral-100: #F3F4F6;         /* Fond clair */
+            --neutral-200: #E5E7EB;         /* Bordures */
+            --neutral-600: #4B5563;         /* Texte secondaire */
+            --neutral-700: #374151;         /* Texte */
+            --neutral-800: #1F2937;         /* Texte foncé */
+            --neutral-900: #111827;         /* Texte principal */
         }
 
-        body { background: var(--neutral-50); font-family: 'Inter', sans-serif; }
+        /* ==============================================
+           RESET & BASE STYLES
+           ============================================== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-        .quiz-wrapper { max-width: 800px; margin: 40px auto; padding: 20px; }
+        body { 
+            background: var(--neutral-50); 
+            font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--neutral-900);
+        }
 
-        /* Style des sélecteurs de niveaux et matières */
+        /* ==============================================
+           CONTENEUR PRINCIPAL DU QUIZ
+           ============================================== */
+        .quiz-wrapper { 
+            max-width: 800px; 
+            margin: 40px auto; 
+            padding: 20px; 
+        }
+
+        /* ==============================================
+           EN-TÊTE DU QUIZ
+           ============================================== */
+        .quiz-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .quiz-header h1 {
+            font-size: 2.5rem;
+            color: var(--neutral-900);
+            margin-bottom: 10px;
+        }
+
+        .quiz-header p {
+            color: var(--neutral-600);
+            font-size: 1.1rem;
+        }
+
+        /* ==============================================
+           AFFICHAGE DU RECORD PERSONNEL
+           ============================================== */
+        .high-score-display {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: var(--neutral-100);
+            border-radius: 12px;
+            font-size: 0.95rem;
+            color: var(--neutral-700);
+        }
+
+        .high-score-display strong {
+            color: var(--primary-color);
+            font-weight: 700;
+        }
+
+        /* ==============================================
+           SÉLECTEURS DE NIVEAU ET MATIÈRE
+           ============================================== */
         .quiz-nav {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -27,41 +99,91 @@
         }
 
         select {
-            padding: 12px;
+            padding: 14px 16px;
             border-radius: 12px;
-            border: 2px solid #E5E7EB;
+            border: 2px solid var(--neutral-200);
             font-size: 1rem;
             cursor: pointer;
             outline: none;
-            transition: border-color 0.3s;
+            transition: all 0.3s ease;
+            background: white;
+            font-weight: 500;
+            color: var(--neutral-900);
         }
 
-        select:focus { border-color: var(--primary); }
+        select:hover {
+            border-color: var(--primary-color);
+            background: var(--neutral-50);
+        }
 
-        /* Carte de Quiz */
+        select:focus { 
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        /* ==============================================
+           TIMER (COMPTE À REBOURS)
+           ============================================== */
+        .timer-container {
+            text-align: right;
+            margin-bottom: 15px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--primary-color);
+            transition: color 0.3s ease;
+        }
+
+        .timer-container.warning {
+            color: var(--danger-color);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* ==============================================
+           CARTE PRINCIPALE DU QUIZ
+           ============================================== */
         .quiz-card {
             background: white;
             border-radius: 24px;
             padding: 40px;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 
+                        0 10px 10px -5px rgba(0, 0, 0, 0.04);
             position: relative;
             overflow: hidden;
+            min-height: 400px;
         }
 
+        /* ==============================================
+           BARRE DE PROGRESSION
+           ============================================== */
         .progress-bar {
             position: absolute;
-            top: 0; left: 0; height: 6px;
-            background: var(--primary);
-            transition: width 0.3s ease;
+            top: 0; 
+            left: 0; 
+            height: 6px;
+            background: var(--primary-color);
+            transition: width 0.5s ease-in-out;
+            z-index: 10;
         }
 
+        /* ==============================================
+           QUESTION
+           ============================================== */
         .question-text {
             font-size: 1.4rem;
             font-weight: 700;
             color: var(--neutral-900);
             margin-bottom: 25px;
+            line-height: 1.5;
         }
 
+        /* ==============================================
+           LISTE DES OPTIONS DE RÉPONSE
+           ============================================== */
         .options-list {
             display: flex;
             flex-direction: column;
@@ -69,218 +191,694 @@
         }
 
         .option-item {
-            padding: 16px 24px;
-            border: 2px solid var(--neutral-100);
+            padding: 18px 24px;
+            border: 2px solid var(--neutral-200);
             border-radius: 16px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             font-weight: 500;
+            background: white;
             display: flex;
-            justify-content: space-between;
+            align-items: center;
+            position: relative;
         }
 
         .option-item:hover {
-            border-color: var(--primary);
+            border-color: var(--primary-color);
             background: #EEF2FF;
+            transform: translateX(4px);
         }
 
+        /* État correct */
         .option-item.correct {
             background: #D1FAE5;
-            border-color: var(--success);
+            border-color: var(--success-color);
             color: #065F46;
+            pointer-events: none;
         }
 
+        .option-item.correct::after {
+            content: '✓';
+            position: absolute;
+            right: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* État incorrect */
         .option-item.wrong {
             background: #FEE2E2;
-            border-color: var(--danger);
+            border-color: var(--danger-color);
             color: #991B1B;
+            pointer-events: none;
         }
 
-        /* Score et Feedback */
+        .option-item.wrong::after {
+            content: '✗';
+            position: absolute;
+            right: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* ==============================================
+           BOUTONS
+           ============================================== */
+        .btn-next {
+            margin-top: 30px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            display: none;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-next:hover {
+            background: #4338CA;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-next:active {
+            transform: translateY(0);
+        }
+
+        /* ==============================================
+           AFFICHAGE DES RÉSULTATS
+           ============================================== */
         .score-display {
             text-align: center;
             display: none;
+            padding: 20px 0;
         }
 
-        .btn-next {
-            margin-top: 30px;
-            background: var(--primary);
+        .score-display h2 {
+            font-size: 4rem;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            font-weight: 800;
+        }
+
+        .score-display p {
+            font-size: 1.2rem;
+            color: var(--neutral-700);
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        .score-display .btn-next {
+            display: inline-block;
+            width: auto;
+            min-width: 200px;
+        }
+
+        /* ==============================================
+           MESSAGE D'ATTENTE (Quiz en préparation)
+           ============================================== */
+        .loading-message {
+            text-align: center;
+            padding: 60px 40px;
+            color: var(--neutral-600);
+        }
+
+        .loading-message .emoji {
+            font-size: 4rem;
+            margin-bottom: 20px;
+        }
+
+        .loading-message h3 {
+            color: var(--neutral-900);
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+        }
+
+        .loading-message p {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* ==============================================
+           MODAL DU CERTIFICAT
+           ============================================== */
+        .certificate-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .certificate-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 500px;
+            border: 5px solid #FFD700;
+            position: relative;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .certificate-content .emoji {
+            font-size: 5rem;
+            margin-bottom: 15px;
+        }
+
+        .certificate-content h2 {
+            color: #d4af37;
+            margin: 15px 0;
+            font-size: 2rem;
+        }
+
+        .certificate-content p {
+            margin: 15px 0;
+            font-size: 1.1rem;
+        }
+
+        .certificate-subject {
+            text-transform: uppercase;
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.5rem;
+            margin: 20px 0;
+        }
+
+        .certificate-score {
+            font-weight: bold;
+            font-size: 2rem;
+            color: var(--success-color);
+        }
+
+        .certificate-footer {
+            font-style: italic;
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 20px;
+        }
+
+        .btn-close-cert {
+            background: var(--primary-color);
             color: white;
             border: none;
             padding: 12px 30px;
-            border-radius: 12px;
-            font-weight: 600;
+            border-radius: 8px;
             cursor: pointer;
-            display: none;
+            margin-top: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close-cert:hover {
+            background: #4338CA;
+            transform: translateY(-2px);
+        }
+
+        /* ==============================================
+           RESPONSIVE DESIGN
+           ============================================== */
+        @media (max-width: 768px) {
+            .quiz-wrapper {
+                padding: 15px;
+                margin: 20px auto;
+            }
+
+            .quiz-header h1 {
+                font-size: 2rem;
+            }
+
+            .quiz-nav {
+                grid-template-columns: 1fr;
+            }
+
+            .quiz-card {
+                padding: 25px;
+            }
+
+            .question-text {
+                font-size: 1.2rem;
+            }
+
+            .option-item {
+                padding: 14px 18px;
+            }
+
+            .score-display h2 {
+                font-size: 3rem;
+            }
+
+            .certificate-content {
+                padding: 30px 20px;
+                margin: 20px;
+            }
         }
     </style>
 </head>
-<body>
+<body>  
 
-<div class="quiz-wrapper">
-    <div class="text-center" style="margin-bottom: 30px;">
-        <h1 style="font-size: 2.5rem; color: var(--neutral-900);">Espace Quiz Premium 🇸🇳</h1>
-        <p style="color: var(--neutral-600);">Validez vos acquis avec nos experts</p>
-    </div>
-
-    <div class="quiz-nav">
-        <select id="discipline">
-            <option value="fr">Français</option>
-            <option value="maths">Mathématiques</option>
-            <option value="svt">SVT</option>
-            <option value="pc">Physique-Chimie</option>
-            <option value="philo">Philosophie</option>
-        </select>
-        <select id="level">
-            <option value="facile">Niveau : Facile</option>
-            <option value="moyen">Niveau : Moyen</option>
-            <option value="defi">Niveau : Défi</option>
-        </select>
-    </div>
-
-    <div class="quiz-card" id="quiz-card">
-        <div class="progress-bar" id="progress"></div>
-        <div id="quiz-content">
-            </div>
-        <button id="next-btn" class="btn-next" onclick="nextQuestion()">Question Suivante</button>
+    <!-- =====================================================
+         CONTENEUR PRINCIPAL DU QUIZ
+         ===================================================== -->
+    <div class="quiz-wrapper">
         
-        <div id="result-area" class="score-display">
-            <h2 style="font-size: 3rem;" id="final-score">0/12</h2>
-            <p id="feedback-text"></p>
-            <button class="btn-next" style="display:inline-block" onclick="location.reload()">Recommencer</button>
+        <!-- En-tête avec titre et description -->
+        <div class="quiz-header">
+            <h1>Espace Quiz Premium 🇸🇳</h1>
+            <p>Validez vos acquis avec nos experts</p>
+        </div>
+
+        <!-- Affichage du record personnel -->
+        <div class="high-score-display" id="high-score-display">
+            🏆 <strong>Record personnel :</strong> <span id="best-score">0</span>/12 
+            (<span id="best-subject">-</span>)
+        </div>
+
+        <!-- Sélecteurs de discipline et niveau -->
+        <div class="quiz-nav">
+            <select id="discipline">
+                <option value="fr">Français</option>
+                <option value="maths">Mathématiques</option>
+                <option value="svt">SVT</option>
+                <option value="pc">Physique-Chimie</option>
+                <option value="philo">Philosophie</option>
+            </select>
+            <select id="level">
+                <option value="facile">Niveau : Facile</option>
+                <option value="moyen">Niveau : Moyen</option>
+                <option value="defi">Niveau : Défi</option>
+            </select>
+        </div>
+
+        <!-- Timer (compte à rebours) -->
+        <div class="timer-container" id="timer-container">
+            ⏱️ Temps restant : <span id="time-left">30</span>s
+        </div>
+
+        <!-- Carte principale contenant le quiz -->
+        <div class="quiz-card" id="quiz-card">
+            
+            <!-- Barre de progression -->
+            <div class="progress-bar" id="progress"></div>
+            
+            <!-- Zone d'affichage des questions -->
+            <div id="quiz-content"></div>
+            
+            <!-- Bouton "Question suivante" -->
+            <button id="next-btn" class="btn-next" onclick="nextQuestion()">
+                Question Suivante →
+            </button>
+            
+            <!-- Zone d'affichage des résultats finaux -->
+            <div id="result-area" class="score-display">
+                <h2 id="final-score">0/12</h2>
+                <p id="feedback-text"></p>
+                <button class="btn-next" onclick="location.reload()">
+                    🔄 Recommencer
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-/** * BASE DE DONNÉES DES QUIZ (Structure pour 12 questions par module)
- * J'illustre ici avec des exemples clés du programme sénégalais.
- */
+    <!-- =====================================================
+         MODAL DU CERTIFICAT (affiché pour 12/12)
+         ===================================================== -->
+    <div id="certificate-modal" class="certificate-modal">
+        <div class="certificate-content">
+            <div class="emoji">🎓</div>
+            <h2>CERTIFICAT DE RÉUSSITE</h2>
+            <p>Félicitations ! Tu as démontré une excellente maîtrise en :</p>
+            <div class="certificate-subject" id="certif-subject">Discipline</div>
+            <p>Score parfait : <span class="certificate-score">12 / 12</span></p>
+            <p class="certificate-footer">Délivré par PedaClic Premium</p>
+            <button class="btn-close-cert" onclick="closeCertif()">Fermer</button>
+        </div>
+    </div>
 
- let database = {}; // On initialise une base vide
+    <!-- =====================================================
+         FICHIERS AUDIO POUR LES FEEDBACKS
+         ===================================================== -->
+    <audio id="sound-correct" src="https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3"></audio>
+    <audio id="sound-wrong" src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3"></audio>
 
- async function loadDatabase() {
-    try {
-        const response = await fetch('questions.json'); // Appel du fichier
-        if (!response.ok) throw new Error("Erreur de chargement du JSON");
-        
-        database = await response.json(); // On remplit notre variable avec le contenu du fichier
-        startQuiz(); // On lance le quiz seulement quand les données sont prêtes
-    } catch (error) {
-        console.error("Erreur:", error);
-        document.getElementById('quiz-content').innerHTML = "Impossible de charger les questions.";
-    }
-}
+    <!-- =====================================================
+         SCRIPT JAVASCRIPT - LOGIQUE DU QUIZ
+         ===================================================== -->
+    <script>
+        /* =================================================
+           VARIABLES GLOBALES
+           ================================================= */
+        let database = {};              // Base de données des questions
+        let currentQ = 0;               // Index de la question actuelle
+        let score = 0;                  // Score de l'utilisateur
+        let activeQuestions = [];       // Questions du quiz en cours
+        let timeLeft;                   // Temps restant (en secondes)
+        let timerInterval;              // Intervalle du timer
+        const TIME_LIMIT = 30;          // Limite de temps par question (30 secondes)
 
-let currentQ = 0;
-let score = 0;
-let activeQuestions = [];
+        /* =================================================
+           CHARGEMENT DE LA BASE DE DONNÉES DES QUESTIONS
+           Charge le fichier questions.json au démarrage
+           ================================================= */
+        async function loadDatabase() {
+            try {
+                const response = await fetch('questions.json');
+                if (!response.ok) throw new Error("Erreur de chargement du JSON");
+                
+                database = await response.json();
+                console.log("✅ Base de données chargée avec succès");
+                startQuiz(); // Lance le quiz une fois les données chargées
+            } catch (error) {
+                console.error("❌ Erreur:", error);
+                document.getElementById('quiz-content').innerHTML = `
+                    <div class="loading-message">
+                        <div class="emoji">⚠️</div>
+                        <h3>Erreur de chargement</h3>
+                        <p>Impossible de charger les questions.</p>
+                        <p style="font-size: 0.9rem; color: var(--neutral-600);">
+                            Assurez-vous que le fichier <code>questions.json</code> est présent.
+                        </p>
+                    </div>
+                `;
+            }
+        }
 
-function startQuiz() {
-    // 1. Récupération des choix de l'utilisateur
-    const disc = document.getElementById('discipline').value;
-    const lvl = document.getElementById('level').value;
-    
-    // 2. Vérification : La catégorie existe-t-elle et contient-elle des questions ?
-    if (database[disc] && database[disc][lvl] && database[disc][lvl].length > 0) {
-        // Succès : On charge les questions
-        activeQuestions = database[disc][lvl];
-        currentQ = 0;
-        score = 0;
-        
-        // Mise à jour de l'affichage
-        document.getElementById('result-area').style.display = 'none';
-        document.getElementById('quiz-content').style.display = 'block';
-        showQuestion();
-    } else {
-        // Sécurité : On affiche un message amical si c'est vide
-        document.getElementById('quiz-content').innerHTML = `
-            <div style="text-align:center; padding:40px; color: var(--neutral-600);">
-                <div style="font-size: 3rem; margin-bottom: 20px;">🚧</div>
-                <h3 style="color:var(--neutral-900);">Quiz en cours de préparation</h3>
-                <p>Le module <b>${disc.toUpperCase()} (${lvl})</b> arrive bientôt sur Pedaclic Premium.</p>
-                <p style="font-size: 0.9rem;">En attendant, essayez le niveau <b>Défi</b> en Français !</p>
-            </div>`;
-        document.getElementById('next-btn').style.display = 'none';
-        document.getElementById('progress').style.width = "0%";
-    }
-}
+        /* =================================================
+           DÉMARRAGE DU QUIZ
+           Récupère la discipline et le niveau choisis,
+           puis charge les questions correspondantes
+           ================================================= */
+        function startQuiz() {
+            // Récupération des choix de l'utilisateur
+            const disc = document.getElementById('discipline').value;
+            const lvl = document.getElementById('level').value;
+            
+            // Vérification : la catégorie existe-t-elle ?
+            if (database[disc] && database[disc][lvl] && database[disc][lvl].length > 0) {
+                // Initialisation du quiz
+                activeQuestions = database[disc][lvl];
+                currentQ = 0;
+                score = 0;
+                
+                // Mise à jour de l'affichage
+                document.getElementById('result-area').style.display = 'none';
+                document.getElementById('quiz-content').style.display = 'block';
+                document.getElementById('timer-container').style.display = 'block';
+                
+                showQuestion();
+            } else {
+                // Message si le module n'est pas encore disponible
+                document.getElementById('quiz-content').innerHTML = `
+                    <div class="loading-message">
+                        <div class="emoji">🚧</div>
+                        <h3>Quiz en cours de préparation</h3>
+                        <p>Le module <strong>${disc.toUpperCase()} (${lvl})</strong> arrive bientôt sur PedaClic Premium.</p>
+                        <p style="font-size: 0.9rem;">En attendant, essayez le niveau <strong>Défi</strong> en Français !</p>
+                    </div>
+                `;
+                document.getElementById('next-btn').style.display = 'none';
+                document.getElementById('progress').style.width = "0%";
+                document.getElementById('timer-container').style.display = 'none';
+            }
+        }
 
-function showQuestion() {
-    const q = activeQuestions[currentQ];
-    const progress = ((currentQ) / activeQuestions.length) * 100;
-    document.getElementById('progress').style.width = progress + "%";
-    
-    let html = `<div class="question-text">${currentQ + 1}. ${q.q}</div><div class="options-list">`;
-    q.o.forEach((opt, i) => {
-        html += `<div class="option-item" onclick="checkAnswer(this, ${i}, ${q.c})">${opt}</div>`;
-    });
-    html += `</div>`;
-    document.getElementById('quiz-content').innerHTML = html;
-    document.getElementById('next-btn').style.display = 'none';
-}
+        /* =================================================
+           AFFICHAGE D'UNE QUESTION
+           Génère le HTML de la question et lance le timer
+           ================================================= */
+        function showQuestion() {
+            const q = activeQuestions[currentQ];
+            
+            // Mise à jour de la barre de progression
+            const progress = ((currentQ) / activeQuestions.length) * 100;
+            document.getElementById('progress').style.width = progress + "%";
+            
+            // Génération du HTML de la question
+            let html = `<div class="question-text">${currentQ + 1}. ${q.q}</div>
+                        <div class="options-list">`;
+            
+            q.o.forEach((opt, i) => {
+                html += `<div class="option-item" onclick="checkAnswer(this, ${i})">${opt}</div>`;
+            });
+            
+            html += `</div>`;
+            document.getElementById('quiz-content').innerHTML = html;
+            document.getElementById('next-btn').style.display = 'none';
+            
+            // Démarrage du compte à rebours
+            startTimer();
+        }
 
-function checkAnswer(el, selected, correct) {
-    const items = document.querySelectorAll('.option-item');
-    items.forEach(item => item.style.pointerEvents = 'none'); // Bloquer les clics
+        /* =================================================
+           DÉMARRAGE DU TIMER
+           Lance un compte à rebours de 30 secondes
+           ================================================= */
+        function startTimer() {
+            timeLeft = TIME_LIMIT;
+            document.getElementById('time-left').innerText = timeLeft;
+            
+            // Reset du style du timer
+            const timerContainer = document.getElementById('timer-container');
+            timerContainer.classList.remove('warning');
+            
+            // Effacement de l'ancien intervalle s'il existe
+            clearInterval(timerInterval);
+            
+            // Démarrage du nouveau compte à rebours
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('time-left').innerText = timeLeft;
+                
+                // Changement de couleur quand il reste 5 secondes
+                if (timeLeft <= 5) {
+                    timerContainer.classList.add('warning');
+                }
+                
+                // Temps écoulé : passage automatique à la question suivante
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeOut();
+                }
+            }, 1000);
+        }
 
-    if(selected === correct) {
-        el.classList.add('correct');
-        score++;
-    } else {
-        el.classList.add('wrong');
-        items[correct].classList.add('correct');
-    }
-    document.getElementById('next-btn').style.display = 'block';
-}
+        /* =================================================
+           GESTION DU TIMEOUT
+           Appelée quand le temps est écoulé sans réponse
+           ================================================= */
+        function handleTimeOut() {
+            const items = document.querySelectorAll('.option-item');
+            const correctIndex = activeQuestions[currentQ].c;
+            
+            // Désactivation des clics
+            items.forEach(item => item.style.pointerEvents = 'none');
+            
+            // Affichage de la bonne réponse
+            items[correctIndex].classList.add('correct');
+            
+            // Son d'erreur
+            document.getElementById('sound-wrong').play();
+            
+            // Affichage du bouton "Question suivante"
+            document.getElementById('next-btn').style.display = 'block';
+        }
 
-function nextQuestion() {
-    currentQ++;
-    if(currentQ < activeQuestions.length) {
-        showQuestion();
-    } else {
-        showResult();
-    }
-}
+        /* =================================================
+           VÉRIFICATION DE LA RÉPONSE
+           Appelée quand l'utilisateur clique sur une option
+           ================================================= */
+        function checkAnswer(el, selected) {
+            // Arrêt du timer
+            clearInterval(timerInterval);
+            
+            const correctIndex = activeQuestions[currentQ].c;
+            const items = document.querySelectorAll('.option-item');
+            
+            // Désactivation des clics
+            items.forEach(item => item.style.pointerEvents = 'none');
 
-function showResult() {
-    document.getElementById('quiz-content').style.display = 'none';
-    document.getElementById('next-btn').style.display = 'none';
-    document.getElementById('progress').style.width = "100%";
-    
-    const res = document.getElementById('result-area');
-    res.style.display = 'block';
-    document.getElementById('final-score').innerText = `${score} / ${activeQuestions.length}`;
-    
-    // 1. Détermination du message de base
-    let msg = "";
-    if(score === activeQuestions.length) msg = "Félicitations ! Un vrai génie Pedaclic ! 🏆";
-    else if(score >= activeQuestions.length/2) msg = "Bien joué ! Continuez ainsi. 👍";
-    else msg = "Besoin de révision ? Relisez vos cours Premium. 📚";
+            // Vérification de la réponse
+            if (selected === correctIndex) {
+                // Réponse correcte
+                el.classList.add('correct');
+                score++;
+                document.getElementById('sound-correct').play();
+            } else {
+                // Réponse incorrecte
+                el.classList.add('wrong');
+                items[correctIndex].classList.add('correct');
+                document.getElementById('sound-wrong').play();
+            }
+            
+            // Affichage du bouton "Question suivante"
+            document.getElementById('next-btn').style.display = 'block';
+        }
 
-    // 2. SYSTÈME DE RECORD (Ce que vous ajoutez)
-    const disc = document.getElementById('discipline').value;
-    const lvl = document.getElementById('level').value;
-    const recordKey = `record_${disc}_${lvl}`;
-    const oldRecord = localStorage.getItem(recordKey) || 0;
+        /* =================================================
+           PASSAGE À LA QUESTION SUIVANTE
+           ================================================= */
+        function nextQuestion() {
+            currentQ++;
+            if (currentQ < activeQuestions.length) {
+                showQuestion();
+            } else {
+                showResult();
+            }
+        }
 
-    if (score > oldRecord) {
-        localStorage.setItem(recordKey, score);
-        msg += `<br><strong style="color:var(--success)">🌟 Nouveau Record Personnel !</strong>`;
-    } else {
-        msg += `<br><span style="color:var(--neutral-600)">Votre record actuel sur ce module : ${oldRecord}/${activeQuestions.length}</span>`;
-    }
-    
-    // 3. Affichage final
-    document.getElementById('feedback-text').innerHTML = msg;
-}
+        /* =================================================
+           AFFICHAGE DES RÉSULTATS FINAUX
+           ================================================= */
+        function showResult() {
+            // Arrêt du timer et masquage
+            clearInterval(timerInterval);
+            document.getElementById('timer-container').style.display = 'none';
+            
+            // Masquage du contenu du quiz
+            document.getElementById('quiz-content').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+            document.getElementById('progress').style.width = "100%";
+            
+            // Affichage de la zone de résultats
+            const res = document.getElementById('result-area');
+            res.style.display = 'block';
+            document.getElementById('final-score').innerText = `${score} / ${activeQuestions.length}`;
+            
+            // Génération du message de feedback
+            let msg = "";
+            if (score === activeQuestions.length) {
+                msg = "🎉 Félicitations ! Un vrai génie PedaClic !";
+            } else if (score >= activeQuestions.length / 2) {
+                msg = "👏 Bien joué ! Continuez ainsi.";
+            } else {
+                msg = "📚 Besoin de révision ? Relisez vos cours Premium.";
+            }
 
-// Event Listeners
-document.getElementById('discipline').addEventListener('change', startQuiz);
-document.getElementById('level').addEventListener('change', startQuiz);
+            // Gestion du système de records
+            const disc = document.getElementById('discipline').value;
+            const lvl = document.getElementById('level').value;
+            const recordKey = `record_${disc}_${lvl}`;
+            const oldRecord = parseInt(localStorage.getItem(recordKey) || 0);
 
-// Lancement initial
-window.onload = loadDatabase; // On charge d'abord les données
-</script>
+            if (score > oldRecord) {
+                localStorage.setItem(recordKey, score);
+                msg += `<br><strong style="color:var(--success-color)">🌟 Nouveau Record Personnel !</strong>`;
+            } else if (oldRecord > 0) {
+                msg += `<br><span style="color:var(--neutral-600)">Votre record actuel sur ce module : ${oldRecord}/${activeQuestions.length}</span>`;
+            }
+            
+            document.getElementById('feedback-text').innerHTML = msg;
+
+            // Mise à jour du meilleur score global
+            updateBestScore(score, disc);
+
+            // Déclenchement du certificat si score parfait
+            if (score === activeQuestions.length) {
+                setTimeout(() => {
+                    showCertificate(disc);
+                }, 800);
+            }
+        }
+
+        /* =================================================
+           MISE À JOUR DU MEILLEUR SCORE GLOBAL
+           ================================================= */
+        function updateBestScore(finalScore, subject) {
+            const savedScore = parseInt(localStorage.getItem('pedaclic_best_score') || 0);
+            
+            if (finalScore >= savedScore) {
+                localStorage.setItem('pedaclic_best_score', finalScore);
+                localStorage.setItem('pedaclic_best_subject', subject);
+                displayBestScore();
+            }
+        }
+
+        /* =================================================
+           AFFICHAGE DU MEILLEUR SCORE
+           ================================================= */
+        function displayBestScore() {
+            const score = localStorage.getItem('pedaclic_best_score');
+            const subject = localStorage.getItem('pedaclic_best_subject');
+            
+            if (score !== null && score > 0) {
+                document.getElementById('best-score').innerText = score;
+                
+                // Conversion du code de matière en nom complet
+                const subjectNames = {
+                    'fr': 'Français',
+                    'maths': 'Mathématiques',
+                    'svt': 'SVT',
+                    'pc': 'Physique-Chimie',
+                    'philo': 'Philosophie'
+                };
+                document.getElementById('best-subject').innerText = subjectNames[subject] || subject;
+            }
+        }
+
+        /* =================================================
+           AFFICHAGE DU CERTIFICAT
+           ================================================= */
+        function showCertificate(subject) {
+            const subjectNames = {
+                'fr': 'Français',
+                'maths': 'Mathématiques',
+                'svt': 'SVT',
+                'pc': 'Physique-Chimie',
+                'philo': 'Philosophie'
+            };
+            
+            document.getElementById('certif-subject').innerText = subjectNames[subject] || subject;
+            document.getElementById('certificate-modal').style.display = 'flex';
+        }
+
+        /* =================================================
+           FERMETURE DU CERTIFICAT
+           ================================================= */
+        function closeCertif() {
+            document.getElementById('certificate-modal').style.display = 'none';
+        }
+
+        /* =================================================
+           ÉCOUTEURS D'ÉVÉNEMENTS
+           ================================================= */
+        document.getElementById('discipline').addEventListener('change', startQuiz);
+        document.getElementById('level').addEventListener('change', startQuiz);
+
+        /* =================================================
+           INITIALISATION AU CHARGEMENT DE LA PAGE
+           ================================================= */
+        window.onload = () => {
+            loadDatabase();     // Chargement de la base de questions
+            displayBestScore(); // Affichage du record personnel
+        };
+    </script>
+
 </body>
 </html>
