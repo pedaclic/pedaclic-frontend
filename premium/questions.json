@@ -188,23 +188,755 @@
     ]
   },
   "maths": {
-    "facile": [],
-    "moyen": [],
-    "defi": []
+    "facile": [
+      {
+        "q": "Combien font 15 × 8 ?",
+        "o": ["110", "120", "130", "140"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le résultat de 144 ÷ 12 ?",
+        "o": ["10", "11", "12", "13"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la formule du périmètre d'un rectangle ?",
+        "o": ["L × l", "2 × (L + l)", "L + l", "2 × L × l"],
+        "c": 1
+      },
+      {
+        "q": "Combien de côtés a un hexagone ?",
+        "o": ["5", "6", "7", "8"],
+        "c": 1
+      },
+      {
+        "q": "Quelle fraction est équivalente à 0,5 ?",
+        "o": ["1/3", "1/2", "1/4", "2/3"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le double de 45 ?",
+        "o": ["80", "85", "90", "95"],
+        "c": 2
+      },
+      {
+        "q": "Combien y a-t-il de centimètres dans 2 mètres ?",
+        "o": ["20 cm", "100 cm", "200 cm", "2000 cm"],
+        "c": 2
+      },
+      {
+        "q": "Quel est le résultat de 7² (7 au carré) ?",
+        "o": ["14", "21", "49", "64"],
+        "c": 2
+      },
+      {
+        "q": "Si un cahier coûte 500 FCFA, combien coûtent 4 cahiers ?",
+        "o": ["1500 FCFA", "2000 FCFA", "2500 FCFA", "3000 FCFA"],
+        "c": 1
+      },
+      {
+        "q": "Quel nombre est un nombre premier ?",
+        "o": ["9", "15", "17", "21"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la somme des angles d'un triangle ?",
+        "o": ["90°", "180°", "270°", "360°"],
+        "c": 1
+      },
+      {
+        "q": "Combien font 3/4 + 1/4 ?",
+        "o": ["1/2", "4/8", "1", "5/4"],
+        "c": 2
+      }
+    ],
+    "moyen": [
+      {
+        "q": "Résolvez l'équation : 3x + 7 = 22",
+        "o": ["x = 3", "x = 4", "x = 5", "x = 6"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est l'aire d'un cercle de rayon 5 cm ? (π ≈ 3,14)",
+        "o": ["15,7 cm²", "31,4 cm²", "78,5 cm²", "157 cm²"],
+        "c": 2
+      },
+      {
+        "q": "Quel est le PGCD de 48 et 36 ?",
+        "o": ["6", "12", "18", "24"],
+        "c": 1
+      },
+      {
+        "q": "Si le prix d'un article de 10 000 FCFA augmente de 20%, quel est le nouveau prix ?",
+        "o": ["11 000 FCFA", "12 000 FCFA", "13 000 FCFA", "14 000 FCFA"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la dérivée de f(x) = x² ?",
+        "o": ["x", "2x", "x²", "2x²"],
+        "c": 1
+      },
+      {
+        "q": "Dans un triangle rectangle, si un angle mesure 30°, quel est le troisième angle ?",
+        "o": ["30°", "45°", "60°", "90°"],
+        "c": 2
+      },
+      {
+        "q": "Combien vaut √64 ?",
+        "o": ["6", "7", "8", "9"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la formule du volume d'un cylindre ?",
+        "o": ["πr²h", "2πrh", "πr³", "4/3πr³"],
+        "c": 0
+      },
+      {
+        "q": "Si f(x) = 2x + 3, que vaut f(5) ?",
+        "o": ["10", "11", "12", "13"],
+        "c": 3
+      },
+      {
+        "q": "Quel est le PPCM de 12 et 18 ?",
+        "o": ["24", "36", "48", "72"],
+        "c": 1
+      },
+      {
+        "q": "Dans une suite arithmétique de premier terme 5 et de raison 3, quel est le 4ème terme ?",
+        "o": ["11", "12", "14", "15"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la médiane de la série : 3, 7, 9, 12, 15 ?",
+        "o": ["7", "9", "10", "12"],
+        "c": 1
+      }
+    ],
+    "defi": [
+      {
+        "q": "Résolvez le système : 2x + y = 7 et x - y = 2. Quelle est la valeur de x ?",
+        "o": ["x = 2", "x = 3", "x = 4", "x = 5"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la primitive de f(x) = 6x² + 4x ?",
+        "o": ["2x³ + 2x² + C", "3x³ + 2x² + C", "2x³ + 4x² + C", "6x³ + 4x² + C"],
+        "c": 0
+      },
+      {
+        "q": "Si cos(x) = 3/5, que vaut sin²(x) ?",
+        "o": ["9/25", "16/25", "4/5", "3/5"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la limite de (x² - 4)/(x - 2) quand x tend vers 2 ?",
+        "o": ["0", "2", "4", "Non définie"],
+        "c": 2
+      },
+      {
+        "q": "Dans un repère orthonormé, quelle est l'équation de la droite passant par A(2, 3) et B(4, 7) ?",
+        "o": ["y = 2x - 1", "y = 2x + 1", "y = x + 1", "y = 3x - 3"],
+        "c": 0
+      },
+      {
+        "q": "Combien de façons peut-on arranger 5 personnes sur une photo ?",
+        "o": ["20", "60", "120", "240"],
+        "c": 2
+      },
+      {
+        "q": "Si log₂(x) = 5, que vaut x ?",
+        "o": ["10", "16", "25", "32"],
+        "c": 3
+      },
+      {
+        "q": "Quelle est la formule du discriminant d'une équation ax² + bx + c = 0 ?",
+        "o": ["b² - 4ac", "b² + 4ac", "-b² + 4ac", "4ac - b²"],
+        "c": 0
+      },
+      {
+        "q": "Dans une suite géométrique de premier terme 2 et de raison 3, quel est le 5ème terme ?",
+        "o": ["54", "81", "162", "243"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la dérivée de f(x) = ln(x) ?",
+        "o": ["x", "1/x", "ln(x)", "e^x"],
+        "c": 1
+      },
+      {
+        "q": "Si P(A) = 0,6 et P(B) = 0,4 et que A et B sont indépendants, que vaut P(A ∩ B) ?",
+        "o": ["0,2", "0,24", "0,4", "1"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la formule de la somme des n premiers entiers naturels ?",
+        "o": ["n(n+1)", "n(n+1)/2", "n²", "(n+1)²/2"],
+        "c": 1
+      }
+    ]
   },
   "svt": {
-    "facile": [],
-    "moyen": [],
-    "defi": []
+    "facile": [
+      {
+        "q": "Quel organe est responsable de la digestion des aliments ?",
+        "o": ["Le cœur", "L'estomac", "Le cerveau", "Le foie"],
+        "c": 1
+      },
+      {
+        "q": "Combien de chromosomes possède une cellule humaine normale ?",
+        "o": ["23", "46", "48", "92"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la fonction principale des globules rouges ?",
+        "o": ["Défense contre les infections", "Transport de l'oxygène", "Coagulation du sang", "Digestion"],
+        "c": 1
+      },
+      {
+        "q": "Quel gaz les plantes absorbent-elles lors de la photosynthèse ?",
+        "o": ["Oxygène", "Azote", "Dioxyde de carbone", "Hydrogène"],
+        "c": 2
+      },
+      {
+        "q": "Où se trouve le Parc National du Niokolo-Koba au Sénégal ?",
+        "o": ["Région de Dakar", "Région de Tambacounda", "Région de Saint-Louis", "Région de Ziguinchor"],
+        "c": 1
+      },
+      {
+        "q": "Quel est l'organe principal du système respiratoire ?",
+        "o": ["Le cœur", "Le foie", "Les poumons", "L'estomac"],
+        "c": 2
+      },
+      {
+        "q": "Comment appelle-t-on un animal qui se nourrit uniquement de plantes ?",
+        "o": ["Carnivore", "Herbivore", "Omnivore", "Insectivore"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la température normale du corps humain ?",
+        "o": ["35°C", "36°C", "37°C", "38°C"],
+        "c": 2
+      },
+      {
+        "q": "Quel arbre est emblématique du Sahel sénégalais ?",
+        "o": ["Le baobab", "Le chêne", "Le sapin", "Le palmier à huile"],
+        "c": 0
+      },
+      {
+        "q": "Combien d'os possède le squelette humain adulte ?",
+        "o": ["106", "206", "306", "406"],
+        "c": 1
+      },
+      {
+        "q": "Quel organe produit l'insuline ?",
+        "o": ["Le foie", "Le pancréas", "L'estomac", "Les reins"],
+        "c": 1
+      },
+      {
+        "q": "Quelle maladie est causée par le moustique anophèle au Sénégal ?",
+        "o": ["La dengue", "Le paludisme", "La fièvre jaune", "Le chikungunya"],
+        "c": 1
+      }
+    ],
+    "moyen": [
+      {
+        "q": "Quel est le rôle de l'ADN dans la cellule ?",
+        "o": ["Production d'énergie", "Stockage de l'information génétique", "Digestion", "Respiration"],
+        "c": 1
+      },
+      {
+        "q": "Dans quelle phase de la mitose les chromosomes se séparent-ils ?",
+        "o": ["Prophase", "Métaphase", "Anaphase", "Télophase"],
+        "c": 2
+      },
+      {
+        "q": "Quel est le vecteur de la fièvre jaune, endémique en Afrique de l'Ouest ?",
+        "o": ["Moustique Culex", "Moustique Aedes", "Mouche tsé-tsé", "Tique"],
+        "c": 1
+      },
+      {
+        "q": "Quelle hormone régule la glycémie ?",
+        "o": ["L'adrénaline", "L'insuline", "La testostérone", "La thyroxine"],
+        "c": 1
+      },
+      {
+        "q": "Quel type de climat domine au Sénégal ?",
+        "o": ["Équatorial", "Tropical sec", "Désertique", "Méditerranéen"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le nom scientifique de l'homme moderne ?",
+        "o": ["Homo erectus", "Homo habilis", "Homo sapiens", "Homo neanderthalensis"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la principale cause de la déforestation au Sénégal ?",
+        "o": ["Le tourisme", "L'agriculture extensive", "L'urbanisation", "L'industrie"],
+        "c": 1
+      },
+      {
+        "q": "Où se déroule la fécondation chez la femme ?",
+        "o": ["Dans l'utérus", "Dans l'ovaire", "Dans la trompe de Fallope", "Dans le vagin"],
+        "c": 2
+      },
+      {
+        "q": "Quel est le principal gaz à effet de serre ?",
+        "o": ["L'oxygène", "Le dioxyde de carbone", "L'azote", "L'hydrogène"],
+        "c": 1
+      },
+      {
+        "q": "Quelle partie du cerveau contrôle l'équilibre et la coordination ?",
+        "o": ["Le cortex", "Le cervelet", "Le bulbe rachidien", "L'hypothalamus"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le rôle des reins dans l'organisme ?",
+        "o": ["Digestion", "Filtration du sang", "Production d'hormones", "Respiration"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la durée moyenne du cycle menstruel chez la femme ?",
+        "o": ["14 jours", "21 jours", "28 jours", "35 jours"],
+        "c": 2
+      }
+    ],
+    "defi": [
+      {
+        "q": "Quel processus permet aux cellules de produire de l'ATP en présence d'oxygène ?",
+        "o": ["La glycolyse", "La respiration cellulaire", "La fermentation", "La photosynthèse"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le nombre de paires de chromosomes homologues chez l'humain ?",
+        "o": ["22 + XX ou XY", "23 + XX ou XY", "24 + XX ou XY", "46 + XX ou XY"],
+        "c": 0
+      },
+      {
+        "q": "Dans l'écosystème de la mangrove casamançaise, quel rôle jouent les palétuviers ?",
+        "o": ["Production de poissons", "Protection côtière et nurserie", "Purification de l'eau uniquement", "Aucun rôle écologique"],
+        "c": 1
+      },
+      {
+        "q": "Quel mécanisme explique la résistance bactérienne aux antibiotiques ?",
+        "o": ["La mutation et la sélection naturelle", "La reproduction sexuée", "La photosynthèse", "La respiration anaérobie"],
+        "c": 0
+      },
+      {
+        "q": "Quel est le principal facteur de la désertification au Sahel ?",
+        "o": ["L'augmentation des précipitations", "Le surpâturage et la déforestation", "Le refroidissement climatique", "L'industrialisation"],
+        "c": 1
+      },
+      {
+        "q": "Quelle loi de Mendel explique la ségrégation des allèles ?",
+        "o": ["Loi de dominance", "Loi de ségrégation", "Loi de l'assortiment indépendant", "Loi de Hardy-Weinberg"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le rôle de la myéline dans le système nerveux ?",
+        "o": ["Production de neurones", "Accélération de l'influx nerveux", "Digestion des neurotransmetteurs", "Stockage de l'information"],
+        "c": 1
+      },
+      {
+        "q": "Dans le cycle de Krebs, où se déroulent les réactions ?",
+        "o": ["Dans le cytoplasme", "Dans la matrice mitochondriale", "Dans la membrane externe", "Dans le noyau"],
+        "c": 1
+      },
+      {
+        "q": "Quel phénomène géologique a formé la Vallée du Fleuve Sénégal ?",
+        "o": ["L'érosion fluviale", "Le volcanisme", "La tectonique des plaques", "La sédimentation marine"],
+        "c": 0
+      },
+      {
+        "q": "Quel est le mécanisme de la transduction du signal hormonal ?",
+        "o": ["Liaison au récepteur membranaire et cascade de signalisation", "Pénétration directe dans la cellule", "Osmose", "Diffusion simple"],
+        "c": 0
+      },
+      {
+        "q": "Quelle théorie explique l'évolution des espèces ?",
+        "o": ["La théorie de la génération spontanée", "La théorie de la sélection naturelle", "La théorie du fixisme", "La théorie vitaliste"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le principal vecteur de transmission du virus Ebola ?",
+        "o": ["Les moustiques", "Les chauves-souris frugivores", "Les tiques", "Les rats"],
+        "c": 1
+      }
+    ]
   },
   "pc": {
-    "facile": [],
-    "moyen": [],
-    "defi": []
+    "facile": [
+      {
+        "q": "Quelle est la formule chimique de l'eau ?",
+        "o": ["H₂O", "CO₂", "O₂", "H₂O₂"],
+        "c": 0
+      },
+      {
+        "q": "Combien y a-t-il d'atomes dans une molécule de dioxyde de carbone (CO₂) ?",
+        "o": ["2", "3", "4", "5"],
+        "c": 1
+      },
+      {
+        "q": "Quelle unité mesure la force ?",
+        "o": ["Le joule", "Le watt", "Le newton", "Le pascal"],
+        "c": 2
+      },
+      {
+        "q": "Quel état de la matière a une forme et un volume définis ?",
+        "o": ["Solide", "Liquide", "Gazeux", "Plasma"],
+        "c": 0
+      },
+      {
+        "q": "Quel gaz est le plus abondant dans l'atmosphère terrestre ?",
+        "o": ["L'oxygène", "L'azote", "Le dioxyde de carbone", "L'hydrogène"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la vitesse de la lumière dans le vide ?",
+        "o": ["100 000 km/s", "200 000 km/s", "300 000 km/s", "400 000 km/s"],
+        "c": 2
+      },
+      {
+        "q": "Quel métal est liquide à température ambiante ?",
+        "o": ["L'or", "Le fer", "Le mercure", "Le cuivre"],
+        "c": 2
+      },
+      {
+        "q": "Que mesure un voltmètre ?",
+        "o": ["Le courant", "La tension", "La résistance", "La puissance"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la température d'ébullition de l'eau à pression normale ?",
+        "o": ["50°C", "75°C", "100°C", "150°C"],
+        "c": 2
+      },
+      {
+        "q": "Quel est le symbole chimique du sodium ?",
+        "o": ["So", "S", "Na", "N"],
+        "c": 2
+      },
+      {
+        "q": "Dans un circuit électrique, que mesure l'ampèremètre ?",
+        "o": ["La tension", "L'intensité du courant", "La résistance", "La puissance"],
+        "c": 1
+      },
+      {
+        "q": "Combien de protons possède un atome d'oxygène ?",
+        "o": ["6", "7", "8", "9"],
+        "c": 2
+      }
+    ],
+    "moyen": [
+      {
+        "q": "Quelle est la masse molaire de l'eau H₂O ? (H = 1 g/mol, O = 16 g/mol)",
+        "o": ["17 g/mol", "18 g/mol", "19 g/mol", "20 g/mol"],
+        "c": 1
+      },
+      {
+        "q": "Selon la loi d'Ohm, si U = 12V et R = 4Ω, que vaut I ?",
+        "o": ["2 A", "3 A", "4 A", "8 A"],
+        "c": 1
+      },
+      {
+        "q": "Quel type de réaction chimique est : 2H₂ + O₂ → 2H₂O ?",
+        "o": ["Décomposition", "Synthèse", "Substitution", "Oxydoréduction"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la formule de l'énergie cinétique ?",
+        "o": ["E = mc²", "E = ½mv²", "E = mgh", "E = Fd"],
+        "c": 1
+      },
+      {
+        "q": "Combien d'électrons peut contenir la couche électronique K ?",
+        "o": ["2", "8", "18", "32"],
+        "c": 0
+      },
+      {
+        "q": "Quelle est la puissance d'un appareil de 100 W fonctionnant pendant 2 heures en kWh ?",
+        "o": ["0,1 kWh", "0,2 kWh", "1 kWh", "2 kWh"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le pH d'une solution neutre ?",
+        "o": ["0", "7", "10", "14"],
+        "c": 1
+      },
+      {
+        "q": "Dans un mouvement rectiligne uniforme, que vaut l'accélération ?",
+        "o": ["-1 m/s²", "0 m/s²", "1 m/s²", "9,8 m/s²"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la masse d'une mole de dioxygène O₂ ? (O = 16 g/mol)",
+        "o": ["16 g", "24 g", "32 g", "48 g"],
+        "c": 2
+      },
+      {
+        "q": "Quelle loi énonce que la somme des tensions dans un circuit en série est égale à la tension totale ?",
+        "o": ["Loi d'Ohm", "Loi de Kirchhoff", "Loi de Coulomb", "Loi de Faraday"],
+        "c": 1
+      },
+      {
+        "q": "Au Sénégal, quelle est la tension électrique standard du réseau domestique ?",
+        "o": ["110 V", "220 V", "240 V", "380 V"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la formule du poids d'un corps ?",
+        "o": ["P = m × g", "P = m × v", "P = F × d", "P = m × a"],
+        "c": 0
+      }
+    ],
+    "defi": [
+      {
+        "q": "Dans une pile électrochimique Zn/Cu²⁺, où se produit la réduction ?",
+        "o": ["À l'anode (zinc)", "À la cathode (cuivre)", "Au pont salin", "Dans la solution"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est l'équation de la deuxième loi de Newton ?",
+        "o": ["F = ma", "E = mc²", "P = UI", "W = Fd"],
+        "c": 0
+      },
+      {
+        "q": "Calculez le volume de 2,5 moles de gaz parfait à 25°C et 1 atm. (R = 0,082 L.atm/mol.K)",
+        "o": ["51,2 L", "61,1 L", "71,4 L", "81,6 L"],
+        "c": 1
+      },
+      {
+        "q": "Dans une réaction d'oxydoréduction, quel est le rôle du réducteur ?",
+        "o": ["Il gagne des électrons", "Il perd des électrons", "Il gagne des protons", "Il perd des protons"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la longueur d'onde d'une onde électromagnétique de fréquence 3 × 10⁸ Hz ? (c = 3 × 10⁸ m/s)",
+        "o": ["0,1 m", "1 m", "10 m", "100 m"],
+        "c": 1
+      },
+      {
+        "q": "Dans un condensateur de capacité 10 µF chargé sous 100 V, quelle est l'énergie stockée ?",
+        "o": ["0,05 J", "0,5 J", "5 J", "50 J"],
+        "c": 0
+      },
+      {
+        "q": "Quel principe physique explique le fonctionnement d'une centrale solaire à Dakar ?",
+        "o": ["L'effet Joule", "L'effet photoélectrique", "L'effet Doppler", "L'effet Seebeck"],
+        "c": 1
+      },
+      {
+        "q": "Dans un titrage acide-base, que représente le point d'équivalence ?",
+        "o": ["pH = 0", "pH = 7", "Nombre de moles d'acide = nombre de moles de base", "Concentration maximale"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la configuration électronique du chlore (Z = 17) ?",
+        "o": ["1s² 2s² 2p⁶ 3s² 3p⁵", "1s² 2s² 2p⁶ 3s² 3p⁶", "1s² 2s² 2p⁶ 3s¹", "1s² 2s² 2p⁶ 3s² 3p³"],
+        "c": 0
+      },
+      {
+        "q": "Dans un mouvement circulaire uniforme, quelle est la direction de l'accélération ?",
+        "o": ["Tangente à la trajectoire", "Vers le centre", "Opposée au mouvement", "Nulle"],
+        "c": 1
+      },
+      {
+        "q": "Quelle est la constante de vitesse d'une réaction du premier ordre si après 10s, 50% du réactif a disparu ?",
+        "o": ["k = 0,0693 s⁻¹", "k = 0,693 s⁻¹", "k = 6,93 s⁻¹", "k = 69,3 s⁻¹"],
+        "c": 0
+      },
+      {
+        "q": "Dans un transformateur idéal, si N₁/N₂ = 2 et U₁ = 220V, que vaut U₂ ?",
+        "o": ["55 V", "110 V", "220 V", "440 V"],
+        "c": 1
+      }
+    ]
   },
   "philo": {
-    "facile": [],
-    "moyen": [],
-    "defi": []
+    "facile": [
+      {
+        "q": "Qui est considéré comme le père de la philosophie occidentale ?",
+        "o": ["Aristote", "Platon", "Socrate", "Descartes"],
+        "c": 2
+      },
+      {
+        "q": "Quelle phrase célèbre est attribuée à Descartes ?",
+        "o": ["Je pense, donc je suis", "Connais-toi toi-même", "L'homme est un loup pour l'homme", "L'enfer c'est les autres"],
+        "c": 0
+      },
+      {
+        "q": "Comment appelle-t-on l'étude des valeurs morales ?",
+        "o": ["La logique", "L'esthétique", "L'éthique", "La métaphysique"],
+        "c": 2
+      },
+      {
+        "q": "Quel philosophe africain a écrit 'Conscience africaine et révolution' ?",
+        "o": ["Cheikh Anta Diop", "Kwame Nkrumah", "Léopold Sédar Senghor", "Frantz Fanon"],
+        "c": 0
+      },
+      {
+        "q": "Quelle branche de la philosophie étudie la nature de la réalité ?",
+        "o": ["L'épistémologie", "L'ontologie", "La politique", "La logique"],
+        "c": 1
+      },
+      {
+        "q": "Qui a dit : 'L'homme est né libre, et partout il est dans les fers' ?",
+        "o": ["Voltaire", "Montesquieu", "Rousseau", "Diderot"],
+        "c": 2
+      },
+      {
+        "q": "Dans la philosophie Ubuntu, que signifie 'Je suis parce que nous sommes' ?",
+        "o": ["L'individualisme", "La compétition", "L'interconnexion humaine", "L'isolement"],
+        "c": 2
+      },
+      {
+        "q": "Quelle est la finalité de la philosophie selon Socrate ?",
+        "o": ["La richesse", "La sagesse", "Le pouvoir", "La célébrité"],
+        "c": 1
+      },
+      {
+        "q": "Qui a écrit 'Le Prince' ?",
+        "o": ["Platon", "Machiavel", "Hobbes", "Locke"],
+        "c": 1
+      },
+      {
+        "q": "Que signifie le mot 'philosophie' en grec ?",
+        "o": ["Amour de la vérité", "Amour de la sagesse", "Amour du savoir", "Amour de la raison"],
+        "c": 1
+      },
+      {
+        "q": "Quel concept central trouve-t-on dans la pensée de Senghor ?",
+        "o": ["Le communisme", "La négritude", "Le libéralisme", "Le nihilisme"],
+        "c": 1
+      },
+      {
+        "q": "Quelle question Kant considère-t-il comme fondamentale ?",
+        "o": ["Que puis-je savoir ?", "Qui suis-je ?", "D'où viens-je ?", "Où vais-je ?"],
+        "c": 0
+      }
+    ],
+    "moyen": [
+      {
+        "q": "Selon Platon, où résident les Idées parfaites ?",
+        "o": ["Dans le monde sensible", "Dans le monde intelligible", "Dans l'âme", "Dans la nature"],
+        "c": 1
+      },
+      {
+        "q": "Quel est le principe fondamental de l'impératif catégorique kantien ?",
+        "o": ["Agir selon son intérêt", "Agir selon une maxime universalisable", "Ne pas agir", "Agir par plaisir"],
+        "c": 1
+      },
+      {
+        "q": "Dans 'Les Damnés de la Terre', quelle thèse Frantz Fanon défend-il ?",
+        "o": ["La colonisation est bénéfique", "La violence révolutionnaire comme réponse à l'oppression", "La non-violence absolue", "Le retour à la tradition"],
+        "c": 1
+      },
+      {
+        "q": "Quelle distinction Bergson fait-il entre deux types de temps ?",
+        "o": ["Temps physique et temps psychologique", "Temps court et temps long", "Temps présent et temps futur", "Temps objectif et temps subjectif"],
+        "c": 0
+      },
+      {
+        "q": "Selon Marx, quelle est la cause principale de l'aliénation ?",
+        "o": ["La religion", "Le mode de production capitaliste", "L'éducation", "La famille"],
+        "c": 1
+      },
+      {
+        "q": "Dans la philosophie africaine, que représente la palabre ?",
+        "o": ["Un conflit violent", "Une délibération collective pour la résolution de conflits", "Un rituel religieux", "Une danse traditionnelle"],
+        "c": 1
+      },
+      {
+        "q": "Quel philosophe a développé le concept de 'surhomme' ?",
+        "o": ["Hegel", "Nietzsche", "Schopenhauer", "Kierkegaard"],
+        "c": 1
+      },
+      {
+        "q": "Selon Sartre, que signifie 'l'existence précède l'essence' ?",
+        "o": ["L'homme a une nature prédéfinie", "L'homme se définit par ses actes", "L'homme n'existe pas", "L'homme est déterminé"],
+        "c": 1
+      },
+      {
+        "q": "Quelle théorie politique défend Hobbes dans 'Le Léviathan' ?",
+        "o": ["La démocratie directe", "L'anarchie", "L'absolutisme monarchique", "Le fédéralisme"],
+        "c": 2
+      },
+      {
+        "q": "Dans la pensée de Cheikh Anta Diop, quelle est l'origine de la civilisation ?",
+        "o": ["L'Europe", "L'Asie", "L'Égypte nègre", "L'Amérique"],
+        "c": 2
+      },
+      {
+        "q": "Quel concept John Locke défend-il concernant l'origine des connaissances ?",
+        "o": ["Les idées innées", "La table rase", "La réminiscence", "L'intuition"],
+        "c": 1
+      },
+      {
+        "q": "Selon Rousseau, qu'est-ce qui corrompt l'homme naturellement bon ?",
+        "o": ["L'éducation", "La société", "La nature", "La religion"],
+        "c": 1
+      }
+    ],
+    "defi": [
+      {
+        "q": "Dans la 'Critique de la raison pure', Kant distingue quels types de jugements ?",
+        "o": ["Analytiques et synthétiques", "Vrais et faux", "Objectifs et subjectifs", "Moraux et immoraux"],
+        "c": 0
+      },
+      {
+        "q": "Selon Hegel, quel est le moteur de l'histoire ?",
+        "o": ["L'économie", "La dialectique", "La religion", "La science"],
+        "c": 1
+      },
+      {
+        "q": "Dans 'L'Être et le Néant', que représente la 'mauvaise foi' sartrienne ?",
+        "o": ["La sincérité totale", "Le mensonge conscient", "Le refus d'assumer sa liberté", "L'acceptation du destin"],
+        "c": 2
+      },
+      {
+        "q": "Quel philosophe africain a critiqué l'ethnophilosophie dans 'La Philosophie bantoue' de Tempels ?",
+        "o": ["Paulin Hountondji", "Valentin Mudimbe", "Achille Mbembe", "Souleymane Bachir Diagne"],
+        "c": 0
+      },
+      {
+        "q": "Dans la pensée de Foucault, que représente le 'biopouvoir' ?",
+        "o": ["Le pouvoir sur la mort", "Le pouvoir de régulation des populations", "Le pouvoir économique", "Le pouvoir religieux"],
+        "c": 1
+      },
+      {
+        "q": "Selon Spinoza, quelle est la substance unique ?",
+        "o": ["Dieu ou la Nature", "L'esprit", "La matière", "L'âme"],
+        "c": 0
+      },
+      {
+        "q": "Dans 'Théorie de la justice', quel principe Rawls défend-il ?",
+        "o": ["L'utilitarisme", "Le voile d'ignorance", "Le darwinisme social", "L'anarchisme"],
+        "c": 1
+      },
+      {
+        "q": "Quel concept central développe Kwame Nkrumah dans le consciencisme ?",
+        "o": ["La synthèse entre tradition africaine, islam et euro-christianisme", "Le rejet total de l'Occident", "L'adoption pure de l'idéologie marxiste", "Le retour aux religions traditionnelles"],
+        "c": 0
+      },
+      {
+        "q": "Dans la philosophie de Levinas, qu'est-ce que 'l'Autre' représente ?",
+        "o": ["Un obstacle", "Une transcendance éthique", "Un ennemi", "Un double"],
+        "c": 1
+      },
+      {
+        "q": "Selon Heidegger, qu'est-ce que le 'Dasein' ?",
+        "o": ["L'être pur", "L'être-au-monde", "Le néant", "L'essence"],
+        "c": 1
+      },
+      {
+        "q": "Dans 'De la grammatologie', quelle critique Derrida fait-il de la métaphysique occidentale ?",
+        "o": ["Le phonocentrisme et le logocentrisme", "L'athéisme", "Le matérialisme", "Le relativisme"],
+        "c": 0
+      },
+      {
+        "q": "Selon Achille Mbembe, que signifie la 'nécropolitique' ?",
+        "o": ["Le pouvoir de faire vivre", "Le pouvoir de donner la mort", "Le pouvoir économique", "Le pouvoir démocratique"],
+        "c": 1
+      }
+    ]
   }
 }
