@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panneau d'Administration - PedaClic</title>
+    
+    <!-- React 18 -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Recharts -->
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2.5.0/dist/Recharts.js"></script>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <script>
+        // Configuration Firebase - REMPLACEZ PAR VOTRE VRAIE CONFIG
+        const firebaseConfig = {
+            apiKey: "VOTRE_API_KEY",
+            authDomain: "VOTRE_AUTH_DOMAIN",
+            projectId: "pedaclic",
+            storageBucket: "VOTRE_STORAGE_BUCKET",
+            messagingSenderId: "VOTRE_MESSAGING_SENDER_ID",
+            appId: "VOTRE_APP_ID"
+        };
+        
+        // Initialiser Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+    </script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* Écran de chargement */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Écran de chargement -->
+    <div class="loading-screen" id="loading">
+        <div class="spinner"></div>
+    </div>
+    
+    <!-- Root -->
+    <div id="root"></div>
+    
+    <!-- Charger le panneau admin compilé -->
+    <script src="../premium_bis/js_bis/admin-panel.js"></script>
+    
+    <script>
+        // Masquer l'écran de chargement quand tout est prêt
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 500);
+        });
+        
+        // Monter le composant AdminPanel
+        try {
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            
+            // AdminPanel est exposé globalement par le bundle
+            if (typeof AdminPanel !== 'undefined') {
+                root.render(React.createElement(AdminPanel));
+            } else {
+                console.error('AdminPanel n\'est pas défini');
+                document.getElementById('root').innerHTML = 
+                    '<div style="padding: 50px; text-align: center;">' +
+                    '<h1>Erreur de chargement</h1>' +
+                    '<p>Le composant AdminPanel n\'a pas pu être chargé.</p>' +
+                    '</div>';
+            }
+        } catch (error) {
+            console.error('Erreur lors du montage:', error);
+        }
+    </script>
+</body>
+</html>
