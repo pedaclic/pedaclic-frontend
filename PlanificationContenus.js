@@ -1062,7 +1062,7 @@
           return dispatcher;
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React51 = require_react(), Internals = {
+        var React50 = require_react(), Internals = {
           d: {
             f: noop4,
             r: function() {
@@ -1080,7 +1080,7 @@
           },
           p: 0,
           findDOMNode: null
-        }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React51.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+        }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React50.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
         "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
           "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
         );
@@ -2378,7 +2378,7 @@
           return x2 === y2 && (0 !== x2 || 1 / x2 === 1 / y2) || x2 !== x2 && y2 !== y2;
         }
         function useSyncExternalStore$2(subscribe, getSnapshot) {
-          didWarnOld18Alpha || void 0 === React51.startTransition || (didWarnOld18Alpha = true, console.error(
+          didWarnOld18Alpha || void 0 === React50.startTransition || (didWarnOld18Alpha = true, console.error(
             "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
           ));
           var value = getSnapshot();
@@ -2388,7 +2388,7 @@
               "The result of getSnapshot should be cached to avoid an infinite loop"
             ), didWarnUncachedGetSnapshot = true);
           }
-          cachedValue = useState16({
+          cachedValue = useState15({
             inst: { value, getSnapshot }
           });
           var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
@@ -2400,7 +2400,7 @@
             },
             [subscribe, value, getSnapshot]
           );
-          useEffect19(
+          useEffect18(
             function() {
               checkIfSnapshotChanged(inst) && forceUpdate({ inst });
               return subscribe(function() {
@@ -2426,8 +2426,8 @@
           return getSnapshot();
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React51 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is4, useState16 = React51.useState, useEffect19 = React51.useEffect, useLayoutEffect9 = React51.useLayoutEffect, useDebugValue2 = React51.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-        exports.useSyncExternalStore = void 0 !== React51.useSyncExternalStore ? React51.useSyncExternalStore : shim;
+        var React50 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is4, useState15 = React50.useState, useEffect18 = React50.useEffect, useLayoutEffect9 = React50.useLayoutEffect, useDebugValue2 = React50.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+        exports.useSyncExternalStore = void 0 !== React50.useSyncExternalStore ? React50.useSyncExternalStore : shim;
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
       })();
     }
@@ -2454,7 +2454,7 @@
           return x2 === y2 && (0 !== x2 || 1 / x2 === 1 / y2) || x2 !== x2 && y2 !== y2;
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React51 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is4, useSyncExternalStore2 = shim.useSyncExternalStore, useRef20 = React51.useRef, useEffect19 = React51.useEffect, useMemo10 = React51.useMemo, useDebugValue2 = React51.useDebugValue;
+        var React50 = require_react(), shim = require_shim(), objectIs = "function" === typeof Object.is ? Object.is : is4, useSyncExternalStore2 = shim.useSyncExternalStore, useRef20 = React50.useRef, useEffect18 = React50.useEffect, useMemo10 = React50.useMemo, useDebugValue2 = React50.useDebugValue;
         exports.useSyncExternalStoreWithSelector = function(subscribe, getSnapshot, getServerSnapshot, selector, isEqual) {
           var instRef = useRef20(null);
           if (null === instRef.current) {
@@ -2497,7 +2497,7 @@
             [getSnapshot, getServerSnapshot, selector, isEqual]
           );
           var value = useSyncExternalStore2(subscribe, instRef[0], instRef[1]);
-          useEffect19(
+          useEffect18(
             function() {
               inst.hasValue = true;
               inst.value = value;
@@ -4328,7 +4328,7 @@
           return x2 === y2 && (0 !== x2 || 1 / x2 === 1 / y2) || x2 !== x2 && y2 !== y2;
         }
         "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-        var React51 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is4, useSyncExternalStore2 = React51.useSyncExternalStore, useRef20 = React51.useRef, useEffect19 = React51.useEffect, useMemo10 = React51.useMemo, useDebugValue2 = React51.useDebugValue;
+        var React50 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is4, useSyncExternalStore2 = React50.useSyncExternalStore, useRef20 = React50.useRef, useEffect18 = React50.useEffect, useMemo10 = React50.useMemo, useDebugValue2 = React50.useDebugValue;
         exports.useSyncExternalStoreWithSelector = function(subscribe, getSnapshot, getServerSnapshot, selector, isEqual) {
           var instRef = useRef20(null);
           if (null === instRef.current) {
@@ -4371,7 +4371,7 @@
             [getSnapshot, getServerSnapshot, selector, isEqual]
           );
           var value = useSyncExternalStore2(subscribe, instRef[0], instRef[1]);
-          useEffect19(
+          useEffect18(
             function() {
               inst.hasValue = true;
               inst.value = value;
@@ -4612,18 +4612,18 @@
         function isValidElement19(object) {
           return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
         }
-        var React51 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE2 = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE2 = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React51.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+        var React50 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE2 = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE2 = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React50.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
           return null;
         };
-        React51 = {
+        React50 = {
           react_stack_bottom_frame: function(callStackForError) {
             return callStackForError();
           }
         };
         var specialPropKeyWarningShown;
         var didWarnAboutElementRef = {};
-        var unknownOwnerDebugStack = React51.react_stack_bottom_frame.bind(
-          React51,
+        var unknownOwnerDebugStack = React50.react_stack_bottom_frame.bind(
+          React50,
           UnknownOwner
         )();
         var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -4667,8 +4667,8 @@
     }
   });
 
-  // pedaclic-admin-panel.tsx
-  var import_react63 = __toESM(require_react());
+  // PlanificationContenus.tsx
+  var import_react62 = __toESM(require_react());
 
   // node_modules/lucide-react/dist/esm/createLucideIcon.js
   var import_react2 = __toESM(require_react());
@@ -4772,52 +4772,40 @@
   ];
   var BookOpen = createLucideIcon("book-open", __iconNode);
 
-  // node_modules/lucide-react/dist/esm/icons/book.js
-  var __iconNode2 = [
-    [
-      "path",
-      {
-        d: "M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20",
-        key: "k3hazp"
-      }
-    ]
-  ];
-  var Book = createLucideIcon("book", __iconNode2);
-
   // node_modules/lucide-react/dist/esm/icons/calendar.js
-  var __iconNode3 = [
+  var __iconNode2 = [
     ["path", { d: "M8 2v4", key: "1cmpym" }],
     ["path", { d: "M16 2v4", key: "4m81vk" }],
     ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
     ["path", { d: "M3 10h18", key: "8toen8" }]
   ];
-  var Calendar = createLucideIcon("calendar", __iconNode3);
+  var Calendar = createLucideIcon("calendar", __iconNode2);
 
   // node_modules/lucide-react/dist/esm/icons/chart-column.js
-  var __iconNode4 = [
+  var __iconNode3 = [
     ["path", { d: "M3 3v16a2 2 0 0 0 2 2h16", key: "c24i48" }],
     ["path", { d: "M18 17V9", key: "2bz60n" }],
     ["path", { d: "M13 17V5", key: "1frdt8" }],
     ["path", { d: "M8 17v-3", key: "17ska0" }]
   ];
-  var ChartColumn = createLucideIcon("chart-column", __iconNode4);
+  var ChartColumn = createLucideIcon("chart-column", __iconNode3);
 
   // node_modules/lucide-react/dist/esm/icons/circle-check.js
-  var __iconNode5 = [
+  var __iconNode4 = [
     ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
     ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
   ];
-  var CircleCheck = createLucideIcon("circle-check", __iconNode5);
+  var CircleCheck = createLucideIcon("circle-check", __iconNode4);
 
   // node_modules/lucide-react/dist/esm/icons/clock.js
-  var __iconNode6 = [
+  var __iconNode5 = [
     ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
     ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
   ];
-  var Clock = createLucideIcon("clock", __iconNode6);
+  var Clock = createLucideIcon("clock", __iconNode5);
 
   // node_modules/lucide-react/dist/esm/icons/file-spreadsheet.js
-  var __iconNode7 = [
+  var __iconNode6 = [
     [
       "path",
       {
@@ -4831,73 +4819,14 @@
     ["path", { d: "M8 17h2", key: "2yhykz" }],
     ["path", { d: "M14 17h2", key: "10kma7" }]
   ];
-  var FileSpreadsheet = createLucideIcon("file-spreadsheet", __iconNode7);
-
-  // node_modules/lucide-react/dist/esm/icons/graduation-cap.js
-  var __iconNode8 = [
-    [
-      "path",
-      {
-        d: "M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z",
-        key: "j76jl0"
-      }
-    ],
-    ["path", { d: "M22 10v6", key: "1lu8f3" }],
-    ["path", { d: "M6 12.5V16a6 3 0 0 0 12 0v-3.5", key: "1r8lef" }]
-  ];
-  var GraduationCap = createLucideIcon("graduation-cap", __iconNode8);
-
-  // node_modules/lucide-react/dist/esm/icons/pen.js
-  var __iconNode9 = [
-    [
-      "path",
-      {
-        d: "M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z",
-        key: "1a8usu"
-      }
-    ]
-  ];
-  var Pen = createLucideIcon("pen", __iconNode9);
-
-  // node_modules/lucide-react/dist/esm/icons/plus.js
-  var __iconNode10 = [
-    ["path", { d: "M5 12h14", key: "1ays0h" }],
-    ["path", { d: "M12 5v14", key: "s699le" }]
-  ];
-  var Plus = createLucideIcon("plus", __iconNode10);
-
-  // node_modules/lucide-react/dist/esm/icons/settings.js
-  var __iconNode11 = [
-    [
-      "path",
-      {
-        d: "M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915",
-        key: "1i5ecw"
-      }
-    ],
-    ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
-  ];
-  var Settings = createLucideIcon("settings", __iconNode11);
-
-  // node_modules/lucide-react/dist/esm/icons/trash-2.js
-  var __iconNode12 = [
-    ["path", { d: "M10 11v6", key: "nco0om" }],
-    ["path", { d: "M14 11v6", key: "outv1u" }],
-    ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
-    ["path", { d: "M3 6h18", key: "d0wm0j" }],
-    ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
-  ];
-  var Trash2 = createLucideIcon("trash-2", __iconNode12);
+  var FileSpreadsheet = createLucideIcon("file-spreadsheet", __iconNode6);
 
   // node_modules/lucide-react/dist/esm/icons/trending-up.js
-  var __iconNode13 = [
+  var __iconNode7 = [
     ["path", { d: "M16 7h6v6", key: "box55l" }],
     ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
   ];
-  var TrendingUp = createLucideIcon("trending-up", __iconNode13);
-
-  // PlanificationContenus.tsx
-  var import_react62 = __toESM(require_react());
+  var TrendingUp = createLucideIcon("trending-up", __iconNode7);
 
   // node_modules/recharts/es6/container/Surface.js
   var React = __toESM(require_react());
@@ -29735,857 +29664,6 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
     ] });
   };
   var PlanificationContenus_default = PlanificationContenus;
-
-  // pedaclic-admin-panel.tsx
-  var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-  var AdminPanel = () => {
-    const [activeTab, setActiveTab] = (0, import_react63.useState)("niveaux");
-    const [niveaux, setNiveaux] = (0, import_react63.useState)([]);
-    const [classes, setClasses] = (0, import_react63.useState)([]);
-    const [matieres, setMatieres] = (0, import_react63.useState)([]);
-    const [showAddNiveau, setShowAddNiveau] = (0, import_react63.useState)(false);
-    const [showAddClasse, setShowAddClasse] = (0, import_react63.useState)(false);
-    const [showAddMatiere, setShowAddMatiere] = (0, import_react63.useState)(false);
-    const [editingItem, setEditingItem] = (0, import_react63.useState)(null);
-    const [newNiveau, setNewNiveau] = (0, import_react63.useState)("");
-    const [newClasse, setNewClasse] = (0, import_react63.useState)({ nom: "", niveauId: "" });
-    const [newMatiere, setNewMatiere] = (0, import_react63.useState)({ nom: "", classeIds: [] });
-    (0, import_react63.useEffect)(() => {
-      if (typeof firebase !== "undefined") {
-        loadNiveaux();
-        loadClasses();
-        loadMatieres();
-      }
-    }, []);
-    const loadNiveaux = async () => {
-      try {
-        const db = firebase.firestore();
-        const snapshot = await db.collection("config_niveaux").orderBy("ordre").get();
-        setNiveaux(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        console.error("Erreur chargement niveaux:", error);
-      }
-    };
-    const loadClasses = async () => {
-      try {
-        const db = firebase.firestore();
-        const snapshot = await db.collection("config_classes").orderBy("ordre").get();
-        setClasses(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        console.error("Erreur chargement classes:", error);
-      }
-    };
-    const loadMatieres = async () => {
-      try {
-        const db = firebase.firestore();
-        const snapshot = await db.collection("config_matieres").get();
-        setMatieres(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-      } catch (error) {
-        console.error("Erreur chargement mati\xE8res:", error);
-      }
-    };
-    const ajouterNiveau = async () => {
-      if (!newNiveau.trim()) return;
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_niveaux").add({
-          nom: newNiveau,
-          ordre: niveaux.length + 1,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        setNewNiveau("");
-        setShowAddNiveau(false);
-        loadNiveaux();
-      } catch (error) {
-        console.error("Erreur ajout niveau:", error);
-        alert("Erreur lors de l'ajout du niveau");
-      }
-    };
-    const modifierNiveau = async (id, nouveauNom) => {
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_niveaux").doc(id).update({ nom: nouveauNom });
-        setEditingItem(null);
-        loadNiveaux();
-      } catch (error) {
-        console.error("Erreur modification niveau:", error);
-        alert("Erreur lors de la modification");
-      }
-    };
-    const supprimerNiveau = async (id) => {
-      if (!confirm("Supprimer ce niveau ? Les classes associ\xE9es seront aussi supprim\xE9es.")) return;
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_niveaux").doc(id).delete();
-        const classesSnap = await db.collection("config_classes").where("niveauId", "==", id).get();
-        classesSnap.docs.forEach((doc) => doc.ref.delete());
-        loadNiveaux();
-        loadClasses();
-      } catch (error) {
-        console.error("Erreur suppression niveau:", error);
-        alert("Erreur lors de la suppression");
-      }
-    };
-    const ajouterClasse = async () => {
-      if (!newClasse.nom.trim() || !newClasse.niveauId) {
-        alert("Veuillez remplir tous les champs");
-        return;
-      }
-      try {
-        const db = firebase.firestore();
-        const classesInNiveau = classes.filter((c2) => c2.niveauId === newClasse.niveauId);
-        await db.collection("config_classes").add({
-          nom: newClasse.nom,
-          niveauId: newClasse.niveauId,
-          ordre: classesInNiveau.length + 1,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        setNewClasse({ nom: "", niveauId: "" });
-        setShowAddClasse(false);
-        loadClasses();
-      } catch (error) {
-        console.error("Erreur ajout classe:", error);
-        alert("Erreur lors de l'ajout");
-      }
-    };
-    const modifierClasse = async (id, nouveauNom) => {
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_classes").doc(id).update({ nom: nouveauNom });
-        setEditingItem(null);
-        loadClasses();
-      } catch (error) {
-        console.error("Erreur modification classe:", error);
-        alert("Erreur lors de la modification");
-      }
-    };
-    const supprimerClasse = async (id) => {
-      if (!confirm("Supprimer cette classe ?")) return;
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_classes").doc(id).delete();
-        const matieresSnap = await db.collection("config_matieres").get();
-        matieresSnap.docs.forEach((doc) => {
-          const data = doc.data();
-          if (data.classeIds && data.classeIds.includes(id)) {
-            const newClasseIds = data.classeIds.filter((cId) => cId !== id);
-            doc.ref.update({ classeIds: newClasseIds });
-          }
-        });
-        loadClasses();
-        loadMatieres();
-      } catch (error) {
-        console.error("Erreur suppression classe:", error);
-        alert("Erreur lors de la suppression");
-      }
-    };
-    const ajouterMatiere = async () => {
-      if (!newMatiere.nom.trim() || newMatiere.classeIds.length === 0) {
-        alert("Veuillez remplir tous les champs et s\xE9lectionner au moins une classe");
-        return;
-      }
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_matieres").add({
-          nom: newMatiere.nom,
-          classeIds: newMatiere.classeIds,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        setNewMatiere({ nom: "", classeIds: [] });
-        setShowAddMatiere(false);
-        loadMatieres();
-      } catch (error) {
-        console.error("Erreur ajout mati\xE8re:", error);
-        alert("Erreur lors de l'ajout");
-      }
-    };
-    const supprimerMatiere = async (id) => {
-      if (!confirm("Supprimer cette mati\xE8re ?")) return;
-      try {
-        const db = firebase.firestore();
-        await db.collection("config_matieres").doc(id).delete();
-        loadMatieres();
-      } catch (error) {
-        console.error("Erreur suppression mati\xE8re:", error);
-        alert("Erreur lors de la suppression");
-      }
-    };
-    const toggleClasseForMatiere = (classeId) => {
-      setNewMatiere((prev) => ({
-        ...prev,
-        classeIds: prev.classeIds.includes(classeId) ? prev.classeIds.filter((id) => id !== classeId) : [...prev.classeIds, classeId]
-      }));
-    };
-    const getClassesByNiveau = (niveauId) => {
-      return classes.filter((c2) => c2.niveauId === niveauId);
-    };
-    const styles = {
-      container: {
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "20px"
-      },
-      header: {
-        background: "white",
-        borderRadius: "15px",
-        padding: "30px",
-        marginBottom: "30px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
-      },
-      tabButton: (isActive) => ({
-        padding: "15px 30px",
-        background: isActive ? "white" : "rgba(255,255,255,0.3)",
-        color: isActive ? "#667eea" : "white",
-        border: "none",
-        borderRadius: "10px",
-        cursor: "pointer",
-        fontWeight: "bold",
-        fontSize: "16px",
-        display: "flex",
-        alignItems: "center",
-        gap: "10px",
-        transition: "all 0.3s ease"
-      }),
-      contentCard: {
-        background: "white",
-        borderRadius: "15px",
-        padding: "30px",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
-      },
-      addButton: {
-        background: "#667eea",
-        color: "white",
-        border: "none",
-        padding: "10px 15px",
-        borderRadius: "8px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: "5px",
-        fontWeight: "bold",
-        transition: "all 0.3s ease"
-      },
-      modal: {
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: "rgba(0,0,0,0.5)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 1e3
-      },
-      modalContent: {
-        background: "white",
-        padding: "30px",
-        borderRadius: "15px",
-        width: "90%",
-        maxWidth: "500px"
-      }
-    };
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.container, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.header, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "15px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Settings, { size: 40, color: "#667eea" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h1", { style: { margin: 0, color: "#2c3e50", fontSize: "28px" }, children: "Panneau d'Administration" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "#7f8c8d", margin: "5px 0 0 0", fontSize: "15px" }, children: "Configuration de la structure p\xE9dagogique" })
-        ] })
-      ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "20px", display: "flex", gap: "10px", flexWrap: "wrap" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "button",
-          {
-            onClick: () => setActiveTab("niveaux"),
-            style: styles.tabButton(activeTab === "niveaux"),
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(GraduationCap, { size: 20 }),
-              " Niveaux"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "button",
-          {
-            onClick: () => setActiveTab("classes"),
-            style: styles.tabButton(activeTab === "classes"),
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(BookOpen, { size: 20 }),
-              " Classes"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "button",
-          {
-            onClick: () => setActiveTab("matieres"),
-            style: styles.tabButton(activeTab === "matieres"),
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Book, { size: 20 }),
-              " Mati\xE8res"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "button",
-          {
-            onClick: () => setActiveTab("planification"),
-            style: styles.tabButton(activeTab === "planification"),
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Calendar, { size: 20 }),
-              " Planification"
-            ]
-          }
-        )
-      ] }),
-      activeTab === "niveaux" && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.contentCard, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { margin: 0, fontSize: "22px", color: "#2c3e50" }, children: "Niveaux d'enseignement" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { onClick: () => setShowAddNiveau(true), style: styles.addButton, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Plus, { size: 18 }),
-            " Ajouter un niveau"
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "grid", gap: "15px" }, children: niveaux.map((niveau) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-          "div",
-          {
-            style: {
-              border: "2px solid #e0e0e0",
-              borderRadius: "10px",
-              padding: "20px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              background: "#fafafa",
-              transition: "all 0.3s ease"
-            },
-            children: [
-              editingItem?.id === niveau.id ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                "input",
-                {
-                  type: "text",
-                  defaultValue: niveau.nom,
-                  onBlur: (e) => modifierNiveau(niveau.id, e.target.value),
-                  autoFocus: true,
-                  style: {
-                    flex: 1,
-                    padding: "10px",
-                    border: "2px solid #667eea",
-                    borderRadius: "5px",
-                    fontSize: "16px",
-                    fontWeight: "bold"
-                  }
-                }
-              ) : /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { fontSize: "20px", fontWeight: "bold", color: "#2c3e50" }, children: niveau.nom }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { fontSize: "14px", color: "#7f8c8d", marginTop: "5px" }, children: [
-                  getClassesByNiveau(niveau.id).length,
-                  " classe(s)"
-                ] })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "8px" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                  "button",
-                  {
-                    onClick: () => setEditingItem(niveau),
-                    style: {
-                      background: "#3498db",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 12px",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      transition: "all 0.3s ease"
-                    },
-                    children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Pen, { size: 16 })
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                  "button",
-                  {
-                    onClick: () => supprimerNiveau(niveau.id),
-                    style: {
-                      background: "#e74c3c",
-                      color: "white",
-                      border: "none",
-                      padding: "8px 12px",
-                      borderRadius: "5px",
-                      cursor: "pointer",
-                      transition: "all 0.3s ease"
-                    },
-                    children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Trash2, { size: 16 })
-                  }
-                )
-              ] })
-            ]
-          },
-          niveau.id
-        )) })
-      ] }),
-      activeTab === "classes" && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.contentCard, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { margin: 0, fontSize: "22px", color: "#2c3e50" }, children: "Classes par niveau" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { onClick: () => setShowAddClasse(true), style: styles.addButton, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Plus, { size: 18 }),
-            " Ajouter une classe"
-          ] })
-        ] }),
-        niveaux.map((niveau) => {
-          const classesNiveau = getClassesByNiveau(niveau.id);
-          if (classesNiveau.length === 0) return null;
-          return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "30px" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: {
-              color: "#667eea",
-              marginBottom: "15px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              fontSize: "18px"
-            }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(GraduationCap, { size: 24 }),
-              " ",
-              niveau.nom
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-              gap: "15px"
-            }, children: classesNiveau.map((classe) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-              "div",
-              {
-                style: {
-                  border: "2px solid #e0e0e0",
-                  borderRadius: "10px",
-                  padding: "15px",
-                  background: "#fafafa",
-                  transition: "all 0.3s ease"
-                },
-                children: [
-                  editingItem?.id === classe.id ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                    "input",
-                    {
-                      type: "text",
-                      defaultValue: classe.nom,
-                      onBlur: (e) => modifierClasse(classe.id, e.target.value),
-                      autoFocus: true,
-                      style: {
-                        width: "100%",
-                        padding: "8px",
-                        border: "2px solid #667eea",
-                        borderRadius: "5px",
-                        fontWeight: "bold"
-                      }
-                    }
-                  ) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    color: "#2c3e50",
-                    marginBottom: "10px"
-                  }, children: classe.nom }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "5px", marginTop: "10px" }, children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                      "button",
-                      {
-                        onClick: () => setEditingItem(classe),
-                        style: {
-                          flex: 1,
-                          background: "#3498db",
-                          color: "white",
-                          border: "none",
-                          padding: "6px",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          transition: "all 0.3s ease"
-                        },
-                        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Pen, { size: 14 })
-                      }
-                    ),
-                    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                      "button",
-                      {
-                        onClick: () => supprimerClasse(classe.id),
-                        style: {
-                          flex: 1,
-                          background: "#e74c3c",
-                          color: "white",
-                          border: "none",
-                          padding: "6px",
-                          borderRadius: "5px",
-                          cursor: "pointer",
-                          fontSize: "12px",
-                          transition: "all 0.3s ease"
-                        },
-                        children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Trash2, { size: 14 })
-                      }
-                    )
-                  ] })
-                ]
-              },
-              classe.id
-            )) })
-          ] }, niveau.id);
-        })
-      ] }),
-      activeTab === "matieres" && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.contentCard, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { margin: 0, fontSize: "22px", color: "#2c3e50" }, children: "Mati\xE8res" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("button", { onClick: () => setShowAddMatiere(true), style: styles.addButton, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Plus, { size: 18 }),
-            " Ajouter une mati\xE8re"
-          ] })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "grid", gap: "15px" }, children: matieres.map((matiere) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-          "div",
-          {
-            style: {
-              border: "2px solid #e0e0e0",
-              borderRadius: "10px",
-              padding: "20px",
-              background: "#fafafa",
-              transition: "all 0.3s ease"
-            },
-            children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: {
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "start",
-              marginBottom: "15px"
-            }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { flex: 1 }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  color: "#2c3e50",
-                  marginBottom: "10px"
-                }, children: matiere.nom }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { fontSize: "14px", color: "#7f8c8d" }, children: [
-                  "Disponible pour : ",
-                  matiere.classeIds.map((cId) => {
-                    const classe = classes.find((c2) => c2.id === cId);
-                    return classe ? classe.nom : "";
-                  }).filter(Boolean).join(", ")
-                ] })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                "button",
-                {
-                  onClick: () => supprimerMatiere(matiere.id),
-                  style: {
-                    background: "#e74c3c",
-                    color: "white",
-                    border: "none",
-                    padding: "8px 12px",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                    transition: "all 0.3s ease"
-                  },
-                  children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(Trash2, { size: 16 })
-                }
-              )
-            ] })
-          },
-          matiere.id
-        )) })
-      ] }),
-      activeTab === "planification" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
-        background: "white",
-        borderRadius: "15px",
-        padding: "0",
-        boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
-        overflow: "hidden"
-      }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(PlanificationContenus_default, {}) }),
-      showAddNiveau && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.modal, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.modalContent, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginTop: 0, color: "#2c3e50" }, children: "Ajouter un niveau" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { style: {
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "600",
-            color: "#2c3e50"
-          }, children: "Nom du niveau" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "input",
-            {
-              type: "text",
-              value: newNiveau,
-              onChange: (e) => setNewNiveau(e.target.value),
-              placeholder: "Ex: Primaire, Coll\xE8ge, Lyc\xE9e",
-              style: {
-                width: "100%",
-                padding: "10px",
-                border: "2px solid #e0e0e0",
-                borderRadius: "8px",
-                fontSize: "14px"
-              }
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: () => {
-                setShowAddNiveau(false);
-                setNewNiveau("");
-              },
-              style: {
-                padding: "10px 20px",
-                background: "#95a5a6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Annuler"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: ajouterNiveau,
-              style: {
-                padding: "10px 20px",
-                background: "#667eea",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Ajouter"
-            }
-          )
-        ] })
-      ] }) }),
-      showAddClasse && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.modal, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: styles.modalContent, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginTop: 0, color: "#2c3e50" }, children: "Ajouter une classe" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "15px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { style: {
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "600",
-            color: "#2c3e50"
-          }, children: "Niveau" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-            "select",
-            {
-              value: newClasse.niveauId,
-              onChange: (e) => setNewClasse({ ...newClasse, niveauId: e.target.value }),
-              style: {
-                width: "100%",
-                padding: "10px",
-                border: "2px solid #e0e0e0",
-                borderRadius: "8px",
-                fontSize: "14px",
-                cursor: "pointer"
-              },
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "", children: "S\xE9lectionner un niveau" }),
-                niveaux.map((n) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: n.id, children: n.nom }, n.id))
-              ]
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { style: {
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "600",
-            color: "#2c3e50"
-          }, children: "Nom de la classe" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "input",
-            {
-              type: "text",
-              value: newClasse.nom,
-              onChange: (e) => setNewClasse({ ...newClasse, nom: e.target.value }),
-              placeholder: "Ex: 6\xE8me, 5\xE8me, Seconde",
-              style: {
-                width: "100%",
-                padding: "10px",
-                border: "2px solid #e0e0e0",
-                borderRadius: "8px",
-                fontSize: "14px"
-              }
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: () => {
-                setShowAddClasse(false);
-                setNewClasse({ nom: "", niveauId: "" });
-              },
-              style: {
-                padding: "10px 20px",
-                background: "#95a5a6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Annuler"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: ajouterClasse,
-              style: {
-                padding: "10px 20px",
-                background: "#667eea",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Ajouter"
-            }
-          )
-        ] })
-      ] }) }),
-      showAddMatiere && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: styles.modal, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: {
-        ...styles.modalContent,
-        maxWidth: "600px",
-        maxHeight: "80vh",
-        overflow: "auto"
-      }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginTop: 0, color: "#2c3e50" }, children: "Ajouter une mati\xE8re" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { style: {
-            display: "block",
-            marginBottom: "8px",
-            fontWeight: "600",
-            color: "#2c3e50"
-          }, children: "Nom de la mati\xE8re" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "input",
-            {
-              type: "text",
-              value: newMatiere.nom,
-              onChange: (e) => setNewMatiere({ ...newMatiere, nom: e.target.value }),
-              placeholder: "Ex: Fran\xE7ais, Math\xE9matiques",
-              style: {
-                width: "100%",
-                padding: "10px",
-                border: "2px solid #e0e0e0",
-                borderRadius: "8px",
-                fontSize: "14px"
-              }
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("label", { style: {
-            display: "block",
-            marginBottom: "10px",
-            fontWeight: "600",
-            color: "#2c3e50"
-          }, children: "Classes concern\xE9es" }),
-          niveaux.map((niveau) => {
-            const classesNiveau = getClassesByNiveau(niveau.id);
-            if (classesNiveau.length === 0) return null;
-            return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-              "div",
-              {
-                style: {
-                  marginBottom: "15px",
-                  padding: "15px",
-                  background: "#f8f9fa",
-                  borderRadius: "8px"
-                },
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
-                    fontWeight: "bold",
-                    marginBottom: "10px",
-                    color: "#667eea",
-                    fontSize: "15px"
-                  }, children: niveau.nom }),
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { display: "flex", flexWrap: "wrap", gap: "10px" }, children: classesNiveau.map((classe) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
-                    "label",
-                    {
-                      style: {
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "5px",
-                        cursor: "pointer",
-                        padding: "8px 12px",
-                        background: newMatiere.classeIds.includes(classe.id) ? "#667eea" : "white",
-                        color: newMatiere.classeIds.includes(classe.id) ? "white" : "#2c3e50",
-                        border: "2px solid #667eea",
-                        borderRadius: "8px",
-                        fontSize: "14px",
-                        fontWeight: "600",
-                        transition: "all 0.3s ease"
-                      },
-                      children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-                          "input",
-                          {
-                            type: "checkbox",
-                            checked: newMatiere.classeIds.includes(classe.id),
-                            onChange: () => toggleClasseForMatiere(classe.id),
-                            style: { cursor: "pointer" }
-                          }
-                        ),
-                        classe.nom
-                      ]
-                    },
-                    classe.id
-                  )) })
-                ]
-              },
-              niveau.id
-            );
-          })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "10px", justifyContent: "flex-end" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: () => {
-                setShowAddMatiere(false);
-                setNewMatiere({ nom: "", classeIds: [] });
-              },
-              style: {
-                padding: "10px 20px",
-                background: "#95a5a6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Annuler"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-            "button",
-            {
-              onClick: ajouterMatiere,
-              style: {
-                padding: "10px 20px",
-                background: "#667eea",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600"
-              },
-              children: "Ajouter"
-            }
-          )
-        ] })
-      ] }) })
-    ] });
-  };
-  var pedaclic_admin_panel_default = AdminPanel;
 })();
 /*! Bundled license information:
 
@@ -30674,17 +29752,11 @@ lucide-react/dist/esm/defaultAttributes.js:
 lucide-react/dist/esm/Icon.js:
 lucide-react/dist/esm/createLucideIcon.js:
 lucide-react/dist/esm/icons/book-open.js:
-lucide-react/dist/esm/icons/book.js:
 lucide-react/dist/esm/icons/calendar.js:
 lucide-react/dist/esm/icons/chart-column.js:
 lucide-react/dist/esm/icons/circle-check.js:
 lucide-react/dist/esm/icons/clock.js:
 lucide-react/dist/esm/icons/file-spreadsheet.js:
-lucide-react/dist/esm/icons/graduation-cap.js:
-lucide-react/dist/esm/icons/pen.js:
-lucide-react/dist/esm/icons/plus.js:
-lucide-react/dist/esm/icons/settings.js:
-lucide-react/dist/esm/icons/trash-2.js:
 lucide-react/dist/esm/icons/trending-up.js:
 lucide-react/dist/esm/lucide-react.js:
   (**
