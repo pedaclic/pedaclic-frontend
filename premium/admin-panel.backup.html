@@ -20,34 +20,42 @@
 <body>
     <div id="root"></div>
     
-    <!-- Admin Panel avec cache-busting -->
-    <script src="js/admin-panel.js?v=2"></script>
+    <!-- Admin Panel bundlé avec React -->
+    <script src="js/admin-panel.js"></script>
     
     <script>
         window.addEventListener('load', () => {
-            console.log('🔍 DEBUG - Type de AdminPanel:', typeof AdminPanel);
-            console.log('🔍 DEBUG - Contenu:', AdminPanel);
-            console.log('🔍 DEBUG - AdminPanel.default:', typeof AdminPanel?.default);
+            console.log('🔍 Type de AdminPanel:', typeof AdminPanel);
+            console.log('🔍 Contenu de AdminPanel:', AdminPanel);
+            console.log('🔍 AdminPanel.default:', typeof AdminPanel.default);
             
             try {
-                // Essayer AdminPanel.default d'abord, sinon AdminPanel
-                const Component = AdminPanel?.default || AdminPanel;
+                // Le composant est dans AdminPanel.default (export default)
+                const Component = AdminPanel.default || AdminPanel;
                 
                 if (typeof Component === 'function') {
-                    console.log('✅ Composant trouvé !');
+                    console.log('✅ Composant trouvé, montage en cours...');
                     const root = ReactDOM.createRoot(document.getElementById('root'));
                     root.render(React.createElement(Component));
-                    console.log('✅ Panneau monté !');
+                    console.log('✅ Panneau admin monté avec succès !');
                 } else {
-                    throw new Error('Composant non trouvé. Type: ' + typeof Component);
+                    console.error('❌ Le composant n\'est pas une fonction');
+                    console.log('Debug - Type:', typeof Component);
+                    console.log('Debug - Valeur:', Component);
+                    
+                    document.getElementById('root').innerHTML = 
+                        '<div style="padding: 50px; text-align: center; font-family: sans-serif;">' +
+                        '<h1 style="color: #e74c3c;">Erreur</h1>' +
+                        '<p>Le composant AdminPanel n\'a pas été trouvé.</p>' +
+                        '<p style="color: #7f8c8d;">Type: ' + typeof Component + '</p>' +
+                        '</div>';
                 }
             } catch (error) {
-                console.error('❌ Erreur:', error);
+                console.error('❌ Erreur lors du montage:', error);
                 document.getElementById('root').innerHTML = 
                     '<div style="padding: 50px; text-align: center; font-family: sans-serif;">' +
-                    '<h1 style="color: #e74c3c;">Erreur de chargement</h1>' +
+                    '<h1 style="color: #e74c3c;">Erreur</h1>' +
                     '<p>' + error.message + '</p>' +
-                    '<p style="color: #7f8c8d; font-size: 12px;">Vérifiez la console (F12)</p>' +
                     '</div>';
             }
         });
