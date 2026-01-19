@@ -1,0 +1,260 @@
+// exemple-donnees.json
+// Exemple de structure de données pour la planification de contenus
+
+{
+  "6ème": {
+    "Trimestre 1": {
+      "Français": {
+        "themes": "L'accord du participe passé, Les temps composés, Les figures de style (métaphore, comparaison)",
+        "objectifs": "Maîtriser les règles d'accord du participe passé avec être et avoir. Identifier et analyser les principales figures de style dans des textes littéraires.",
+        "competences": "Orthographe grammaticale, Analyse littéraire, Expression écrite, Compréhension de texte",
+        "evaluations": "Contrôle continu (coef 1) : 3 évaluations, Dictée mensuelle (coef 1), Rédaction argumentée (coef 2)",
+        "ressources": "Manuel Hatier 6ème p.45-78, Exercices PedaClic Module 1, Vidéos Lumni 'Les accords', Fiches de révision",
+        "statut": "en-cours",
+        "progression": 65
+      },
+      "Mathématiques": {
+        "themes": "Les nombres décimaux, Opérations sur les décimaux, Introduction aux fractions, Périmètre et aire",
+        "objectifs": "Effectuer des opérations sur les nombres décimaux. Calculer le périmètre et l'aire de figures simples.",
+        "competences": "Calcul mental, Résolution de problèmes, Raisonnement géométrique, Rigueur mathématique",
+        "evaluations": "Évaluation diagnostique (septembre), Contrôle de fin de chapitre (coef 1) x2, Devoir maison (coef 0.5)",
+        "ressources": "Manuel Transmath 6ème p.12-45, Exercices en ligne PedaClic, Vidéos Khan Academy, Jeux mathématiques Matific",
+        "statut": "termine",
+        "progression": 100
+      },
+      "Histoire-Géo": {
+        "themes": "La préhistoire et l'Antiquité, Les premières civilisations, Habiter une métropole",
+        "objectifs": "Comprendre l'évolution des sociétés de la préhistoire à l'Antiquité. Analyser les caractéristiques d'une métropole.",
+        "competences": "Analyse de documents historiques, Cartographie, Chronologie, Argumentation",
+        "evaluations": "Exposé oral (coef 1), Contrôle de connaissances (coef 2), Évaluation de croquis (coef 1)",
+        "ressources": "Manuel Hatier Histoire-Géo 6ème, Atlas géographique, Documentaires Arte, Ressources Éduscol",
+        "statut": "en-cours",
+        "progression": 40
+      },
+      "SVT": {
+        "themes": "Le vivant, sa diversité et les fonctions qui le caractérisent, La cellule : unité du vivant, Classification des êtres vivants",
+        "objectifs": "Comprendre la notion de cellule. Utiliser différents critères pour classer les êtres vivants.",
+        "competences": "Observation microscopique, Démarche scientifique, Classification, Schématisation",
+        "evaluations": "TP noté (coef 1) x3, Contrôle de fin de séquence (coef 2), Compte-rendu d'expérience (coef 1)",
+        "ressources": "Manuel Belin SVT 6ème p.20-55, Microscopes, Vidéos 'C'est pas sorcier', Exercices PedaClic",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Physique-Chimie": {
+        "themes": "Matière, mouvement, énergie, information, Les états de la matière, Mélanges et solutions",
+        "objectifs": "Identifier les trois états de la matière. Réaliser et décrire des mélanges.",
+        "competences": "Expérimentation, Protocole scientifique, Observation, Analyse de résultats",
+        "evaluations": "TP expérimental (coef 1) x2, Contrôle écrit (coef 2), Poster scientifique (coef 1)",
+        "ressources": "Manuel Nathan Physique-Chimie 6ème, Matériel de labo, Simulations PhET, Exercices en ligne",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Anglais": {
+        "themes": "Se présenter (My name is..., I'm from...), Les pays anglophones, Les nombres et l'heure",
+        "objectifs": "Se présenter en anglais. Situer des pays anglophones sur une carte. Dire l'heure.",
+        "competences": "Expression orale, Compréhension orale, Vocabulaire thématique, Phonologie",
+        "evaluations": "Présentation orale (coef 2), Compréhension orale (coef 1), Test de vocabulaire (coef 1)",
+        "ressources": "Manuel New Enjoy 6ème, Audio CD, Applications Duolingo et Babbel, Chansons anglophones",
+        "statut": "en-cours",
+        "progression": 50
+      },
+      "EPS": {
+        "themes": "Activités athlétiques (course, saut, lancer), Sports collectifs (handball), Activités gymniques",
+        "objectifs": "Développer les capacités motrices. Respecter les règles sportives. Coopérer en équipe.",
+        "competences": "Motricité, Esprit d'équipe, Respect des règles, Fair-play, Dépassement de soi",
+        "evaluations": "Performance athlétique (coef 1), Évaluation technique gymnastique (coef 1), Participation et fair-play (coef 1)",
+        "ressources": "Matériel sportif du collège, Fiches techniques UNSS, Vidéos de démonstration",
+        "statut": "en-cours",
+        "progression": 55
+      },
+      "Arts": {
+        "themes": "Les couleurs primaires et secondaires, Le portrait dans l'art, Techniques de dessin",
+        "objectifs": "Maîtriser le mélange des couleurs. Réaliser un portrait. Utiliser différentes techniques de dessin.",
+        "competences": "Créativité, Technique artistique, Observation, Expression personnelle",
+        "evaluations": "Réalisation d'un autoportrait (coef 2), Cahier de croquis (coef 1), Participation orale (coef 1)",
+        "ressources": "Matériel d'arts plastiques, Reproductions d'œuvres, Vidéos 'Une minute au musée', Site du Louvre",
+        "statut": "termine",
+        "progression": 100
+      },
+      "Technologie": {
+        "themes": "L'objet technique et son fonctionnement, Les matériaux, Initiation à la programmation (Scratch)",
+        "objectifs": "Comprendre le fonctionnement d'un objet technique. Identifier les matériaux. Créer un programme simple.",
+        "competences": "Analyse fonctionnelle, Programmation, Résolution de problèmes, Travail en équipe",
+        "evaluations": "Projet technique en groupe (coef 2), Programmation Scratch (coef 1), Questionnaire (coef 1)",
+        "ressources": "Matériel du labo de techno, Logiciel Scratch, Tutoriels en ligne, Exercices PedaClic",
+        "statut": "non-commence",
+        "progression": 0
+      }
+    },
+    "Trimestre 2": {
+      "Français": {
+        "themes": "La poésie : rimes, vers et strophes, Le conte merveilleux, L'adjectif qualificatif",
+        "objectifs": "Identifier et créer des poèmes. Analyser la structure d'un conte. Maîtriser l'accord de l'adjectif.",
+        "competences": "Analyse poétique, Créativité littéraire, Orthographe grammaticale, Expression écrite",
+        "evaluations": "Création d'un poème (coef 2), Contrôle de lecture (coef 1), Dictée (coef 1)",
+        "ressources": "Recueil de poésies, Manuel Hatier p.120-158, Vidéos Lumni poésie, Exercices PedaClic",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Mathématiques": {
+        "themes": "Les fractions, Proportionnalité, Volumes des solides, Graphiques et statistiques",
+        "objectifs": "Comprendre et utiliser les fractions. Résoudre des problèmes de proportionnalité. Calculer des volumes.",
+        "competences": "Calcul fractionnaire, Résolution de problèmes, Représentation graphique, Raisonnement",
+        "evaluations": "Devoir surveillé (coef 2), Contrôle de calcul mental (coef 1), Projet statistiques (coef 1)",
+        "ressources": "Manuel Transmath p.78-120, Logiciel GeoGebra, Exercices PedaClic Module 2",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Histoire-Géo": {
+        "themes": "L'Empire romain, Habiter un espace de faible densité, La démocratie athénienne",
+        "objectifs": "Comprendre l'organisation de l'Empire romain. Analyser les espaces ruraux. Découvrir la démocratie.",
+        "competences": "Analyse de cartes, Chronologie historique, Étude de documents, Argumentation",
+        "evaluations": "Contrôle sur l'Antiquité (coef 2), Croquis géographique (coef 1), Exposé (coef 1)",
+        "ressources": "Manuel Hatier p.90-140, Documentaires Arte, Ressources BNF, Atlas historique",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "SVT": {
+        "themes": "La nutrition des êtres vivants, Le peuplement des milieux, L'origine de la matière organique",
+        "objectifs": "Comprendre les besoins nutritifs des êtres vivants. Expliquer le peuplement d'un milieu.",
+        "competences": "Expérimentation, Analyse de résultats, Schématisation, Raisonnement scientifique",
+        "evaluations": "TP évalué (coef 1) x2, Contrôle écrit (coef 2), Compte-rendu (coef 1)",
+        "ressources": "Manuel Belin p.70-110, Matériel d'observation, Vidéos pédagogiques, Exercices en ligne",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Physique-Chimie": {
+        "themes": "L'électricité, Circuits électriques simples, Conducteurs et isolants",
+        "objectifs": "Réaliser un circuit électrique simple. Distinguer conducteurs et isolants. Respecter les règles de sécurité.",
+        "competences": "Expérimentation, Schématisation, Sécurité, Analyse",
+        "evaluations": "TP circuit électrique (coef 2), Contrôle théorique (coef 1), Schémas (coef 1)",
+        "ressources": "Manuel Nathan p.60-95, Matériel électrique, Simulations PhET, Vidéos pédagogiques",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Anglais": {
+        "themes": "Daily routines, Food and meals, Sports and hobbies",
+        "objectifs": "Décrire sa routine quotidienne. Parler de nourriture. Exprimer ses loisirs.",
+        "competences": "Expression orale, Vocabulaire thématique, Grammaire (présent simple), Compréhension",
+        "evaluations": "Dialogue oral (coef 2), Compréhension écrite (coef 1), Test vocabulaire (coef 1)",
+        "ressources": "Manuel New Enjoy p.45-80, Audio CD, Applications mobiles, Vidéos YouTube",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "EPS": {
+        "themes": "Natation, Badminton, Course d'orientation",
+        "objectifs": "Se déplacer dans l'eau. Maîtriser les bases du badminton. S'orienter avec une carte.",
+        "competences": "Natation, Coordination, Orientation spatiale, Endurance",
+        "evaluations": "Test de natation 25m (coef 2), Tournoi de badminton (coef 1), Parcours d'orientation (coef 1)",
+        "ressources": "Piscine municipale, Terrain de badminton, Cartes topographiques, Boussoles",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Arts": {
+        "themes": "La perspective, L'art abstrait, Le mouvement dans l'art",
+        "objectifs": "Comprendre la perspective. Créer une œuvre abstraite. Représenter le mouvement.",
+        "competences": "Technique de perspective, Créativité, Expression artistique, Analyse d'œuvres",
+        "evaluations": "Dessin en perspective (coef 2), Œuvre abstraite (coef 1), Présentation orale (coef 1)",
+        "ressources": "Matériel d'arts, Reproductions d'œuvres, Vidéos musées, Site Pompidou",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Technologie": {
+        "themes": "Les énergies, Les engrenages et transmissions, Projet robotique",
+        "objectifs": "Identifier les différentes formes d'énergie. Comprendre les transmissions. Créer un robot simple.",
+        "competences": "Analyse énergétique, Mécanique, Programmation, Travail de projet",
+        "evaluations": "Projet robotique en groupe (coef 3), Contrôle écrit (coef 1)",
+        "ressources": "Kits robotiques, Logiciel Scratch, Matériel de techno, Tutoriels vidéo",
+        "statut": "non-commence",
+        "progression": 0
+      }
+    },
+    "Trimestre 3": {
+      "Français": {
+        "themes": "Le théâtre, Les temps du récit (imparfait/passé simple), L'argumentation",
+        "objectifs": "Analyser une pièce de théâtre. Maîtriser l'usage des temps du récit. Construire une argumentation.",
+        "competences": "Analyse dramatique, Conjugaison, Argumentation, Expression orale",
+        "evaluations": "Mise en scène d'une saynète (coef 2), Contrôle conjugaison (coef 1), Rédaction argumentée (coef 2)",
+        "ressources": "Pièces de Molière (extraits), Manuel Hatier p.180-220, Vidéos Comédie-Française",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Mathématiques": {
+        "themes": "La symétrie axiale, Les angles, Problèmes complexes, Révisions générales",
+        "objectifs": "Construire des figures symétriques. Mesurer et tracer des angles. Résoudre des problèmes multi-étapes.",
+        "competences": "Géométrie, Mesure, Résolution de problèmes, Synthèse",
+        "evaluations": "Devoir de géométrie (coef 2), Problèmes ouverts (coef 1), Brevet blanc (coef 3)",
+        "ressources": "Manuel Transmath p.150-200, GeoGebra, Exercices PedaClic révisions",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Histoire-Géo": {
+        "themes": "Le Moyen Âge, Habiter les littoraux, Les grandes découvertes",
+        "objectifs": "Comprendre la société médiévale. Analyser l'aménagement des littoraux. Découvrir les explorations.",
+        "competences": "Chronologie, Cartographie, Analyse de documents, Synthèse",
+        "evaluations": "Contrôle Moyen Âge (coef 2), Croquis littoraux (coef 1), Exposé découvertes (coef 1)",
+        "ressources": "Manuel Hatier p.160-210, Documentaires, Cartes historiques, Ressources BNF",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "SVT": {
+        "themes": "Le monde microbien, L'hygiène et la santé, Révisions annuelles",
+        "objectifs": "Comprendre le rôle des micro-organismes. Adopter des règles d'hygiène. Synthétiser les acquis.",
+        "competences": "Observation microscopique, Hygiène, Raisonnement scientifique, Synthèse",
+        "evaluations": "TP micro-organismes (coef 2), Contrôle santé (coef 1), Bilan annuel (coef 2)",
+        "ressources": "Manuel Belin p.140-180, Microscopes, Vidéos santé publique, Fiches révision",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Physique-Chimie": {
+        "themes": "L'eau et l'environnement, Les sources d'énergie, Révisions annuelles",
+        "objectifs": "Comprendre le cycle de l'eau. Identifier les sources d'énergie. Synthétiser les concepts de l'année.",
+        "competences": "Analyse environnementale, Raisonnement scientifique, Expérimentation, Synthèse",
+        "evaluations": "Projet environnemental (coef 2), Contrôle énergies (coef 1), Bilan annuel (coef 2)",
+        "ressources": "Manuel Nathan p.120-160, Simulations, Documentaires environnement, Exercices bilan",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Anglais": {
+        "themes": "Vacations and travel, Past tense, Future plans",
+        "objectifs": "Parler de voyages et vacances. Utiliser le passé. Exprimer des projets futurs.",
+        "competences": "Expression orale et écrite, Grammaire (temps), Vocabulaire voyage, Compréhension",
+        "evaluations": "Présentation voyage (coef 2), Test grammaire (coef 1), Compréhension orale (coef 1)",
+        "ressources": "Manuel New Enjoy p.100-140, Audio CD, Cartes géographiques, Vidéos",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "EPS": {
+        "themes": "Athlétisme (compétitions), Danse, Évaluation annuelle",
+        "objectifs": "Participer à une compétition athlétique. Créer une chorégraphie. Bilan des capacités motrices.",
+        "competences": "Performance sportive, Expression corporelle, Créativité, Esprit d'équipe",
+        "evaluations": "Compétition athlétique (coef 2), Chorégraphie de groupe (coef 2), Bilan annuel (coef 1)",
+        "ressources": "Stade d'athlétisme, Salle de danse, Matériel audiovisuel, Musique",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Arts": {
+        "themes": "L'art contemporain, Projet artistique personnel, Exposition de fin d'année",
+        "objectifs": "Découvrir l'art contemporain. Réaliser un projet artistique personnel. Présenter son œuvre.",
+        "competences": "Créativité, Technique mixte, Expression personnelle, Présentation orale",
+        "evaluations": "Projet personnel (coef 3), Présentation orale (coef 1), Participation exposition (coef 1)",
+        "ressources": "Matériel varié, Visites virtuelles musées, Vidéos artistes, Site Beaubourg",
+        "statut": "non-commence",
+        "progression": 0
+      },
+      "Technologie": {
+        "themes": "L'habitat et l'environnement, Projet final d'année, Présentation publique",
+        "objectifs": "Concevoir un habitat durable. Réaliser un projet technique complet. Présenter son travail.",
+        "competences": "Éco-conception, Programmation avancée, Travail de projet, Communication",
+        "evaluations": "Projet final en groupe (coef 4), Présentation orale (coef 2)",
+        "ressources": "Logiciels CAO, Matériel de construction, Arduino/Scratch, Supports présentation",
+        "statut": "non-commence",
+        "progression": 0
+      }
+    }
+  }
+}
+
+// Note : Ceci n'est qu'un exemple pour le niveau 6ème
+// Les autres niveaux (5ème, 4ème, 3ème, Seconde, Première, Terminale) 
+// suivent la même structure mais avec des contenus adaptés au programme
