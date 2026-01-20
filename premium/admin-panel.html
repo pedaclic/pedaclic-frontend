@@ -6,12 +6,12 @@
     <title>Panneau d'Administration - PedaClic</title>
     <link rel="stylesheet" href="css/premium.css">
     
-    <!-- Seulement Firebase (ne peut pas être bundlé facilement) -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     
-    <!-- Configuration Firebase -->
+    <!-- Config Firebase -->
     <script src="js/firebase-config.js"></script>
     
     <!-- Auth Check -->
@@ -20,25 +20,7 @@
 <body>
     <div id="root"></div>
     
-    <!-- Tout-en-un : React + ReactDOM + Recharts + AdminPanel -->
-    <script src="js/admin-panel.js?v=5"></script>
-    
-    <script>
-        console.log('🔍 PedaclicAdmin:', typeof PedaclicAdmin);
-        console.log('🔍 Contenu:', PedaclicAdmin);
-        
-        // Le bundle expose PedaclicAdmin.default (export default)
-        const Component = PedaclicAdmin?.default || PedaclicAdmin;
-        
-        if (typeof Component === 'function') {
-            console.log('✅ Montage...');
-            // React est bundlé dans le fichier, accessible via PedaclicAdmin
-            const root = PedaclicAdmin.ReactDOM.createRoot(document.getElementById('root'));
-            root.render(PedaclicAdmin.React.createElement(Component));
-            console.log('✅ Monté !');
-        } else {
-            console.error('❌ Composant introuvable');
-        }
-    </script>
+    <!-- Bundle complet (s'initialise automatiquement) -->
+    <script src="js/admin-panel.js?v=6"></script>
 </body>
 </html>
