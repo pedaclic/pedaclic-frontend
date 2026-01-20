@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panneau d'Administration - PedaClic Premium</title>
+    <title>Panneau d'Administration - PedaClic</title>
     <link rel="stylesheet" href="css/premium.css">
     
-    <!-- React et ReactDOM (AJOUTÉ) -->
+    <!-- React et ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
@@ -24,41 +24,7 @@
 <body>
     <div id="root"></div>
     
-    <!-- Admin Panel bundlé -->
-    <script src="js/admin-panel.js?v=3"></script>
-    
-    <script>
-        window.addEventListener('load', () => {
-            console.log('🔍 React:', typeof React);
-            console.log('🔍 ReactDOM:', typeof ReactDOM);
-            console.log('🔍 AdminPanel:', typeof AdminPanel);
-            console.log('🔍 AdminPanel.default:', typeof AdminPanel?.default);
-            
-            try {
-                if (typeof ReactDOM === 'undefined') {
-                    throw new Error('ReactDOM non chargé depuis le CDN');
-                }
-                
-                const Component = AdminPanel?.default || AdminPanel;
-                
-                if (typeof Component === 'function') {
-                    console.log('✅ Montage du panneau admin...');
-                    const root = ReactDOM.createRoot(document.getElementById('root'));
-                    root.render(React.createElement(Component));
-                    console.log('✅ Panneau admin monté avec succès !');
-                } else {
-                    throw new Error('AdminPanel n\'est pas une fonction (type: ' + typeof Component + ')');
-                }
-            } catch (error) {
-                console.error('❌ Erreur:', error);
-                document.getElementById('root').innerHTML = 
-                    '<div style="padding: 50px; text-align: center; font-family: sans-serif;">' +
-                    '<h1 style="color: #e74c3c;">Erreur de chargement</h1>' +
-                    '<p>' + error.message + '</p>' +
-                    '<p style="color: #7f8c8d; margin-top: 20px;">Ouvrez la console (F12) pour plus de détails</p>' +
-                    '</div>';
-            }
-        });
-    </script>
+    <!-- Le panneau s'initialise automatiquement -->
+    <script src="js/admin-panel.js?v=4"></script>
 </body>
 </html>
