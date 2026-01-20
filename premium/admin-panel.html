@@ -6,6 +6,10 @@
     <title>Panneau d'Administration - PedaClic Premium</title>
     <link rel="stylesheet" href="css/premium.css">
     
+    <!-- React et ReactDOM (AJOUTÉ) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
@@ -20,26 +24,30 @@
 <body>
     <div id="root"></div>
     
-    <!-- Admin Panel avec cache-busting -->
-    <script src="js/admin-panel.js?v=2"></script>
+    <!-- Admin Panel bundlé -->
+    <script src="js/admin-panel.js?v=3"></script>
     
     <script>
         window.addEventListener('load', () => {
-            console.log('🔍 DEBUG - Type de AdminPanel:', typeof AdminPanel);
-            console.log('🔍 DEBUG - Contenu:', AdminPanel);
-            console.log('🔍 DEBUG - AdminPanel.default:', typeof AdminPanel?.default);
+            console.log('🔍 React:', typeof React);
+            console.log('🔍 ReactDOM:', typeof ReactDOM);
+            console.log('🔍 AdminPanel:', typeof AdminPanel);
+            console.log('🔍 AdminPanel.default:', typeof AdminPanel?.default);
             
             try {
-                // Essayer AdminPanel.default d'abord, sinon AdminPanel
+                if (typeof ReactDOM === 'undefined') {
+                    throw new Error('ReactDOM non chargé depuis le CDN');
+                }
+                
                 const Component = AdminPanel?.default || AdminPanel;
                 
                 if (typeof Component === 'function') {
-                    console.log('✅ Composant trouvé !');
+                    console.log('✅ Montage du panneau admin...');
                     const root = ReactDOM.createRoot(document.getElementById('root'));
                     root.render(React.createElement(Component));
-                    console.log('✅ Panneau monté !');
+                    console.log('✅ Panneau admin monté avec succès !');
                 } else {
-                    throw new Error('Composant non trouvé. Type: ' + typeof Component);
+                    throw new Error('AdminPanel n\'est pas une fonction (type: ' + typeof Component + ')');
                 }
             } catch (error) {
                 console.error('❌ Erreur:', error);
@@ -47,7 +55,7 @@
                     '<div style="padding: 50px; text-align: center; font-family: sans-serif;">' +
                     '<h1 style="color: #e74c3c;">Erreur de chargement</h1>' +
                     '<p>' + error.message + '</p>' +
-                    '<p style="color: #7f8c8d; font-size: 12px;">Vérifiez la console (F12)</p>' +
+                    '<p style="color: #7f8c8d; margin-top: 20px;">Ouvrez la console (F12) pour plus de détails</p>' +
                     '</div>';
             }
         });
