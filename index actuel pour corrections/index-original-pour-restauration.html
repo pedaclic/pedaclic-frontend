@@ -643,42 +643,6 @@
                             Accéder au cahier →
                         </span>
                     </a>
-                    
-                    <!-- Planifications Pédagogiques - CARTE CLIQUABLE -->
-                    <a href="premium/planifications.html" class="premium-tool-card" style="text-decoration: none; color: inherit; display: none;">
-                        <span class="tool-icon">📅</span>
-                        <h3 class="tool-title">Planifications</h3>
-                        <p class="tool-description">
-                            Consultez les programmes pédagogiques de la 6ème à la Terminale.
-                        </p>
-                        <div class="tool-features">
-                            <div class="tool-feature">Programmes complets</div>
-                            <div class="tool-feature">7 niveaux × 9 disciplines</div>
-                            <div class="tool-feature">Statistiques visuelles</div>
-                            <div class="tool-feature">Export Excel/CSV</div>
-                        </div>
-                        <span class="tool-btn">
-                            Consulter →
-                        </span>
-                    </a>
-                    
-                    <!-- Panneau Admin - CARTE CLIQUABLE (ADMIN UNIQUEMENT) -->
-                    <a href="premium/admin-panel.html" class="premium-tool-card admin-only" style="text-decoration: none; color: inherit; display: none;">
-                        <span class="tool-icon">⚙️</span>
-                        <h3 class="tool-title">Panneau Admin</h3>
-                        <p class="tool-description">
-                            Configuration pédagogique complète de la plateforme.
-                        </p>
-                        <div class="tool-features">
-                            <div class="tool-feature">Gestion des niveaux</div>
-                            <div class="tool-feature">Configuration des classes</div>
-                            <div class="tool-feature">Gestion des matières</div>
-                            <div class="tool-feature">Planification contenus</div>
-                        </div>
-                        <span class="tool-btn">
-                            Accéder au panneau →
-                        </span>
-                    </a>
                 </div>
             </div>
             
@@ -788,7 +752,7 @@
         const db = getFirestore(app);
         const auth = getAuth(app);
 
-        // VÉRIFICATION STATUT PREMIUM + ADMIN
+        // VÉRIFICATION STATUT PREMIUM
         onAuthStateChanged(auth, async (user) => {
             const premiumToolsContent = document.getElementById('premium-tools-content');
             const nonPremiumMessage = document.getElementById('non-premium-tools-message');
@@ -798,33 +762,9 @@
                     const userDocRef = doc(db, 'users', user.uid);
                     const userDoc = await getDoc(userDocRef);
                     
-                    if (userDoc.exists()) {
-                        const userData = userDoc.data();
-                        const isPremium = userData.isPremium === true;
-                        const isAdmin = userData.role === 'admin';
-                        
-                        console.log('👤 Statut utilisateur:', { isPremium, isAdmin, email: user.email });
-                        
-                        if (isPremium) {
-                            premiumToolsContent.style.display = 'block';
-                            nonPremiumMessage.style.display = 'none';
-                            
-                            // Afficher tous les outils Premium (sauf admin-only)
-                            document.querySelectorAll('.premium-tool-card:not(.admin-only)').forEach(card => {
-                                card.style.display = 'block';
-                            });
-                            
-                            // Si admin, afficher aussi les outils admin-only
-                            if (isAdmin) {
-                                document.querySelectorAll('.premium-tool-card.admin-only').forEach(card => {
-                                    card.style.display = 'block';
-                                });
-                                console.log('✅ Outils Admin affichés');
-                            }
-                        } else {
-                            premiumToolsContent.style.display = 'none';
-                            nonPremiumMessage.style.display = 'block';
-                        }
+                    if (userDoc.exists() && userDoc.data().isPremium === true) {
+                        premiumToolsContent.style.display = 'block';
+                        nonPremiumMessage.style.display = 'none';
                     } else {
                         premiumToolsContent.style.display = 'none';
                         nonPremiumMessage.style.display = 'block';
@@ -908,6 +848,9 @@
     <script src="assets/js/features/dark-mode.js"></script>
     <script src="assets/js/features/toast.js"></script>
     <script src="assets/js/features/scroll-animations.js"></script>
+    <script src="assets/js/features/premium-display.js"></script>
+    <script src="assets/js/features/scroll-animations.js"></script>
+    <script src="assets/js/features/premium-display.js"></script>
 </body>
     
 </html>
