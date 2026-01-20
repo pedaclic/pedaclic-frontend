@@ -24991,22 +24991,38 @@
   ];
   var ChartColumn = createLucideIcon("chart-column", __iconNode4);
 
-  // node_modules/lucide-react/dist/esm/icons/circle-check.js
+  // node_modules/lucide-react/dist/esm/icons/circle-alert.js
   var __iconNode5 = [
+    ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+    ["line", { x1: "12", x2: "12", y1: "8", y2: "12", key: "1pkeuh" }],
+    ["line", { x1: "12", x2: "12.01", y1: "16", y2: "16", key: "4dfq90" }]
+  ];
+  var CircleAlert = createLucideIcon("circle-alert", __iconNode5);
+
+  // node_modules/lucide-react/dist/esm/icons/circle-check.js
+  var __iconNode6 = [
     ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
     ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
   ];
-  var CircleCheck = createLucideIcon("circle-check", __iconNode5);
+  var CircleCheck = createLucideIcon("circle-check", __iconNode6);
 
   // node_modules/lucide-react/dist/esm/icons/clock.js
-  var __iconNode6 = [
+  var __iconNode7 = [
     ["path", { d: "M12 6v6l4 2", key: "mmk7yg" }],
     ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }]
   ];
-  var Clock = createLucideIcon("clock", __iconNode6);
+  var Clock = createLucideIcon("clock", __iconNode7);
+
+  // node_modules/lucide-react/dist/esm/icons/cloud-upload.js
+  var __iconNode8 = [
+    ["path", { d: "M12 13v8", key: "1l5pq0" }],
+    ["path", { d: "M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242", key: "1pljnt" }],
+    ["path", { d: "m8 17 4-4 4 4", key: "1quai1" }]
+  ];
+  var CloudUpload = createLucideIcon("cloud-upload", __iconNode8);
 
   // node_modules/lucide-react/dist/esm/icons/file-spreadsheet.js
-  var __iconNode7 = [
+  var __iconNode9 = [
     [
       "path",
       {
@@ -25020,10 +25036,10 @@
     ["path", { d: "M8 17h2", key: "2yhykz" }],
     ["path", { d: "M14 17h2", key: "10kma7" }]
   ];
-  var FileSpreadsheet = createLucideIcon("file-spreadsheet", __iconNode7);
+  var FileSpreadsheet = createLucideIcon("file-spreadsheet", __iconNode9);
 
   // node_modules/lucide-react/dist/esm/icons/graduation-cap.js
-  var __iconNode8 = [
+  var __iconNode10 = [
     [
       "path",
       {
@@ -25034,10 +25050,10 @@
     ["path", { d: "M22 10v6", key: "1lu8f3" }],
     ["path", { d: "M6 12.5V16a6 3 0 0 0 12 0v-3.5", key: "1r8lef" }]
   ];
-  var GraduationCap = createLucideIcon("graduation-cap", __iconNode8);
+  var GraduationCap = createLucideIcon("graduation-cap", __iconNode10);
 
   // node_modules/lucide-react/dist/esm/icons/pen.js
-  var __iconNode9 = [
+  var __iconNode11 = [
     [
       "path",
       {
@@ -25046,17 +25062,31 @@
       }
     ]
   ];
-  var Pen = createLucideIcon("pen", __iconNode9);
+  var Pen = createLucideIcon("pen", __iconNode11);
 
   // node_modules/lucide-react/dist/esm/icons/plus.js
-  var __iconNode10 = [
+  var __iconNode12 = [
     ["path", { d: "M5 12h14", key: "1ays0h" }],
     ["path", { d: "M12 5v14", key: "s699le" }]
   ];
-  var Plus = createLucideIcon("plus", __iconNode10);
+  var Plus = createLucideIcon("plus", __iconNode12);
+
+  // node_modules/lucide-react/dist/esm/icons/save.js
+  var __iconNode13 = [
+    [
+      "path",
+      {
+        d: "M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+        key: "1c8476"
+      }
+    ],
+    ["path", { d: "M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7", key: "1ydtos" }],
+    ["path", { d: "M7 3v4a1 1 0 0 0 1 1h7", key: "t51u73" }]
+  ];
+  var Save = createLucideIcon("save", __iconNode13);
 
   // node_modules/lucide-react/dist/esm/icons/settings.js
-  var __iconNode11 = [
+  var __iconNode14 = [
     [
       "path",
       {
@@ -25066,24 +25096,24 @@
     ],
     ["circle", { cx: "12", cy: "12", r: "3", key: "1v7zrd" }]
   ];
-  var Settings = createLucideIcon("settings", __iconNode11);
+  var Settings = createLucideIcon("settings", __iconNode14);
 
   // node_modules/lucide-react/dist/esm/icons/trash-2.js
-  var __iconNode12 = [
+  var __iconNode15 = [
     ["path", { d: "M10 11v6", key: "nco0om" }],
     ["path", { d: "M14 11v6", key: "outv1u" }],
     ["path", { d: "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6", key: "miytrc" }],
     ["path", { d: "M3 6h18", key: "d0wm0j" }],
     ["path", { d: "M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2", key: "e791ji" }]
   ];
-  var Trash2 = createLucideIcon("trash-2", __iconNode12);
+  var Trash2 = createLucideIcon("trash-2", __iconNode15);
 
   // node_modules/lucide-react/dist/esm/icons/trending-up.js
-  var __iconNode13 = [
+  var __iconNode16 = [
     ["path", { d: "M16 7h6v6", key: "box55l" }],
     ["path", { d: "m22 7-8.5 8.5-5-5L2 17", key: "1t1m79" }]
   ];
-  var TrendingUp = createLucideIcon("trending-up", __iconNode13);
+  var TrendingUp = createLucideIcon("trending-up", __iconNode16);
 
   // PlanificationContenus.tsx
   var import_react62 = __toESM(require_react());
@@ -49396,7 +49426,11 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
     const [trimestreActif, setTrimestreActif] = (0, import_react62.useState)("Trimestre 1");
     const [disciplineActive, setDisciplineActive] = (0, import_react62.useState)("Fran\xE7ais");
     const [vueActive, setVueActive] = (0, import_react62.useState)("planification");
-    (0, import_react62.useEffect)(() => {
+    const [isLoading, setIsLoading] = (0, import_react62.useState)(true);
+    const [isSaving, setIsSaving] = (0, import_react62.useState)(false);
+    const [lastSaved, setLastSaved] = (0, import_react62.useState)(null);
+    const [saveError, setSaveError] = (0, import_react62.useState)(null);
+    const initEmptyData = () => {
       const initialData = {};
       NIVEAUX.forEach((niveau) => {
         initialData[niveau] = {};
@@ -49415,8 +49449,87 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
           });
         });
       });
-      setContenus(initialData);
+      return initialData;
+    };
+    (0, import_react62.useEffect)(() => {
+      const loadData = async () => {
+        setIsLoading(true);
+        setSaveError(null);
+        try {
+          if (typeof firebase === "undefined") {
+            throw new Error("Firebase non initialis\xE9");
+          }
+          const db = firebase.firestore();
+          const doc = await db.collection("planifications").doc("contenus").get();
+          if (doc.exists) {
+            const data = doc.data();
+            setContenus(data.data);
+            setLastSaved(data.lastUpdated?.toDate() || null);
+            console.log("\u2705 Planifications charg\xE9es depuis Firebase");
+          } else {
+            const emptyData = initEmptyData();
+            setContenus(emptyData);
+            console.log("\u2139\uFE0F Aucune planification trouv\xE9e, donn\xE9es initialis\xE9es");
+          }
+        } catch (error) {
+          console.error("\u274C Erreur lors du chargement:", error);
+          setSaveError("Erreur de chargement. V\xE9rifiez vos permissions Firestore.");
+          setContenus(initEmptyData());
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadData();
     }, []);
+    (0, import_react62.useEffect)(() => {
+      if (isLoading) return;
+      const timeoutId = setTimeout(async () => {
+        try {
+          setIsSaving(true);
+          setSaveError(null);
+          if (typeof firebase === "undefined") {
+            throw new Error("Firebase non initialis\xE9");
+          }
+          const db = firebase.firestore();
+          await db.collection("planifications").doc("contenus").set({
+            data: contenus,
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+            version: 1
+          });
+          setLastSaved(/* @__PURE__ */ new Date());
+          console.log("\u2705 Sauvegarde automatique r\xE9ussie");
+        } catch (error) {
+          console.error("\u274C Erreur de sauvegarde automatique:", error);
+          setSaveError(error.message || "Erreur de sauvegarde");
+        } finally {
+          setIsSaving(false);
+        }
+      }, 2e3);
+      return () => clearTimeout(timeoutId);
+    }, [contenus, isLoading]);
+    const sauvegarderManuellement = async () => {
+      try {
+        setIsSaving(true);
+        setSaveError(null);
+        if (typeof firebase === "undefined") {
+          throw new Error("Firebase non initialis\xE9");
+        }
+        const db = firebase.firestore();
+        await db.collection("planifications").doc("contenus").set({
+          data: contenus,
+          lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
+          version: 1
+        });
+        setLastSaved(/* @__PURE__ */ new Date());
+        alert("\u2705 Planifications sauvegard\xE9es avec succ\xE8s !");
+      } catch (error) {
+        console.error("\u274C Erreur lors de la sauvegarde:", error);
+        setSaveError(error.message || "Erreur de sauvegarde");
+        alert("\u274C Erreur lors de la sauvegarde. V\xE9rifiez la console et vos permissions Firestore.");
+      } finally {
+        setIsSaving(false);
+      }
+    };
     const updateContenu = (niveau, trimestre, discipline, champ, valeur) => {
       setContenus((prev) => ({
         ...prev,
@@ -49447,19 +49560,11 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
           });
         });
       });
-      return {
-        total,
-        termines,
-        enCours,
-        nonCommences,
-        tauxCompletion: total > 0 ? Math.round(termines / total * 100) : 0
-      };
+      return { total, termines, enCours, nonCommences, tauxCompletion: total > 0 ? Math.round(termines / total * 100) : 0 };
     };
     const prepareDataNiveaux = () => {
       return NIVEAUX.map((niveau) => {
-        let termine = 0;
-        let enCours = 0;
-        let nonCommence = 0;
+        let termine = 0, enCours = 0, nonCommence = 0;
         if (contenus[niveau]) {
           Object.values(contenus[niveau]).forEach((trimestre) => {
             Object.values(trimestre).forEach((contenu) => {
@@ -49469,12 +49574,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
             });
           });
         }
-        return {
-          niveau,
-          "Termin\xE9": termine,
-          "En cours": enCours,
-          "Non commenc\xE9": nonCommence
-        };
+        return { niveau, "Termin\xE9": termine, "En cours": enCours, "Non commenc\xE9": nonCommence };
       });
     };
     const prepareDataDisciplines = () => {
@@ -49482,9 +49582,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
         let count = 0;
         Object.values(contenus).forEach((niveau) => {
           Object.values(niveau).forEach((trimestre) => {
-            if (trimestre[discipline] && trimestre[discipline].statut === "termine") {
-              count++;
-            }
+            if (trimestre[discipline] && trimestre[discipline].statut === "termine") count++;
           });
         });
         return { name: discipline, value: count };
@@ -49492,8 +49590,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
     };
     const prepareDataTrimestres = () => {
       return TRIMESTRES.map((trimestre) => {
-        let total = 0;
-        let termine = 0;
+        let total = 0, termine = 0;
         Object.values(contenus).forEach((niveau) => {
           if (niveau[trimestre]) {
             Object.values(niveau[trimestre]).forEach((contenu) => {
@@ -49502,10 +49599,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
             });
           }
         });
-        return {
-          trimestre,
-          progression: total > 0 ? Math.round(termine / total * 100) : 0
-        };
+        return { trimestre, progression: total > 0 ? Math.round(termine / total * 100) : 0 };
       });
     };
     const exporterVersExcel = () => {
@@ -49548,14 +49642,49 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
       statut: "non-commence",
       progression: 0
     };
+    if (isLoading) {
+      return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "white", borderRadius: "15px", padding: "50px", boxShadow: "0 10px 30px rgba(0,0,0,0.1)", textAlign: "center" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CloudUpload, { size: 48, style: { color: "#6676ea", marginBottom: "20px" } }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "18px", color: "#2c3e50", marginBottom: "10px" }, children: "Chargement des planifications..." }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "14px", color: "#7f8c8d" }, children: "Connexion \xE0 Firebase" })
+      ] });
+    }
     return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "white", borderRadius: "15px", padding: "30px", boxShadow: "0 10px 30px rgba(0,0,0,0.1)" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { marginBottom: "30px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "15px", marginBottom: "20px" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BookOpen, { size: 32, style: { color: "#6676ea" } }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { style: { margin: 0, color: "#2c3e50", fontSize: "24px", fontWeight: "bold" }, children: "Planification de Contenus P\xE9dagogiques" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "5px 0 0 0", color: "#7f8c8d", fontSize: "14px" }, children: "G\xE9rez vos programmes de la 6\xE8me \xE0 la Terminale" })
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "15px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BookOpen, { size: 32, style: { color: "#6676ea" } }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h2", { style: { margin: 0, color: "#2c3e50", fontSize: "24px", fontWeight: "bold" }, children: "Planification de Contenus P\xE9dagogiques" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { margin: "5px 0 0 0", color: "#7f8c8d", fontSize: "14px" }, children: "G\xE9rez vos programmes de la 6\xE8me \xE0 la Terminale" })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px" }, children: isSaving ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CloudUpload, { size: 16, style: { color: "#6676ea" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#6676ea" }, children: "Sauvegarde..." })
+            ] }) : saveError ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleAlert, { size: 16, style: { color: "#e74c3c" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#e74c3c" }, children: "Erreur" })
+            ] }) : lastSaved ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(import_jsx_runtime.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleCheck, { size: 16, style: { color: "#00a896" } }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#00a896" }, children: "Sauvegard\xE9" })
+            ] }) : null }),
+            lastSaved && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "12px", color: "#95a5a6" }, children: lastSaved.toLocaleTimeString("fr-FR") })
           ] })
+        ] }),
+        saveError && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: {
+          background: "#fff5f5",
+          border: "1px solid #feb2b2",
+          borderRadius: "8px",
+          padding: "12px",
+          marginBottom: "15px",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px"
+        }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleAlert, { size: 20, style: { color: "#e74c3c" } }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#c53030", fontSize: "14px" }, children: saveError })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)(StatCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(CircleCheck, { size: 20 }), titre: "Taux de compl\xE9tion", valeur: `${stats.tauxCompletion}%`, couleur: "#00a896" }),
@@ -49565,73 +49694,24 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "10px", marginBottom: "25px", flexWrap: "wrap" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "button",
-          {
-            onClick: () => setVueActive("planification"),
-            style: {
-              padding: "10px 20px",
-              background: vueActive === "planification" ? "#6676ea" : "#f0f0f0",
-              color: vueActive === "planification" ? "white" : "#2c3e50",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            },
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BookOpen, { size: 18 }),
-              "Planification"
-            ]
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "button",
-          {
-            onClick: () => setVueActive("tableauDeBord"),
-            style: {
-              padding: "10px 20px",
-              background: vueActive === "tableauDeBord" ? "#6676ea" : "#f0f0f0",
-              color: vueActive === "tableauDeBord" ? "white" : "#2c3e50",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            },
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartColumn, { size: 18 }),
-              "Tableau de bord"
-            ]
-          }
-        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: () => setVueActive("planification"), style: { padding: "10px 20px", background: vueActive === "planification" ? "#6676ea" : "#f0f0f0", color: vueActive === "planification" ? "white" : "#2c3e50", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.3s" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(BookOpen, { size: 18 }),
+          " Planification"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: () => setVueActive("tableauDeBord"), style: { padding: "10px 20px", background: vueActive === "tableauDeBord" ? "#6676ea" : "#f0f0f0", color: vueActive === "tableauDeBord" ? "white" : "#2c3e50", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.3s" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChartColumn, { size: 18 }),
+          " Tableau de bord"
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { flex: 1 } }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-          "button",
-          {
-            onClick: exporterVersExcel,
-            style: {
-              padding: "10px 20px",
-              background: "#00a896",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px"
-            },
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileSpreadsheet, { size: 18 }),
-              "Export Excel"
-            ]
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: sauvegarderManuellement, disabled: isSaving, style: { padding: "10px 20px", background: "#8e44ad", color: "white", border: "none", borderRadius: "8px", cursor: isSaving ? "not-allowed" : "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", opacity: isSaving ? 0.6 : 1, transition: "all 0.3s" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Save, { size: 18 }),
+          " ",
+          isSaving ? "Sauvegarde..." : "Sauvegarder"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { onClick: exporterVersExcel, style: { padding: "10px 20px", background: "#00a896", color: "white", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.3s" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(FileSpreadsheet, { size: 18 }),
+          " Export Excel"
+        ] })
       ] }),
       vueActive === "planification" ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
         VuePlanification,
@@ -49655,12 +49735,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
       )
     ] });
   };
-  var StatCard = ({ icon, titre, valeur, couleur }) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: {
-    background: "#f8f9fa",
-    padding: "20px",
-    borderRadius: "10px",
-    border: "2px solid #e0e0e0"
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "12px" }, children: [
+  var StatCard = ({ icon, titre, valeur, couleur }) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { background: "#f8f9fa", padding: "20px", borderRadius: "10px", border: "2px solid #e0e0e0" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "12px" }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { color: couleur }, children: icon }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { fontSize: "12px", color: "#7f8c8d", marginBottom: "5px" }, children: titre }),
@@ -49671,60 +49746,15 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "15px", marginBottom: "25px" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: "Niveau scolaire" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "select",
-          {
-            value: niveauActif,
-            onChange: (e) => setNiveauActif(e.target.value),
-            style: {
-              width: "100%",
-              padding: "10px",
-              border: "2px solid #e0e0e0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer"
-            },
-            children: NIVEAUX.map((niveau) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: niveau, children: niveau }, niveau))
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("select", { value: niveauActif, onChange: (e) => setNiveauActif(e.target.value), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }, children: NIVEAUX.map((niveau) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: niveau, children: niveau }, niveau)) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: "Trimestre" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "select",
-          {
-            value: trimestreActif,
-            onChange: (e) => setTrimestreActif(e.target.value),
-            style: {
-              width: "100%",
-              padding: "10px",
-              border: "2px solid #e0e0e0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer"
-            },
-            children: TRIMESTRES.map((trimestre) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: trimestre, children: trimestre }, trimestre))
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("select", { value: trimestreActif, onChange: (e) => setTrimestreActif(e.target.value), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }, children: TRIMESTRES.map((trimestre) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: trimestre, children: trimestre }, trimestre)) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
         /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: "Discipline" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          "select",
-          {
-            value: disciplineActive,
-            onChange: (e) => setDisciplineActive(e.target.value),
-            style: {
-              width: "100%",
-              padding: "10px",
-              border: "2px solid #e0e0e0",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer"
-            },
-            children: DISCIPLINES.map((discipline) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: discipline, children: discipline }, discipline))
-          }
-        )
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("select", { value: disciplineActive, onChange: (e) => setDisciplineActive(e.target.value), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }, children: DISCIPLINES.map((discipline) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: discipline, children: discipline }, discipline)) })
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f8f9fa", padding: "25px", borderRadius: "10px", border: "2px solid #e0e0e0" }, children: [
@@ -49736,97 +49766,23 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
         disciplineActive
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gap: "20px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          ChampTexte,
-          {
-            label: "Th\xE8mes et chapitres",
-            placeholder: "Ex: L'accord du participe pass\xE9, Les figures de style...",
-            value: contenuActif.themes,
-            onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "themes", val)
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          ChampTexte,
-          {
-            label: "Objectifs d'apprentissage",
-            placeholder: "Ex: Ma\xEEtriser les r\xE8gles d'accord, Identifier les m\xE9taphores...",
-            value: contenuActif.objectifs,
-            onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "objectifs", val),
-            rows: 3
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          ChampTexte,
-          {
-            label: "Comp\xE9tences vis\xE9es",
-            placeholder: "Ex: Analyse critique, R\xE9daction argument\xE9e...",
-            value: contenuActif.competences,
-            onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "competences", val),
-            rows: 3
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          ChampTexte,
-          {
-            label: "\xC9valuations pr\xE9vues",
-            placeholder: "Ex: Contr\xF4le continu, Dissertation finale...",
-            value: contenuActif.evaluations,
-            onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "evaluations", val)
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-          ChampTexte,
-          {
-            label: "Ressources p\xE9dagogiques",
-            placeholder: "Ex: Manuel Hatier p.45-78, Vid\xE9o Lumni, Exercices PedaClic...",
-            value: contenuActif.ressources,
-            onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "ressources", val),
-            rows: 2
-          }
-        ),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChampTexte, { label: "Th\xE8mes et chapitres", placeholder: "Ex: L'accord du participe pass\xE9, Les figures de style...", value: contenuActif.themes, onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "themes", val) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChampTexte, { label: "Objectifs d'apprentissage", placeholder: "Ex: Ma\xEEtriser les r\xE8gles d'accord, Identifier les m\xE9taphores...", value: contenuActif.objectifs, onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "objectifs", val), rows: 3 }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChampTexte, { label: "Comp\xE9tences vis\xE9es", placeholder: "Ex: Analyse critique, R\xE9daction argument\xE9e...", value: contenuActif.competences, onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "competences", val), rows: 3 }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChampTexte, { label: "\xC9valuations pr\xE9vues", placeholder: "Ex: Contr\xF4le continu, Dissertation finale...", value: contenuActif.evaluations, onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "evaluations", val) }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChampTexte, { label: "Ressources p\xE9dagogiques", placeholder: "Ex: Manuel Hatier p.45-78, Vid\xE9o Lumni, Exercices PedaClic...", value: contenuActif.ressources, onChange: (val) => updateContenu(niveauActif, trimestreActif, disciplineActive, "ressources", val), rows: 2 }),
         /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: "Statut" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-              "select",
-              {
-                value: contenuActif.statut,
-                onChange: (e) => updateContenu(niveauActif, trimestreActif, disciplineActive, "statut", e.target.value),
-                style: {
-                  width: "100%",
-                  padding: "10px",
-                  border: "2px solid #e0e0e0",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  cursor: "pointer"
-                },
-                children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "non-commence", children: "Non commenc\xE9" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "en-cours", children: "En cours" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "termine", children: "Termin\xE9" })
-                ]
-              }
-            )
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("select", { value: contenuActif.statut, onChange: (e) => updateContenu(niveauActif, trimestreActif, disciplineActive, "statut", e.target.value), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "non-commence", children: "Non commenc\xE9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "en-cours", children: "En cours" }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("option", { value: "termine", children: "Termin\xE9" })
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: "Progression (%)" }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-              "input",
-              {
-                type: "number",
-                min: "0",
-                max: "100",
-                value: contenuActif.progression,
-                onChange: (e) => updateContenu(niveauActif, trimestreActif, disciplineActive, "progression", parseInt(e.target.value) || 0),
-                style: {
-                  width: "100%",
-                  padding: "10px",
-                  border: "2px solid #e0e0e0",
-                  borderRadius: "8px",
-                  fontSize: "14px"
-                }
-              }
-            )
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "number", min: "0", max: "100", value: contenuActif.progression, onChange: (e) => updateContenu(niveauActif, trimestreActif, disciplineActive, "progression", parseInt(e.target.value) || 0), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px" } })
           ] })
         ] })
       ] })
@@ -49834,39 +49790,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
   ] });
   var ChampTexte = ({ label, placeholder, value, onChange, rows = 1 }) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
     /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { style: { display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600", color: "#2c3e50" }, children: label }),
-    rows > 1 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      "textarea",
-      {
-        placeholder,
-        value,
-        onChange: (e) => onChange(e.target.value),
-        rows,
-        style: {
-          width: "100%",
-          padding: "10px",
-          border: "2px solid #e0e0e0",
-          borderRadius: "8px",
-          fontSize: "14px",
-          resize: "vertical",
-          fontFamily: "inherit"
-        }
-      }
-    ) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-      "input",
-      {
-        type: "text",
-        placeholder,
-        value,
-        onChange: (e) => onChange(e.target.value),
-        style: {
-          width: "100%",
-          padding: "10px",
-          border: "2px solid #e0e0e0",
-          borderRadius: "8px",
-          fontSize: "14px"
-        }
-      }
-    )
+    rows > 1 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", { placeholder, value, onChange: (e) => onChange(e.target.value), rows, style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px", resize: "vertical", fontFamily: "inherit" } }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", placeholder, value, onChange: (e) => onChange(e.target.value), style: { width: "100%", padding: "10px", border: "2px solid #e0e0e0", borderRadius: "8px", fontSize: "14px" } })
   ] });
   var VueTableauDeBord = ({ prepareDataNiveaux, prepareDataDisciplines, prepareDataTrimestres }) => {
     const dataNiveaux = prepareDataNiveaux();
@@ -49892,20 +49816,7 @@ Take a look at the reducer(s) handling this action type: ${action.type}.
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { background: "#f8f9fa", padding: "25px", borderRadius: "10px", border: "2px solid #e0e0e0" }, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h4", { style: { margin: "0 0 20px 0", fontSize: "16px", fontWeight: "600", color: "#2c3e50" }, children: "Contenus termin\xE9s par discipline" }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ResponsiveContainer, { width: "100%", height: 300, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(PieChart, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
-                Pie,
-                {
-                  data: dataDisciplines,
-                  cx: "50%",
-                  cy: "50%",
-                  labelLine: false,
-                  label: (entry) => entry.name,
-                  outerRadius: 100,
-                  fill: "#8884d8",
-                  dataKey: "value",
-                  children: dataDisciplines.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Cell, { fill: COULEURS[index % COULEURS.length] }, `cell-${index}`))
-                }
-              ),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Pie, { data: dataDisciplines, cx: "50%", cy: "50%", labelLine: false, label: (entry) => entry.name, outerRadius: 100, fill: "#8884d8", dataKey: "value", children: dataDisciplines.map((entry, index) => /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Cell, { fill: COULEURS[index % COULEURS.length] }, `cell-${index}`)) }),
               /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Tooltip, {})
             ] }) })
           ] }),
@@ -50919,12 +50830,15 @@ lucide-react/dist/esm/icons/book-open.js:
 lucide-react/dist/esm/icons/book.js:
 lucide-react/dist/esm/icons/calendar.js:
 lucide-react/dist/esm/icons/chart-column.js:
+lucide-react/dist/esm/icons/circle-alert.js:
 lucide-react/dist/esm/icons/circle-check.js:
 lucide-react/dist/esm/icons/clock.js:
+lucide-react/dist/esm/icons/cloud-upload.js:
 lucide-react/dist/esm/icons/file-spreadsheet.js:
 lucide-react/dist/esm/icons/graduation-cap.js:
 lucide-react/dist/esm/icons/pen.js:
 lucide-react/dist/esm/icons/plus.js:
+lucide-react/dist/esm/icons/save.js:
 lucide-react/dist/esm/icons/settings.js:
 lucide-react/dist/esm/icons/trash-2.js:
 lucide-react/dist/esm/icons/trending-up.js:
