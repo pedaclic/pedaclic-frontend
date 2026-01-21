@@ -1,151 +1,43 @@
-/* ========================================
-   NOTIFICATIONS TOAST
-   ======================================== */
+/**
+ * Système de notifications toast pour Pedaclic
+ */
 
-// Configuration
-const toastConfig = {
-    duration: 3000,
-    position: 'top-right', // top-right, top-left, bottom-right, bottom-left
-    maxToasts: 3
-};
-
-// File d'attente
-let toastQueue = [];
-let toastContainer = null;
-
-// ========================================
-// INITIALISATION
-// ========================================
-function initToast() {
-    createToastContainer();
-}
-
-// ========================================
-// CRÉER LE CONTENEUR
-// ========================================
-function createToastContainer() {
-    if (toastContainer) return;
+window.showToast = function(message, type = 'info', duration = 3000) {
+    let toastContainer = document.getElementById('toast-container');
     
-    toastContainer = document.createElement('div');
-    toastContainer.id = 'toastContainer';
-    toastContainer.className = `toast-container toast-${toastConfig.position}`;
-    document.body.appendChild(toastContainer);
-}
-
-// ========================================
-// AFFICHER UN TOAST
-// ========================================
-function showToast(message, type = 'info', duration = toastConfig.duration) {
-    createToastContainer();
-    
-    // Limiter le nombre de toasts
-    if (toastQueue.length >= toastConfig.maxToasts) {
-        removeToast(toastQueue[0]);
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px;';
+        document.body.appendChild(toastContainer);
     }
     
-    // Créer le toast
-    const toast = createToastElement(message, type);
-    toastContainer.appendChild(toast);
-    toastQueue.push(toast);
-    
-    // Animation d'entrée
-    setTimeout(() => toast.classList.add('show'), 10);
-    
-    // Auto-suppression
-    if (duration > 0) {
-        setTimeout(() => removeToast(toast), duration);
-    }
-    
-    return toast;
-}
-
-// ========================================
-// CRÉER L'ÉLÉMENT TOAST
-// ========================================
-function createToastElement(message, type) {
     const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
+    toast.className = 'toast toast-' + type;
     
-    const icon = getToastIcon(type);
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
     
-    toast.innerHTML = `
-        <div class="toast-icon">${icon}</div>
-        <div class="toast-content">
-            <div class="toast-message">${message}</div>
-        </div>
-        <button class="toast-close" onclick="removeToastById(this)">✕</button>
-    `;
+    toast.style.cssText = 'background: ' + (colors[type] || colors.info) + '; color: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 250px; animation: slideIn 0.3s ease; font-family: inherit; font-size: 14px; font-weight: 500;';
     
-    return toast;
-}
-
-// ========================================
-// SUPPRIMER UN TOAST
-// ========================================
-function removeToast(toast) {
-    if (!toast || !toast.parentElement) return;
-    
-    toast.classList.add('hide');
+    toast.textContent = message;
+    toastContainer.appendChild(toast);
     
     setTimeout(() => {
-        if (toast.parentElement) {
-            toast.parentElement.removeChild(toast);
-        }
-        toastQueue = toastQueue.filter(t => t !== toast);
-    }, 300);
-}
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+            toast.remove();
+            if (toastContainer.children.length === 0) {
+                toastContainer.remove();
+            }
+        }, 300);
+    }, duration);
+};
 
-// Helper pour suppression depuis le DOM
-function removeToastById(button) {
-    const toast = button.closest('.toast');
-    removeToast(toast);
-}
-
-// ========================================
-// ICÔNES PAR TYPE
-// ========================================
-function getToastIcon(type) {
-    const icons = {
-        'success': '✓',
-        'error': '✕',
-        'warning': '⚠',
-        'info': 'ℹ'
-    };
-    return icons[type] || icons.info;
-}
-
-// ========================================
-// RACCOURCIS POUR TYPES COURANTS
-// ========================================
-function toastSuccess(message, duration) {
-    return showToast(message, 'success', duration);
-}
-
-function toastError(message, duration) {
-    return showToast(message, 'error', duration);
-}
-
-function toastWarning(message, duration) {
-    return showToast(message, 'warning', duration);
-}
-
-function toastInfo(message, duration) {
-    return showToast(message, 'info', duration);
-}
-
-// ========================================
-// INITIALISER
-// ========================================
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initToast);
-} else {
-    initToast();
-}
-
-// Exposer les fonctions globalement
-window.showToast = showToast;
-window.toastSuccess = toastSuccess;
-window.toastError = toastError;
-window.toastWarning = toastWarning;
-window.toastInfo = toastInfo;
-window.removeToastById = removeToastById;
+const style = document.createElement('style');
+style.textContent = '@keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } } @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(400px); opacity: 0; } }';
+document.head.appendChild(style);
