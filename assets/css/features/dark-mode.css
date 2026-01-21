@@ -1,23 +1,88 @@
+/* Mode sombre - Variables */
 .dark-mode {
-    --bg-primary: #1f2937;
-    --bg-secondary: #111827;
-    --text-primary: #f9fafb;
-    --text-secondary: #d1d5db;
-    --border-color: #374151;
+    --bg-primary: #0f172a;
+    --bg-secondary: #1e293b;
+    --bg-card: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --border-color: #475569;
+    --accent-color: #60a5fa;
 }
 
+/* Fond général */
 .dark-mode body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
 }
 
+/* Header */
+.dark-mode header {
+    background-color: var(--bg-secondary);
+    border-bottom-color: var(--border-color);
+}
+
+/* Hero section */
+.dark-mode .hero-modern {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+}
+
+/* Cartes et conteneurs */
 .dark-mode .card,
-.dark-mode .premium-tool-card {
+.dark-mode .premium-tool-card,
+.dark-mode .stat-card-modern,
+.dark-mode .news-item {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Inputs et formulaires */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
     background-color: var(--bg-secondary);
     border-color: var(--border-color);
     color: var(--text-primary);
 }
 
+.dark-mode input::placeholder,
+.dark-mode textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+/* Boutons */
+.dark-mode .btn-primary {
+    background-color: var(--accent-color);
+}
+
+.dark-mode .btn-secondary {
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+/* Textes */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6 {
+    color: var(--text-primary);
+}
+
+.dark-mode p,
+.dark-mode span,
+.dark-mode li {
+    color: var(--text-secondary);
+}
+
+/* Footer */
+.dark-mode footer {
+    background-color: var(--bg-secondary);
+    border-top-color: var(--border-color);
+}
+
+/* Bouton toggle dark mode */
 [data-dark-mode-toggle] {
     cursor: pointer;
     padding: 8px 12px;
@@ -29,4 +94,14 @@
 
 [data-dark-mode-toggle]:hover {
     transform: scale(1.1);
+}
+
+/* Animation de transition */
+body,
+.card,
+.premium-tool-card,
+input,
+select,
+textarea {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
