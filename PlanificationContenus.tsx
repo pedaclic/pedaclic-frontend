@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Calendar, TrendingUp, CheckCircle2, Clock, Download, FileSpreadsheet, BarChart3, Save, CloudUpload, AlertCircle } from 'lucide-react';
+import { BookOpen, Calendar, TrendingUp, CheckCircle2, Clock, Download, FileSpreadsheet, BarChart3, Save, CloudUpload, AlertCircle, Award } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart as RePieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Déclarer Firebase
@@ -8,10 +8,9 @@ declare const firebase: any;
 // Configuration
 const NIVEAUX = ['6ème', '5ème', '4ème', '3ème', 'Seconde', 'Première', 'Terminale'];
 const TRIMESTRES = ['Trimestre 1', 'Trimestre 2', 'Trimestre 3'];
-const DISCIPLINES = [
-  'Français', 'Mathématiques', 'Histoire-Géo', 'SVT', 
-  'Physique-Chimie', 'Anglais', 'EPS', 'Arts', 'Technologie'
-];
+
+// ⚠️ DISCIPLINES SUPPRIMÉ - Maintenant chargé dynamiquement depuis Firebase
+// const DISCIPLINES = [...]; // ← ANCIENNE VERSION
 
 const COULEURS = ['#6676ea', '#4a7ba7', '#00a896', '#f4a261', '#e76f51', '#e63946', '#8e44ad', '#2e5077', '#6fa8dc'];
 
@@ -34,16 +33,94 @@ interface ContenusState {
   };
 }
 
+// 🆕 Type pour les disciplines enrichies
+interface DisciplineEnrichie {
+  id: string;
+  nom: string;
+  isOptionnelle: boolean;
+  coefficient: number;
+  volumeHoraire: string;
+  categorie: string;
+  niveauxCibles: string[];
+}
+
 const PlanificationContenus: React.FC = () => {
   const [contenus, setContenus] = useState<ContenusState>({});
   const [niveauActif, setNiveauActif] = useState('6ème');
   const [trimestreActif, setTrimestreActif] = useState('Trimestre 1');
-  const [disciplineActive, setDisciplineActive] = useState('Français');
+  const [disciplineActive, setDisciplineActive] = useState('');
   const [vueActive, setVueActive] = useState<'planification' | 'tableauDeBord'>('planification');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // 🆕 États pour les disciplines dynamiques
+  const [disciplines, setDisciplines] = useState<DisciplineEnrichie[]>([]);
+  const [isLoadingDisciplines, setIsLoadingDisciplines] = useState(true);
+  const [disciplinesParNom, setDisciplinesParNom] = useState<string[]>([]);
+
+  // 🆕 Charger les disciplines depuis Firebase
+  useEffect(() => {
+    loadDisciplines();
+  }, [niveauActif]); // Recharger quand le niveau change
+
+  const loadDisciplines = async () => {
+    setIsLoadingDisciplines(true);
+    try {
+      if (typeof firebase === 'undefined') {
+        throw new Error('Firebase non initialisé');
+      }
+
+      const db = firebase.firestore();
+      const snapshot = await db.collection('disciplines')
+        .orderBy('ordre', 'asc')
+        .get();
+      
+      const disciplinesData: DisciplineEnrichie[] = [];
+      const nomsOnly: string[] = [];
+      
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        
+        // Filtrer par niveau actif
+        if (data.niveauxCibles && data.niveauxCibles.includes(niveauActif)) {
+          const disc: DisciplineEnrichie = {
+            id: doc.id,
+            nom: data.nom,
+            isOptionnelle: data.isOptionnelle || false,
+            coefficient: data.coefficients?.[niveauActif] || 1,
+            volumeHoraire: data.volumeHoraire?.[niveauActif] || '1h',
+            categorie: data.categorie || '',
+            niveauxCibles: data.niveauxCibles || []
+          };
+          
+          disciplinesData.push(disc);
+          nomsOnly.push(data.nom);
+        }
+      });
+      
+      setDisciplines(disciplinesData);
+      setDisciplinesParNom(nomsOnly);
+      
+      // Sélectionner la première discipline si aucune n'est active
+      if (!disciplineActive && disciplinesData.length > 0) {
+        setDisciplineActive(disciplinesData[0].nom);
+      }
+      
+      console.log(`✅ ${disciplinesData.length} disciplines chargées pour ${niveauActif}`);
+    } catch (error) {
+      console.error('❌ Erreur chargement disciplines:', error);
+      // Fallback sur disciplines par défaut si erreur
+      const fallback = ['Français', 'Mathématiques', 'Histoire-Géo', 'SVT', 'Physique-Chimie', 'Anglais', 'EPS'];
+      setDisciplinesParNom(fallback);
+      if (!disciplineActive) {
+        setDisciplineActive(fallback[0]);
+      }
+    } finally {
+      setIsLoadingDisciplines(false);
+    }
+  };
 
   // Initialiser les données vides
   const initEmptyData = (): ContenusState => {
@@ -52,7 +129,8 @@ const PlanificationContenus: React.FC = () => {
       initialData[niveau] = {};
       TRIMESTRES.forEach(trimestre => {
         initialData[niveau][trimestre] = {};
-        DISCIPLINES.forEach(discipline => {
+        // 🆕 Utiliser disciplinesParNom au lieu de DISCIPLINES
+        disciplinesParNom.forEach(discipline => {
           initialData[niveau][trimestre][discipline] = {
             themes: '',
             objectifs: '',
@@ -103,8 +181,11 @@ const PlanificationContenus: React.FC = () => {
       }
     };
 
-    loadData();
-  }, []);
+    // Charger seulement après avoir les disciplines
+    if (!isLoadingDisciplines && disciplinesParNom.length > 0) {
+      loadData();
+    }
+  }, [isLoadingDisciplines, disciplinesParNom]);
 
   // Sauvegarde automatique avec debounce
   useEffect(() => {
@@ -169,219 +250,223 @@ const PlanificationContenus: React.FC = () => {
     }
   };
 
-  // Mise à jour d'un contenu
-  const updateContenu = (niveau: string, trimestre: string, discipline: string, champ: keyof ContenuData, valeur: any) => {
-    setContenus(prev => ({
-      ...prev,
-      [niveau]: {
-        ...prev[niveau],
-        [trimestre]: {
-          ...prev[niveau][trimestre],
-          [discipline]: {
-            ...prev[niveau][trimestre][discipline],
-            [champ]: valeur
-          }
-        }
-      }
-    }));
+  // Helper pour obtenir le contenu actif
+  const contenuActif = contenus[niveauActif]?.[trimestreActif]?.[disciplineActive] || {
+    themes: '',
+    objectifs: '',
+    competences: '',
+    evaluations: '',
+    ressources: '',
+    statut: 'non-commence',
+    progression: 0
   };
 
-  // Calcul des statistiques
+  // Helper pour mettre à jour un contenu
+  const updateContenu = (niveau: string, trimestre: string, discipline: string, champ: keyof ContenuData, valeur: any) => {
+    setContenus(prev => {
+      const nouveauContenus = { ...prev };
+      
+      if (!nouveauContenus[niveau]) {
+        nouveauContenus[niveau] = {};
+      }
+      if (!nouveauContenus[niveau][trimestre]) {
+        nouveauContenus[niveau][trimestre] = {};
+      }
+      if (!nouveauContenus[niveau][trimestre][discipline]) {
+        nouveauContenus[niveau][trimestre][discipline] = {
+          themes: '',
+          objectifs: '',
+          competences: '',
+          evaluations: '',
+          ressources: '',
+          statut: 'non-commence',
+          progression: 0
+        };
+      }
+      
+      nouveauContenus[niveau][trimestre][discipline] = {
+        ...nouveauContenus[niveau][trimestre][discipline],
+        [champ]: valeur
+      };
+      
+      return nouveauContenus;
+    });
+  };
+
+  // Calculs pour les statistiques
   const calculerStatistiques = () => {
-    let total = 0;
-    let termines = 0;
-    let enCours = 0;
-    let nonCommences = 0;
-    
-    Object.values(contenus).forEach(niveau => {
-      Object.values(niveau).forEach(trimestre => {
-        Object.values(trimestre).forEach(contenu => {
-          total++;
-          if (contenu.statut === 'termine') termines++;
-          else if (contenu.statut === 'en-cours') enCours++;
-          else nonCommences++;
+    let totalContenus = 0;
+    let contenusTermines = 0;
+    let contenusEnCours = 0;
+
+    Object.values(contenus).forEach(niveauData => {
+      Object.values(niveauData).forEach(trimestreData => {
+        Object.values(trimestreData).forEach(contenu => {
+          totalContenus++;
+          if (contenu.statut === 'termine') contenusTermines++;
+          if (contenu.statut === 'en-cours') contenusEnCours++;
         });
       });
     });
 
-    return { total, termines, enCours, nonCommences, tauxCompletion: total > 0 ? Math.round((termines / total) * 100) : 0 };
+    return {
+      total: totalContenus,
+      termines: contenusTermines,
+      enCours: contenusEnCours,
+      nonCommences: totalContenus - contenusTermines - contenusEnCours,
+      tauxCompletion: totalContenus > 0 ? Math.round((contenusTermines / totalContenus) * 100) : 0
+    };
   };
 
+  const stats = calculerStatistiques();
+
+  // Préparer les données pour les graphiques
   const prepareDataNiveaux = () => {
     return NIVEAUX.map(niveau => {
+      const niveauData = contenus[niveau] || {};
       let termine = 0, enCours = 0, nonCommence = 0;
-      
-      if (contenus[niveau]) {
-        Object.values(contenus[niveau]).forEach(trimestre => {
-          Object.values(trimestre).forEach(contenu => {
-            if (contenu.statut === 'termine') termine++;
-            else if (contenu.statut === 'en-cours') enCours++;
-            else nonCommence++;
-          });
+
+      Object.values(niveauData).forEach(trimestreData => {
+        Object.values(trimestreData).forEach(contenu => {
+          if (contenu.statut === 'termine') termine++;
+          else if (contenu.statut === 'en-cours') enCours++;
+          else nonCommence++;
         });
-      }
-      
-      return { niveau, 'Terminé': termine, 'En cours': enCours, 'Non commencé': nonCommence };
+      });
+
+      return {
+        niveau,
+        'Terminé': termine,
+        'En cours': enCours,
+        'Non commencé': nonCommence
+      };
     });
   };
 
   const prepareDataDisciplines = () => {
-    return DISCIPLINES.map(discipline => {
-      let count = 0;
-      Object.values(contenus).forEach(niveau => {
-        Object.values(niveau).forEach(trimestre => {
-          if (trimestre[discipline] && trimestre[discipline].statut === 'termine') count++;
+    const disciplineStats: Record<string, number> = {};
+
+    disciplinesParNom.forEach(discipline => {
+      disciplineStats[discipline] = 0;
+    });
+
+    Object.values(contenus).forEach(niveauData => {
+      Object.values(niveauData).forEach(trimestreData => {
+        Object.entries(trimestreData).forEach(([discipline, contenu]) => {
+          if (contenu.statut === 'termine') {
+            disciplineStats[discipline] = (disciplineStats[discipline] || 0) + 1;
+          }
         });
       });
-      return { name: discipline, value: count };
     });
+
+    return Object.entries(disciplineStats).map(([name, value]) => ({ name, value }));
   };
 
   const prepareDataTrimestres = () => {
     return TRIMESTRES.map(trimestre => {
-      let total = 0, termine = 0;
-      
-      Object.values(contenus).forEach(niveau => {
-        if (niveau[trimestre]) {
-          Object.values(niveau[trimestre]).forEach(contenu => {
-            total++;
-            if (contenu.statut === 'termine') termine++;
-          });
-        }
-      });
-      
-      return { trimestre, progression: total > 0 ? Math.round((termine / total) * 100) : 0 };
-    });
-  };
+      let totalProgression = 0;
+      let count = 0;
 
-  const exporterVersExcel = () => {
-    let csv = 'Niveau,Trimestre,Discipline,Thèmes,Objectifs,Compétences,Évaluations,Ressources,Statut,Progression (%)\n';
-    
-    NIVEAUX.forEach(niveau => {
-      TRIMESTRES.forEach(trimestre => {
-        DISCIPLINES.forEach(discipline => {
-          const contenu = contenus[niveau]?.[trimestre]?.[discipline] || {};
-          const row = [
-            niveau, trimestre, discipline,
-            `"${(contenu.themes || '').replace(/"/g, '""')}"`,
-            `"${(contenu.objectifs || '').replace(/"/g, '""')}"`,
-            `"${(contenu.competences || '').replace(/"/g, '""')}"`,
-            `"${(contenu.evaluations || '').replace(/"/g, '""')}"`,
-            `"${(contenu.ressources || '').replace(/"/g, '""')}"`,
-            contenu.statut === 'termine' ? 'Terminé' : contenu.statut === 'en-cours' ? 'En cours' : 'Non commencé',
-            contenu.progression || 0
-          ];
-          csv += row.join(',') + '\n';
+      Object.values(contenus).forEach(niveauData => {
+        const trimestreData = niveauData[trimestre] || {};
+        Object.values(trimestreData).forEach(contenu => {
+          totalProgression += contenu.progression;
+          count++;
         });
       });
+
+      return {
+        trimestre,
+        progression: count > 0 ? Math.round(totalProgression / count) : 0
+      };
     });
-
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `planification-contenus-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
   };
 
-  const stats = calculerStatistiques();
-  const contenuActif = contenus[niveauActif]?.[trimestreActif]?.[disciplineActive] || {
-    themes: '', objectifs: '', competences: '', evaluations: '', ressources: '', statut: 'non-commence', progression: 0
+  // Export Excel
+  const exporterVersExcel = () => {
+    alert('🚧 Fonctionnalité d\'export Excel en cours de développement...');
   };
 
-  // Écran de chargement
-  if (isLoading) {
+  if (isLoading || isLoadingDisciplines) {
     return (
-      <div style={{ background: 'white', borderRadius: '15px', padding: '50px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-        <CloudUpload size={48} style={{ color: '#6676ea', marginBottom: '20px' }} />
-        <div style={{ fontSize: '18px', color: '#2c3e50', marginBottom: '10px' }}>Chargement des planifications...</div>
-        <div style={{ fontSize: '14px', color: '#7f8c8d' }}>Connexion à Firebase</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>⏳</div>
+          <div style={{ fontSize: '18px', color: '#7f8c8d' }}>
+            Chargement des {isLoadingDisciplines ? 'disciplines' : 'planifications'}...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div style={{ background: 'white', borderRadius: '15px', padding: '30px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
-      {/* En-tête avec indicateur de sauvegarde */}
+      {/* En-tête avec stats */}
       <div style={{ marginBottom: '30px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <BookOpen size={32} style={{ color: '#6676ea' }} />
-            <div>
-              <h2 style={{ margin: 0, color: '#2c3e50', fontSize: '24px', fontWeight: 'bold' }}>
-                Planification de Contenus Pédagogiques
-              </h2>
-              <p style={{ margin: '5px 0 0 0', color: '#7f8c8d', fontSize: '14px' }}>
-                Gérez vos programmes de la 6ème à la Terminale
-              </p>
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '24px', fontWeight: 'bold', color: '#2c3e50' }}>
+              📚 Planification des Contenus
+            </h2>
+            <p style={{ margin: '5px 0 0 0', color: '#7f8c8d', fontSize: '14px' }}>
+              Organisez vos programmes pédagogiques par niveau, trimestre et discipline
+            </p>
           </div>
-          
-          {/* Indicateur de sauvegarde */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button onClick={() => setVueActive('planification')} style={{ padding: '10px 20px', background: vueActive === 'planification' ? '#6676ea' : 'white', color: vueActive === 'planification' ? 'white' : '#2c3e50', border: '2px solid #6676ea', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+              <BookOpen size={18} style={{ display: 'inline', marginRight: '8px' }} /> Planification
+            </button>
+            <button onClick={() => setVueActive('tableauDeBord')} style={{ padding: '10px 20px', background: vueActive === 'tableauDeBord' ? '#6676ea' : 'white', color: vueActive === 'tableauDeBord' ? 'white' : '#2c3e50', border: '2px solid #6676ea', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+              <BarChart3 size={18} style={{ display: 'inline', marginRight: '8px' }} /> Tableau de bord
+            </button>
+          </div>
+        </div>
+
+        {/* Statistiques */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+          <StatCard icon={<BookOpen size={24} />} titre="Total contenus" valeur={stats.total} couleur="#6676ea" />
+          <StatCard icon={<CheckCircle2 size={24} />} titre="Terminés" valeur={stats.termines} couleur="#00a896" />
+          <StatCard icon={<Clock size={24} />} titre="En cours" valeur={stats.enCours} couleur="#f4a261" />
+          <StatCard icon={<TrendingUp size={24} />} titre="Taux complétion" valeur={`${stats.tauxCompletion}%`} couleur="#e76f51" />
+        </div>
+
+        {/* Infos sauvegarde */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', padding: '10px 15px', background: saveError ? '#fee2e2' : '#f0fdf4', borderRadius: '8px', fontSize: '13px' }}>
+          {saveError ? (
+            <>
+              <AlertCircle size={16} style={{ color: '#dc2626' }} />
+              <span style={{ color: '#dc2626' }}>{saveError}</span>
+            </>
+          ) : (
+            <>
               {isSaving ? (
                 <>
                   <CloudUpload size={16} style={{ color: '#6676ea' }} />
-                  <span style={{ color: '#6676ea' }}>Sauvegarde...</span>
-                </>
-              ) : saveError ? (
-                <>
-                  <AlertCircle size={16} style={{ color: '#e74c3c' }} />
-                  <span style={{ color: '#e74c3c' }}>Erreur</span>
+                  <span style={{ color: '#6676ea' }}>Sauvegarde en cours...</span>
                 </>
               ) : lastSaved ? (
                 <>
-                  <CheckCircle2 size={16} style={{ color: '#00a896' }} />
-                  <span style={{ color: '#00a896' }}>Sauvegardé</span>
+                  <CheckCircle2 size={16} style={{ color: '#16a34a' }} />
+                  <span style={{ color: '#16a34a' }}>
+                    Dernière sauvegarde : {lastSaved.toLocaleTimeString('fr-FR')}
+                  </span>
                 </>
-              ) : null}
-            </div>
-            {lastSaved && (
-              <div style={{ fontSize: '12px', color: '#95a5a6' }}>
-                {lastSaved.toLocaleTimeString('fr-FR')}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Message d'erreur */}
-        {saveError && (
-          <div style={{ 
-            background: '#fff5f5', 
-            border: '1px solid #feb2b2', 
-            borderRadius: '8px', 
-            padding: '12px', 
-            marginBottom: '15px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            <AlertCircle size={20} style={{ color: '#e74c3c' }} />
-            <span style={{ color: '#c53030', fontSize: '14px' }}>{saveError}</span>
-          </div>
-        )}
-
-        {/* Statistiques */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-          <StatCard icon={<CheckCircle2 size={20} />} titre="Taux de complétion" valeur={`${stats.tauxCompletion}%`} couleur="#00a896" />
-          <StatCard icon={<Clock size={20} />} titre="En cours" valeur={stats.enCours} couleur="#f4a261" />
-          <StatCard icon={<TrendingUp size={20} />} titre="Terminés" valeur={stats.termines} couleur="#6676ea" />
-          <StatCard icon={<Calendar size={20} />} titre="Total" valeur={stats.total} couleur="#8e44ad" />
+              ) : (
+                <>
+                  <CheckCircle2 size={16} style={{ color: '#16a34a' }} />
+                  <span style={{ color: '#16a34a' }}>Sauvegarde automatique activée</span>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
 
-      {/* Navigation avec boutons */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '25px', flexWrap: 'wrap' }}>
-        <button onClick={() => setVueActive('planification')} style={{ padding: '10px 20px', background: vueActive === 'planification' ? '#6676ea' : '#f0f0f0', color: vueActive === 'planification' ? 'white' : '#2c3e50', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
-          <BookOpen size={18} /> Planification
-        </button>
-        <button onClick={() => setVueActive('tableauDeBord')} style={{ padding: '10px 20px', background: vueActive === 'tableauDeBord' ? '#6676ea' : '#f0f0f0', color: vueActive === 'tableauDeBord' ? 'white' : '#2c3e50', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
-          <BarChart3 size={18} /> Tableau de bord
-        </button>
-        <div style={{ flex: 1 }} />
-        <button onClick={sauvegarderManuellement} disabled={isSaving} style={{ padding: '10px 20px', background: '#8e44ad', color: 'white', border: 'none', borderRadius: '8px', cursor: isSaving ? 'not-allowed' : 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', opacity: isSaving ? 0.6 : 1, transition: 'all 0.3s' }}>
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '25px' }}>
+        <button onClick={sauvegarderManuellement} disabled={isSaving} style={{ padding: '10px 20px', background: '#6676ea', color: 'white', border: 'none', borderRadius: '8px', cursor: isSaving ? 'not-allowed' : 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s', opacity: isSaving ? 0.6 : 1 }}>
           <Save size={18} /> {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
         </button>
         <button onClick={exporterVersExcel} style={{ padding: '10px 20px', background: '#00a896', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.3s' }}>
@@ -400,6 +485,8 @@ const PlanificationContenus: React.FC = () => {
           setDisciplineActive={setDisciplineActive}
           contenuActif={contenuActif}
           updateContenu={updateContenu}
+          disciplines={disciplines}
+          disciplinesParNom={disciplinesParNom}
         />
       ) : (
         <VueTableauDeBord
@@ -425,59 +512,123 @@ const StatCard: React.FC<{ icon: React.ReactNode; titre: string; valeur: string 
   </div>
 );
 
-const VuePlanification: React.FC<any> = ({ niveauActif, setNiveauActif, trimestreActif, setTrimestreActif, disciplineActive, setDisciplineActive, contenuActif, updateContenu }) => (
-  <div>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginBottom: '25px' }}>
-      <div>
-        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Niveau scolaire</label>
-        <select value={niveauActif} onChange={e => setNiveauActif(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
-          {NIVEAUX.map(niveau => <option key={niveau} value={niveau}>{niveau}</option>)}
-        </select>
-      </div>
-      <div>
-        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Trimestre</label>
-        <select value={trimestreActif} onChange={e => setTrimestreActif(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
-          {TRIMESTRES.map(trimestre => <option key={trimestre} value={trimestre}>{trimestre}</option>)}
-        </select>
-      </div>
-      <div>
-        <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Discipline</label>
-        <select value={disciplineActive} onChange={e => setDisciplineActive(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
-          {DISCIPLINES.map(discipline => <option key={discipline} value={discipline}>{discipline}</option>)}
-        </select>
-      </div>
-    </div>
+// 🆕 Composant VuePlanification MODIFIÉ avec disciplines dynamiques
+const VuePlanification: React.FC<any> = ({ 
+  niveauActif, setNiveauActif, trimestreActif, setTrimestreActif, 
+  disciplineActive, setDisciplineActive, contenuActif, updateContenu,
+  disciplines, disciplinesParNom 
+}) => {
+  
+  // 🆕 Trouver les infos de la discipline active
+  const disciplineInfo = disciplines.find((d: any) => d.nom === disciplineActive);
 
-    <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '10px', border: '2px solid #e0e0e0' }}>
-      <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold', color: '#6676ea' }}>
-        {niveauActif} - {trimestreActif} - {disciplineActive}
-      </h3>
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginBottom: '25px' }}>
+        <div>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Niveau scolaire</label>
+          <select value={niveauActif} onChange={e => setNiveauActif(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            {NIVEAUX.map(niveau => <option key={niveau} value={niveau}>{niveau}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Trimestre</label>
+          <select value={trimestreActif} onChange={e => setTrimestreActif(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            {TRIMESTRES.map(trimestre => <option key={trimestre} value={trimestre}>{trimestre}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>
+            Discipline {disciplinesParNom.length > 0 && `(${disciplinesParNom.length})`}
+          </label>
+          <select value={disciplineActive} onChange={e => setDisciplineActive(e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+            {disciplinesParNom.map(discipline => {
+              const info = disciplines.find((d: any) => d.nom === discipline);
+              return (
+                <option key={discipline} value={discipline}>
+                  {discipline}
+                  {info?.isOptionnelle ? ' (Optionnelle)' : ''}
+                  {info?.coefficient ? ` • Coef ${info.coefficient}` : ''}
+                  {info?.volumeHoraire ? ` • ${info.volumeHoraire}` : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+      </div>
 
-      <div style={{ display: 'grid', gap: '20px' }}>
-        <ChampTexte label="Thèmes et chapitres" placeholder="Ex: L'accord du participe passé, Les figures de style..." value={contenuActif.themes} onChange={val => updateContenu(niveauActif, trimestreActif, disciplineActive, 'themes', val)} />
-        <ChampTexte label="Objectifs d'apprentissage" placeholder="Ex: Maîtriser les règles d'accord, Identifier les métaphores..." value={contenuActif.objectifs} onChange={val => updateContenu(niveauActif, trimestreActif, disciplineActive, 'objectifs', val)} rows={3} />
-        <ChampTexte label="Compétences visées" placeholder="Ex: Analyse critique, Rédaction argumentée..." value={contenuActif.competences} onChange={val => updateContenu(niveauActif, trimestreActif, disciplineActive, 'competences', val)} rows={3} />
-        <ChampTexte label="Évaluations prévues" placeholder="Ex: Contrôle continu, Dissertation finale..." value={contenuActif.evaluations} onChange={val => updateContenu(niveauActif, trimestreActif, disciplineActive, 'evaluations', val)} />
-        <ChampTexte label="Ressources pédagogiques" placeholder="Ex: Manuel Hatier p.45-78, Vidéo Lumni, Exercices PedaClic..." value={contenuActif.ressources} onChange={val => updateContenu(niveauActif, trimestreActif, disciplineActive, 'ressources', val)} rows={2} />
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Statut</label>
-            <select value={contenuActif.statut} onChange={e => updateContenu(niveauActif, trimestreActif, disciplineActive, 'statut', e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
-              <option value="non-commence">Non commencé</option>
-              <option value="en-cours">En cours</option>
-              <option value="termine">Terminé</option>
-            </select>
+      {/* 🆕 Panneau d'informations sur la discipline */}
+      {disciplineInfo && (
+        <div style={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          padding: '20px',
+          borderRadius: '10px',
+          marginBottom: '25px',
+          color: 'white'
+        }}>
+          <h3 style={{ margin: '0 0 15px 0', fontSize: '20px', fontWeight: 'bold' }}>
+            📚 {disciplineInfo.nom}
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '5px' }}>Statut</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                {disciplineInfo.isOptionnelle ? '⚪ Optionnelle' : '✅ Obligatoire'}
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '5px' }}>Coefficient</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Award size={20} /> {disciplineInfo.coefficient}
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '5px' }}>Volume horaire</div>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Clock size={20} /> {disciplineInfo.volumeHoraire}
+              </div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.2)', padding: '12px', borderRadius: '8px' }}>
+              <div style={{ fontSize: '12px', opacity: 0.9, marginBottom: '5px' }}>Catégorie</div>
+              <div style={{ fontSize: '16px', fontWeight: 'bold' }}>
+                {disciplineInfo.categorie}
+              </div>
+            </div>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Progression (%)</label>
-            <input type="number" min="0" max="100" value={contenuActif.progression} onChange={e => updateContenu(niveauActif, trimestreActif, disciplineActive, 'progression', parseInt(e.target.value) || 0)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+        </div>
+      )}
+
+      <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '10px', border: '2px solid #e0e0e0' }}>
+        <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: 'bold', color: '#6676ea' }}>
+          {niveauActif} - {trimestreActif} - {disciplineActive}
+        </h3>
+
+        <div style={{ display: 'grid', gap: '20px' }}>
+          <ChampTexte label="Thèmes et chapitres" placeholder="Ex: L'accord du participe passé, Les figures de style..." value={contenuActif.themes} onChange={(val: string) => updateContenu(niveauActif, trimestreActif, disciplineActive, 'themes', val)} />
+          <ChampTexte label="Objectifs d'apprentissage" placeholder="Ex: Maîtriser les règles d'accord, Identifier les métaphores..." value={contenuActif.objectifs} onChange={(val: string) => updateContenu(niveauActif, trimestreActif, disciplineActive, 'objectifs', val)} rows={3} />
+          <ChampTexte label="Compétences visées" placeholder="Ex: Analyse critique, Rédaction argumentée..." value={contenuActif.competences} onChange={(val: string) => updateContenu(niveauActif, trimestreActif, disciplineActive, 'competences', val)} rows={3} />
+          <ChampTexte label="Évaluations prévues" placeholder="Ex: Contrôle continu, Dissertation finale..." value={contenuActif.evaluations} onChange={(val: string) => updateContenu(niveauActif, trimestreActif, disciplineActive, 'evaluations', val)} />
+          <ChampTexte label="Ressources pédagogiques" placeholder="Ex: Manuel Hatier p.45-78, Vidéo Lumni, Exercices PedaClic..." value={contenuActif.ressources} onChange={(val: string) => updateContenu(niveauActif, trimestreActif, disciplineActive, 'ressources', val)} rows={2} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Statut</label>
+              <select value={contenuActif.statut} onChange={e => updateContenu(niveauActif, trimestreActif, disciplineActive, 'statut', e.target.value)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                <option value="non-commence">Non commencé</option>
+                <option value="en-cours">En cours</option>
+                <option value="termine">Terminé</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>Progression (%)</label>
+              <input type="number" min="0" max="100" value={contenuActif.progression} onChange={e => updateContenu(niveauActif, trimestreActif, disciplineActive, 'progression', parseInt(e.target.value) || 0)} style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px' }} />
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const ChampTexte: React.FC<any> = ({ label, placeholder, value, onChange, rows = 1 }) => (
   <div>
@@ -520,8 +671,8 @@ const VueTableauDeBord: React.FC<any> = ({ prepareDataNiveaux, prepareDataDiscip
             <h4 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#2c3e50' }}>Contenus terminés par discipline</h4>
             <ResponsiveContainer width="100%" height={300}>
               <RePieChart>
-                <Pie data={dataDisciplines} cx="50%" cy="50%" labelLine={false} label={entry => entry.name} outerRadius={100} fill="#8884d8" dataKey="value">
-                  {dataDisciplines.map((entry, index) => <Cell key={`cell-${index}`} fill={COULEURS[index % COULEURS.length]} />)}
+                <Pie data={dataDisciplines} cx="50%" cy="50%" labelLine={false} label={(entry: any) => entry.name} outerRadius={100} fill="#8884d8" dataKey="value">
+                  {dataDisciplines.map((entry: any, index: number) => <Cell key={`cell-${index}`} fill={COULEURS[index % COULEURS.length]} />)}
                 </Pie>
                 <Tooltip />
               </RePieChart>
