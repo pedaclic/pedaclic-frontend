@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Book, GraduationCap } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Book, GraduationCap, Award, Clock } from 'lucide-react';
 
 declare const firebase: any;
 
@@ -13,15 +13,21 @@ interface Discipline {
   isOptionnelle: boolean;
   niveauxCibles: string[];
   ordre: number;
+  coefficients: Record<string, number>;
+  volumeHoraire: Record<string, string>;
 }
 
-const GestionDisciplines: React.FC = () => {
+const GestionDisciplinesAvancee: React.FC = () => {
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editMode, setEditMode] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showCoefficients, setShowCoefficients] = useState<string | null>(null);
+  
   const [formData, setFormData] = useState<Partial<Discipline>>({
-    nom: '', categorie: 'Langues', isOptionnelle: false, niveauxCibles: NIVEAUX, ordre: 0
+    nom: '', categorie: 'Langues', isOptionnelle: false, niveauxCibles: NIVEAUX, ordre: 0,
+    coefficients: NIVEAUX.reduce((acc, n) => ({ ...acc, [n]: 1 }), {}),
+    volumeHoraire: NIVEAUX.reduce((acc, n) => ({ ...acc, [n]: '1h' }), {})
   });
 
   useEffect(() => { loadDisciplines(); }, []);
@@ -36,8 +42,9 @@ const GestionDisciplines: React.FC = () => {
         disciplinesData.push({ id: doc.id, ...doc.data() } as Discipline);
       });
       setDisciplines(disciplinesData);
+      console.log('✅ Disciplines chargées:', disciplinesData.length);
     } catch (error) {
-      console.error('Erreur chargement:', error);
+      console.error('❌ Erreur chargement:', error);
     } finally {
       setIsLoading(false);
     }
@@ -57,6 +64,8 @@ const GestionDisciplines: React.FC = () => {
         isOptionnelle: formData.isOptionnelle || false,
         niveauxCibles: formData.niveauxCibles || NIVEAUX,
         ordre: disciplines.length,
+        coefficients: formData.coefficients,
+        volumeHoraire: formData.volumeHoraire,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
@@ -65,7 +74,8 @@ const GestionDisciplines: React.FC = () => {
       resetForm();
       loadDisciplines();
     } catch (error) {
-      console.error('Erreur ajout:', error);
+      console.error('❌ Erreur ajout:', error);
+      alert('Erreur lors de l\'ajout');
     }
   };
 
@@ -79,13 +89,17 @@ const GestionDisciplines: React.FC = () => {
         categorie: discipline.categorie,
         isOptionnelle: discipline.isOptionnelle,
         niveauxCibles: discipline.niveauxCibles,
+        coefficients: discipline.coefficients,
+        volumeHoraire: discipline.volumeHoraire,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       alert('✅ Mise à jour !');
       setEditMode(null);
+      setShowCoefficients(null);
       loadDisciplines();
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('❌ Erreur:', error);
+      alert('Erreur lors de la mise à jour');
     }
   };
 
@@ -97,25 +111,35 @@ const GestionDisciplines: React.FC = () => {
       alert('✅ Supprimée !');
       loadDisciplines();
     } catch (error) {
-      console.error('Erreur:', error);
+      console.error('❌ Erreur:', error);
     }
   };
 
   const resetForm = () => {
-    setFormData({ nom: '', categorie: 'Langues', isOptionnelle: false, niveauxCibles: NIVEAUX, ordre: 0 });
+    setFormData({
+      nom: '', categorie: 'Langues', isOptionnelle: false, niveauxCibles: NIVEAUX, ordre: 0,
+      coefficients: NIVEAUX.reduce((acc, n) => ({ ...acc, [n]: 1 }), {}),
+      volumeHoraire: NIVEAUX.reduce((acc, n) => ({ ...acc, [n]: '1h' }), {})
+    });
   };
 
   const updateLocalDiscipline = (id: string, field: keyof Discipline, value: any) => {
     setDisciplines(prev => prev.map(d => d.id === id ? { ...d, [field]: value } : d));
   };
 
-  const toggleNiveau = (disciplineId: string, niveau: string) => {
+  const updateCoefficient = (id: string, niveau: string, value: number) => {
     setDisciplines(prev => prev.map(d => {
-      if (d.id === disciplineId) {
-        const niveaux = d.niveauxCibles.includes(niveau)
-          ? d.niveauxCibles.filter(n => n !== niveau)
-          : [...d.niveauxCibles, niveau];
-        return { ...d, niveauxCibles: niveaux };
+      if (d.id === id) {
+        return { ...d, coefficients: { ...d.coefficients, [niveau]: value } };
+      }
+      return d;
+    }));
+  };
+
+  const updateVolumeHoraire = (id: string, niveau: string, value: string) => {
+    setDisciplines(prev => prev.map(d => {
+      if (d.id === id) {
+        return { ...d, volumeHoraire: { ...d.volumeHoraire, [niveau]: value } };
       }
       return d;
     }));
@@ -140,7 +164,7 @@ const GestionDisciplines: React.FC = () => {
               Gestion des Disciplines
             </h2>
             <p style={{ margin: '5px 0 0 0', color: '#7f8c8d', fontSize: '14px' }}>
-              {disciplines.length} discipline{disciplines.length > 1 ? 's' : ''}
+              {disciplines.length} discipline{disciplines.length > 1 ? 's' : ''} • Coefficients & Volumes horaires
             </p>
           </div>
         </div>
@@ -153,39 +177,10 @@ const GestionDisciplines: React.FC = () => {
         </button>
       </div>
 
-      {showAddForm && (
-        <div style={{ background: '#f8f9fa', padding: '25px', borderRadius: '10px', marginBottom: '25px', border: '2px solid #e0e0e0' }}>
-          <h3 style={{ margin: '0 0 20px 0', color: '#6676ea' }}>Nouvelle discipline</h3>
-          <div style={{ display: 'grid', gap: '15px' }}>
-            <input type="text" value={formData.nom} onChange={e => setFormData({ ...formData, nom: e.target.value })}
-              placeholder="Nom" style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px' }} />
-            <select value={formData.categorie} onChange={e => setFormData({ ...formData, categorie: e.target.value })}
-              style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px' }}>
-              {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-              <input type="checkbox" checked={formData.isOptionnelle}
-                onChange={e => setFormData({ ...formData, isOptionnelle: e.target.checked })} />
-              <span>Optionnelle</span>
-            </label>
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-              <button onClick={() => { setShowAddForm(false); resetForm(); }}
-                style={{ padding: '10px 20px', background: '#95a5a6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                Annuler
-              </button>
-              <button onClick={addDiscipline}
-                style={{ padding: '10px 20px', background: '#6676ea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Save size={16} /> Enregistrer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {disciplinesParCategorie.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '50px', color: '#7f8c8d' }}>
           <GraduationCap size={48} style={{ marginBottom: '15px' }} />
-          <p>Aucune discipline. Cliquez sur "Ajouter".</p>
+          <p>Aucune discipline.</p>
         </div>
       ) : (
         disciplinesParCategorie.map(group => (
@@ -196,54 +191,142 @@ const GestionDisciplines: React.FC = () => {
             <div style={{ display: 'grid', gap: '12px' }}>
               {group.disciplines.map(disc => (
                 <div key={disc.id} style={{ background: '#f8f9fa', padding: '20px', borderRadius: '10px', border: '2px solid #e0e0e0' }}>
-                  {editMode === disc.id ? (
-                    <div style={{ display: 'grid', gap: '15px' }}>
-                      <input type="text" value={disc.nom}
-                        onChange={e => updateLocalDiscipline(disc.id, 'nom', e.target.value)}
-                        style={{ width: '100%', padding: '10px', border: '2px solid #e0e0e0', borderRadius: '8px' }} />
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <input type="checkbox" checked={disc.isOptionnelle}
-                          onChange={e => updateLocalDiscipline(disc.id, 'isOptionnelle', e.target.checked)} />
-                        <span>Optionnelle</span>
-                      </label>
-                      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                        <button onClick={() => setEditMode(null)}
-                          style={{ padding: '8px 16px', background: '#95a5a6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <X size={16} /> Annuler
-                        </button>
-                        <button onClick={() => updateDiscipline(disc.id)}
-                          style={{ padding: '8px 16px', background: '#00a896', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Save size={16} /> OK
-                        </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>{disc.nom}</span>
+                        {disc.isOptionnelle && (
+                          <span style={{ padding: '3px 8px', background: '#f4a261', color: 'white', fontSize: '11px', borderRadius: '4px' }}>
+                            Optionnelle
+                          </span>
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                          <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50' }}>{disc.nom}</span>
-                          {disc.isOptionnelle && (
-                            <span style={{ padding: '3px 8px', background: '#f4a261', color: 'white', fontSize: '11px', borderRadius: '4px' }}>
-                              Optionnelle
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
-                          Niveaux : {disc.niveauxCibles.join(', ')}
+                      
+                      {/* Résumé coefficients/volumes */}
+                      <div style={{ fontSize: '13px', color: '#7f8c8d', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                          <span>
+                            <Award size={14} style={{ display: 'inline', marginRight: '5px' }} />
+                            Coef 6ème: {disc.coefficients?.['6ème'] || '-'}
+                          </span>
+                          <span>
+                            <Clock size={14} style={{ display: 'inline', marginRight: '5px' }} />
+                            Volume 6ème: {disc.volumeHoraire?.['6ème'] || '-'}
+                          </span>
+                          <span>
+                            <Award size={14} style={{ display: 'inline', marginRight: '5px' }} />
+                            Coef Term: {disc.coefficients?.['Terminale'] || '-'}
+                          </span>
+                          <span>
+                            <Clock size={14} style={{ display: 'inline', marginRight: '5px' }} />
+                            Volume Term: {disc.volumeHoraire?.['Terminale'] || '-'}
+                          </span>
                         </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => setEditMode(disc.id)}
-                          style={{ padding: '8px 12px', background: '#6676ea', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Edit2 size={14} /> Modifier
-                        </button>
-                        <button onClick={() => deleteDiscipline(disc.id, disc.nom)}
-                          style={{ padding: '8px 12px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Trash2 size={14} /> Supprimer
-                        </button>
-                      </div>
+
+                      {/* Tableau détaillé si ouvert */}
+                      {showCoefficients === disc.id && (
+                        <div style={{ marginTop: '15px', background: 'white', padding: '15px', borderRadius: '8px' }}>
+                          <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                            Configuration par niveau
+                          </h4>
+                          <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: '#f8f9fa' }}>
+                                  <th style={{ padding: '8px', textAlign: 'left', border: '1px solid #e0e0e0' }}>Niveau</th>
+                                  <th style={{ padding: '8px', textAlign: 'center', border: '1px solid #e0e0e0' }}>Coefficient</th>
+                                  <th style={{ padding: '8px', textAlign: 'center', border: '1px solid #e0e0e0' }}>Volume horaire</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {NIVEAUX.map(niveau => (
+                                  <tr key={niveau}>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', fontWeight: '600' }}>{niveau}</td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                                      {editMode === disc.id ? (
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="10"
+                                          value={disc.coefficients?.[niveau] || 0}
+                                          onChange={e => updateCoefficient(disc.id, niveau, parseInt(e.target.value) || 0)}
+                                          style={{ width: '60px', padding: '4px', textAlign: 'center', border: '1px solid #e0e0e0', borderRadius: '4px' }}
+                                        />
+                                      ) : (
+                                        <span style={{ fontWeight: 'bold', color: '#6676ea' }}>
+                                          {disc.coefficients?.[niveau] || 0}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td style={{ padding: '8px', border: '1px solid #e0e0e0', textAlign: 'center' }}>
+                                      {editMode === disc.id ? (
+                                        <input
+                                          type="text"
+                                          value={disc.volumeHoraire?.[niveau] || '0h'}
+                                          onChange={e => updateVolumeHoraire(disc.id, niveau, e.target.value)}
+                                          placeholder="Ex: 4h"
+                                          style={{ width: '80px', padding: '4px', textAlign: 'center', border: '1px solid #e0e0e0', borderRadius: '4px' }}
+                                        />
+                                      ) : (
+                                        <span style={{ fontWeight: 'bold', color: '#10b981' }}>
+                                          {disc.volumeHoraire?.[niveau] || '0h'}
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '20px' }}>
+                      <button
+                        onClick={() => setShowCoefficients(showCoefficients === disc.id ? null : disc.id)}
+                        style={{
+                          padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none',
+                          borderRadius: '6px', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {showCoefficients === disc.id ? '▲ Masquer' : '▼ Détails'}
+                      </button>
+                      
+                      {editMode === disc.id ? (
+                        <>
+                          <button onClick={() => updateDiscipline(disc.id)} style={{
+                            padding: '6px 12px', background: '#10b981', color: 'white', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+                          }}>
+                            <Save size={14} style={{ display: 'inline' }} /> Sauver
+                          </button>
+                          <button onClick={() => { setEditMode(null); setShowCoefficients(null); loadDisciplines(); }} style={{
+                            padding: '6px 12px', background: '#95a5a6', color: 'white', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+                          }}>
+                            <X size={14} style={{ display: 'inline' }} /> Annuler
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button onClick={() => { setEditMode(disc.id); setShowCoefficients(disc.id); }} style={{
+                            padding: '6px 12px', background: '#6676ea', color: 'white', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+                          }}>
+                            <Edit2 size={14} style={{ display: 'inline' }} /> Modifier
+                          </button>
+                          <button onClick={() => deleteDiscipline(disc.id, disc.nom)} style={{
+                            padding: '6px 12px', background: '#e74c3c', color: 'white', border: 'none',
+                            borderRadius: '6px', cursor: 'pointer', fontSize: '12px'
+                          }}>
+                            <Trash2 size={14} style={{ display: 'inline' }} /> Supprimer
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -254,4 +337,4 @@ const GestionDisciplines: React.FC = () => {
   );
 };
 
-export default GestionDisciplines;
+export default GestionDisciplinesAvancee;
