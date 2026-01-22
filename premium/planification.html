@@ -135,4 +135,74 @@
     <!-- Bundle planification -->
     <script src="js/planification.js?v=2"></script>
 </body>
-</html>
+</<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planification - PedaClic</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        #root { padding: 20px; max-width: 1600px; margin: 0 auto; }
+        .btn-retour {
+            position: fixed; top: 20px; right: 20px;
+            padding: 10px 20px; background: white; color: #6676ea;
+            border: 2px solid #6676ea; border-radius: 8px;
+            cursor: pointer; font-weight: 600; text-decoration: none;
+        }
+        .btn-retour:hover { background: #6676ea; color: white; }
+        .loading {
+            text-align: center; padding: 100px 20px; color: white;
+        }
+        .loading-spinner {
+            font-size: 48px; margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="btn-retour">← Retour</a>
+    <div id="root">
+        <div class="loading">
+            <div class="loading-spinner">⏳</div>
+            <div>Chargement de la planification...</div>
+        </div>
+    </div>
+    
+    <!-- Config Firebase PUIS bundle -->
+    <script src="js/firebase-config.js"></script>
+    <script>
+        // Attendre que Firebase soit complètement chargé
+        window.addEventListener('DOMContentLoaded', () => {
+            // Vérifier que Firebase est initialisé
+            if (typeof firebase !== 'undefined' && firebase.apps.length > 0) {
+                console.log('✅ Firebase OK, chargement de l\'application...');
+                
+                // Charger le bundle
+                const script = document.createElement('script');
+                script.src = 'js/planification.js?v=' + Date.now();
+                script.onerror = () => {
+                    document.getElementById('root').innerHTML = 
+                        '<div class="loading"><div style="color:#ff4444;">❌ Erreur de chargement</div></div>';
+                };
+                document.body.appendChild(script);
+            } else {
+                console.error('❌ Firebase non initialisé');
+                document.getElementById('root').innerHTML = 
+                    '<div class="loading"><div style="color:#ff4444;">❌ Erreur d\'initialisation Firebase</div></div>';
+            }
+        });
+    </script>
+</body>
+</html>html>
