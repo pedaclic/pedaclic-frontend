@@ -24,6 +24,117 @@
             padding: 10px 20px; background: white; color: #6676ea;
             border: 2px solid #6676ea; border-radius: 8px;
             cursor: pointer; font-weight: 600; text-decoration: none;
+        }
+        .btn-retour:hover { background: #6676ea; color: white; }
+        .loading {
+            text-align: center; padding: 100px 20px; color: white; font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="btn-retour">← Retour</a>
+    <div id="root">
+        <div class="loading">⏳ Vérification des permissions...</div>
+    </div>
+    
+    <script>
+        // Initialiser Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyDgk_1graNBFkIURTJnyLZTZ1nyxi7slUo",
+            authDomain: "pedaclic.firebaseapp.com",
+            projectId: "pedaclic",
+            storageBucket: "pedaclic.firebasestorage.app",
+            messagingSenderId: "863649621890",
+            appId: "1:863649621890:web:6ab56a8c8db111e3a9119b",
+            measurementId: "G-20EGFVEM5M"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        console.log('✅ Firebase initialisé');
+        
+        // 🔒 Vérifier l'authentification AVANT de charger l'app
+        firebase.auth().onAuthStateChanged(async (user) => {
+            const rootDiv = document.getElementById('root');
+            
+            // Pas connecté
+            if (!user) {
+                console.log('❌ Utilisateur non connecté');
+                rootDiv.innerHTML = '<div class="loading" style="color:#ff4444;">⚠️ Vous devez être connecté</div>';
+                setTimeout(() => window.location.href = '../index.html', 2000);
+                return;
+            }
+            
+            console.log('✅ Utilisateur connecté:', user.email);
+            
+            // Vérifier Premium
+            try {
+                const db = firebase.firestore();
+                const userDoc = await db.collection('users').doc(user.uid).get();
+                
+                if (!userDoc.exists) {
+                    console.log('❌ Document utilisateur introuvable');
+                    rootDiv.innerHTML = '<div class="loading" style="color:#ff4444;">❌ Erreur: Utilisateur introuvable</div>';
+                    setTimeout(() => window.location.href = '../index.html', 2000);
+                    return;
+                }
+                
+                const userData = userDoc.data();
+                console.log('📊 Données utilisateur:', userData);
+                
+                if (!userData.isPremium) {
+                    console.log('❌ Utilisateur non Premium');
+                    rootDiv.innerHTML = '<div class="loading" style="color:#ff4444;">⚠️ Accès Premium requis</div>';
+                    setTimeout(() => window.location.href = '../index.html', 2000);
+                    return;
+                }
+                
+                console.log('✅ Utilisateur Premium confirmé');
+                
+                // ✅ Tout OK → Charger l'application
+                rootDiv.innerHTML = '<div class="loading">⏳ Chargement de la planification...</div>';
+                
+                const script = document.createElement('script');
+                script.src = 'js/planification.js?v=' + Date.now();
+                script.onload = () => console.log('✅ Application chargée');
+                script.onerror = () => {
+                    console.error('❌ Erreur chargement planification.js');
+                    rootDiv.innerHTML = '<div class="loading" style="color:#ff4444;">❌ Erreur de chargement</div>';
+                };
+                document.body.appendChild(script);
+                
+            } catch (error) {
+                console.error('❌ Erreur vérification Premium:', error);
+                rootDiv.innerHTML = '<div class="loading" style="color:#ff4444;">❌ Erreur: ' + error.message + '</div>';
+            }
+        });
+    </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planification - PedaClic</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        #root { padding: 20px; max-width: 1600px; margin: 0 auto; }
+        .btn-retour {
+            position: fixed; top: 20px; right: 20px;
+            padding: 10px 20px; background: white; color: #6676ea;
+            border: 2px solid #6676ea; border-radius: 8px;
+            cursor: pointer; font-weight: 600; text-decoration: none;
             display: flex; align-items: center; gap: 8px;
         }
         .btn-retour:hover { background: #6676ea; color: white; }
