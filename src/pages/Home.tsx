@@ -18,7 +18,6 @@ import { Link } from 'react-router-dom';
 import {
   GraduationCap,
   BookOpen,
-  Users,
   Trophy,
   CheckCircle,
   Star,

@@ -39,7 +39,7 @@ import {
   AlertCircle,
   RefreshCw
 } from 'lucide-react';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import './Disciplines.css';
 
