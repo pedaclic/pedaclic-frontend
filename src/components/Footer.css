@@ -1,0 +1,467 @@
+/**
+ * ============================================
+ * STYLES FOOTER PEDACLIC
+ * ============================================
+ * 
+ * Styles pour le composant Footer avec :
+ * - Layout 4 colonnes responsive
+ * - Section contact et réseaux sociaux
+ * - Barre inférieure copyright
+ * - Design moderne avec dégradé
+ * 
+ * Structure BEM : footer__element--modifier
+ * 
+ * @author PedaClic Team
+ * @version 2.0.0
+ */
+
+/* ==================== FOOTER PRINCIPAL ==================== */
+
+/**
+ * Conteneur principal du footer
+ */
+.footer {
+  background-color: #1f2937; /* Gris foncé */
+  color: #e5e7eb;
+  margin-top: auto; /* Push vers le bas avec flexbox */
+}
+
+/**
+ * Conteneur interne avec max-width
+ */
+.footer__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+/* ==================== SECTION PRINCIPALE ==================== */
+
+/**
+ * Zone principale avec les 4 colonnes
+ */
+.footer__main {
+  padding: var(--spacing-2xl) 0;
+}
+
+.footer__main .footer__container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--spacing-xl);
+}
+
+/* Responsive : 2 colonnes sur tablette */
+@media (min-width: 640px) {
+  .footer__main .footer__container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Responsive : 4 colonnes sur desktop */
+@media (min-width: 1024px) {
+  .footer__main .footer__container {
+    grid-template-columns: 1.5fr 1fr 1fr 1fr;
+  }
+}
+
+/* ==================== COLONNE À PROPOS ==================== */
+
+/**
+ * Première colonne (plus large) avec logo et description
+ */
+.footer__column--about {
+  grid-column: 1 / -1; /* Prend toute la largeur sur mobile */
+}
+
+@media (min-width: 640px) {
+  .footer__column--about {
+    grid-column: 1 / -1; /* Toujours toute la largeur sur tablette */
+  }
+}
+
+@media (min-width: 1024px) {
+  .footer__column--about {
+    grid-column: 1; /* Première colonne uniquement sur desktop */
+  }
+}
+
+/* ==================== LOGO ==================== */
+
+/**
+ * Zone du logo dans le footer
+ */
+.footer__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: inherit;
+  margin-bottom: var(--spacing-md);
+  transition: opacity var(--transition-base);
+}
+
+.footer__logo:hover {
+  opacity: 0.8;
+  text-decoration: none;
+}
+
+/**
+ * Icône du logo
+ */
+.footer__logo-icon {
+  color: var(--color-primary-light);
+  flex-shrink: 0;
+}
+
+/**
+ * Texte du logo
+ */
+.footer__logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.footer__logo-name {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: white;
+}
+
+.footer__logo-tagline {
+  font-size: var(--text-xs);
+  color: #9ca3af;
+}
+
+/* ==================== DESCRIPTION ==================== */
+
+/**
+ * Texte de description de la plateforme
+ */
+.footer__description {
+  font-size: var(--text-sm);
+  color: #9ca3af;
+  line-height: 1.7;
+  margin-bottom: var(--spacing-md);
+  max-width: 300px;
+}
+
+/* ==================== STATISTIQUES ==================== */
+
+/**
+ * Zone des statistiques rapides
+ */
+.footer__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.footer__stat {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: #d1d5db;
+}
+
+.footer__stat svg {
+  color: var(--color-secondary-light);
+}
+
+/* ==================== TITRES DES COLONNES ==================== */
+
+/**
+ * Titre de section
+ */
+.footer__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: white;
+  margin-bottom: var(--spacing-md);
+}
+
+.footer__title-icon {
+  font-size: var(--text-lg);
+}
+
+/* ==================== NAVIGATION ==================== */
+
+/**
+ * Liste de liens
+ */
+.footer__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.footer__item {
+  margin-bottom: var(--spacing-sm);
+}
+
+/**
+ * Liens de navigation
+ */
+.footer__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  color: #9ca3af;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: all var(--transition-base);
+  padding: var(--spacing-xs) 0;
+}
+
+.footer__link:hover {
+  color: white;
+  text-decoration: none;
+  padding-left: var(--spacing-sm);
+}
+
+/**
+ * Icône de lien externe
+ */
+.footer__external-icon {
+  opacity: 0.5;
+}
+
+/* ==================== CONTACT ==================== */
+
+/**
+ * Zone des informations de contact
+ */
+.footer__contact {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+/**
+ * Item de contact (email, téléphone, adresse)
+ */
+.footer__contact-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: #9ca3af;
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+a.footer__contact-item:hover {
+  color: white;
+  text-decoration: none;
+}
+
+.footer__contact-icon {
+  color: var(--color-primary-light);
+  flex-shrink: 0;
+}
+
+/* ==================== RÉSEAUX SOCIAUX ==================== */
+
+/**
+ * Zone des réseaux sociaux
+ */
+.footer__social {
+  margin-top: var(--spacing-md);
+}
+
+.footer__social-title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: #d1d5db;
+  margin-bottom: var(--spacing-sm);
+}
+
+/**
+ * Conteneur des icônes sociales
+ */
+.footer__social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
+/**
+ * Lien réseau social
+ */
+.footer__social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-lg);
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
+  transition: all var(--transition-base);
+}
+
+.footer__social-link:hover {
+  background-color: var(--color-primary);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Couleurs spécifiques par réseau au hover */
+.footer__social-link:hover[aria-label*="Facebook"] {
+  background-color: #1877f2;
+}
+
+.footer__social-link:hover[aria-label*="Twitter"] {
+  background-color: #1da1f2;
+}
+
+.footer__social-link:hover[aria-label*="Instagram"] {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+}
+
+.footer__social-link:hover[aria-label*="LinkedIn"] {
+  background-color: #0a66c2;
+}
+
+.footer__social-link:hover[aria-label*="YouTube"] {
+  background-color: #ff0000;
+}
+
+/* ==================== SECTION INFÉRIEURE ==================== */
+
+/**
+ * Barre inférieure avec copyright
+ */
+.footer__bottom {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: var(--spacing-md) 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/**
+ * Contenu de la barre inférieure
+ */
+.footer__bottom-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .footer__bottom-content {
+    flex-direction: row;
+    justify-content: space-between;
+    text-align: left;
+  }
+}
+
+/**
+ * Texte copyright
+ */
+.footer__copyright {
+  font-size: var(--text-sm);
+  color: #9ca3af;
+  margin: 0;
+}
+
+/**
+ * Texte "Made with love"
+ */
+.footer__made-with {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: #9ca3af;
+  margin: 0;
+}
+
+.footer__heart {
+  color: #ef4444;
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.2); }
+}
+
+/**
+ * Liens légaux
+ */
+.footer__legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .footer__legal {
+    justify-content: flex-end;
+  }
+}
+
+.footer__legal-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: var(--text-sm);
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color var(--transition-base);
+}
+
+.footer__legal-link:hover {
+  color: white;
+  text-decoration: none;
+}
+
+/* ==================== RESPONSIVE MOBILE ==================== */
+
+@media (max-width: 639px) {
+  .footer__main {
+    padding: var(--spacing-xl) 0;
+  }
+  
+  .footer__column {
+    text-align: center;
+  }
+  
+  .footer__logo {
+    justify-content: center;
+  }
+  
+  .footer__description {
+    max-width: none;
+  }
+  
+  .footer__stats {
+    justify-content: center;
+  }
+  
+  .footer__title {
+    justify-content: center;
+  }
+  
+  .footer__contact {
+    align-items: center;
+  }
+  
+  .footer__social {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .footer__social-links {
+    justify-content: center;
+  }
+}

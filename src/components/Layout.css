@@ -1,0 +1,86 @@
+/**
+ * ============================================
+ * STYLES LAYOUT PEDACLIC
+ * ============================================
+ * 
+ * Styles pour le wrapper Layout :
+ * - Structure flexbox verticale
+ * - Footer toujours en bas (sticky footer)
+ * - Compensation de la hauteur du header fixe
+ * 
+ * @author PedaClic Team
+ * @version 2.0.0
+ */
+
+/* ==================== LAYOUT WRAPPER ==================== */
+
+/**
+ * Conteneur principal de l'application
+ * Flexbox vertical pour sticky footer
+ */
+.layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ==================== CONTENU PRINCIPAL ==================== */
+
+/**
+ * Zone du contenu principal
+ * flex-grow: 1 pousse le footer vers le bas
+ */
+.layout__main {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/**
+ * Compensation du header fixe (64px de hauteur)
+ */
+.layout__main--with-header {
+  padding-top: 64px;
+}
+
+/* ==================== UTILITAIRES ==================== */
+
+/**
+ * Classe pour les pages qui veulent un conteneur centré
+ */
+.layout__container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-md);
+}
+
+/**
+ * Page avec padding standard
+ */
+.layout__page {
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+
+@media (min-width: 768px) {
+  .layout__page {
+    padding: var(--spacing-2xl) var(--spacing-lg);
+  }
+}
+
+/**
+ * Page centrée (pour login, register, etc.)
+ */
+.layout__page--centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 64px); /* Moins la hauteur du header */
+}
+
+/**
+ * Page avec fond gris clair
+ */
+.layout__page--gray {
+  background-color: var(--color-bg-secondary);
+}
