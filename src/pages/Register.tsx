@@ -8,7 +8,7 @@ import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Mail, Lock, Eye, EyeOff, UserPlus, AlertCircle, 
-  User, GraduationCap, BookOpen 
+  User, GraduationCap 
 } from 'lucide-react';
 import { useAuth, UserRole } from '../hooks/useAuth';
 import './Auth.css';
