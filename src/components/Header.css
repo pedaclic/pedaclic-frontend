@@ -1,0 +1,783 @@
+/**
+ * ============================================
+ * STYLES HEADER PEDACLIC
+ * ============================================
+ * 
+ * Styles pour le composant Header avec :
+ * - Navigation responsive (mobile-first)
+ * - Menu burger animé
+ * - Dropdown utilisateur
+ * - États actifs et hover
+ * 
+ * Structure BEM : header__element--modifier
+ * 
+ * @author PedaClic Team
+ * @version 2.0.0
+ */
+
+/* ==================== HEADER PRINCIPAL ==================== */
+
+/**
+ * Conteneur principal du header
+ * Position fixed pour rester visible au scroll
+ */
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-fixed);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+/**
+ * Conteneur interne avec max-width
+ * Flexbox pour aligner logo, nav et actions
+ */
+.header__container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-sm) var(--spacing-md);
+  height: 64px;
+}
+
+/* ==================== LOGO ==================== */
+
+/**
+ * Zone du logo - lien cliquable
+ */
+.header__logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: inherit;
+  transition: opacity var(--transition-base);
+}
+
+.header__logo:hover {
+  opacity: 0.8;
+  text-decoration: none;
+}
+
+/**
+ * Icône du logo - casquette de diplômé
+ */
+.header__logo-icon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+/**
+ * Texte du logo
+ */
+.header__logo-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+/**
+ * Nom "PedaClic"
+ */
+.header__logo-name {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+/**
+ * Slogan "L'école en un clic"
+ * Masqué sur très petit écran
+ */
+.header__logo-tagline {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  display: none;
+}
+
+@media (min-width: 480px) {
+  .header__logo-tagline {
+    display: block;
+  }
+}
+
+/* ==================== NAVIGATION DESKTOP ==================== */
+
+/**
+ * Navigation principale - masquée sur mobile
+ */
+.header__nav--desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .header__nav--desktop {
+    display: flex;
+    align-items: center;
+  }
+}
+
+/**
+ * Liste des liens de navigation
+ */
+.header__nav-list {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/**
+ * Item de navigation
+ */
+.header__nav-item {
+  position: relative;
+}
+
+/**
+ * Lien de navigation
+ * Style bouton avec icône et texte
+ */
+.header__nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.header__nav-link:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/**
+ * Lien actif - route courante
+ */
+.header__nav-link--active {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+}
+
+/**
+ * Badge Premium sur les liens
+ */
+.header__premium-badge {
+  color: var(--color-warning);
+  margin-left: var(--spacing-xs);
+}
+
+/* ==================== ACTIONS UTILISATEUR ==================== */
+
+/**
+ * Zone des actions (auth buttons ou user dropdown)
+ */
+.header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/**
+ * Spinner de chargement
+ */
+.header__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.header__spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* ==================== BOUTONS D'AUTH ==================== */
+
+/**
+ * Conteneur des boutons connexion/inscription
+ * Masqué sur mobile (visible dans menu burger)
+ */
+.header__auth-buttons {
+  display: none;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+@media (min-width: 768px) {
+  .header__auth-buttons {
+    display: flex;
+  }
+}
+
+/**
+ * Style de base des boutons
+ */
+.header__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  border: none;
+}
+
+/**
+ * Bouton outline (secondaire)
+ */
+.header__btn--outline {
+  background-color: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.header__btn--outline:hover {
+  background-color: var(--color-bg-secondary);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/**
+ * Bouton primary (principal)
+ */
+.header__btn--primary {
+  background-color: var(--color-primary);
+  color: white;
+}
+
+.header__btn--primary:hover {
+  background-color: var(--color-primary-dark);
+  text-decoration: none;
+  color: white;
+}
+
+/**
+ * Bouton full-width (mobile)
+ */
+.header__btn--block {
+  width: 100%;
+}
+
+/* ==================== ZONE UTILISATEUR CONNECTÉ ==================== */
+
+/**
+ * Conteneur utilisateur avec dropdown
+ */
+.header__user {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/**
+ * Tag Premium à côté du profil
+ */
+.header__premium-tag {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  border-radius: var(--radius-full);
+}
+
+@media (min-width: 640px) {
+  .header__premium-tag {
+    display: inline-flex;
+  }
+}
+
+/**
+ * Bouton pour ouvrir le dropdown
+ */
+.header__user-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.header__user-button:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/**
+ * Avatar utilisateur
+ */
+.header__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.header__avatar--large {
+  width: 48px;
+  height: 48px;
+}
+
+.header__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.header__avatar-initials {
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+}
+
+.header__avatar--large .header__avatar-initials {
+  font-size: var(--text-lg);
+}
+
+/**
+ * Nom utilisateur (desktop uniquement)
+ */
+.header__user-name {
+  display: none;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .header__user-name {
+    display: block;
+  }
+}
+
+/**
+ * Chevron du dropdown
+ */
+.header__chevron {
+  color: var(--color-text-light);
+  transition: transform var(--transition-base);
+}
+
+.header__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ==================== DROPDOWN MENU ==================== */
+
+/**
+ * Menu dropdown utilisateur
+ */
+.header__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  animation: dropdownFadeIn 0.2s ease-out;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/**
+ * En-tête du dropdown (email + rôle)
+ */
+.header__dropdown-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.header__dropdown-email {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  margin: 0 0 var(--spacing-xs) 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header__dropdown-role {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-full);
+}
+
+/* Couleurs des rôles */
+.header__dropdown-role--admin {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+}
+
+.header__dropdown-role--prof {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+}
+
+.header__dropdown-role--eleve {
+  background-color: rgba(16, 185, 129, 0.1);
+  color: var(--color-secondary);
+}
+
+/**
+ * Séparateur dans le dropdown
+ */
+.header__dropdown-divider {
+  height: 1px;
+  background-color: var(--color-border-light);
+  margin: 0;
+}
+
+/**
+ * Navigation dans le dropdown
+ */
+.header__dropdown-nav {
+  padding: var(--spacing-sm);
+}
+
+/**
+ * Lien dans le dropdown
+ */
+.header__dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.header__dropdown-link:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/**
+ * Lien Premium (style spécial)
+ */
+.header__dropdown-link--premium {
+  color: var(--color-warning);
+}
+
+.header__dropdown-link--premium:hover {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #d97706;
+}
+
+/**
+ * Bouton déconnexion
+ */
+.header__dropdown-logout {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: calc(100% - var(--spacing-md));
+  margin: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.header__dropdown-logout:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.header__dropdown-logout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== MENU MOBILE ==================== */
+
+/**
+ * Bouton toggle menu mobile
+ * Visible uniquement sur mobile
+ */
+.header__mobile-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background-color var(--transition-base);
+}
+
+.header__mobile-toggle:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+@media (min-width: 768px) {
+  .header__mobile-toggle {
+    display: none;
+  }
+}
+
+/**
+ * Container du menu mobile
+ * Position fixed pour overlay complet
+ */
+.header__mobile-menu {
+  position: fixed;
+  top: 64px; /* Hauteur du header */
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-modal);
+  visibility: hidden;
+  opacity: 0;
+  transition: all var(--transition-base);
+}
+
+.header__mobile-menu--open {
+  visibility: visible;
+  opacity: 1;
+}
+
+/**
+ * Overlay sombre derrière le menu
+ */
+.header__mobile-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/**
+ * Contenu du menu mobile
+ * Slide depuis la droite
+ */
+.header__mobile-content {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 280px;
+  max-width: 80vw;
+  height: 100%;
+  background-color: var(--color-bg);
+  box-shadow: var(--shadow-xl);
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform var(--transition-slow);
+}
+
+.header__mobile-menu--open .header__mobile-content {
+  transform: translateX(0);
+}
+
+/**
+ * Navigation mobile
+ */
+.header__mobile-nav {
+  padding: var(--spacing-md);
+}
+
+.header__mobile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.header__mobile-item {
+  margin-bottom: var(--spacing-xs);
+}
+
+/**
+ * Lien navigation mobile
+ */
+.header__mobile-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.header__mobile-link:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.header__mobile-link--active {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+}
+
+/**
+ * Zone auth mobile (boutons connexion/inscription)
+ */
+.header__mobile-auth {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/**
+ * Zone utilisateur mobile
+ */
+.header__mobile-user {
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.header__mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.header__mobile-user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.header__mobile-user-name {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0 0 4px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header__mobile-user-email {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/**
+ * Bouton déconnexion mobile
+ */
+.header__mobile-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-md);
+  background-color: rgba(239, 68, 68, 0.1);
+  border: none;
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.header__mobile-logout:hover:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+.header__mobile-logout:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== COMPENSATION HEADER FIXED ==================== */
+
+/**
+ * Classe utilitaire pour compenser la hauteur du header fixed
+ * À ajouter au conteneur principal de la page
+ */
+.main-content {
+  padding-top: 64px; /* Hauteur du header */
+}
+
+/* ==================== RESPONSIVE ADJUSTMENTS ==================== */
+
+@media (min-width: 1024px) {
+  .header__container {
+    padding: var(--spacing-sm) var(--spacing-xl);
+  }
+  
+  .header__nav-list {
+    gap: var(--spacing-sm);
+  }
+}

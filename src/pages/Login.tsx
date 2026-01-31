@@ -1,84 +1,133 @@
 /**
- * Page Login - Connexion PedaClic
+ * ============================================
+ * PAGE LOGIN - Connexion PedaClic
+ * ============================================
  */
 
-import React, { useState } from 'react';
+import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { LogIn } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Auth.css';
 
-export const Login: React.FC = () => {
+const Login: React.FC = () => {
+  const navigate = useNavigate();
+  const { login, error, clearError } = useAuth();
+
+  // États du formulaire
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Soumission du formulaire
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setLocalError(null);
+    clearError();
+
+    // Validation basique
+    if (!email || !password) {
+      setLocalError('Veuillez remplir tous les champs.');
+      return;
+    }
 
     try {
+      setIsSubmitting(true);
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Erreur de connexion');
+      setLocalError(err.message);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  const displayError = localError || error;
+
   return (
     <div className="auth-page">
-      <div className="auth-container">
-        <div className="auth-header">
-          <LogIn size={48} />
+      <div className="auth-page__card">
+        {/* En-tête */}
+        <div className="auth-page__header">
+          <LogIn size={40} className="auth-page__icon" />
           <h1>Connexion</h1>
-          <p>Connectez-vous à votre compte PedaClic</p>
+          <p>Accédez à votre espace PedaClic</p>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {/* Erreur */}
+        {displayError && (
+          <div className="auth-page__error">
+            <AlertCircle size={18} />
+            <span>{displayError}</span>
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="form-group">
-            <label htmlFor="email">Email</label>
+        {/* Formulaire */}
+        <form onSubmit={handleSubmit} className="auth-page__form">
+          {/* Email */}
+          <div className="auth-page__field">
+            <label htmlFor="email">
+              <Mail size={16} />
+              Adresse email
+            </label>
             <input
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
+              placeholder="exemple@email.com"
+              disabled={isSubmitting}
+              autoComplete="email"
             />
           </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Mot de passe</label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              disabled={loading}
-            />
+          {/* Mot de passe */}
+          <div className="auth-page__field">
+            <label htmlFor="password">
+              <Lock size={16} />
+              Mot de passe
+            </label>
+            <div className="auth-page__password-wrapper">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                disabled={isSubmitting}
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="auth-page__password-toggle"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex={-1}
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
           </div>
 
-          <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-            {loading ? 'Connexion...' : 'Se connecter'}
+          {/* Bouton submit */}
+          <button
+            type="submit"
+            className="auth-page__submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
 
-        <div className="auth-footer">
-          <p>
-            Pas encore de compte ?{' '}
-            <Link to="/register">S'inscrire</Link>
-          </p>
-        </div>
+        {/* Lien inscription */}
+        <p className="auth-page__footer">
+          Pas encore de compte ?{' '}
+          <Link to="/register">S'inscrire</Link>
+        </p>
       </div>
     </div>
   );
 };
+
+export default Login;
