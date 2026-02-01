@@ -1,274 +1,183 @@
 /**
- * ============================================
- * APP.TSX - Point d'Entrée Principal PedaClic
- * ============================================
+ * COMPOSANT PRINCIPAL - PedaClic
+ * Configuration des routes et layout de l'application
  * 
- * Configuration du routing React Router avec :
- * - Routes publiques (accueil, disciplines, login, register)
- * - Routes protégées (dashboard, quiz, admin)
- * - Layout wrapper avec Header/Footer
- * - Gestion des erreurs 404
- * 
- * @author PedaClic Team
- * @version 2.0.0
+ * Structure des routes :
+ * - / : Page d'accueil
+ * - /disciplines : Liste des disciplines
+ * - /disciplines/:id : Détail d'une discipline
+ * - /ressource/:id : Détail d'une ressource
+ * - /premium : Page d'abonnement Premium
+ * - /premium/success : Confirmation de paiement
+ * - /premium/cancel : Annulation de paiement
+ * - /connexion : Page de connexion
+ * - /inscription : Page d'inscription
+ * - /mot-de-passe-oublie : Réinitialisation mot de passe
+ * - /dashboard : Tableau de bord utilisateur (protégé)
+ * - /admin : Panneau d'administration (protégé, admin uniquement)
  */
 
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './hooks/useAuth';
-import { Layout } from './components';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-// ==================== IMPORT DES PAGES ====================
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import Dashboard from './pages/Dashboard';
-import Disciplines from './pages/Disciplines';
-import NotFound from './pages/NotFound';
+// ==================== CONTEXTES ====================
+import { AuthProvider } from './hooks/useAuth';
 
-// Pages à créer plus tard
-// import Quiz from './pages/Quiz';
-// import Premium from './pages/Premium';
-// import Profile from './pages/Profile';
-// import AdminDisciplines from './pages/admin/AdminDisciplines';
+// ==================== COMPOSANTS LAYOUT ====================
+import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
+import PrivateRoute from './components/auth/PrivateRoute';
 
-/* ==================== COMPOSANT ROUTE PROTÉGÉE ==================== */
+// ==================== PAGES PUBLIQUES ====================
+import HomePage from './pages/Home';
+import DisciplinesPage from './pages/DisciplinesPage';
+import DisciplineDetailPage from './pages/DisciplineDetail';
+// import ResourceDetailPage from './pages/resources/ResourceDetailPage'; // À créer
+
+// ==================== PAGES PREMIUM ====================
+import PremiumPage from './pages/Premium/PremiumPage';
+import LoginPage from "./pages/Auth/LoginPage";
+import RegisterPage from "./pages/Auth/RegisterPage";
+import SeedPage from "./pages/SeedPage";
+import PaymentSuccessPage from './pages/PaymentSuccessPage';
+import PaymentCancelPage from './pages/PaymentCancelPage';
+
+// ==================== PAGES AUTHENTIFICATION ====================
+// import LoginPage from './pages/auth/LoginPage';           // Existant
+// import RegisterPage from './pages/auth/RegisterPage';     // Existant
+// import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'; // Existant
+
+// ==================== PAGES PROTÉGÉES ====================
+// import DashboardPage from './pages/dashboard/DashboardPage'; // À créer
+// import AdminPage from './pages/admin/AdminPage';             // À créer
+
+// ==================== STYLES GLOBAUX ====================
+import './globals.css';
 
 /**
- * Composant pour protéger les routes qui nécessitent une authentification
- * Redirige vers /login si l'utilisateur n'est pas connecté
+ * Composant Layout principal
+ * Enveloppe les pages avec Navbar et Footer
  */
-interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requirePremium?: boolean;
-  requireRole?: ('admin' | 'prof' | 'eleve')[];
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
-  children,
-  requirePremium = false,
-  requireRole = []
-}) => {
-  const { currentUser, loading } = useAuth();
-
-  // Afficher un loader pendant la vérification
-  if (loading) {
-    return (
-      <Layout>
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Chargement...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Rediriger vers login si non connecté
-  if (!currentUser) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // Vérifier le statut Premium si requis
-  if (requirePremium && !currentUser.isPremium) {
-    return <Navigate to="/premium" replace />;
-  }
-
-  // Vérifier le rôle si requis
-  if (requireRole.length > 0 && !requireRole.includes(currentUser.role)) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-/* ==================== COMPOSANT ROUTE INVITÉ ==================== */
-
-/**
- * Composant pour les routes accessibles uniquement aux utilisateurs non connectés
- * Redirige vers /dashboard si l'utilisateur est connecté
- */
-interface GuestRouteProps {
-  children: React.ReactNode;
-}
-
-const GuestRoute: React.FC<GuestRouteProps> = ({ children }) => {
-  const { currentUser, loading } = useAuth();
-
-  // Afficher un loader pendant la vérification
-  if (loading) {
-    return (
-      <Layout>
-        <div className="loading-container">
-          <div className="spinner"></div>
-          <p>Chargement...</p>
-        </div>
-      </Layout>
-    );
-  }
-
-  // Rediriger vers dashboard si connecté
-  if (currentUser) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-/* ==================== COMPOSANT ROUTES ==================== */
-
-/**
- * Configuration des routes de l'application
- */
-const AppRoutes: React.FC = () => {
+const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <Routes>
-      {/* ===== ROUTES PUBLIQUES ===== */}
+    <div className="app">
+      {/* Barre de navigation */}
+      <Navbar />
       
-      {/* Page d'accueil */}
-      <Route
-        path="/"
-        element={
-          <Layout>
-            <Home />
-          </Layout>
-        }
-      />
-
-      {/* Page des disciplines (accessible à tous) */}
-      <Route
-        path="/disciplines"
-        element={
-          <Layout>
-            <Disciplines />
-          </Layout>
-        }
-      />
-
-      {/* Page discipline détaillée (à créer) */}
-      {/* <Route
-        path="/disciplines/:id"
-        element={
-          <Layout>
-            <DisciplineDetail />
-          </Layout>
-        }
-      /> */}
-
-      {/* ===== ROUTES INVITÉ (non connecté) ===== */}
+      {/* Contenu principal */}
+      <main className="main-content">
+        {children}
+      </main>
       
-      {/* Page de connexion */}
-      <Route
-        path="/login"
-        element={
-          <GuestRoute>
-            <Layout>
-              <Login />
-            </Layout>
-          </GuestRoute>
-        }
-      />
-
-      {/* Page d'inscription */}
-      <Route
-        path="/register"
-        element={
-          <GuestRoute>
-            <Layout>
-              <Register />
-            </Layout>
-          </GuestRoute>
-        }
-      />
-
-      {/* ===== ROUTES PROTÉGÉES (connecté) ===== */}
-      
-      {/* Tableau de bord */}
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-
-      {/* Quiz Premium (à créer) */}
-      {/* <Route
-        path="/quiz"
-        element={
-          <ProtectedRoute requirePremium>
-            <Layout>
-              <Quiz />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* Page Premium (abonnement) (à créer) */}
-      {/* <Route
-        path="/premium"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Premium />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* Profil utilisateur (à créer) */}
-      {/* <Route
-        path="/profil"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <Profile />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* ===== ROUTES ADMIN ===== */}
-      
-      {/* Administration des disciplines (à créer) */}
-      {/* <Route
-        path="/admin/disciplines"
-        element={
-          <ProtectedRoute requireRole={['admin']}>
-            <Layout>
-              <AdminDisciplines />
-            </Layout>
-          </ProtectedRoute>
-        }
-      /> */}
-
-      {/* ===== ROUTE 404 ===== */}
-      <Route
-        path="*"
-        element={
-          <Layout>
-            <NotFound />
-          </Layout>
-        }
-      />
-    </Routes>
+      {/* Pied de page */}
+      <Footer />
+    </div>
   );
 };
 
-/* ==================== COMPOSANT APP PRINCIPAL ==================== */
-
 /**
  * Composant App principal
- * Enveloppe l'application avec les providers nécessaires
  */
 const App: React.FC = () => {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
-        <AppRoutes />
+        <Layout>
+          <Routes>
+            {/* ========== ROUTES PUBLIQUES ========== */}
+            
+            {/* Page d'accueil */}
+            <Route path="/" element={<HomePage />} />
+            
+            {/* Liste des disciplines */}
+            <Route path="/disciplines" element={<DisciplinesPage />} />
+            
+            {/* Détail d'une discipline */}
+            <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
+            
+            {/* Détail d'une ressource */}
+            {/* <Route path="/ressource/:id" element={<ResourceDetailPage />} /> */}
+            
+            {/* ========== ROUTES PREMIUM ========== */}
+            
+            {/* Page d'abonnement Premium */}
+            <Route path="/premium" element={<PremiumPage />} />
+            
+            {/* Confirmation de paiement */}
+            <Route path="/premium/success" element={<PaymentSuccessPage />} />
+            
+            {/* Annulation de paiement */}
+            <Route path="/premium/cancel" element={<PaymentCancelPage />} />
+            
+            {/* ========== ROUTES AUTHENTIFICATION ========== */}
+            
+            {/* Connexion */}
+            <Route path="/connexion" element={<LoginPage />} />
+            
+            {/* Inscription */}
+            <Route path="/inscription" element={<RegisterPage />} />
+            
+            {/* Mot de passe oublié */}
+            {/* <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} /> */}
+            
+            {/* ========== ROUTES PROTÉGÉES ========== */}
+            
+            {/* Tableau de bord utilisateur */}
+            {/* 
+            <Route 
+              path="/dashboard" 
+              element={
+                <PrivateRoute>
+                  <DashboardPage />
+                </PrivateRoute>
+              } 
+            />
+            */}
+            
+            {/* Panneau d'administration */}
+            {/* 
+            <Route 
+              path="/admin/*" 
+              element={
+                <PrivateRoute requiredRole="admin">
+                  <AdminPage />
+                </PrivateRoute>
+              } 
+            />
+            */}
+            
+            {/* Espace professeur */}
+            {/* 
+            <Route 
+              path="/prof/*" 
+              element={
+                <PrivateRoute requiredRole="prof">
+                  <ProfPage />
+                </PrivateRoute>
+              } 
+            />
+            */}
+            
+            <Route path="/admin/seed" element={<SeedPage />} />
+            {/* ========== ROUTE 404 ========== */}
+            <Route 
+              path="*" 
+              element={
+                <div className="not-found">
+                  <div className="container">
+                    <h1>404</h1>
+                    <p>Page non trouvée</p>
+                    <a href="/" className="btn btn--primary">
+                      Retour à l'accueil
+                    </a>
+                  </div>
+                </div>
+              } 
+            />
+          </Routes>
+        </Layout>
       </AuthProvider>
-    </BrowserRouter>
+    </Router>
   );
 };
 

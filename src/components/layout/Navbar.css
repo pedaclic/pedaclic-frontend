@@ -1,0 +1,648 @@
+/**
+ * ============================================
+ * NAVBAR - Styles de la barre de navigation
+ * ============================================
+ * 
+ * Design PedaClic :
+ * - Header bleu (#2563eb) avec dégradé
+ * - Style minimaliste et professionnel
+ * - Responsive avec menu hamburger mobile
+ */
+
+/* ==================== CONTENEUR PRINCIPAL ==================== */
+
+/* 
+ * Navbar sticky en haut de page
+ * Dégradé bleu PedaClic
+ */
+.navbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sticky);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #1d4ed8 100%);
+  box-shadow: var(--shadow-md);
+}
+
+/* 
+ * Container interne avec largeur max
+ * Flexbox pour aligner logo, nav et auth
+ */
+.navbar__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-lg);
+}
+
+/* ==================== LOGO ET MARQUE ==================== */
+
+/* 
+ * Zone logo cliquable
+ * Retour à l'accueil
+ */
+.navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-decoration: none;
+  color: white;
+  flex-shrink: 0;
+}
+
+/* Animation au survol du logo */
+.navbar__brand:hover {
+  text-decoration: none;
+}
+
+.navbar__brand:hover .navbar__logo {
+  transform: scale(1.05);
+}
+
+/* 
+ * Conteneur de l'icône logo
+ * Cercle blanc avec icône bleue
+ */
+.navbar__logo {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-base);
+}
+
+/* Icône SVG du logo */
+.navbar__logo-icon {
+  width: 24px;
+  height: 24px;
+  color: var(--color-primary);
+}
+
+/* Nom de la marque */
+.navbar__brand-name {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  letter-spacing: -0.5px;
+}
+
+/* ==================== NAVIGATION DESKTOP ==================== */
+
+/* 
+ * Liste des liens de navigation
+ * Masquée sur mobile
+ */
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Éléments de navigation */
+.navbar__nav-item {
+  margin: 0;
+}
+
+/* 
+ * Liens de navigation
+ * Style blanc semi-transparent
+ */
+.navbar__nav-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+/* Survol des liens */
+.navbar__nav-link:hover {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  text-decoration: none;
+}
+
+/* Lien actif */
+.navbar__nav-link--active {
+  color: white;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* 
+ * Style spécial pour le lien Premium
+ * Couleur dorée/jaune
+ */
+.navbar__nav-link--premium {
+  color: #fbbf24;
+}
+
+.navbar__nav-link--premium:hover {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.1);
+}
+
+/* Icône étoile Premium */
+.navbar__premium-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ==================== SECTION AUTHENTIFICATION ==================== */
+
+/* Conteneur des boutons auth */
+.navbar__auth {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 
+ * Boutons de la navbar
+ * Style commun
+ */
+.navbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+  cursor: pointer;
+  border: none;
+}
+
+/* Bouton outline (Connexion) */
+.navbar__btn--outline {
+  color: white;
+  background: transparent;
+  border: 1.5px solid rgba(255, 255, 255, 0.5);
+}
+
+.navbar__btn--outline:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: white;
+  text-decoration: none;
+}
+
+/* Bouton primary (S'inscrire) */
+.navbar__btn--primary {
+  color: var(--color-primary);
+  background: white;
+}
+
+.navbar__btn--primary:hover {
+  background: #f0f9ff;
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* Bouton pleine largeur (mobile) */
+.navbar__btn--full {
+  width: 100%;
+}
+
+/* ==================== ZONE UTILISATEUR CONNECTÉ ==================== */
+
+/* Conteneur utilisateur */
+.navbar__user {
+  position: relative;
+}
+
+/* 
+ * Bouton utilisateur avec avatar
+ * Ouvre le menu dropdown
+ */
+.navbar__user-button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  color: white;
+}
+
+.navbar__user-button:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 
+ * Avatar utilisateur
+ * Cercle avec image ou initiale
+ */
+.navbar__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--color-primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.navbar__avatar--large {
+  width: 48px;
+  height: 48px;
+}
+
+.navbar__avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.navbar__avatar-initial {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: white;
+}
+
+.navbar__avatar--large .navbar__avatar-initial {
+  font-size: var(--text-lg);
+}
+
+/* Informations utilisateur dans le bouton */
+.navbar__user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.navbar__user-name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.navbar__user-role {
+  font-size: var(--text-xs);
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* Badge Premium */
+.navbar__premium-badge {
+  background: #fbbf24;
+  color: #78350f;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+}
+
+/* Icône chevron du menu */
+.navbar__chevron {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--transition-base);
+}
+
+.navbar__chevron--open {
+  transform: rotate(180deg);
+}
+
+/* ==================== MENU DROPDOWN UTILISATEUR ==================== */
+
+/* 
+ * Menu déroulant
+ * Position absolue sous le bouton utilisateur
+ */
+.navbar__user-menu {
+  position: absolute;
+  top: calc(100% + var(--spacing-sm));
+  right: 0;
+  min-width: 200px;
+  background: white;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--spacing-sm);
+  z-index: var(--z-dropdown);
+  animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Éléments du menu */
+.navbar__menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  border-radius: var(--radius-md);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-base);
+  text-align: left;
+}
+
+.navbar__menu-item:hover {
+  background: var(--color-bg-secondary);
+  text-decoration: none;
+}
+
+.navbar__menu-item svg {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+/* Élément danger (déconnexion) */
+.navbar__menu-item--danger {
+  color: var(--color-error);
+}
+
+.navbar__menu-item--danger:hover {
+  background: #fef2f2;
+}
+
+/* Séparateur dans le menu */
+.navbar__menu-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--spacing-sm) 0;
+}
+
+/* ==================== BOUTON HAMBURGER MOBILE ==================== */
+
+/* 
+ * Bouton hamburger
+ * Visible uniquement sur mobile
+ */
+.navbar__hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.navbar__hamburger:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Lignes du hamburger */
+.navbar__hamburger-line {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: white;
+  border-radius: 1px;
+  transition: all var(--transition-base);
+  transform-origin: center;
+}
+
+/* Animation hamburger → X */
+.navbar__hamburger--open .navbar__hamburger-line:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+
+.navbar__hamburger--open .navbar__hamburger-line:nth-child(2) {
+  opacity: 0;
+}
+
+.navbar__hamburger--open .navbar__hamburger-line:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ==================== MENU MOBILE ==================== */
+
+/* 
+ * Menu mobile coulissant
+ * Caché par défaut
+ */
+.navbar__mobile-menu {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  padding: var(--spacing-lg);
+  transform: translateX(-100%);
+  transition: transform var(--transition-slow);
+  overflow-y: auto;
+  z-index: var(--z-fixed);
+}
+
+.navbar__mobile-menu--open {
+  transform: translateX(0);
+}
+
+/* Navigation mobile */
+.navbar__mobile-nav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar__mobile-nav li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Liens mobile */
+.navbar__mobile-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  color: var(--color-text);
+  font-size: var(--text-base);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-base);
+  background: none;
+  border: none;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.navbar__mobile-link:hover {
+  background: var(--color-bg-secondary);
+  text-decoration: none;
+}
+
+.navbar__mobile-link--active {
+  color: var(--color-primary);
+  background: #eff6ff;
+}
+
+.navbar__mobile-link--premium {
+  color: #d97706;
+}
+
+.navbar__mobile-link--danger {
+  color: var(--color-error);
+}
+
+.navbar__mobile-link--danger:hover {
+  background: #fef2f2;
+}
+
+.navbar__mobile-link svg {
+  width: 24px;
+  height: 24px;
+  opacity: 0.7;
+}
+
+/* Séparateur mobile */
+.navbar__mobile-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--spacing-lg) 0;
+}
+
+/* Zone utilisateur mobile */
+.navbar__mobile-user {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.navbar__mobile-user-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.navbar__mobile-user-name {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.navbar__mobile-user-role {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+/* Boutons auth mobile */
+.navbar__mobile-auth {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+/* Overlay mobile */
+.navbar__overlay {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: calc(var(--z-fixed) - 1);
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+/* Tablette - Masquer certains éléments */
+@media (max-width: 1024px) {
+  .navbar__user-info {
+    display: none;
+  }
+}
+
+/* Mobile - Afficher hamburger, masquer nav desktop */
+@media (max-width: 768px) {
+  .navbar__nav {
+    display: none;
+  }
+
+  .navbar__auth {
+    display: none;
+  }
+
+  .navbar__hamburger {
+    display: flex;
+  }
+
+  .navbar__container {
+    height: 60px;
+  }
+
+  .navbar__mobile-menu {
+    top: 60px;
+  }
+
+  .navbar__overlay {
+    top: 60px;
+  }
+}
+
+/* Petit mobile - Ajustements supplémentaires */
+@media (max-width: 480px) {
+  .navbar__brand-name {
+    font-size: var(--text-lg);
+  }
+
+  .navbar__logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .navbar__logo-icon {
+    width: 20px;
+    height: 20px;
+  }
+}
