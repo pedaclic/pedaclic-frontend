@@ -80,7 +80,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const App: React.FC = () => {
   return (
-    <Router basename="/pedaclic">
+    <Router basename="/">
       <AuthProvider>
         <Layout>
           <Routes>
