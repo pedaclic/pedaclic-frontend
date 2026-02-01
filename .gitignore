@@ -2,3 +2,6 @@ backend/
 .DS_Store
 **/.DS_Store
 node_modules/
+.env
+.env.local
+.env.production
