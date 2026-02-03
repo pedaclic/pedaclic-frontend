@@ -1,183 +1,68 @@
-/**
- * COMPOSANT PRINCIPAL - PedaClic
- * Configuration des routes et layout de l'application
- * 
- * Structure des routes :
- * - / : Page d'accueil
- * - /disciplines : Liste des disciplines
- * - /disciplines/:id : Détail d'une discipline
- * - /ressource/:id : Détail d'une ressource
- * - /premium : Page d'abonnement Premium
- * - /premium/success : Confirmation de paiement
- * - /premium/cancel : Annulation de paiement
- * - /connexion : Page de connexion
- * - /inscription : Page d'inscription
- * - /mot-de-passe-oublie : Réinitialisation mot de passe
- * - /dashboard : Tableau de bord utilisateur (protégé)
- * - /admin : Panneau d'administration (protégé, admin uniquement)
- */
-
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { AuthProvider, useAuth, AdminRoute } from './contexts/AuthContext';
+import LoginPage from './pages/Auth/LoginPage';
+import RegisterPage from './pages/Auth/RegisterPage';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminDashboard from './components/admin/AdminDashboard';
+import DisciplineManager from './components/admin/DisciplineManager';
+import ChapitreManager from './components/admin/ChapitreManager';
+import ResourceManager from './components/admin/ResourceManager';
 
-// ==================== CONTEXTES ====================
-import { AuthProvider } from './hooks/useAuth';
-
-// ==================== COMPOSANTS LAYOUT ====================
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
-import PrivateRoute from './components/auth/PrivateRoute';
-
-// ==================== PAGES PUBLIQUES ====================
-import HomePage from './pages/Home';
-import DisciplinesPage from './pages/DisciplinesPage';
-import DisciplineDetailPage from './pages/DisciplineDetail';
-// import ResourceDetailPage from './pages/resources/ResourceDetailPage'; // À créer
-
-// ==================== PAGES PREMIUM ====================
-import PremiumPage from './pages/Premium/PremiumPage';
-import LoginPage from "./pages/Auth/LoginPage";
-import RegisterPage from "./pages/Auth/RegisterPage";
-import SeedPage from "./pages/SeedPage";
-import PaymentSuccessPage from './pages/PaymentSuccessPage';
-import PaymentCancelPage from './pages/PaymentCancelPage';
-
-// ==================== PAGES AUTHENTIFICATION ====================
-// import LoginPage from './pages/auth/LoginPage';           // Existant
-// import RegisterPage from './pages/auth/RegisterPage';     // Existant
-// import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'; // Existant
-
-// ==================== PAGES PROTÉGÉES ====================
-// import DashboardPage from './pages/dashboard/DashboardPage'; // À créer
-// import AdminPage from './pages/admin/AdminPage';             // À créer
-
-// ==================== STYLES GLOBAUX ====================
-import './globals.css';
-
-/**
- * Composant Layout principal
- * Enveloppe les pages avec Navbar et Footer
- */
-const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+const HomePage: React.FC = () => {
+  const { currentUser, logout } = useAuth();
   return (
-    <div className="app">
-      {/* Barre de navigation */}
-      <Navbar />
-      
-      {/* Contenu principal */}
-      <main className="main-content">
-        {children}
-      </main>
-      
-      {/* Pied de page */}
-      <Footer />
+    <div style={{ padding: '3rem', maxWidth: '900px', margin: '0 auto' }}>
+      <h1 style={{ color: '#2563eb', fontSize: '3rem', marginBottom: '0.5rem' }}>🎓 PedaClic</h1>
+      <p style={{ fontSize: '1.2rem', color: '#6b7280', marginBottom: '2rem' }}>L'école en un clic</p>
+      {currentUser ? (
+        <div style={{ padding: '1.5rem', background: '#ecfdf5', border: '1px solid #10b981', borderRadius: '12px', marginBottom: '2rem' }}>
+          <p style={{ margin: 0 }}>✅ Connecté : <strong>{currentUser.displayName || currentUser.email}</strong> ({currentUser.role})</p>
+          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            {(currentUser.role === 'admin' || currentUser.role === 'prof') && (
+              <Link to="/admin" style={{ padding: '0.5rem 1.5rem', background: '#2563eb', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: '600' }}>Accéder à l'Admin →</Link>
+            )}
+            <button onClick={() => logout()} style={{ padding: '0.5rem 1.5rem', background: '#ef4444', color: 'white', borderRadius: '8px', border: 'none', cursor: 'pointer', fontWeight: '600' }}>Déconnexion</button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #2563eb, #1e40af)', borderRadius: '12px', color: 'white', textAlign: 'center', marginBottom: '2rem' }}>
+          <p style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>🔐 Connectez-vous pour accéder à la plateforme</p>
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to="/connexion" style={{ padding: '0.75rem 2rem', background: 'white', color: '#2563eb', borderRadius: '8px', textDecoration: 'none', fontWeight: '600' }}>Se connecter</Link>
+            <Link to="/inscription" style={{ padding: '0.75rem 2rem', background: 'transparent', color: 'white', borderRadius: '8px', textDecoration: 'none', fontWeight: '600', border: '2px solid white' }}>Créer un compte</Link>
+          </div>
+        </div>
+      )}
+      <div style={{ padding: '2rem', background: '#f9fafb', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+        <h2 style={{ color: '#059669', marginBottom: '1rem' }}>✅ Fonctionnalités</h2>
+        <ul style={{ lineHeight: '2.2', listStyle: 'none', padding: 0 }}>
+          <li>✅ Authentification (Admin / Professeur / Élève)</li>
+          <li>✅ Gestion des disciplines, chapitres, ressources</li>
+          <li>✅ Upload de fichiers vers Firebase Storage</li>
+          <li>✅ Système Premium / Gratuit</li>
+        </ul>
+      </div>
     </div>
   );
 };
 
-/**
- * Composant App principal
- */
 const App: React.FC = () => {
   return (
-    <Router basename="/">
-      <AuthProvider>
-        <Layout>
-          <Routes>
-            {/* ========== ROUTES PUBLIQUES ========== */}
-            
-            {/* Page d'accueil */}
-            <Route path="/" element={<HomePage />} />
-            
-            {/* Liste des disciplines */}
-            <Route path="/disciplines" element={<DisciplinesPage />} />
-            
-            {/* Détail d'une discipline */}
-            <Route path="/disciplines/:id" element={<DisciplineDetailPage />} />
-            
-            {/* Détail d'une ressource */}
-            {/* <Route path="/ressource/:id" element={<ResourceDetailPage />} /> */}
-            
-            {/* ========== ROUTES PREMIUM ========== */}
-            
-            {/* Page d'abonnement Premium */}
-            <Route path="/premium" element={<PremiumPage />} />
-            
-            {/* Confirmation de paiement */}
-            <Route path="/premium/success" element={<PaymentSuccessPage />} />
-            
-            {/* Annulation de paiement */}
-            <Route path="/premium/cancel" element={<PaymentCancelPage />} />
-            
-            {/* ========== ROUTES AUTHENTIFICATION ========== */}
-            
-            {/* Connexion */}
-            <Route path="/connexion" element={<LoginPage />} />
-            
-            {/* Inscription */}
-            <Route path="/inscription" element={<RegisterPage />} />
-            
-            {/* Mot de passe oublié */}
-            {/* <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} /> */}
-            
-            {/* ========== ROUTES PROTÉGÉES ========== */}
-            
-            {/* Tableau de bord utilisateur */}
-            {/* 
-            <Route 
-              path="/dashboard" 
-              element={
-                <PrivateRoute>
-                  <DashboardPage />
-                </PrivateRoute>
-              } 
-            />
-            */}
-            
-            {/* Panneau d'administration */}
-            {/* 
-            <Route 
-              path="/admin/*" 
-              element={
-                <PrivateRoute requiredRole="admin">
-                  <AdminPage />
-                </PrivateRoute>
-              } 
-            />
-            */}
-            
-            {/* Espace professeur */}
-            {/* 
-            <Route 
-              path="/prof/*" 
-              element={
-                <PrivateRoute requiredRole="prof">
-                  <ProfPage />
-                </PrivateRoute>
-              } 
-            />
-            */}
-            
-            <Route path="/admin/seed" element={<SeedPage />} />
-            {/* ========== ROUTE 404 ========== */}
-            <Route 
-              path="*" 
-              element={
-                <div className="not-found">
-                  <div className="container">
-                    <h1>404</h1>
-                    <p>Page non trouvée</p>
-                    <a href="/" className="btn btn--primary">
-                      Retour à l'accueil
-                    </a>
-                  </div>
-                </div>
-              } 
-            />
-          </Routes>
-        </Layout>
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/connexion" element={<LoginPage />} />
+        <Route path="/inscription" element={<RegisterPage />} />
+        <Route path="/admin" element={<AdminRoute><AdminLayout currentPage="dashboard"><AdminDashboard /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/disciplines" element={<AdminRoute><AdminLayout currentPage="disciplines"><DisciplineManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/chapitres" element={<AdminRoute><AdminLayout currentPage="chapitres"><ChapitreManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/ressources" element={<AdminRoute><AdminLayout currentPage="ressources"><ResourceManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><div style={{ padding: '3rem', textAlign: 'center' }}><h2>🧩 Quiz - Bientôt disponible</h2></div></AdminLayout></AdminRoute>} />
+        <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><div style={{ padding: '3rem', textAlign: 'center' }}><h2>👥 Utilisateurs - Bientôt disponible</h2></div></AdminLayout></AdminRoute>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 };
 
