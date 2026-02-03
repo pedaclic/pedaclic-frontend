@@ -368,10 +368,10 @@ const Header: React.FC = () => {
           ) : (
             /* ----- UTILISATEUR NON CONNECTÉ ----- */
             <div className="header__auth-buttons">
-              <Link to="/login" className="header__btn header__btn--outline">
+              <Link to="/connexion" className="header__btn header__btn--outline">
                 Connexion
               </Link>
-              <Link to="/register" className="header__btn header__btn--primary">
+              <Link to="/inscription" className="header__btn header__btn--primary">
                 S'inscrire
               </Link>
             </div>
@@ -425,13 +425,13 @@ const Header: React.FC = () => {
           {!currentUser && (
             <div className="header__mobile-auth">
               <Link 
-                to="/login" 
+                to="/connexion" 
                 className="header__btn header__btn--outline header__btn--block"
               >
                 Connexion
               </Link>
               <Link 
-                to="/register" 
+                to="/inscription" 
                 className="header__btn header__btn--primary header__btn--block"
               >
                 S'inscrire
