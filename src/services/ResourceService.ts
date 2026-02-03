@@ -410,4 +410,32 @@ export const ResourceService = {
   }
 };
 
+
+
+// ==================== FONCTIONS EXPORTÉES INDIVIDUELLEMENT ====================
+
+export const getResourcesByChapter = async (chapitreId: string) => {
+  const { collection, query, where, getDocs, orderBy } = await import('firebase/firestore');
+  const { db } = await import('../firebase');
+  const q = query(collection(db, 'ressources'), where('chapitreId', '==', chapitreId), orderBy('ordre', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const countResourcesByDiscipline = async (disciplineId: string) => {
+  const { collection, query, where, getDocs } = await import('firebase/firestore');
+  const { db } = await import('../firebase');
+  const q = query(collection(db, 'ressources'), where('disciplineId', '==', disciplineId));
+  const snapshot = await getDocs(q);
+  return snapshot.size;
+};
+
+export const getResourceById = async (id: string) => {
+  const { doc, getDoc } = await import('firebase/firestore');
+  const { db } = await import('../firebase');
+  const docRef = doc(db, 'ressources', id);
+  const docSnap = await getDoc(docRef);
+  return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } : null;
+};
+
 export default ResourceService;
