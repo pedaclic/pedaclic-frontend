@@ -19,6 +19,8 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import DisciplineManager from './components/admin/DisciplineManager';
 import ChapitreManager from './components/admin/ChapitreManager';
 import ResourceManager from './components/admin/ResourceManager';
+import QuizManager from './components/admin/QuizManager';
+import UserManager from './components/admin/UserManager';
 
 const App: React.FC = () => {
   return (
@@ -39,9 +41,8 @@ const App: React.FC = () => {
         <Route path="/admin/disciplines" element={<AdminRoute><AdminLayout currentPage="disciplines"><DisciplineManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/chapitres" element={<AdminRoute><AdminLayout currentPage="chapitres"><ChapitreManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/ressources" element={<AdminRoute><AdminLayout currentPage="ressources"><ResourceManager /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><div style={{padding:'3rem',textAlign:'center'}}><h2>🧩 Quiz - Bientôt disponible</h2></div></AdminLayout></AdminRoute>} />
-        <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><div style={{padding:'3rem',textAlign:'center'}}><h2>👥 Utilisateurs - Bientôt disponible</h2></div></AdminLayout></AdminRoute>} />
-
+        <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><UserManager /></AdminLayout></AdminRoute>} />
         {/* ========== 404 ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
