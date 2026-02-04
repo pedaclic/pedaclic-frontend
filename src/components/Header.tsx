@@ -86,7 +86,7 @@ const Header: React.FC = () => {
       requirePremium: true
     },
     {
-      path: '/dashboard',
+     path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : '/admin',
       label: 'Tableau de bord',
       icon: <LayoutDashboard size={18} />,
       requireAuth: true
@@ -323,7 +323,7 @@ const Header: React.FC = () => {
                   
                   {/* Liens du dropdown */}
                   <nav className="header__dropdown-nav">
-                    <Link to="/dashboard" className="header__dropdown-link">
+		    <Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : '/admin'} className="header__dropdown-link">
                       <LayoutDashboard size={18} />
                       <span>Tableau de bord</span>
                     </Link>

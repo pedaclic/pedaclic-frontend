@@ -62,8 +62,7 @@ const Home: React.FC = () => {
           {/* Boutons CTA */}
           <div className="home-page__hero-cta">
             {currentUser ? (
-              <Link to="/dashboard" className="home-page__btn home-page__btn--primary">
-                Accéder à mon espace
+              <Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : '/admin'} className="home-page__btn home-page__btn--primary">                Accéder à mon espace
                 <ArrowRight size={20} />
               </Link>
             ) : (

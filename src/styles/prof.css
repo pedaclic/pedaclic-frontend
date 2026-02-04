@@ -1,0 +1,1011 @@
+/**
+ * ============================================================
+ * STYLES DASHBOARD PROFESSEUR — PedaClic Phase 8
+ * ============================================================
+ * 
+ * Styles dédiés au tableau de bord professeur.
+ * Respecte la palette PedaClic (bleu/vert/orange/rouge)
+ * et les variables CSS globales définies dans globals.css.
+ * 
+ * Sections :
+ *   1. Layout principal
+ *   2. En-tête
+ *   3. Navigation par onglets
+ *   4. Cartes statistiques
+ *   5. Graphiques
+ *   6. Tableaux
+ *   7. Filtres et recherche
+ *   8. Cartes discipline
+ *   9. Cartes quiz
+ *  10. Alertes
+ *  11. Détail élève
+ *  12. Composants réutilisables
+ *  13. États vides
+ *  14. Responsive mobile
+ * ============================================================
+ */
+
+
+/* ==================== 1. LAYOUT PRINCIPAL ==================== */
+
+/* Conteneur principal du dashboard */
+.prof-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  min-height: calc(100vh - 200px); /* Espace pour Header + Footer */
+}
+
+
+/* ==================== 2. EN-TÊTE ==================== */
+
+/* En-tête avec titre et bouton actualiser */
+.prof-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+/* Partie gauche : titre + sous-titre */
+.prof-header-left {
+  flex: 1;
+  min-width: 250px;
+}
+
+/* Titre principal du dashboard */
+.prof-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-primary-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Sous-titre avec message de bienvenue */
+.prof-subtitle {
+  color: var(--color-text-light);
+  font-size: var(--text-sm);
+  margin-bottom: 0;
+}
+
+/* Partie droite : bouton actualiser */
+.prof-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+
+/* ==================== 3. NAVIGATION PAR ONGLETS ==================== */
+
+/* Barre d'onglets */
+.prof-tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  border-bottom: 2px solid var(--color-border);
+  margin-bottom: var(--spacing-xl);
+  overflow-x: auto;           /* Scroll horizontal mobile */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;      /* Masquer scrollbar Firefox */
+}
+.prof-tabs::-webkit-scrollbar {
+  display: none;              /* Masquer scrollbar Webkit */
+}
+
+/* Onglet individuel */
+.prof-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;        /* Chevauche la bordure de .prof-tabs */
+  color: var(--color-text-light);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+/* Onglet au survol */
+.prof-tab:hover {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary-light);
+}
+
+/* Onglet actif */
+.prof-tab-active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: var(--font-semibold);
+}
+
+/* Badge compteur sur onglet */
+.prof-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background-color: var(--color-primary);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-bold);
+  line-height: 1;
+}
+
+/* Badge rouge pour alertes */
+.prof-tab-badge-danger {
+  background-color: var(--color-error);
+}
+
+
+/* ==================== 4. CARTES STATISTIQUES ==================== */
+
+/* Grille de cartes stat (6 colonnes par défaut) */
+.prof-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Variante 4 colonnes (détail élève) */
+.prof-stats-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* Carte stat individuelle */
+.prof-stat-card {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  background: #fff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+
+/* Effet hover sur carte stat */
+.prof-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Icône ronde à gauche de la carte */
+.prof-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-xl);
+  flex-shrink: 0;
+}
+
+/* Variantes de couleur pour l'icône */
+.prof-stat-icon-blue   { background: #eff6ff; color: #3b82f6; }
+.prof-stat-icon-green  { background: #ecfdf5; color: #10b981; }
+.prof-stat-icon-orange { background: #fffbeb; color: #f59e0b; }
+.prof-stat-icon-red    { background: #fef2f2; color: #ef4444; }
+.prof-stat-icon-purple { background: #f5f3ff; color: #8b5cf6; }
+
+/* Infos textuelles de la carte */
+.prof-stat-info {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Valeur chiffrée (grande) */
+.prof-stat-value {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+/* Label descriptif (petit) */
+.prof-stat-label {
+  display: flex;
+  align-items: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+
+/* ==================== 5. GRAPHIQUES ==================== */
+
+/* Carte contenant un graphique */
+.prof-chart-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-xl);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Titre du graphique */
+.prof-chart-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* État vide pour graphique */
+.prof-empty-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--color-text-lighter);
+  gap: var(--spacing-sm);
+}
+
+
+/* ==================== 6. TABLEAUX ==================== */
+
+/* Wrapper pour scroll horizontal */
+.prof-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tableau principal */
+.prof-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+/* En-tête tableau */
+.prof-table thead th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-light);
+  background: var(--color-bg-secondary);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+/* Cellules du corps */
+.prof-table tbody td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+}
+
+/* Ligne au survol */
+.prof-table tbody tr:hover {
+  background-color: var(--color-bg-secondary);
+}
+
+/* Ligne élève en difficulté (fond rouge léger) */
+.prof-row-danger {
+  background-color: #fef2f2 !important;
+}
+.prof-row-danger:hover {
+  background-color: #fee2e2 !important;
+}
+
+/* Cellule centrée */
+.prof-td-center {
+  text-align: center;
+}
+
+/* Cellule nom/email d'élève */
+.prof-eleve-cell {
+  display: flex;
+  flex-direction: column;
+}
+.prof-eleve-name {
+  font-weight: var(--font-medium);
+  color: var(--color-text);
+}
+.prof-eleve-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-lighter);
+}
+
+/* Texte petit (fractions) */
+.prof-text-small {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  margin-left: 4px;
+}
+
+
+/* ==================== 7. FILTRES ET RECHERCHE ==================== */
+
+/* Barre de filtres */
+.prof-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+}
+
+/* Champ de recherche avec icône */
+.prof-search-box {
+  position: relative;
+  flex: 1;
+  min-width: 250px;
+}
+
+/* Icône loupe dans le champ */
+.prof-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-lighter);
+  pointer-events: none;
+}
+
+/* Input de recherche */
+.prof-search-input {
+  width: 100%;
+  padding: 10px 12px 10px 40px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  transition: border-color var(--transition-base);
+}
+.prof-search-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.prof-search-input::placeholder {
+  color: var(--color-text-lighter);
+}
+
+/* Select filtre discipline */
+.prof-select {
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  background: #fff;
+  cursor: pointer;
+  min-width: 180px;
+  transition: border-color var(--transition-base);
+}
+.prof-select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Compteur de résultats */
+.prof-filter-count {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  white-space: nowrap;
+}
+
+
+/* ==================== 8. CARTES DISCIPLINE ==================== */
+
+/* Grille de cartes discipline */
+.prof-disc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Carte discipline */
+.prof-disc-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.prof-disc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* En-tête de la carte discipline */
+.prof-disc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Nom de la discipline */
+.prof-disc-nom {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: 0;
+}
+
+/* Badge niveau (Excellent, Bien, etc.) */
+.prof-disc-badge {
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  color: #fff;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* Grille stats dans la carte */
+.prof-disc-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Stat individuelle dans carte discipline */
+.prof-disc-stat {
+  display: flex;
+  flex-direction: column;
+}
+.prof-disc-stat-val {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+}
+.prof-disc-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+/* Barre de progression (réutilisable) */
+.prof-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: var(--spacing-sm);
+}
+.prof-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+}
+
+/* Plage min/max sous la barre */
+.prof-disc-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--color-text-lighter);
+}
+
+
+/* ==================== 9. CARTES QUIZ ==================== */
+
+/* Grille de cartes quiz */
+.prof-quiz-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Carte quiz */
+.prof-quiz-card {
+  background: #fff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  transition: transform var(--transition-base), box-shadow var(--transition-base);
+}
+.prof-quiz-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* En-tête carte quiz */
+.prof-quiz-header {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Titre du quiz */
+.prof-quiz-titre {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+
+/* Discipline associée au quiz */
+.prof-quiz-discipline {
+  font-size: var(--text-xs);
+  color: var(--color-primary);
+  font-weight: var(--font-medium);
+}
+
+/* Stats du quiz (icône + texte) */
+.prof-quiz-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--spacing-md);
+}
+.prof-quiz-stat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* Date du dernier passage */
+.prof-quiz-date {
+  font-size: var(--text-xs);
+  color: var(--color-text-lighter);
+  margin-top: var(--spacing-sm);
+  margin-bottom: 0;
+}
+
+
+/* ==================== 10. ALERTES ==================== */
+
+/* Bandeau d'alerte en haut */
+.prof-alerte-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-lg);
+  color: #991b1b;
+  font-size: var(--text-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Liste des alertes */
+.prof-alertes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+/* Carte alerte élève */
+.prof-alerte-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  background: #fff;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  padding: var(--spacing-lg);
+  border-left: 4px solid var(--color-error);
+}
+
+/* Partie gauche : avatar + nom */
+.prof-alerte-left {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Avatar rond rouge */
+.prof-alerte-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #fef2f2;
+  color: #ef4444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+}
+
+/* Infos de l'alerte */
+.prof-alerte-info h4 {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: 2px;
+}
+.prof-alerte-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-lighter);
+  margin-bottom: 0;
+}
+
+/* Stats de l'alerte */
+.prof-alerte-stats {
+  display: flex;
+  gap: var(--spacing-xl);
+}
+.prof-alerte-stat {
+  display: flex;
+  flex-direction: column;
+}
+.prof-alerte-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+.prof-alerte-stat-val {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+/* Disciplines en difficulté */
+.prof-alerte-disciplines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prof-alerte-disc-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+.prof-alerte-disc-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.prof-alerte-disc-tag {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+
+/* ==================== 11. DÉTAIL ÉLÈVE ==================== */
+
+/* En-tête du détail */
+.prof-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Avatar élève (grand, rond, bleu) */
+.prof-detail-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+}
+
+/* Infos textuelles détail */
+.prof-detail-info h2 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+.prof-detail-email {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-xs);
+}
+
+
+/* ==================== 12. COMPOSANTS RÉUTILISABLES ==================== */
+
+/* ── Boutons ── */
+
+/* Bouton de base */
+.prof-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+
+/* Bouton primaire (bleu plein) */
+.prof-btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.prof-btn-primary:hover {
+  background: var(--color-primary-dark);
+}
+
+/* Bouton outline (bordure) */
+.prof-btn-outline {
+  background: #fff;
+  color: var(--color-primary);
+  border: 1px solid var(--color-border);
+}
+.prof-btn-outline:hover {
+  border-color: var(--color-primary);
+  background: #eff6ff;
+}
+
+/* Bouton petit (dans tableaux) */
+.prof-btn-sm {
+  padding: 5px 10px;
+  font-size: var(--text-xs);
+  background: #eff6ff;
+  color: var(--color-primary);
+  border: 1px solid #bfdbfe;
+}
+.prof-btn-sm:hover {
+  background: #dbeafe;
+}
+
+/* ── Badges ── */
+
+/* Badge générique */
+.prof-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* Badge succès (vert) */
+.prof-badge-success {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+/* Badge échec (rouge) */
+.prof-badge-fail {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+/* Badge danger (alerte rouge) */
+.prof-badge-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: #fef2f2;
+  color: #ef4444;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* Texte muted */
+.prof-text-muted {
+  color: var(--color-text-light);
+  font-size: var(--text-sm);
+}
+
+/* Marge bottom large */
+.prof-mb-lg {
+  margin-bottom: var(--spacing-lg);
+}
+
+
+/* ==================== 13. ÉTATS VIDES / CHARGEMENT / ERREUR ==================== */
+
+/* État vide (aucune donnée) */
+.prof-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-light);
+  gap: var(--spacing-sm);
+}
+.prof-empty h3 {
+  color: var(--color-text);
+  margin-bottom: 4px;
+}
+.prof-empty p {
+  font-size: var(--text-sm);
+  color: var(--color-text-lighter);
+  max-width: 400px;
+}
+
+/* Variante succès (vert) */
+.prof-empty-success {
+  color: #059669;
+}
+.prof-empty-success h3 {
+  color: #059669;
+}
+
+/* État de chargement */
+.prof-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: var(--spacing-md);
+  color: var(--color-text-light);
+}
+
+/* État d'erreur */
+.prof-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  gap: var(--spacing-md);
+  text-align: center;
+}
+.prof-error h2 {
+  color: var(--color-error);
+}
+.prof-error p {
+  color: var(--color-text-light);
+  max-width: 400px;
+}
+
+
+/* ==================== 14. RESPONSIVE (MOBILE-FIRST) ==================== */
+
+/* Tablette (< 1024px) */
+@media (max-width: 1024px) {
+  /* Cartes stats : 2 colonnes */
+  .prof-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .prof-stats-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile (< 768px) */
+@media (max-width: 768px) {
+  /* Dashboard : marges réduites */
+  .prof-dashboard {
+    padding: var(--spacing-md);
+  }
+
+  /* En-tête : empilé verticalement */
+  .prof-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  /* Titre plus petit */
+  .prof-title {
+    font-size: var(--text-xl);
+  }
+
+  /* Onglets : scroll horizontal, plus compacts */
+  .prof-tabs {
+    gap: 2px;
+    padding-bottom: 4px;
+  }
+  .prof-tab {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--text-xs);
+  }
+  /* Cacher le texte des onglets, garder icônes */
+  .prof-tab span {
+    display: none;
+  }
+
+  /* Cartes stats : 1 colonne */
+  .prof-stats-grid,
+  .prof-stats-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Carte stat : plus compacte */
+  .prof-stat-card {
+    padding: var(--spacing-md);
+  }
+
+  /* Graphiques : hauteur réduite */
+  .prof-chart-card {
+    padding: var(--spacing-md);
+  }
+
+  /* Filtres : empilés */
+  .prof-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .prof-search-box {
+    min-width: unset;
+  }
+  .prof-select {
+    min-width: unset;
+    width: 100%;
+  }
+
+  /* Grille disciplines : 1 colonne */
+  .prof-disc-grid,
+  .prof-quiz-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Détail élève : avatar plus petit */
+  .prof-detail-avatar {
+    width: 48px;
+    height: 48px;
+    font-size: var(--text-xl);
+  }
+  .prof-detail-info h2 {
+    font-size: var(--text-xl);
+  }
+
+  /* Alerte card : tout empilé */
+  .prof-alerte-card {
+    gap: var(--spacing-sm);
+  }
+  .prof-alerte-stats {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+}
+
+/* Très petit mobile (< 480px) */
+@media (max-width: 480px) {
+  /* Dashboard : marges minimales */
+  .prof-dashboard {
+    padding: var(--spacing-sm);
+  }
+
+  /* Valeur stat plus petite */
+  .prof-stat-value {
+    font-size: var(--text-xl);
+  }
+
+  /* Carte stat icône plus petite */
+  .prof-stat-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* Tableau : font plus petit */
+  .prof-table {
+    font-size: var(--text-xs);
+  }
+  .prof-table thead th,
+  .prof-table tbody td {
+    padding: 6px 8px;
+  }
+}
