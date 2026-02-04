@@ -1,0 +1,826 @@
+/**
+ * ==================== STYLES SUIVI RENFORCÉ (Phase 9) ====================
+ * 
+ * Styles pour le composant StudentSuivi.tsx
+ * Page "Mes points à améliorer" côté élève
+ * 
+ * Fichier : src/styles/suivi.css
+ * Convention : NE PAS modifier le design global (Header bleu, Footer gris)
+ * Palette : bleu (#2563eb), vert (#10b981), orange (#f59e0b), rouge (#ef4444)
+ */
+
+/* ==================== CONTENEUR PRINCIPAL ==================== */
+
+/* Page de suivi avec fond légèrement grisé */
+.suivi-page {
+  min-height: calc(100vh - 140px); /* Hauteur moins Header + Footer */
+  background: var(--color-bg-secondary);
+  padding: var(--spacing-xl) var(--spacing-md);
+}
+
+/* Conteneur centré avec largeur maximale */
+.suivi-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* ==================== EN-TÊTE DE PAGE ==================== */
+
+/* Bandeau d'en-tête avec score global */
+.suivi-header {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 50%, #3b82f6 100%);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-xl);
+  color: white;
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Cercles décoratifs d'arrière-plan */
+.suivi-header::before {
+  content: '';
+  position: absolute;
+  top: -30px;
+  right: -30px;
+  width: 120px;
+  height: 120px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.suivi-header::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: 40%;
+  width: 80px;
+  height: 80px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+}
+
+/* Disposition en ligne : titre + score */
+.suivi-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+  position: relative;
+  z-index: 1;
+}
+
+/* Titre de la page */
+.suivi-header h1 {
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+  color: white;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Sous-titre avec message de motivation */
+.suivi-header .suivi-motivation {
+  font-size: var(--text-base);
+  opacity: 0.9;
+  margin-bottom: 0;
+}
+
+/* ===== Cercle de score global ===== */
+
+/* Conteneur du score circulaire */
+.score-global-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* Cercle SVG du score */
+.score-circle-svg {
+  width: 100px;
+  height: 100px;
+  transform: rotate(-90deg);
+}
+
+/* Fond du cercle (gris transparent) */
+.score-circle-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 8;
+}
+
+/* Arc de progression coloré */
+.score-circle-progress {
+  fill: none;
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease-in-out;
+}
+
+/* Valeur numérique au centre du cercle */
+.score-circle-text {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  fill: white;
+  dominant-baseline: central;
+  text-anchor: middle;
+  transform: rotate(90deg);
+  transform-origin: center;
+}
+
+/* Label sous le cercle */
+.score-global-label {
+  font-size: var(--text-sm);
+  opacity: 0.8;
+}
+
+/* ==================== SECTION STREAK ==================== */
+
+/* Carte du streak */
+.streak-card {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  box-shadow: var(--shadow-md);
+}
+
+/* En-tête du streak avec flamme et compteur */
+.streak-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Icône flamme animée */
+.streak-flamme {
+  font-size: 2.5rem;
+  animation: flamme-pulse 2s ease-in-out infinite;
+}
+
+@keyframes flamme-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+/* Compteur principal du streak */
+.streak-nombre {
+  font-size: var(--text-4xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+  line-height: 1;
+}
+
+/* Label "jours consécutifs" */
+.streak-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* ===== Jours de la semaine ===== */
+
+/* Grille des 7 jours (Lun-Dim) */
+.streak-semaine {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Case individuelle d'un jour */
+.streak-jour {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+/* Label du jour (L, M, M, J, V, S, D) */
+.streak-jour-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  font-weight: var(--font-medium);
+}
+
+/* Indicateur visuel du jour (cercle) */
+.streak-jour-indicateur {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  transition: all var(--transition-base);
+}
+
+/* Jour actif : fond vert avec coche */
+.streak-jour-indicateur.actif {
+  background: var(--color-success);
+  color: white;
+}
+
+/* Jour inactif : fond gris clair */
+.streak-jour-indicateur.inactif {
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-lighter);
+}
+
+/* Jour actuel : bordure bleue */
+.streak-jour-indicateur.aujourd-hui {
+  border: 2px solid var(--color-primary);
+}
+
+/* ===== Stats du streak (record, total) ===== */
+
+/* Conteneur des mini-stats */
+.streak-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+}
+
+/* Mini-stat individuelle */
+.streak-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Icône de la stat */
+.streak-stat-icon {
+  font-size: 1.2rem;
+}
+
+/* Valeur de la stat */
+.streak-stat-value {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+/* Label de la stat */
+.streak-stat-label {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* ==================== SECTION LACUNES ==================== */
+
+/* Titre de section (utilisé pour lacunes, recommandations, objectifs) */
+.suivi-section-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Badge compteur à côté du titre */
+.suivi-section-badge {
+  background: var(--color-primary);
+  color: white;
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+/* Grille des cards de lacunes */
+.lacunes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* ===== Card lacune individuelle ===== */
+
+.lacune-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid transparent;
+  transition: all var(--transition-base);
+}
+
+.lacune-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* Bordure gauche colorée selon le niveau d'urgence */
+.lacune-card.critique {
+  border-left-color: #ef4444;
+}
+
+.lacune-card.important {
+  border-left-color: #f59e0b;
+}
+
+.lacune-card.modere {
+  border-left-color: #eab308;
+}
+
+/* En-tête de la card lacune */
+.lacune-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Nom de la discipline */
+.lacune-discipline {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+/* Badge de niveau d'urgence */
+.lacune-badge {
+  font-size: var(--text-xs);
+  font-weight: var(--font-bold);
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.lacune-badge.critique {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.lacune-badge.important {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.lacune-badge.modere {
+  background: #fefce8;
+  color: #ca8a04;
+}
+
+/* ===== Barre de score dans la card ===== */
+
+/* Conteneur de la barre de progression */
+.lacune-score-bar {
+  margin-bottom: var(--spacing-md);
+}
+
+/* Labels au-dessus de la barre */
+.lacune-score-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Note moyenne affichée */
+.lacune-score-value {
+  font-size: var(--text-base);
+  font-weight: var(--font-bold);
+}
+
+/* Objectif (ex: "/20") */
+.lacune-score-objectif {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* Fond de la barre de progression */
+.lacune-progress-track {
+  height: 8px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+/* Remplissage de la barre */
+.lacune-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s ease-in-out;
+}
+
+/* Couleurs de remplissage selon le score */
+.lacune-progress-fill.critique {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.lacune-progress-fill.important {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.lacune-progress-fill.modere {
+  background: linear-gradient(90deg, #eab308, #facc15);
+}
+
+/* ===== Détails de la card lacune ===== */
+
+/* Ligne de détails (tendance, nb quiz, dernier score) */
+.lacune-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* Tag de détail individuel */
+.lacune-detail-tag {
+  background: var(--color-bg-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ==================== SECTION RECOMMANDATIONS ==================== */
+
+/* Liste des recommandations */
+.recommandations-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Card recommandation individuelle */
+.recommandation-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: flex-start;
+  transition: all var(--transition-base);
+}
+
+.recommandation-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Numéro de priorité (cercle) */
+.recommandation-priorite {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-sm);
+  font-weight: var(--font-bold);
+}
+
+/* Contenu texte de la recommandation */
+.recommandation-content {
+  flex: 1;
+}
+
+/* Titre de la recommandation */
+.recommandation-titre {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Description de la recommandation */
+.recommandation-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  line-height: 1.5;
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Tag discipline de la recommandation */
+.recommandation-discipline-tag {
+  display: inline-block;
+  font-size: var(--text-xs);
+  background: #eff6ff;
+  color: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-medium);
+}
+
+/* ==================== SECTION OBJECTIFS ==================== */
+
+/* Grille des cards d'objectifs */
+.objectifs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Card objectif individuelle */
+.objectif-card {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.objectif-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* Objectif atteint : bordure verte */
+.objectif-card.atteint {
+  border: 2px solid var(--color-success);
+  background: #f0fdf4;
+}
+
+/* En-tête objectif (titre + récompense) */
+.objectif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Titre de l'objectif */
+.objectif-titre {
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  flex: 1;
+}
+
+/* Badge récompense */
+.objectif-recompense {
+  font-size: var(--text-xs);
+  background: #fef3c7;
+  color: #92400e;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+/* Description de l'objectif */
+.objectif-description {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-md);
+}
+
+/* ===== Barre de progression objectif ===== */
+
+.objectif-progress {
+  margin-bottom: var(--spacing-sm);
+}
+
+/* Labels de la progression */
+.objectif-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Valeur actuelle */
+.objectif-progress-value {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+/* Cible */
+.objectif-progress-cible {
+  color: var(--color-text-light);
+}
+
+/* Fond barre de progression objectif */
+.objectif-progress-track {
+  height: 10px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+/* Remplissage barre objectif */
+.objectif-progress-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.8s ease-in-out;
+  background: linear-gradient(90deg, var(--color-primary), var(--color-primary-light));
+}
+
+/* Remplissage si objectif atteint */
+.objectif-progress-fill.atteint {
+  background: linear-gradient(90deg, var(--color-success), var(--color-secondary-light));
+}
+
+/* Statut textuel */
+.objectif-statut {
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  text-align: right;
+}
+
+.objectif-statut.atteint {
+  color: var(--color-success);
+}
+
+.objectif-statut.en_cours {
+  color: var(--color-primary);
+}
+
+/* ==================== ÉTAT VIDE ==================== */
+
+/* Message quand aucune lacune n'est détectée */
+.suivi-empty {
+  background: white;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-2xl);
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--spacing-xl);
+}
+
+.suivi-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.suivi-empty-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+}
+
+.suivi-empty-text {
+  font-size: var(--text-base);
+  color: var(--color-text-light);
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* ==================== CHARGEMENT ==================== */
+
+/* Skeleton loader pour le chargement */
+.suivi-loading {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+}
+
+.suivi-loading-text {
+  font-size: var(--text-base);
+  color: var(--color-text-light);
+}
+
+/* ==================== MESSAGE D'ERREUR ==================== */
+
+.suivi-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-xl);
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+}
+
+.suivi-error-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: #dc2626;
+  margin-bottom: var(--spacing-sm);
+}
+
+.suivi-error-text {
+  color: #991b1b;
+  font-size: var(--text-sm);
+}
+
+/* Bouton réessayer */
+.suivi-btn-retry {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.suivi-btn-retry:hover {
+  background: var(--color-primary-dark);
+}
+
+/* ==================== BOUTON CTA (aller voir les quiz) ==================== */
+
+.suivi-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-lg);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-decoration: none;
+}
+
+.suivi-cta-btn:hover {
+  background: var(--color-primary-dark);
+  transform: translateY(-1px);
+  text-decoration: none;
+  color: white;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+/* Tablette (max 768px) */
+@media (max-width: 768px) {
+  .suivi-page {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+
+  /* En-tête : disposition en colonne */
+  .suivi-header-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .suivi-header h1 {
+    font-size: var(--text-2xl);
+  }
+
+  /* Grilles en colonne unique */
+  .lacunes-grid,
+  .objectifs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Streak : jours plus compacts */
+  .streak-jour-indicateur {
+    width: 30px;
+    height: 30px;
+    font-size: var(--text-xs);
+  }
+
+  /* Stats du streak en colonne */
+  .streak-stats {
+    flex-direction: column;
+    gap: var(--spacing-sm);
+  }
+
+  /* Recommandation : disposition en colonne sur mobile */
+  .recommandation-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+/* Mobile petit (max 480px) */
+@media (max-width: 480px) {
+  .suivi-header {
+    padding: var(--spacing-md);
+  }
+
+  .streak-semaine {
+    gap: 4px;
+  }
+
+  .streak-jour-indicateur {
+    width: 28px;
+    height: 28px;
+  }
+
+  .streak-jour-label {
+    font-size: 0.65rem;
+  }
+
+  .lacune-card,
+  .objectif-card,
+  .recommandation-card {
+    padding: var(--spacing-md);
+  }
+}
