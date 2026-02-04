@@ -23,6 +23,7 @@ import QuizManager from './components/admin/QuizManager';
 import UserManager from './components/admin/UserManager';
 import QuizPlayer from './components/student/QuizPlayer';
 import StudentDashboard from './components/student/StudentDashboard';
+import StudentSuivi from './components/student/StudentSuivi';
 import ProfDashboard from './components/prof/ProfDashboard';
 
 const App: React.FC = () => {
@@ -47,6 +48,7 @@ const App: React.FC = () => {
         <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><UserManager /></AdminLayout></AdminRoute>} />
 	<Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
+	<Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
 	<Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
 	
 	{/* ========== PROF PROTÉGÉ ========== */}

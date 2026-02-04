@@ -26,7 +26,8 @@ import {
   Crown,
   ChevronDown,
   Home,
-  LayoutDashboard
+  LayoutDashboard,
+  BarChart3
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -328,6 +329,14 @@ const Header: React.FC = () => {
                       <span>Tableau de bord</span>
                     </Link>
                     
+		  {/* Lien Suivi (élèves uniquement) */}
+			{currentUser.role === 'eleve' && (
+  		    <Link to="/eleve/suivi" className="header__dropdown-link">
+    			<BarChart3 size={18} />
+    			<span>Mes points à améliorer</span>
+  		    </Link>
+)}
+
                     <Link to="/profil" className="header__dropdown-link">
                       <User size={18} />
                       <span>Mon profil</span>
