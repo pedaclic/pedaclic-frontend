@@ -42,7 +42,7 @@ import { auth, db } from '../firebase';
 /**
  * Rôles utilisateur possibles
  */
-export type UserRole = 'admin' | 'prof' | 'eleve';
+export type UserRole = 'admin' | 'prof' | 'eleve' | 'parent';
 
 /**
  * Interface utilisateur PedaClic

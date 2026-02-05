@@ -66,6 +66,7 @@ import {
 } from '../../services/progressionService';
 import { getQuizzes, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
+import { getCodeInvitation } from '../../services/parentService';
 
 /* ══════════════════════════════════════════════
    TYPES LOCAUX
@@ -91,6 +92,33 @@ const StudentDashboard: React.FC = () => {
   /* ── États UI ── */
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+
+  /* ── États Code Parent ── */
+  const [codeParent, setCodeParent] = useState<string | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  /** Génère ou récupère le code d'invitation parent */
+  const handleGenererCode = async () => {
+    if (!currentUser) return;
+    setCodeLoading(true);
+    try {
+      const code = await getCodeInvitation(currentUser.uid);
+      setCodeParent(code);
+    } catch (err) {
+      console.error('Erreur génération code parent :', err);
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  /** Copie le code dans le presse-papiers */
+  const handleCopierCode = () => {
+    if (!codeParent) return;
+    navigator.clipboard.writeText(codeParent);
+    setCodeCopied(true);
+    setTimeout(() => setCodeCopied(false), 2000);
+  };
 
   /* ══════════════════════════════════════════════
      CHARGEMENT DES DONNÉES
@@ -218,6 +246,76 @@ const StudentDashboard: React.FC = () => {
             <span className="sd-stat-label">Série en cours 🔥</span>
           </div>
         </div>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          CODE PARENT - Invitation pour le suivi parental
+          ══════════════════════════════════════════════ */}
+      <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+        <h3 className="sd-section-title">
+          👨‍👩‍👧‍👦 Code Parent
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Partagez ce code avec vos parents pour qu'ils puissent suivre votre progression depuis leur Espace Parent.
+        </p>
+
+        {!codeParent ? (
+          /* Bouton pour générer le code */
+          <button
+            className="sd-btn sd-btn-primary"
+            onClick={handleGenererCode}
+            disabled={codeLoading}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            {codeLoading ? (
+              <>
+                <span className="admin-spinner" style={{ width: '16px', height: '16px' }} />
+                Génération...
+              </>
+            ) : (
+              <>
+                🔑 Générer mon code
+              </>
+            )}
+          </button>
+        ) : (
+          /* Affichage du code généré */
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '1.4rem',
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              background: '#eff6ff',
+              color: '#2563eb',
+              padding: '0.75rem 1.5rem',
+              borderRadius: '12px',
+              border: '2px dashed #93c5fd',
+              userSelect: 'all'
+            }}>
+              {codeParent}
+            </span>
+            <button
+              className="sd-btn"
+              onClick={handleCopierCode}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                background: codeCopied ? '#10b981' : '#f3f4f6',
+                color: codeCopied ? '#fff' : '#374151',
+                border: 'none',
+                padding: '0.6rem 1rem',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              {codeCopied ? '✅ Copié !' : '📋 Copier'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════

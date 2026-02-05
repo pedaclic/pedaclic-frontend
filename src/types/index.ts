@@ -8,7 +8,7 @@
 /**
  * Rôles possibles dans PedaClic
  */
-export type UserRole = 'admin' | 'prof' | 'eleve';
+export type UserRole = 'admin' | 'prof' | 'eleve' | 'parent';
 
 /**
  * Interface pour un utilisateur PedaClic
