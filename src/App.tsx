@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, AdminRoute, ProfRoute } from './contexts/AuthContext';
+import { AuthProvider, AdminRoute, ProfRoute, ProtectedRoute } from './contexts/AuthContext';
 
 /* ==================== LAYOUT (Header + Footer) ==================== */
 import Layout from './components/Layout';
@@ -25,7 +25,7 @@ import QuizPlayer from './components/student/QuizPlayer';
 import StudentDashboard from './components/student/StudentDashboard';
 import StudentSuivi from './components/student/StudentSuivi';
 import ProfDashboard from './components/prof/ProfDashboard';
-
+import ParentDashboard from './components/parent/ParentDashboard';
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -50,6 +50,11 @@ const App: React.FC = () => {
 	<Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
 	<Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
 	<Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
+	<Route path="/parent/dashboard" element={
+	  <ProtectedRoute allowedRoles={['parent', 'admin']}>
+	    <Layout><ParentDashboard /></Layout>
+	  </ProtectedRoute>
+	} />
 	
 	{/* ========== PROF PROTÉGÉ ========== */}
         <Route path="/prof/dashboard" element={<ProfRoute><Layout><ProfDashboard /></Layout></ProfRoute>} />

@@ -1,0 +1,1261 @@
+/**
+ * ==================== STYLES ESPACE PARENTS (Phase 10) ====================
+ * 
+ * Feuille de styles dédiée au module Espace Parents de PedaClic.
+ * Respecte la palette existante (bleu/vert/orange/rouge).
+ * NE modifie PAS le Header bleu ni le Footer gris.
+ * Approche : Mobile-first responsive.
+ * 
+ * Fichier : src/styles/parent.css
+ */
+
+/* ==================== VARIABLES SPÉCIFIQUES PARENT ==================== */
+
+:root {
+  /* Couleurs parent (cohérentes avec la palette PedaClic) */
+  --parent-primary: #2563eb;         /* Bleu principal */
+  --parent-primary-dark: #1e40af;    /* Bleu foncé (hover) */
+  --parent-primary-light: #dbeafe;   /* Bleu très clair (fond) */
+  --parent-secondary: #10b981;       /* Vert secondaire */
+  --parent-secondary-light: #d1fae5; /* Vert très clair */
+  --parent-warning: #f59e0b;         /* Orange avertissement */
+  --parent-warning-light: #fef3c7;   /* Orange clair */
+  --parent-error: #ef4444;           /* Rouge erreur */
+  --parent-error-light: #fee2e2;     /* Rouge clair */
+  --parent-info: #3b82f6;            /* Bleu info */
+  --parent-info-light: #eff6ff;      /* Bleu info clair */
+
+  /* Couleurs neutres parent */
+  --parent-bg: #f8fafc;              /* Fond général */
+  --parent-card-bg: #ffffff;         /* Fond des cartes */
+  --parent-text: #1e293b;            /* Texte principal */
+  --parent-text-light: #64748b;      /* Texte secondaire */
+  --parent-border: #e2e8f0;          /* Bordures */
+  --parent-border-light: #f1f5f9;    /* Bordures légères */
+}
+
+/* ==================== LAYOUT PRINCIPAL ==================== */
+
+/* Conteneur principal du dashboard parent */
+.parent-dashboard {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+  background-color: var(--parent-bg);
+  min-height: calc(100vh - 120px); /* Exclure Header et Footer */
+}
+
+/* Spinner de chargement */
+.parent-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  gap: 1rem;
+  color: var(--parent-text-light);
+}
+
+/* Animation du spinner */
+.parent-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--parent-border);
+  border-top-color: var(--parent-primary);
+  border-radius: 50%;
+  animation: parent-spin 0.8s linear infinite;
+}
+
+@keyframes parent-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==================== EN-TÊTE PARENT ==================== */
+
+/* Barre d'en-tête avec titre + bouton */
+.parent-header {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--parent-border);
+}
+
+/* Infos de bienvenue */
+.parent-header-info {
+  flex: 1;
+}
+
+/* Titre principal */
+.parent-titre {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--parent-text);
+  margin: 0 0 0.25rem 0;
+}
+
+/* Message de bienvenue */
+.parent-bienvenue {
+  color: var(--parent-text-light);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+/* ==================== BOUTONS ==================== */
+
+/* Bouton générique parent */
+.parent-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+/* Bouton primaire (bleu) */
+.parent-btn-primary {
+  background-color: var(--parent-primary);
+  color: #ffffff;
+}
+
+.parent-btn-primary:hover {
+  background-color: var(--parent-primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.parent-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Bouton secondaire (gris) */
+.parent-btn-secondary {
+  background-color: var(--parent-border);
+  color: var(--parent-text);
+}
+
+.parent-btn-secondary:hover {
+  background-color: #cbd5e1;
+}
+
+/* ==================== ALERTES GLOBALES ==================== */
+
+/* Barre d'alerte (erreur / succès) */
+.parent-alerte {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+/* Alerte erreur */
+.parent-alerte-erreur {
+  background-color: var(--parent-error-light);
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* Alerte succès */
+.parent-alerte-succes {
+  background-color: var(--parent-secondary-light);
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+/* Bouton fermer alerte */
+.parent-alerte button {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.7;
+  color: inherit;
+}
+
+.parent-alerte button:hover {
+  opacity: 1;
+}
+
+/* ==================== FORMULAIRE DE LIAISON ==================== */
+
+/* Conteneur du formulaire */
+.parent-form-liaison {
+  background-color: var(--parent-card-bg);
+  border: 2px dashed var(--parent-primary);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.parent-form-liaison h3 {
+  font-size: 1.15rem;
+  color: var(--parent-text);
+  margin: 0 0 0.5rem 0;
+}
+
+/* Texte d'aide */
+.parent-form-aide {
+  color: var(--parent-text-light);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+/* Formulaire */
+.parent-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Groupe de champ */
+.parent-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.parent-form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--parent-text);
+}
+
+/* Input du formulaire */
+.parent-input {
+  padding: 0.7rem 1rem;
+  border: 2px solid var(--parent-border);
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 2px;
+  text-align: center;
+  text-transform: uppercase;
+  transition: border-color 0.2s ease;
+}
+
+.parent-input:focus {
+  outline: none;
+  border-color: var(--parent-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.parent-input:disabled {
+  opacity: 0.6;
+  background-color: var(--parent-border-light);
+}
+
+/* Erreur formulaire */
+.parent-form-erreur {
+  color: var(--parent-error);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+/* Actions du formulaire */
+.parent-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ==================== ÉTAT VIDE (AUCUN ENFANT) ==================== */
+
+/* Conteneur état vide */
+.parent-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  background-color: var(--parent-card-bg);
+  border-radius: 16px;
+  border: 2px dashed var(--parent-border);
+}
+
+/* Icône état vide */
+.parent-empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.parent-empty-state h2 {
+  font-size: 1.3rem;
+  color: var(--parent-text);
+  margin: 0 0 0.5rem 0;
+}
+
+.parent-empty-state p {
+  color: var(--parent-text-light);
+  font-size: 0.95rem;
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+/* ==================== LAYOUT SIDEBAR + MAIN ==================== */
+
+/* Conteneur principal avec sidebar */
+.parent-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ===== SIDEBAR : LISTE DES ENFANTS ===== */
+
+.parent-sidebar {
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Titre de la sidebar */
+.parent-sidebar-titre {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--parent-text);
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--parent-border);
+}
+
+/* Liste des enfants */
+.parent-enfants-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+  overflow-x: auto;
+}
+
+/* Carte d'un enfant */
+.parent-enfant-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+  min-width: 180px;
+  flex-shrink: 0;
+  background-color: var(--parent-border-light);
+}
+
+.parent-enfant-card:hover {
+  background-color: var(--parent-primary-light);
+  border-color: var(--parent-primary);
+}
+
+/* Enfant sélectionné (actif) */
+.parent-enfant-actif {
+  background-color: var(--parent-primary-light);
+  border-color: var(--parent-primary);
+}
+
+/* Avatar de l'enfant */
+.parent-enfant-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--parent-primary);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* Infos de l'enfant */
+.parent-enfant-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.parent-enfant-nom {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--parent-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.parent-enfant-classe {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+}
+
+/* Bouton supprimer un enfant */
+.parent-enfant-supprimer {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  color: var(--parent-text-light);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.parent-enfant-card:hover .parent-enfant-supprimer {
+  opacity: 0.7;
+}
+
+.parent-enfant-supprimer:hover {
+  opacity: 1 !important;
+  color: var(--parent-error);
+}
+
+/* ===== ZONE PRINCIPALE ===== */
+
+.parent-main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Message de sélection */
+.parent-select-enfant {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  color: var(--parent-text-light);
+  font-size: 1rem;
+}
+
+/* ==================== DASHBOARD DÉTAILLÉ ==================== */
+
+.parent-dashboard-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* ===== EN-TÊTE ENFANT ===== */
+
+.parent-enfant-header {
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.parent-enfant-header-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.parent-enfant-header-info h2 {
+  font-size: 1.4rem;
+  margin: 0;
+  color: var(--parent-text);
+}
+
+/* Badge de classe */
+.parent-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  background-color: var(--parent-primary-light);
+  color: var(--parent-primary);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+/* Dernière connexion */
+.parent-derniere-connexion {
+  font-size: 0.8rem;
+  color: var(--parent-text-light);
+}
+
+/* Message de motivation parent */
+.parent-message-motivation {
+  font-size: 0.9rem;
+  color: var(--parent-text-light);
+  margin: 0;
+  padding: 0.75rem;
+  background-color: var(--parent-info-light);
+  border-radius: 8px;
+  border-left: 3px solid var(--parent-info);
+}
+
+/* ==================== CARTES INDICATEURS ==================== */
+
+/* Grille des 4 cartes */
+.parent-indicateurs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+/* Carte indicateur */
+.parent-card {
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.parent-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Icône de la carte */
+.parent-card-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+/* Contenu de la carte */
+.parent-card-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.parent-card-label {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.parent-card-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--parent-text);
+}
+
+/* Couleurs des scores */
+.parent-score-bon { color: var(--parent-secondary); }
+.parent-score-moyen { color: var(--parent-warning); }
+.parent-score-bas { color: var(--parent-error); }
+
+/* ==================== SEMAINE EN COURS ==================== */
+
+.parent-section-semaine {
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.parent-section-semaine h3 {
+  font-size: 1rem;
+  margin: 0 0 0.75rem 0;
+  color: var(--parent-text);
+}
+
+/* Jours de la semaine */
+.parent-semaine-jours {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+/* Un jour */
+.parent-jour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0;
+  border-radius: 8px;
+  flex: 1;
+  transition: background-color 0.2s ease;
+}
+
+.parent-jour-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--parent-text-light);
+  text-transform: uppercase;
+}
+
+.parent-jour-icon {
+  font-size: 1.2rem;
+}
+
+/* Jour actif */
+.parent-jour-actif {
+  background-color: var(--parent-secondary-light);
+}
+
+/* Jour inactif */
+.parent-jour-inactif {
+  background-color: var(--parent-border-light);
+}
+
+/* ==================== NAVIGATION ONGLETS ==================== */
+
+.parent-onglets {
+  display: flex;
+  gap: 0;
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 0.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  overflow-x: auto;
+}
+
+/* Bouton onglet */
+.parent-onglet {
+  flex: 1;
+  padding: 0.6rem 0.75rem;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--parent-text-light);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.parent-onglet:hover {
+  background-color: var(--parent-border-light);
+  color: var(--parent-text);
+}
+
+/* Onglet actif */
+.parent-onglet-actif {
+  background-color: var(--parent-primary);
+  color: #ffffff;
+}
+
+.parent-onglet-actif:hover {
+  background-color: var(--parent-primary-dark);
+  color: #ffffff;
+}
+
+/* Contenu des onglets */
+.parent-onglet-contenu {
+  margin-top: 0;
+}
+
+/* ==================== SECTIONS GÉNÉRIQUES ==================== */
+
+.parent-section {
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.parent-section h3 {
+  font-size: 1.05rem;
+  margin: 0 0 1rem 0;
+  color: var(--parent-text);
+}
+
+.parent-section h4 {
+  font-size: 0.95rem;
+  margin: 0 0 0.75rem 0;
+  color: var(--parent-text);
+}
+
+/* Section avec avertissement */
+.parent-section-warning {
+  border-left: 4px solid var(--parent-warning);
+  background-color: var(--parent-warning-light);
+}
+
+/* Texte vide */
+.parent-vide {
+  color: var(--parent-text-light);
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Section vide avec icône */
+.parent-vide-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  text-align: center;
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+}
+
+.parent-vide-icon {
+  font-size: 3rem;
+  margin-bottom: 0.75rem;
+}
+
+.parent-vide-section p {
+  color: var(--parent-text-light);
+  font-size: 0.95rem;
+  max-width: 350px;
+}
+
+/* ==================== ONGLET APERÇU : QUIZ ==================== */
+
+/* Liste des quiz */
+.parent-quiz-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Item quiz */
+.parent-quiz-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--parent-border);
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Quiz réussi / échoué */
+.parent-quiz-reussi {
+  border-left: 4px solid var(--parent-secondary);
+}
+
+.parent-quiz-echoue {
+  border-left: 4px solid var(--parent-error);
+}
+
+/* Infos du quiz */
+.parent-quiz-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 120px;
+}
+
+.parent-quiz-discipline {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.parent-quiz-titre {
+  font-size: 0.9rem;
+  color: var(--parent-text);
+  font-weight: 500;
+}
+
+/* Score du quiz */
+.parent-quiz-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.parent-quiz-note {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.note-ok { color: var(--parent-secondary); }
+.note-ko { color: var(--parent-error); }
+
+.parent-quiz-statut {
+  font-size: 0.75rem;
+}
+
+/* Date du quiz */
+.parent-quiz-date {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ==================== ONGLET APERÇU : OBJECTIFS ==================== */
+
+.parent-objectifs-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.parent-objectif-item {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--parent-border);
+}
+
+.parent-objectif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.parent-objectif-titre {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--parent-text);
+}
+
+.parent-objectif-statut {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+}
+
+/* Statuts des objectifs */
+.parent-statut-atteint {
+  background-color: var(--parent-secondary-light);
+  color: #065f46;
+}
+
+.parent-statut-en_cours {
+  background-color: var(--parent-primary-light);
+  color: var(--parent-primary);
+}
+
+.parent-statut-echoue {
+  background-color: var(--parent-error-light);
+  color: #991b1b;
+}
+
+.parent-statut-non_commence {
+  background-color: var(--parent-border-light);
+  color: var(--parent-text-light);
+}
+
+/* Barre de progression */
+.parent-progress-bar {
+  height: 8px;
+  background-color: var(--parent-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+
+.parent-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Couleurs selon statut */
+.parent-progress-atteint { background-color: var(--parent-secondary); }
+.parent-progress-en_cours { background-color: var(--parent-primary); }
+.parent-progress-echoue { background-color: var(--parent-error); }
+.parent-progress-non_commence { background-color: var(--parent-text-light); }
+
+.parent-objectif-detail {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+}
+
+/* ==================== ONGLET LACUNES ==================== */
+
+.parent-lacunes-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.parent-lacune-item {
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--parent-border);
+  border-left: 5px solid; /* Couleur dynamique via style inline */
+  background-color: var(--parent-card-bg);
+}
+
+.parent-lacune-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.parent-lacune-discipline {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--parent-text);
+}
+
+.parent-lacune-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.parent-lacune-details {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.parent-lacune-moyenne,
+.parent-lacune-tendance {
+  font-size: 0.85rem;
+  color: var(--parent-text-light);
+}
+
+.parent-lacune-conseil {
+  font-size: 0.85rem;
+  color: var(--parent-text-light);
+  padding: 0.5rem 0.75rem;
+  background-color: var(--parent-border-light);
+  border-radius: 6px;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ==================== ONGLET ALERTES ==================== */
+
+.parent-alertes-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parent-alerte-item {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--parent-border);
+}
+
+/* Niveaux d'alerte */
+.parent-alerte-critique {
+  border-left: 5px solid var(--parent-error);
+  background-color: var(--parent-error-light);
+}
+
+.parent-alerte-important {
+  border-left: 5px solid var(--parent-warning);
+  background-color: var(--parent-warning-light);
+}
+
+.parent-alerte-modere {
+  border-left: 5px solid #eab308;
+  background-color: #fefce8;
+}
+
+.parent-alerte-info {
+  border-left: 5px solid var(--parent-secondary);
+  background-color: var(--parent-secondary-light);
+}
+
+.parent-alerte-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.parent-alerte-titre {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--parent-text);
+}
+
+.parent-alerte-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.parent-alerte-message {
+  font-size: 0.85rem;
+  color: var(--parent-text-light);
+  margin: 0 0 0.25rem 0;
+  line-height: 1.4;
+}
+
+.parent-alerte-date {
+  font-size: 0.7rem;
+  color: var(--parent-text-light);
+  opacity: 0.7;
+}
+
+/* ==================== ONGLET RÉSUMÉ ==================== */
+
+.parent-resume-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--parent-border);
+}
+
+.parent-resume-header h3 {
+  margin: 0;
+}
+
+.parent-resume-evolution {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--parent-text);
+}
+
+/* Grille statistiques résumé */
+.parent-resume-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.parent-resume-stat {
+  background-color: var(--parent-border-light);
+  border-radius: 10px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.parent-resume-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--parent-primary);
+}
+
+.parent-resume-stat-label {
+  font-size: 0.75rem;
+  color: var(--parent-text-light);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* Évolution par discipline */
+.parent-evolution-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.parent-evolution-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background-color: var(--parent-border-light);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.parent-evolution-discipline {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--parent-text);
+}
+
+.parent-evolution-scores {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.parent-evolution-prec {
+  color: var(--parent-text-light);
+}
+
+.parent-evolution-fleche {
+  font-size: 1.1rem;
+}
+
+.parent-evolution-courante {
+  font-weight: 600;
+  color: var(--parent-text);
+}
+
+.parent-evolution-ecart {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.ecart-positif { color: var(--parent-secondary); }
+.ecart-negatif { color: var(--parent-error); }
+
+/* Disciplines en difficulté */
+.parent-disciplines-difficulte {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.parent-disciplines-difficulte li {
+  padding: 0.3rem 0.8rem;
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--parent-error);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Erreur dashboard */
+.parent-erreur-dashboard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1rem;
+  background-color: var(--parent-card-bg);
+  border-radius: 12px;
+  color: var(--parent-text-light);
+}
+
+/* ==================== RESPONSIVE : TABLETTE (768px+) ==================== */
+
+@media (min-width: 768px) {
+  /* En-tête : titre et bouton sur une ligne */
+  .parent-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* Layout sidebar + main côte à côte */
+  .parent-content {
+    flex-direction: row;
+  }
+
+  /* Sidebar fixe */
+  .parent-sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 1rem;
+    align-self: flex-start;
+  }
+
+  /* Liste enfants en colonne */
+  .parent-enfants-liste {
+    flex-direction: column;
+    overflow-x: visible;
+  }
+
+  .parent-enfant-card {
+    min-width: unset;
+  }
+
+  /* Indicateurs sur 4 colonnes */
+  .parent-indicateurs {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Stats résumé sur 4 colonnes */
+  .parent-resume-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Dashboard principal */
+  .parent-dashboard {
+    padding: 1.5rem;
+  }
+}
+
+/* ==================== RESPONSIVE : DESKTOP (1024px+) ==================== */
+
+@media (min-width: 1024px) {
+  /* Sidebar plus large */
+  .parent-sidebar {
+    width: 280px;
+  }
+
+  /* Titre plus grand */
+  .parent-titre {
+    font-size: 2rem;
+  }
+}
+
+/* ==================== ANIMATIONS ==================== */
+
+/* Animation d'entrée pour les cartes */
+@keyframes parent-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.parent-card,
+.parent-quiz-item,
+.parent-lacune-item,
+.parent-alerte-item,
+.parent-objectif-item {
+  animation: parent-fadeIn 0.3s ease-out;
+}
+
+/* Réduction de mouvement pour utilisateurs sensibles */
+@media (prefers-reduced-motion: reduce) {
+  .parent-card,
+  .parent-quiz-item,
+  .parent-lacune-item,
+  .parent-alerte-item,
+  .parent-objectif-item {
+    animation: none;
+  }
+
+  .parent-spinner {
+    animation-duration: 2s;
+  }
+}

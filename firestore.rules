@@ -1,189 +1,273 @@
 rules_version = '2';
 
-/**
- * Règles de sécurité Firestore pour PedaClic
- * Ces règles protègent les données selon les rôles et le statut Premium
- */
-
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // ==================== FONCTIONS UTILITAIRES ====================
+    // ==================== FONCTIONS HELPER ====================
     
-    /**
-     * Vérifie si l'utilisateur est authentifié
-     */
-    function isAuthenticated() {
+    // Vérifier si l'utilisateur est authentifié
+    function isSignedIn() {
       return request.auth != null;
     }
     
-    /**
-     * Vérifie si l'utilisateur est un admin
-     */
-    function isAdmin() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-    }
-    
-    /**
-     * Vérifie si l'utilisateur est un professeur
-     */
-    function isProf() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'prof';
-    }
-    
-    /**
-     * Vérifie si l'utilisateur est un élève
-     */
-    function isEleve() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'eleve';
-    }
-    
-    /**
-     * Vérifie si l'utilisateur a un abonnement Premium actif
-     */
-    function isPremium() {
-      return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isPremium == true &&
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subscriptionEnd > request.time;
-    }
-    
-    /**
-     * Vérifie si c'est le propriétaire du document
-     */
+    // Vérifier si l'utilisateur est le propriétaire du document
     function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
+      return isSignedIn() && request.auth.uid == userId;
     }
     
-    // ==================== COLLECTION USERS ====================
+    // Récupérer le document utilisateur
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    
+    // Vérifier le rôle de l'utilisateur
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
+    }
+    
+    // Vérifier si l'utilisateur est admin
+    function isAdmin() {
+      return hasRole('admin');
+    }
+    
+    // Vérifier si l'utilisateur est professeur
+    function isProf() {
+      return hasRole('prof');
+    }
+    
+    // Vérifier si l'utilisateur est élève
+    function isEleve() {
+      return hasRole('eleve');
+    }
+    
+    // Vérifier si l'utilisateur est parent
+    function isParent() {
+      return hasRole('parent');
+    }
+    
+    // Vérifier si l'utilisateur a un abonnement Premium actif
+    function isPremium() {
+      return isSignedIn() && 
+             getUserData().isPremium == true &&
+             getUserData().subscriptionEnd > request.time;
+    }
+    
+    // ==================== COLLECTION: users ====================
     
     match /users/{userId} {
-      // Lecture : Admins voient tous, Profs voient tous, Élèves voient uniquement leur profil
-      allow read: if isAdmin() || isProf() || isOwner(userId);
+      // Lecture: 
+      // - Utilisateur peut lire son propre profil
+      // - Admin peut tout lire
+      // - Parent peut lire les profils (pour rechercher un enfant par codeParent)
+      allow read: if isOwner(userId) || isAdmin() || isParent();
       
-      // Création : Seulement lors de l'inscription (géré par Firebase Auth)
-      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Création: uniquement lors de l'inscription (via Authentication)
+      allow create: if isSignedIn() && 
+                       request.auth.uid == userId &&
+                       request.resource.data.keys().hasAll(['email', 'role', 'isPremium']);
       
-      // Mise à jour : Admin peut tout modifier, utilisateur peut modifier son propre profil (sauf role et isPremium)
-      allow update: if isAdmin() || 
-                      (isOwner(userId) && 
-                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isPremium', 'subscriptionEnd']));
+      // Mise à jour: utilisateur peut modifier son profil, admin peut tout modifier
+      allow update: if isOwner(userId) || isAdmin();
       
-      // Suppression : Uniquement admin
+      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
     
-    // ==================== COLLECTION DISCIPLINES ====================
+    // ==================== COLLECTION: niveaux ====================
     
-    match /disciplines/{disciplineId} {
-      // Lecture : Tous les utilisateurs authentifiés
-      allow read: if isAuthenticated();
+    match /niveaux/{niveauId} {
+      // Lecture: tout le monde peut lire
+      allow read: if true;
       
-      // Création/Modification/Suppression : Uniquement admin
-      allow create, update, delete: if isAdmin();
+      // Écriture: uniquement admin
+      allow write: if isAdmin();
     }
     
-    // ==================== COLLECTION RESOURCES ====================
+    // ==================== COLLECTION: classes ====================
     
-    match /resources/{resourceId} {
-      // Lecture : 
-      // - Ressources gratuites : tous les authentifiés
-      // - Ressources Premium : uniquement les utilisateurs Premium ou admin/prof
-      allow read: if isAuthenticated() && 
-                    (!resource.data.isPremium || isPremium() || isAdmin() || isProf());
+    match /classes/{classeId} {
+      // Lecture: tout le monde peut lire
+      allow read: if true;
       
-      // Création : Admin et Prof uniquement
-      allow create: if (isAdmin() || isProf()) && 
-                      request.resource.data.auteurId == request.auth.uid;
+      // Écriture: uniquement admin
+      allow write: if isAdmin();
+    }
+    
+    // ==================== COLLECTION: matieres ====================
+    
+    match /matieres/{matiereId} {
+      // Lecture: tout le monde peut lire
+      allow read: if true;
       
-      // Modification : Admin ou le prof créateur
+      // Écriture: uniquement admin et professeurs
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== COLLECTION: ressources ====================
+    
+    match /ressources/{ressourceId} {
+      // Lecture: 
+      // - Ressources gratuites: tout le monde
+      // - Ressources premium: uniquement utilisateurs premium
+      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+      
+      // Création: admin et professeurs
+      allow create: if isAdmin() || isProf();
+      
+      // Mise à jour: admin et professeur créateur
       allow update: if isAdmin() || 
-                      (isProf() && resource.data.auteurId == request.auth.uid);
+                       (isProf() && resource.data.auteurId == request.auth.uid);
       
-      // Suppression : Admin ou le prof créateur
+      // Suppression: admin et professeur créateur
       allow delete: if isAdmin() || 
-                      (isProf() && resource.data.auteurId == request.auth.uid);
+                       (isProf() && resource.data.auteurId == request.auth.uid);
     }
     
-    // ==================== COLLECTION QUIZZES ====================
+    // ==================== COLLECTION: quizzes ====================
     
     match /quizzes/{quizId} {
-      // Lecture : 
-      // - Quiz gratuits : tous les authentifiés
-      // - Quiz Premium : uniquement les utilisateurs Premium ou admin/prof
-      allow read: if isAuthenticated() && 
-                    (!resource.data.isPremium || isPremium() || isAdmin() || isProf());
+      // Lecture: 
+      // - Quiz gratuits: tout le monde
+      // - Quiz premium: uniquement utilisateurs premium
+      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
       
-      // Création/Modification/Suppression : Admin et Prof uniquement
-      allow create, update, delete: if isAdmin() || isProf();
+      // Création: admin et professeurs
+      allow create: if isAdmin() || isProf();
+      
+      // Mise à jour: admin uniquement
+      allow update: if isAdmin();
+      
+      // Suppression: admin uniquement
+      allow delete: if isAdmin();
     }
     
-    // ==================== COLLECTION QUIZ_RESULTS ====================
+    // ==================== COLLECTION: quiz_results ====================
     
     match /quiz_results/{resultId} {
-      // Lecture : Admin, Prof, ou l'élève propriétaire
-      allow read: if isAdmin() || isProf() || isOwner(resource.data.userId);
+      // Lecture: 
+      // - Utilisateur peut voir ses propres résultats
+      // - Admin et profs peuvent tout voir
+      // - Parent peut voir les résultats (vérifié côté service via lien actif)
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isProf() || isParent();
       
-      // Création : L'élève peut créer uniquement ses propres résultats
-      allow create: if isEleve() && request.resource.data.userId == request.auth.uid;
+      // Création: uniquement l'utilisateur qui passe le quiz
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Modification/Suppression : Interdites (résultats immuables)
-      allow update, delete: if false;
+      // Mise à jour et suppression: uniquement admin
+      allow update, delete: if isAdmin();
     }
     
-    // ==================== COLLECTION SEANCES (Cahier de textes) ====================
+    // ==================== COLLECTION: seances ====================
     
     match /seances/{seanceId} {
-      // Lecture : Tous les authentifiés peuvent voir les séances de leurs classes
-      allow read: if isAuthenticated();
+      // Lecture: élèves de la classe concernée, professeurs, admin
+      allow read: if isSignedIn();
       
-      // Création : Admin et Prof uniquement
-      allow create: if (isAdmin() || isProf()) && 
-                      request.resource.data.professeurId == request.auth.uid;
+      // Création: professeurs et admin
+      allow create: if isProf() || isAdmin();
       
-      // Modification : Admin ou le prof créateur
+      // Mise à jour: professeur créateur et admin
       allow update: if isAdmin() || 
-                      (isProf() && resource.data.professeurId == request.auth.uid);
+                       (isProf() && resource.data.professeurId == request.auth.uid);
       
-      // Suppression : Admin ou le prof créateur
+      // Suppression: professeur créateur et admin
       allow delete: if isAdmin() || 
-                      (isProf() && resource.data.professeurId == request.auth.uid);
+                       (isProf() && resource.data.professeurId == request.auth.uid);
     }
     
-    // ==================== COLLECTION TRANSACTIONS ====================
+    // ==================== COLLECTION: transactions ====================
     
     match /transactions/{transactionId} {
-      // Lecture : Admin ou l'utilisateur concerné
-      allow read: if isAdmin() || isOwner(resource.data.userId);
+      // Lecture: utilisateur peut voir ses propres transactions, admin peut tout voir
+      allow read: if isOwner(resource.data.userId) || isAdmin();
       
-      // Création : Serveur backend uniquement (via Firebase Admin)
-      allow create: if false;
+      // Création: utilisateur peut créer ses propres transactions
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       
-      // Modification : Serveur backend uniquement
-      allow update: if false;
+      // Mise à jour: uniquement système (via Cloud Functions) et admin
+      allow update: if isAdmin();
       
-      // Suppression : Uniquement admin
+      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
     
-    // ==================== COLLECTION STATS ====================
+    // ==================== COLLECTION: student_stats ====================
     
-    match /stats/{userId} {
-      // Lecture : Admin, Prof, ou l'utilisateur concerné
-      allow read: if isAdmin() || isProf() || isOwner(userId);
+    match /student_stats/{userId} {
+      // Lecture: utilisateur peut voir ses propres stats, admin et profs peuvent tout voir
+      allow read: if isOwner(userId) || isAdmin() || isProf();
       
-      // Création/Modification : Serveur backend uniquement (calculs automatiques)
-      allow create, update: if false;
+      // Écriture: uniquement système (via Cloud Functions) et admin
+      allow write: if isAdmin();
+    }
+    
+    // ==================== COLLECTION: prof_stats ====================
+    
+    match /prof_stats/{userId} {
+      // Lecture: professeur peut voir ses propres stats, admin peut tout voir
+      allow read: if isOwner(userId) || isAdmin();
       
-      // Suppression : Admin uniquement
+      // Écriture: uniquement système (via Cloud Functions) et admin
+      allow write: if isAdmin();
+    }
+    
+    // ==================== COLLECTION: liens_parent_enfant (Phase 10) ====================
+    
+    match /liens_parent_enfant/{lienId} {
+      // Lecture:
+      // - Parent propriétaire du lien
+      // - Enfant concerné par le lien
+      // - Admin
+      allow read: if isSignedIn() && (
+                       resource.data.parentId == request.auth.uid ||
+                       resource.data.enfantId == request.auth.uid ||
+                       isAdmin()
+                     );
+      
+      // Création: parent authentifié uniquement
+      // Le parentId dans le document doit correspondre à l'utilisateur connecté
+      allow create: if isSignedIn() && 
+                       isParent() &&
+                       request.resource.data.parentId == request.auth.uid;
+      
+      // Mise à jour: parent propriétaire (pour révoquer/suspendre) ou admin
+      allow update: if isSignedIn() && (
+                       (resource.data.parentId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      
+      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
     
-    // ==================== RÈGLE PAR DÉFAUT ====================
+    // ==================== COLLECTION: alertes_parent (Phase 10) ====================
     
-    // Bloque tout accès non explicitement autorisé
+    match /alertes_parent/{alerteId} {
+      // Lecture: parent destinataire ou admin
+      allow read: if isSignedIn() && (
+                       resource.data.parentId == request.auth.uid ||
+                       isAdmin()
+                     );
+      
+      // Création: parent authentifié (les alertes sont générées côté client)
+      allow create: if isSignedIn() && 
+                       isParent() &&
+                       request.resource.data.parentId == request.auth.uid;
+      
+      // Mise à jour: parent (pour marquer comme lue) ou admin
+      allow update: if isSignedIn() && (
+                       (resource.data.parentId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      
+      // Suppression: uniquement admin
+      allow delete: if isAdmin();
+    }
+    
+    // ==================== PAR DÉFAUT: DENY ALL ====================
+    
     match /{document=**} {
       allow read, write: if false;
     }

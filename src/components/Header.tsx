@@ -43,7 +43,7 @@ interface NavLink {
   icon: React.ReactNode;
   requireAuth?: boolean;      // Nécessite connexion
   requirePremium?: boolean;   // Nécessite Premium
-  requireRole?: ('admin' | 'prof' | 'eleve')[]; // Rôles autorisés
+  requireRole?: ('admin' | 'prof' | 'eleve' | 'parent')[]; // Rôles autorisés
 }
 
 /* ==================== COMPOSANT HEADER ==================== */
@@ -91,6 +91,13 @@ const Header: React.FC = () => {
       label: 'Tableau de bord',
       icon: <LayoutDashboard size={18} />,
       requireAuth: true
+    },
+    {
+      path: '/parent/dashboard',
+      label: 'Espace Parent',
+      icon: <BarChart3 size={18} />,
+      requireAuth: true,
+      requireRole: ['parent']
     }
   ];
 
@@ -199,7 +206,8 @@ const Header: React.FC = () => {
     const labels: Record<string, string> = {
       admin: 'Administrateur',
       prof: 'Professeur',
-      eleve: 'Élève'
+      eleve: 'Élève',
+      parent: 'Parent'
     };
     return labels[role] || role;
   };
@@ -336,6 +344,14 @@ const Header: React.FC = () => {
     			<span>Mes points à améliorer</span>
   		    </Link>
 )}
+
+		    {/* Lien Espace Parent (parents uniquement) */}
+		    {currentUser.role === 'parent' && (
+		      <Link to="/parent/dashboard" className="header__dropdown-link">
+		        <BarChart3 size={18} />
+		        <span>Espace Parent</span>
+		      </Link>
+		    )}
 
                     <Link to="/profil" className="header__dropdown-link">
                       <User size={18} />
