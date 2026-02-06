@@ -26,6 +26,8 @@ import StudentDashboard from './components/student/StudentDashboard';
 import StudentSuivi from './components/student/StudentSuivi';
 import ProfDashboard from './components/prof/ProfDashboard';
 import ParentDashboard from './components/parent/ParentDashboard';
+import QuizEditorPage from './pages/QuizEditorPage';
+import QuizPlayerPage from './pages/QuizPlayerPage';
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -46,6 +48,9 @@ const App: React.FC = () => {
         <Route path="/admin/chapitres" element={<AdminRoute><AdminLayout currentPage="chapitres"><ChapitreManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/ressources" element={<AdminRoute><AdminLayout currentPage="ressources"><ResourceManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz/nouveau" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz/modifier/:quizId" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
+        <Route path="/quiz-avance/:quizId" element={<Layout><QuizPlayerPage /></Layout>} />
         <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><UserManager /></AdminLayout></AdminRoute>} />
 	<Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
 	<Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
