@@ -1,6 +1,12 @@
 /**
- * Interfaces TypeScript pour PedaClic
- * Ce fichier centralise toutes les définitions de types utilisées dans l'application
+ * ============================================================
+ * TYPES CENTRALISÉS — PedaClic
+ * ============================================================
+ * Interfaces TypeScript pour toute l'application.
+ * Ce fichier est le point d'entrée unique pour les types.
+ * 
+ * ⚠️ CORRIGÉ : Suppression des doublons Chapitre/ChapitreFormData
+ * ============================================================
  */
 
 // ==================== TYPES UTILISATEURS ====================
@@ -91,24 +97,6 @@ export interface DisciplineFormData {
 
 // ==================== TYPES CHAPITRES ====================
 
-export interface Chapitre {
-  id: string;
-  disciplineId: string;
-  titre: string;
-  ordre: number;
-  description?: string;
-  createdAt: Date;
-  updatedAt?: Date;
-}
-
-export interface ChapitreFormData {
-  disciplineId: string;
-  titre: string;
-  ordre: number;
-  description?: string;
-}
-// ==================== TYPES CHAPITRES ====================
-
 /**
  * Interface pour un chapitre
  */
@@ -131,6 +119,7 @@ export interface ChapitreFormData {
   ordre: number;
   description?: string;
 }
+
 // ==================== TYPES RESSOURCES PÉDAGOGIQUES ====================
 
 /**
@@ -154,7 +143,7 @@ export interface Resource {
   fichierURL?: string;            // URL du fichier attaché (optionnel)
   dureeEstimee?: number;          // Durée estimée en minutes (optionnel)
   tags?: string[];                // Tags pour filtrage (optionnel) 
-  chapitreId?: string;            //
+  chapitreId?: string;            // ID du chapitre associé
   actif?: boolean;                // Ressource active ou non
   duree?: number;                 // Durée en minutes
   urlExterne?: string;            // URL externe (YouTube, etc.)
