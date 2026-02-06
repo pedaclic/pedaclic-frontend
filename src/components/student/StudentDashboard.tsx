@@ -67,6 +67,7 @@ import {
 import { getQuizzes, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
+import RejoindreGroupe from './RejoindreGroupe';
 
 /* ══════════════════════════════════════════════
    TYPES LOCAUX
@@ -316,6 +317,13 @@ const StudentDashboard: React.FC = () => {
             </button>
           </div>
         )}
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          MES GROUPES-CLASSES (Phase 11)
+          ══════════════════════════════════════════════ */}
+      <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+        <RejoindreGroupe />
       </div>
 
       {/* ══════════════════════════════════════════════

@@ -104,6 +104,30 @@ service cloud.firestore {
       allow update: if isAdmin() || isProf();
       allow delete: if isAdmin();
     }
+
+    // ==================== COLLECTION: disciplines ====================
+
+    match /disciplines/{disciplineId} {
+      // Lecture: tout le monde peut lire les disciplines
+      allow read: if true;
+
+      // Écriture: uniquement admin et professeurs
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
+    // ==================== COLLECTION: chapitres ====================
+
+    match /chapitres/{chapitreId} {
+      // Lecture: tout le monde peut lire les chapitres
+      allow read: if true;
+
+      // Écriture: uniquement admin et professeurs
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
     
     // ==================== COLLECTION: ressources ====================
     
@@ -227,7 +251,6 @@ service cloud.firestore {
                      );
       
       // Création: parent authentifié uniquement
-      // Le parentId dans le document doit correspondre à l'utilisateur connecté
       allow create: if isSignedIn() && 
                        isParent() &&
                        request.resource.data.parentId == request.auth.uid;
@@ -262,6 +285,75 @@ service cloud.firestore {
                        isAdmin()
                      );
       
+      // Suppression: uniquement admin
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // COLLECTION: groupes_prof (Phase 11 — Dashboard Professeurs)
+    // ============================================================
+    // Stocke les groupes-classes créés par les professeurs.
+    // Chaque groupe a un code d'invitation unique PROF-XXXX-XXXX.
+    // Seul le professeur créateur peut modifier/supprimer son groupe.
+    // Les élèves peuvent lire les groupes (pour rejoindre via code).
+
+    match /groupes_prof/{groupeId} {
+      // Lecture:
+      // - Professeurs authentifiés (pour gérer leurs groupes)
+      // - Élèves authentifiés (pour chercher un groupe par code d'invitation)
+      // - Admin (supervision globale)
+      allow read: if isSignedIn() && (isProf() || isEleve() || isAdmin());
+
+      // Création: uniquement professeurs et admin
+      // Le profId dans le document DOIT correspondre à l'utilisateur connecté
+      allow create: if isSignedIn() && (
+                       (isProf() && request.resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+
+      // Mise à jour:
+      // - Le professeur créateur du groupe (profId == uid)
+      // - L'élève peut incrémenter nombreInscrits lors de l'inscription
+      // - Admin peut tout modifier
+      allow update: if isSignedIn() && (
+                       (isProf() && resource.data.profId == request.auth.uid) ||
+                       isEleve() ||
+                       isAdmin()
+                     );
+
+      // Suppression: uniquement le professeur créateur ou admin
+      allow delete: if isSignedIn() && (
+                       (isProf() && resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+    }
+
+    // ============================================================
+    // COLLECTION: inscriptions_groupe (Phase 11 — Inscriptions élèves)
+    // ============================================================
+    // Stocke les inscriptions des élèves aux groupes-classes.
+    // Un élève peut s'inscrire lui-même via un code d'invitation.
+    // Le professeur du groupe peut voir et gérer les inscriptions.
+
+    match /inscriptions_groupe/{inscriptionId} {
+      // Lecture:
+      // - Le professeur (via requête where groupeId pour ses groupes)
+      // - L'élève inscrit (peut voir ses propres inscriptions)
+      // - Admin (supervision globale)
+      allow read: if isSignedIn() && (isProf() || isEleve() || isAdmin());
+
+      // Création: uniquement l'élève qui s'inscrit
+      // Le eleveId DOIT correspondre à l'utilisateur connecté
+      allow create: if isSignedIn() && (
+                       (isEleve() && request.resource.data.eleveId == request.auth.uid) ||
+                       isAdmin()
+                     );
+
+      // Mise à jour:
+      // - Le professeur du groupe (pour retirer un élève, changer statut)
+      // - Admin
+      allow update: if isSignedIn() && (isProf() || isAdmin());
+
       // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
