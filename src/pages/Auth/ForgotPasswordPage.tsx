@@ -20,7 +20,12 @@ import '../styles/auth.css';
  */
 const ForgotPasswordPage: React.FC = () => {
   // ==================== HOOKS ====================
-  const { resetPassword } = useAuth();
+  // resetPassword non disponible dans AuthContext - utiliser Firebase directement
+  const resetPassword = async (email: string) => {
+    const { sendPasswordResetEmail } = await import('firebase/auth');
+    const { auth } = await import('../../firebase');
+    await sendPasswordResetEmail(auth, email);
+  };
 
   // ==================== ÉTATS ====================
   

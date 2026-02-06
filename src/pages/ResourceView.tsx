@@ -18,7 +18,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Resource, Discipline, TypeRessource } from '../index';
+import { Resource, Discipline, TypeRessource } from '../types';
 import { getResourceById, getResourcesByChapter } from '../services/ResourceService';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
@@ -111,13 +111,11 @@ const ResourceView: React.FC = () => {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
         // 1. Charger la ressource
-        const resourceResult = await getResourceById(id);
-        
-        if (!resourceResult.success || !resourceResult.data) {
-          throw new Error(resourceResult.error || "Ressource introuvable");
-        }
+        const resource = await getResourceById(id) as Resource;
 
-        const resource = resourceResult.data;
+        if (!resource) {
+          throw new Error("Ressource introuvable");
+        }
 
         // 2. Charger la discipline
         const disciplineRef = doc(db, 'disciplines', resource.disciplineId);
@@ -134,13 +132,8 @@ const ResourceView: React.FC = () => {
         // 3. Charger les ressources liées (même chapitre)
         let relatedResources: Resource[] = [];
         if (resource.chapitre) {
-          const relatedResult = await getResourcesByChapter(
-            resource.disciplineId,
-            resource.chapitre
-          );
-          if (relatedResult.success) {
-            relatedResources = relatedResult.data.filter(r => r.id !== id);
-          }
+          const relatedList = await getResourcesByChapter(resource.chapitre);
+	  relatedResources = (relatedList as Resource[]).filter(r => r.id !== id);
         }
 
         setState({

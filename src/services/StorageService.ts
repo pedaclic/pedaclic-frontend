@@ -23,7 +23,7 @@ import {
   UploadTaskSnapshot
 } from 'firebase/storage';
 import { storage } from '../firebase';
-import type { OperationResult } from '../index';
+import type { OperationResult } from '../types';
 
 // ==================== CONSTANTES ====================
 

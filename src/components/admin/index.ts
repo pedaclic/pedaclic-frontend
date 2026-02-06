@@ -22,4 +22,4 @@ export { default as UserManager } from './UserManager';
 // ==================== TYPES RÉEXPORTÉS ====================
 // Pour faciliter l'utilisation dans d'autres parties de l'application
 export type { Chapitre, ChapitreFormData } from '../../services/chapitreService';
-export type { Resource, ResourceFormData, ResourceType } from '../../services/resourceService';
+export type { Resource, ResourceFormData, TypeRessource as ResourceType } from '../../types';

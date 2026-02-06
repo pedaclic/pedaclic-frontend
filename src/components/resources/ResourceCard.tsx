@@ -16,7 +16,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import type { Resource, TypeRessource } from '../../index';
+import type { Resource, TypeRessource } from '../../types';
 
 // ==================== CONFIGURATION DES TYPES ====================
 

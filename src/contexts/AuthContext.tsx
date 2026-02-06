@@ -20,7 +20,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import type { User, UserRole, RegisterFormData, AuthContextType } from '../index';
+import type { User, UserRole, RegisterFormData, AuthContextType } from '../types';
 
 // ==================== MESSAGES D'ERREUR EN FRANÇAIS ====================
 

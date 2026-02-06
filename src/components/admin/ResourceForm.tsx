@@ -20,7 +20,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ResourceService } from '../../services/ResourceService';
 import { StorageService, formatFileSize, validateFile } from '../../services/StorageService';
-import type { Resource, ResourceFormData, TypeRessource } from '../../index';
+import type { Resource, ResourceFormData, TypeRessource } from '../../types';
 
 // ==================== TYPES ====================
 
@@ -98,9 +98,9 @@ const ResourceForm: React.FC<ResourceFormProps> = ({
   
   useEffect(() => {
     const loadChapters = async () => {
-      const result = await ResourceService.getChaptersForDiscipline(disciplineId);
-      if (result.success && result.data) {
-        setChaptersExistants(result.data);
+      const result = await ResourceService.getByDiscipline(disciplineId);
+      if (result) {
+      setChaptersExistants(result.map((r: any) => r.chapitre).filter(Boolean));
       }
     };
     loadChapters();
@@ -235,9 +235,9 @@ const ResourceForm: React.FC<ResourceFormProps> = ({
       // Créer ou mettre à jour
       let result;
       if (isEditMode && resource) {
-        result = await ResourceService.updateResource(resource.id, formData);
+        result = await ResourceService.update(resource.id, formData);
       } else {
-        result = await ResourceService.createResource(formData, auteurId);
+        result = await ResourceService.create(formData, auteurId);
       }
 
       if (result.success && result.data) {

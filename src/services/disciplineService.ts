@@ -25,7 +25,7 @@ import {
   QueryConstraint
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Discipline, DisciplineFormData, Niveau, Classe } from '../index';
+import type { Discipline, DisciplineFormData, Niveau, Classe } from '../types';
 
 // ==================== CONSTANTES ====================
 

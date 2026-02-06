@@ -288,7 +288,7 @@ const StudentSuivi: React.FC = () => {
         {objectifs.length > 0 ? (
           <div className="objectifs-grid">
             {objectifs.map(objectif => {
-              const pourcent = getProgressionPourcent(objectif);
+              const pourcent = getProgressionPourcent(objectif as any);
               return (
                 <div
                   className={`objectif-card ${objectif.statut === 'atteint' ? 'atteint' : ''}`}

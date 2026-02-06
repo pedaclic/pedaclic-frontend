@@ -14,7 +14,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { UserRole, RegisterFormData } from '../../index';
+import { UserRole, RegisterFormData } from '../../types';
 import '../styles/auth.css';
 
 /**

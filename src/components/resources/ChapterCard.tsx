@@ -18,7 +18,7 @@
 
 import React, { useMemo } from 'react';
 import ResourceCard, { TYPE_CONFIG } from './ResourceCard';
-import type { Resource, TypeRessource } from '../../index';
+import type { Resource, TypeRessource } from '../../types';
 
 // ==================== TYPES ====================
 

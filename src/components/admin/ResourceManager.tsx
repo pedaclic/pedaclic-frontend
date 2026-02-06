@@ -13,7 +13,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService, Chapitre } from '../../services/chapitreService';
-import ResourceService, { Resource, ResourceFormData, ResourceType } from '../../services/resourceService';
+import ResourceService from '../../services/ResourceService';
+import type { Resource, ResourceFormData, TypeRessource as ResourceType } from '../../types';
 import type { Discipline } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -46,7 +47,7 @@ const INITIAL_FORM_DATA: Omit<ResourceFormData, 'disciplineId'> = {
   type: 'cours',
   description: '',
   contenu: '',
-  chapitreId: '',
+  chapitre: '',
   ordre: 1,
   isPremium: false,
   actif: true,
@@ -208,7 +209,7 @@ const ResourceManager: React.FC = () => {
 
     // Filtre par chapitre
     if (selectedChapitre) {
-      result = result.filter(r => r.chapitreId === selectedChapitre);
+      result = result.filter(r => r.chapitre === selectedChapitre);
     }
 
     // Filtre par type
@@ -315,7 +316,7 @@ const ResourceManager: React.FC = () => {
       type: resource.type,
       description: resource.description,
       contenu: resource.contenu,
-      chapitreId: resource.chapitreId || '',
+      chapitre: resource.chapitre || '',
       ordre: resource.ordre,
       isPremium: resource.isPremium,
       actif: resource.actif,
@@ -325,7 +326,7 @@ const ResourceManager: React.FC = () => {
     });
     setFormErrors({});
     setSelectedFile(null);
-    setFilePreview(resource.fichierUrl || null);
+    setFilePreview(resource.fichierURL || null);
     setNewTag('');
     setIsModalOpen(true);
   };
@@ -450,7 +451,7 @@ const ResourceManager: React.FC = () => {
       setSaving(true);
       setError(null);
 
-      let fichierUrl = editingResource?.fichierUrl;
+      let fichierUrl = editingResource?.fichierURL;
       let fichierNom = editingResource?.fichierNom;
 
       // Upload du fichier si sélectionné
@@ -460,20 +461,19 @@ const ResourceManager: React.FC = () => {
         
         const uploadResult = await ResourceService.uploadFile(
           selectedFile,
-          tempId,
-          (progress) => setUploadProgress(progress)
-        );
+          tempId
+	);
         
-        fichierUrl = uploadResult.url;
-        fichierNom = uploadResult.nom;
+        fichierUrl = uploadResult as string;
+        fichierNom = selectedFile?.name || 'fichier';
         setUploading(false);
       }
 
       const resourceData: ResourceFormData = {
         ...formData,
-        fichierUrl,
-        fichierNom,
-        auteurId: currentUser?.uid
+        fichierURL: fichierUrl,
+        fichierNom: fichierNom,
+        // auteurId passe en 2e argument de create
       };
 
       if (editingResource) {
@@ -482,7 +482,7 @@ const ResourceManager: React.FC = () => {
         setSuccess('Ressource modifiée avec succès !');
       } else {
         // Création
-        await ResourceService.create(resourceData);
+        await ResourceService.create(resourceData, 'admin');
         setSuccess('Ressource créée avec succès !');
       }
 
@@ -509,8 +509,8 @@ const ResourceManager: React.FC = () => {
       setDeleting(deletingResource.id);
       
       // Supprimer le fichier associé si présent
-      if (deletingResource.fichierUrl) {
-        await ResourceService.deleteFile(deletingResource.fichierUrl);
+      if (deletingResource.fichierURL) {
+        await ResourceService.deleteFile(deletingResource.fichierURL);
       }
       
       await ResourceService.delete(deletingResource.id);
@@ -772,8 +772,8 @@ const ResourceManager: React.FC = () => {
                     </div>
                     <div className="resource-item__meta">
                       <span>{typeInfo.label}</span>
-                      {resource.chapitreId && (
-                        <span>📖 {getChapitreName(resource.chapitreId)}</span>
+                      {resource.chapitre && (
+                        <span>📖 {getChapitreName(resource.chapitre)}</span>
                       )}
                       {resource.duree && (
                         <span>⏱️ {resource.duree} min</span>
@@ -796,7 +796,7 @@ const ResourceManager: React.FC = () => {
                     >
                       {resource.isPremium ? '⭐' : '☆'}
                     </button>
-                    {(resource.fichierUrl || resource.urlExterne) && (
+                    {(resource.fichierURL || resource.urlExterne) && (
                       <button
                         onClick={() => handlePreview(resource)}
                         className="table-action-btn table-action-btn--view"
@@ -910,7 +910,7 @@ const ResourceManager: React.FC = () => {
                     <select
                       name="chapitreId"
                       className="form-select"
-                      value={formData.chapitreId || ''}
+                      value={formData.chapitre || ''}
                       onChange={handleFormChange}
                       disabled={loadingChapitres}
                     >
@@ -1194,14 +1194,14 @@ const ResourceManager: React.FC = () => {
                     allowFullScreen
                   />
                 </div>
-              ) : previewResource.fichierUrl ? (
+              ) : previewResource.fichierURL ? (
                 <div className="preview-file">
-                  {previewResource.fichierUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                    <img src={previewResource.fichierUrl} alt={previewResource.titre} />
-                  ) : previewResource.fichierUrl.match(/\.(mp4|webm)$/i) ? (
-                    <video src={previewResource.fichierUrl} controls />
-                  ) : previewResource.fichierUrl.match(/\.pdf$/i) ? (
-                    <iframe src={previewResource.fichierUrl} title={previewResource.titre} />
+                  {previewResource.fichierURL.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    <img src={previewResource.fichierURL} alt={previewResource.titre} />
+                  ) : previewResource.fichierURL.match(/\.(mp4|webm)$/i) ? (
+                    <video src={previewResource.fichierURL} controls />
+                  ) : previewResource.fichierURL.match(/\.pdf$/i) ? (
+                    <iframe src={previewResource.fichierURL} title={previewResource.titre} />
                   ) : (
                     <div className="preview-download">
                       <span className="preview-download__icon">
@@ -1209,7 +1209,7 @@ const ResourceManager: React.FC = () => {
                       </span>
                       <p>{previewResource.fichierNom}</p>
                       <a
-                        href={previewResource.fichierUrl}
+                        href={previewResource.fichierURL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="btn btn--primary"
@@ -1257,7 +1257,7 @@ const ResourceManager: React.FC = () => {
               <p>
                 Supprimer la ressource <strong>{deletingResource.titre}</strong> ?
               </p>
-              {deletingResource.fichierUrl && (
+              {deletingResource.fichierURL && (
                 <div className="alert alert--warning" style={{ marginTop: 'var(--spacing-md)' }}>
                   <span className="alert__icon">⚠️</span>
                   <div className="alert__content">
