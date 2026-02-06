@@ -3,7 +3,6 @@
  * PAGE LOGIN - Connexion PedaClic
  * ============================================
  */
-
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
@@ -12,7 +11,9 @@ import './Auth.css';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
-  const { login, error, clearError } = useAuth();
+  const { login } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const clearError = () => setError(null);
 
   // États du formulaire
   const [email, setEmail] = useState('');

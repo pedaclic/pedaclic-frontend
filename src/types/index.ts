@@ -89,6 +89,48 @@ export interface DisciplineFormData {
   description?: string;
 }
 
+// ==================== TYPES CHAPITRES ====================
+
+export interface Chapitre {
+  id: string;
+  disciplineId: string;
+  titre: string;
+  ordre: number;
+  description?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface ChapitreFormData {
+  disciplineId: string;
+  titre: string;
+  ordre: number;
+  description?: string;
+}
+// ==================== TYPES CHAPITRES ====================
+
+/**
+ * Interface pour un chapitre
+ */
+export interface Chapitre {
+  id: string;
+  disciplineId: string;
+  titre: string;
+  ordre: number;
+  description?: string;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Données pour créer/modifier un chapitre
+ */
+export interface ChapitreFormData {
+  disciplineId: string;
+  titre: string;
+  ordre: number;
+  description?: string;
+}
 // ==================== TYPES RESSOURCES PÉDAGOGIQUES ====================
 
 /**
@@ -111,7 +153,12 @@ export interface Resource {
   chapitre?: string;              // Numéro/nom du chapitre (optionnel)
   fichierURL?: string;            // URL du fichier attaché (optionnel)
   dureeEstimee?: number;          // Durée estimée en minutes (optionnel)
-  tags?: string[];                // Tags pour filtrage (optionnel)
+  tags?: string[];                // Tags pour filtrage (optionnel) 
+  chapitreId?: string;            //
+  actif?: boolean;                // Ressource active ou non
+  duree?: number;                 // Durée en minutes
+  urlExterne?: string;            // URL externe (YouTube, etc.)
+  fichierNom?: string;            // Nom du fichier attaché
   auteurId: string;               // ID du professeur créateur
   createdAt: Date;                // Date de création
   updatedAt?: Date;               // Dernière mise à jour
@@ -132,6 +179,11 @@ export interface ResourceFormData {
   fichierURL?: string;
   dureeEstimee?: number;
   tags?: string[];
+  actif?: boolean;
+  duree?: number;
+  urlExterne?: string;
+  fichierNom?: string;
+  chapitreId?: string;
 }
 
 // ==================== TYPES QUIZ ====================

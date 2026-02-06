@@ -13,7 +13,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService } from '../../services/chapitreService';
-import ResourceService from '../../services/resourceService';
+import ResourceService from '../../services/ResourceService';
 
 // ==================== INTERFACES ====================
 

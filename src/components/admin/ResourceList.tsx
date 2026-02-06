@@ -14,8 +14,11 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Resource, TypeRessource } from '../../index';
-import { getResources, deleteResource, ResourceFilters } from '../../services/ResourceService';
+import { Resource, TypeRessource } from '../../types';
+import ResourceService from '../../services/ResourceService';
+type ResourceFilters = { disciplineId?: string; type?: string; isPremium?: boolean; search?: string };
+const getResources = ResourceService.getAll;
+const deleteResource = ResourceService.delete;
 import { deleteFileByURL } from '../../services/StorageService';
 
 // ==================== INTERFACES ====================
@@ -103,14 +106,12 @@ const ResourceList: React.FC<ResourceListProps> = ({
 
         const filters: ResourceFilters = { disciplineId };
         
-        const result = await getResources(filters);
+        const result = await getResources(filters as any);
 
-        if (!result.success) {
-          throw new Error(result.error || "Erreur de chargement");
-        }
+        // Résultat direct
 
         setState({
-          resources: result.data,
+          resources: result,
           loading: false,
           error: null
         });
@@ -240,9 +241,7 @@ const ResourceList: React.FC<ResourceListProps> = ({
       // Suppression de la ressource
       const result = await deleteResource(resource.id);
 
-      if (!result.success) {
-        throw new Error(result.error || "Erreur de suppression");
-      }
+      // Suppression OK
 
       // Mise à jour locale
       setState(prev => ({

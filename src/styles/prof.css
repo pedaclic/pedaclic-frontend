@@ -1,1011 +1,1327 @@
 /**
  * ============================================================
- * STYLES DASHBOARD PROFESSEUR — PedaClic Phase 8
+ * STYLES PROFESSEUR — PedaClic Phase 11
  * ============================================================
  * 
- * Styles dédiés au tableau de bord professeur.
- * Respecte la palette PedaClic (bleu/vert/orange/rouge)
- * et les variables CSS globales définies dans globals.css.
+ * Styles CSS pour le Dashboard Analytics Professeurs.
+ * Couvre : layout principal, cartes groupes, tableaux élèves,
+ * analyse quiz, alertes, formulaires, responsive mobile.
  * 
- * Sections :
- *   1. Layout principal
- *   2. En-tête
- *   3. Navigation par onglets
- *   4. Cartes statistiques
- *   5. Graphiques
- *   6. Tableaux
- *   7. Filtres et recherche
- *   8. Cartes discipline
- *   9. Cartes quiz
- *  10. Alertes
- *  11. Détail élève
- *  12. Composants réutilisables
- *  13. États vides
- *  14. Responsive mobile
+ * Fichier : src/styles/prof.css
+ * Palette : Bleu PedaClic (#2563eb) + Vert (#10b981)
  * ============================================================
  */
 
 
-/* ==================== 1. LAYOUT PRINCIPAL ==================== */
+/* ==================== LAYOUT PRINCIPAL ==================== */
 
-/* Conteneur principal du dashboard */
+/* Conteneur du dashboard prof */
 .prof-dashboard {
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-lg);
-  min-height: calc(100vh - 200px); /* Espace pour Header + Footer */
+  min-height: calc(100vh - 80px);
 }
 
-
-/* ==================== 2. EN-TÊTE ==================== */
-
-/* En-tête avec titre et bouton actualiser */
-.prof-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+/* En-tête du dashboard */
+.prof-dashboard-header {
   margin-bottom: var(--spacing-xl);
-  flex-wrap: wrap;
-  gap: var(--spacing-md);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--color-border);
 }
 
-/* Partie gauche : titre + sous-titre */
-.prof-header-left {
-  flex: 1;
-  min-width: 250px;
-}
-
-/* Titre principal du dashboard */
-.prof-title {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--text-2xl);
+/* Titre principal */
+.prof-dashboard-titre {
+  font-size: var(--text-3xl);
   font-weight: var(--font-bold);
-  color: var(--color-primary-dark);
+  color: var(--color-primary);
   margin-bottom: var(--spacing-xs);
 }
 
-/* Sous-titre avec message de bienvenue */
-.prof-subtitle {
+/* Sous-titre (bienvenue) */
+.prof-dashboard-subtitle {
+  font-size: var(--text-lg);
   color: var(--color-text-light);
-  font-size: var(--text-sm);
   margin-bottom: 0;
 }
 
-/* Partie droite : bouton actualiser */
-.prof-header-right {
+
+/* ==================== NAVIGATION ONGLETS ==================== */
+
+/* Barre de navigation principale */
+.prof-nav {
   display: flex;
-  align-items: center;
   gap: var(--spacing-sm);
-}
-
-
-/* ==================== 3. NAVIGATION PAR ONGLETS ==================== */
-
-/* Barre d'onglets */
-.prof-tabs {
-  display: flex;
-  gap: var(--spacing-xs);
-  border-bottom: 2px solid var(--color-border);
   margin-bottom: var(--spacing-xl);
-  overflow-x: auto;           /* Scroll horizontal mobile */
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;      /* Masquer scrollbar Firefox */
-}
-.prof-tabs::-webkit-scrollbar {
-  display: none;              /* Masquer scrollbar Webkit */
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: var(--spacing-sm);
 }
 
-/* Onglet individuel */
-.prof-tab {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: none;
+/* Bouton de navigation */
+.prof-nav-btn {
+  padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;        /* Chevauche la bordure de .prof-tabs */
-  color: var(--color-text-light);
-  font-size: var(--text-sm);
+  background: transparent;
+  font-size: var(--text-base);
   font-weight: var(--font-medium);
+  color: var(--color-text-light);
   cursor: pointer;
-  white-space: nowrap;
+  border-bottom: 3px solid transparent;
   transition: all var(--transition-base);
-  position: relative;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
-/* Onglet au survol */
-.prof-tab:hover {
+.prof-nav-btn:hover {
   color: var(--color-primary);
-  border-bottom-color: var(--color-primary-light);
+  background: var(--color-bg-secondary);
 }
 
-/* Onglet actif */
-.prof-tab-active {
+.prof-nav-btn.active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
   font-weight: var(--font-semibold);
 }
 
-/* Badge compteur sur onglet */
-.prof-tab-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: var(--radius-full);
-  background-color: var(--color-primary);
-  color: #fff;
-  font-size: 11px;
-  font-weight: var(--font-bold);
-  line-height: 1;
-}
 
-/* Badge rouge pour alertes */
-.prof-tab-badge-danger {
-  background-color: var(--color-error);
-}
+/* ==================== OVERVIEW (VUE D'ENSEMBLE) ==================== */
 
-
-/* ==================== 4. CARTES STATISTIQUES ==================== */
-
-/* Grille de cartes stat (6 colonnes par défaut) */
-.prof-stats-grid {
+/* Grille des cartes résumé */
+.prof-overview-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-xl);
 }
 
-/* Variante 4 colonnes (détail élève) */
-.prof-stats-grid-4 {
-  grid-template-columns: repeat(4, 1fr);
-}
-
-/* Carte stat individuelle */
-.prof-stat-card {
+/* Carte résumé individuelle */
+.prof-overview-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
-  padding: var(--spacing-lg);
-  background: #fff;
-  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.prof-overview-card-clickable {
+  cursor: pointer;
+}
+
+.prof-overview-card-clickable:hover {
   box-shadow: var(--shadow-md);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-}
-
-/* Effet hover sur carte stat */
-.prof-stat-card:hover {
+  border-color: var(--color-primary-light);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
 }
 
-/* Icône ronde à gauche de la carte */
-.prof-stat-icon {
+/* Icône de la carte */
+.prof-overview-card-icon {
+  font-size: 2rem;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-xl);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
   flex-shrink: 0;
 }
 
-/* Variantes de couleur pour l'icône */
-.prof-stat-icon-blue   { background: #eff6ff; color: #3b82f6; }
-.prof-stat-icon-green  { background: #ecfdf5; color: #10b981; }
-.prof-stat-icon-orange { background: #fffbeb; color: #f59e0b; }
-.prof-stat-icon-red    { background: #fef2f2; color: #ef4444; }
-.prof-stat-icon-purple { background: #f5f3ff; color: #8b5cf6; }
-
-/* Infos textuelles de la carte */
-.prof-stat-info {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Valeur chiffrée (grande) */
-.prof-stat-value {
+/* Valeur de la carte */
+.prof-overview-card-value {
   font-size: var(--text-2xl);
   font-weight: var(--font-bold);
   color: var(--color-text);
-  line-height: 1.2;
+  display: block;
 }
 
-/* Label descriptif (petit) */
-.prof-stat-label {
-  display: flex;
-  align-items: center;
+/* Label de la carte */
+.prof-overview-card-label {
   font-size: var(--text-sm);
   color: var(--color-text-light);
-  margin-top: 2px;
+}
+
+/* Section récapitulatif groupes */
+.prof-overview-groupes {
+  margin-top: var(--spacing-xl);
+}
+
+.prof-overview-groupes h2 {
+  font-size: var(--text-xl);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Grille des mini-cartes de groupes */
+.prof-overview-groupes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--spacing-md);
+}
+
+/* Mini-carte de groupe (cliquable) */
+.prof-overview-groupe-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  position: relative;
+}
+
+.prof-overview-groupe-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-primary-light);
+}
+
+.prof-overview-groupe-header h3 {
+  font-size: var(--text-lg);
+  margin-bottom: var(--spacing-xs);
+}
+
+.prof-overview-groupe-matiere {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  background: var(--color-bg-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+/* Stats dans la mini-carte */
+.prof-overview-groupe-stats {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+}
+
+.prof-overview-groupe-stat-value {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+}
+
+.prof-overview-groupe-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+/* Flèche indicative */
+.prof-overview-groupe-arrow {
+  position: absolute;
+  top: 50%;
+  right: var(--spacing-lg);
+  transform: translateY(-50%);
+  font-size: var(--text-xl);
+  color: var(--color-text-lighter);
+  transition: all var(--transition-base);
+}
+
+.prof-overview-groupe-card:hover .prof-overview-groupe-arrow {
+  color: var(--color-primary);
+  right: var(--spacing-md);
 }
 
 
-/* ==================== 5. GRAPHIQUES ==================== */
+/* ==================== GROUPE MANAGER ==================== */
 
-/* Carte contenant un graphique */
-.prof-chart-card {
-  background: #fff;
+/* En-tête du manager */
+.groupe-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+}
+
+.groupe-manager-titre {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-manager-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: 0;
+}
+
+/* Filtres par statut */
+.groupe-filtres {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.prof-filtre-btn {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  border-radius: var(--radius-full);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.prof-filtre-btn:hover {
+  border-color: var(--color-primary-light);
+}
+
+.prof-filtre-btn.active {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+/* Grille des cartes de groupes */
+.groupe-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+/* Carte de groupe */
+.groupe-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+}
+
+.groupe-card:hover {
   box-shadow: var(--shadow-md);
+}
+
+.groupe-card-archive {
+  opacity: 0.7;
+  background: var(--color-bg-secondary);
+}
+
+/* En-tête de carte */
+.groupe-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-card-titre {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-card-matiere {
+  font-size: var(--text-sm);
+  color: var(--color-primary);
+  font-weight: var(--font-medium);
+}
+
+/* Badge de statut */
+.groupe-badge {
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+}
+
+.groupe-badge-actif {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.groupe-badge-archive {
+  background: #e5e7eb;
+  color: #4b5563;
+}
+
+/* Infos rapides */
+.groupe-card-infos {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Code d'invitation */
+.groupe-card-code {
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-code-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  display: block;
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-code-box {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border);
+}
+
+.groupe-code-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+  letter-spacing: 2px;
+  flex: 1;
+}
+
+/* Mini-stats dans la carte */
+.groupe-card-stats {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm) 0;
+  border-top: 1px solid var(--color-border-light);
+  border-bottom: 1px solid var(--color-border-light);
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-stat-item {
+  text-align: center;
+  flex: 1;
+}
+
+.groupe-stat-value {
+  display: block;
+  font-size: var(--text-lg);
+  font-weight: var(--font-bold);
+  color: var(--color-text);
+}
+
+.groupe-stat-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+/* Actions de la carte */
+.groupe-card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.groupe-confirm-suppression {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-sm);
+  color: var(--color-error);
+}
+
+
+/* ==================== FORMULAIRE CRÉATION GROUPE ==================== */
+
+.groupe-form-container {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
   padding: var(--spacing-xl);
   margin-bottom: var(--spacing-xl);
 }
 
-/* Titre du graphique */
-.prof-chart-title {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
+.groupe-form-container h3 {
+  font-size: var(--text-xl);
   margin-bottom: var(--spacing-lg);
+  color: var(--color-primary);
 }
 
-/* État vide pour graphique */
-.prof-empty-chart {
+.groupe-form {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: var(--color-text-lighter);
-  gap: var(--spacing-sm);
+  gap: var(--spacing-md);
 }
 
-
-/* ==================== 6. TABLEAUX ==================== */
-
-/* Wrapper pour scroll horizontal */
-.prof-table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+/* Groupe de champ */
+.prof-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  flex: 1;
 }
 
-/* Tableau principal */
-.prof-table {
-  width: 100%;
-  border-collapse: collapse;
+.prof-form-group label {
   font-size: var(--text-sm);
-}
-
-/* En-tête tableau */
-.prof-table thead th {
-  padding: var(--spacing-sm) var(--spacing-md);
-  text-align: left;
-  font-weight: var(--font-semibold);
-  color: var(--color-text-light);
-  background: var(--color-bg-secondary);
-  border-bottom: 2px solid var(--color-border);
-  white-space: nowrap;
-}
-
-/* Cellules du corps */
-.prof-table tbody td {
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-bottom: 1px solid var(--color-border-light);
-  vertical-align: middle;
-}
-
-/* Ligne au survol */
-.prof-table tbody tr:hover {
-  background-color: var(--color-bg-secondary);
-}
-
-/* Ligne élève en difficulté (fond rouge léger) */
-.prof-row-danger {
-  background-color: #fef2f2 !important;
-}
-.prof-row-danger:hover {
-  background-color: #fee2e2 !important;
-}
-
-/* Cellule centrée */
-.prof-td-center {
-  text-align: center;
-}
-
-/* Cellule nom/email d'élève */
-.prof-eleve-cell {
-  display: flex;
-  flex-direction: column;
-}
-.prof-eleve-name {
   font-weight: var(--font-medium);
   color: var(--color-text);
 }
-.prof-eleve-email {
-  font-size: var(--text-xs);
-  color: var(--color-text-lighter);
-}
 
-/* Texte petit (fractions) */
-.prof-text-small {
-  font-size: var(--text-xs);
-  color: var(--color-text-light);
-  margin-left: 4px;
-}
-
-
-/* ==================== 7. FILTRES ET RECHERCHE ==================== */
-
-/* Barre de filtres */
-.prof-filters {
+/* Ligne de 2 champs */
+.prof-form-row {
   display: flex;
-  align-items: center;
   gap: var(--spacing-md);
-  margin-bottom: var(--spacing-lg);
-  flex-wrap: wrap;
 }
 
-/* Champ de recherche avec icône */
-.prof-search-box {
-  position: relative;
-  flex: 1;
-  min-width: 250px;
+/* Boutons du formulaire */
+.prof-form-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
 }
 
-/* Icône loupe dans le champ */
-.prof-search-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--color-text-lighter);
-  pointer-events: none;
-}
-
-/* Input de recherche */
-.prof-search-input {
-  width: 100%;
-  padding: 10px 12px 10px 40px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  transition: border-color var(--transition-base);
-}
-.prof-search-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-.prof-search-input::placeholder {
-  color: var(--color-text-lighter);
-}
-
-/* Select filtre discipline */
+/* Champs de saisie */
+.prof-input,
 .prof-select {
-  padding: 10px 12px;
+  padding: var(--spacing-sm) var(--spacing-md);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  background: #fff;
-  cursor: pointer;
-  min-width: 180px;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
+  font-family: var(--font-sans);
+  background: var(--color-bg);
   transition: border-color var(--transition-base);
+  width: 100%;
 }
+
+.prof-input:focus,
 .prof-select:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
-/* Compteur de résultats */
-.prof-filter-count {
+.prof-select-sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
   font-size: var(--text-sm);
-  color: var(--color-text-light);
-  white-space: nowrap;
+  width: auto;
 }
 
 
-/* ==================== 8. CARTES DISCIPLINE ==================== */
+/* ==================== BOUTONS ==================== */
 
-/* Grille de cartes discipline */
-.prof-disc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
-}
-
-/* Carte discipline */
-.prof-disc-card {
-  background: #fff;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  padding: var(--spacing-lg);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-}
-.prof-disc-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* En-tête de la carte discipline */
-.prof-disc-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-md);
-}
-
-/* Nom de la discipline */
-.prof-disc-nom {
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-  margin-bottom: 0;
-}
-
-/* Badge niveau (Excellent, Bien, etc.) */
-.prof-disc-badge {
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  color: #fff;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-}
-
-/* Grille stats dans la carte */
-.prof-disc-stats {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-sm);
-  margin-bottom: var(--spacing-md);
-}
-
-/* Stat individuelle dans carte discipline */
-.prof-disc-stat {
-  display: flex;
-  flex-direction: column;
-}
-.prof-disc-stat-val {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
-  color: var(--color-text);
-}
-.prof-disc-stat-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-light);
-}
-
-/* Barre de progression (réutilisable) */
-.prof-progress-bar {
-  width: 100%;
-  height: 8px;
-  background: var(--color-bg-tertiary);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-  margin-bottom: var(--spacing-sm);
-}
-.prof-progress-fill {
-  height: 100%;
-  border-radius: var(--radius-full);
-  transition: width 0.6s ease;
-}
-
-/* Plage min/max sous la barre */
-.prof-disc-range {
-  display: flex;
-  justify-content: space-between;
-  font-size: var(--text-xs);
-  color: var(--color-text-lighter);
-}
-
-
-/* ==================== 9. CARTES QUIZ ==================== */
-
-/* Grille de cartes quiz */
-.prof-quiz-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: var(--spacing-md);
-  margin-bottom: var(--spacing-xl);
-}
-
-/* Carte quiz */
-.prof-quiz-card {
-  background: #fff;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  padding: var(--spacing-lg);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-}
-.prof-quiz-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* En-tête carte quiz */
-.prof-quiz-header {
-  margin-bottom: var(--spacing-md);
-}
-
-/* Titre du quiz */
-.prof-quiz-titre {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-  margin-bottom: 4px;
-}
-
-/* Discipline associée au quiz */
-.prof-quiz-discipline {
-  font-size: var(--text-xs);
-  color: var(--color-primary);
-  font-weight: var(--font-medium);
-}
-
-/* Stats du quiz (icône + texte) */
-.prof-quiz-stats {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: var(--spacing-md);
-}
-.prof-quiz-stat {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: var(--text-sm);
-  color: var(--color-text-light);
-}
-
-/* Date du dernier passage */
-.prof-quiz-date {
-  font-size: var(--text-xs);
-  color: var(--color-text-lighter);
-  margin-top: var(--spacing-sm);
-  margin-bottom: 0;
-}
-
-
-/* ==================== 10. ALERTES ==================== */
-
-/* Bandeau d'alerte en haut */
-.prof-alerte-banner {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md) var(--spacing-lg);
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: var(--radius-lg);
-  color: #991b1b;
-  font-size: var(--text-sm);
-  margin-bottom: var(--spacing-xl);
-}
-
-/* Liste des alertes */
-.prof-alertes-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-}
-
-/* Carte alerte élève */
-.prof-alerte-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-md);
-  background: #fff;
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  padding: var(--spacing-lg);
-  border-left: 4px solid var(--color-error);
-}
-
-/* Partie gauche : avatar + nom */
-.prof-alerte-left {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-/* Avatar rond rouge */
-.prof-alerte-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: #fef2f2;
-  color: #ef4444;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-lg);
-  font-weight: var(--font-bold);
-  flex-shrink: 0;
-}
-
-/* Infos de l'alerte */
-.prof-alerte-info h4 {
-  font-size: var(--text-base);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-  margin-bottom: 2px;
-}
-.prof-alerte-email {
-  font-size: var(--text-xs);
-  color: var(--color-text-lighter);
-  margin-bottom: 0;
-}
-
-/* Stats de l'alerte */
-.prof-alerte-stats {
-  display: flex;
-  gap: var(--spacing-xl);
-}
-.prof-alerte-stat {
-  display: flex;
-  flex-direction: column;
-}
-.prof-alerte-stat-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-light);
-}
-.prof-alerte-stat-val {
-  font-size: var(--text-xl);
-  font-weight: var(--font-bold);
-}
-
-/* Disciplines en difficulté */
-.prof-alerte-disciplines {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.prof-alerte-disc-label {
-  font-size: var(--text-xs);
-  color: var(--color-text-light);
-}
-.prof-alerte-disc-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.prof-alerte-disc-tag {
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  background: #fef2f2;
-  color: #ef4444;
-  font-size: var(--text-xs);
-  font-weight: var(--font-medium);
-}
-
-
-/* ==================== 11. DÉTAIL ÉLÈVE ==================== */
-
-/* En-tête du détail */
-.prof-detail-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
-}
-
-/* Avatar élève (grand, rond, bleu) */
-.prof-detail-avatar {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-  flex-shrink: 0;
-}
-
-/* Infos textuelles détail */
-.prof-detail-info h2 {
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
-  color: var(--color-text);
-  margin-bottom: 4px;
-}
-.prof-detail-email {
-  font-size: var(--text-sm);
-  color: var(--color-text-light);
-  margin-bottom: var(--spacing-xs);
-}
-
-
-/* ==================== 12. COMPOSANTS RÉUTILISABLES ==================== */
-
-/* ── Boutons ── */
-
-/* Bouton de base */
 .prof-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-lg);
   border: none;
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  font-size: var(--text-base);
   font-weight: var(--font-medium);
   cursor: pointer;
   transition: all var(--transition-base);
   white-space: nowrap;
 }
 
-/* Bouton primaire (bleu plein) */
 .prof-btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: white;
 }
+
 .prof-btn-primary:hover {
   background: var(--color-primary-dark);
 }
 
-/* Bouton outline (bordure) */
-.prof-btn-outline {
-  background: #fff;
-  color: var(--color-primary);
+.prof-btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.prof-btn-secondary {
+  background: var(--color-bg-secondary);
+  color: var(--color-text);
   border: 1px solid var(--color-border);
 }
-.prof-btn-outline:hover {
-  border-color: var(--color-primary);
-  background: #eff6ff;
+
+.prof-btn-secondary:hover {
+  background: var(--color-bg-tertiary);
 }
 
-/* Bouton petit (dans tableaux) */
+.prof-btn-danger {
+  background: var(--color-error);
+  color: white;
+}
+
+.prof-btn-danger:hover {
+  background: #dc2626;
+}
+
 .prof-btn-sm {
-  padding: 5px 10px;
-  font-size: var(--text-xs);
-  background: #eff6ff;
-  color: var(--color-primary);
-  border: 1px solid #bfdbfe;
-}
-.prof-btn-sm:hover {
-  background: #dbeafe;
-}
-
-/* ── Badges ── */
-
-/* Badge générique */
-.prof-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-}
-
-/* Badge succès (vert) */
-.prof-badge-success {
-  background: #ecfdf5;
-  color: #059669;
-}
-
-/* Badge échec (rouge) */
-.prof-badge-fail {
-  background: #fef2f2;
-  color: #dc2626;
-}
-
-/* Badge danger (alerte rouge) */
-.prof-badge-danger {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 10px;
-  border-radius: var(--radius-full);
-  background: #fef2f2;
-  color: #ef4444;
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-}
-
-/* Texte muted */
-.prof-text-muted {
-  color: var(--color-text-light);
+  padding: var(--spacing-xs) var(--spacing-sm);
   font-size: var(--text-sm);
 }
 
-/* Marge bottom large */
-.prof-mb-lg {
+/* Bouton icône (petit, carré) */
+.prof-btn-icon {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-base);
+}
+
+.prof-btn-icon:hover {
+  background: var(--color-bg-tertiary);
+}
+
+.prof-btn-icon-danger:hover {
+  background: #fee2e2;
+  color: var(--color-error);
+}
+
+
+/* ==================== GROUPE DETAIL ==================== */
+
+/* En-tête détail */
+.groupe-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.groupe-detail-titre-section {
+  flex: 1;
+}
+
+.groupe-detail-titre {
+  font-size: var(--text-2xl);
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-detail-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: 0;
+}
+
+/* Onglets du détail */
+.groupe-detail-onglets {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-xl);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.groupe-onglet {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-light);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-base);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.groupe-onglet:hover {
+  color: var(--color-primary);
+}
+
+.groupe-onglet.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.groupe-onglet-badge {
+  background: var(--color-primary);
+  color: white;
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  min-width: 20px;
+  text-align: center;
+}
+
+
+/* ==================== APERÇU (ONGLET 1) ==================== */
+
+/* Grille des stats globales */
+.groupe-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* Carte stat individuelle */
+.groupe-stat-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.groupe-stat-card-icon {
+  font-size: 1.5rem;
+}
+
+.groupe-stat-card-value {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+.groupe-stat-card-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+/* Barre de plage de notes */
+.groupe-apercu-notes {
+  margin-bottom: var(--spacing-xl);
+}
+
+.groupe-note-range {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-lg);
+}
+
+.groupe-note-range-label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+.groupe-note-barre {
+  flex: 1;
+  height: 8px;
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-full);
+  position: relative;
+}
+
+.groupe-note-barre-fill {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: linear-gradient(to right, #f59e0b, #10b981);
+  border-radius: var(--radius-full);
+}
+
+/* Classement top/bottom */
+.groupe-apercu-classement {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.groupe-classement-section h4 {
+  font-size: var(--text-base);
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-classement-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-classement-rang {
+  font-size: var(--text-lg);
+}
+
+.groupe-classement-nom {
+  flex: 1;
+  font-weight: var(--font-medium);
+}
+
+.groupe-classement-note {
+  font-weight: var(--font-bold);
+}
+
+.groupe-classement-vide {
+  color: var(--color-text-light);
+  font-style: italic;
+}
+
+
+/* ==================== ÉLÈVES (ONGLET 2) ==================== */
+
+/* Barre d'outils */
+.groupe-eleves-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.groupe-eleves-toolbar label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+}
+
+.groupe-eleves-count {
+  margin-left: auto;
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* Wrapper du tableau (scroll horizontal mobile) */
+.groupe-eleves-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+/* Tableau des élèves */
+.groupe-eleves-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.groupe-eleves-table th {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  background: var(--color-bg-secondary);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-light);
+  border-bottom: 2px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.groupe-eleves-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--color-border-light);
+  vertical-align: middle;
+}
+
+.groupe-eleves-table tr:hover {
+  background: var(--color-bg-secondary);
+}
+
+.groupe-eleve-row-active {
+  background: #eff6ff !important;
+}
+
+/* Cellule nom + email */
+.groupe-eleve-nom-cell div {
+  display: flex;
+  flex-direction: column;
+}
+
+.groupe-eleve-email {
+  font-size: var(--text-xs);
+  color: var(--color-text-lighter);
+}
+
+/* Badge de note dans le tableau */
+.groupe-note-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-weight: var(--font-semibold);
+  font-size: var(--text-sm);
+}
+
+/* Streak */
+.groupe-streak {
+  font-weight: var(--font-medium);
+}
+
+/* Actions cellule */
+.groupe-eleve-actions {
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+
+/* ==================== DÉTAIL ÉLÈVE (PANNEAU DÉPLIÉ) ==================== */
+
+.groupe-eleve-detail {
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
   margin-bottom: var(--spacing-lg);
 }
 
+.groupe-eleve-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
 
-/* ==================== 13. ÉTATS VIDES / CHARGEMENT / ERREUR ==================== */
+.groupe-eleve-detail-header h3 {
+  font-size: var(--text-lg);
+  margin-bottom: 0;
+}
 
-/* État vide (aucune donnée) */
-.prof-empty {
+/* Grille du détail élève */
+.groupe-eleve-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-md);
+}
+
+.groupe-eleve-detail-card {
+  background: var(--color-bg);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-light);
+}
+
+.groupe-eleve-detail-card h4 {
+  font-size: var(--text-base);
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text);
+}
+
+.groupe-eleve-detail-card-wide {
+  grid-column: 1 / -1;
+}
+
+/* Score cercle */
+.groupe-eleve-score-circle {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+  text-align: center;
+  padding: var(--spacing-md);
+}
+
+/* Lacunes */
+.groupe-lacunes-liste {
+  list-style: none;
+  padding: 0;
+}
+
+.groupe-lacune-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border-light);
+}
+
+.groupe-lacune-item:last-child {
+  border-bottom: none;
+}
+
+.groupe-lacune-nom {
+  flex: 1;
+  font-weight: var(--font-medium);
+}
+
+.groupe-lacune-moyenne {
+  font-weight: var(--font-semibold);
+}
+
+.groupe-lacune-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-medium);
+}
+
+.groupe-lacune-badge-critique {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.groupe-lacune-badge-important {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.groupe-lacune-badge-modere {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+
+/* ==================== QUIZ (ONGLET 3) ==================== */
+
+.groupe-quiz-selector {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--color-bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.groupe-quiz-selector label {
+  font-weight: var(--font-medium);
+  white-space: nowrap;
+}
+
+/* Stats du quiz */
+.groupe-quiz-stats-header {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+}
+
+.groupe-quiz-stats-header h3 {
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-quiz-stats-grid {
+  display: flex;
+  gap: var(--spacing-xl);
+}
+
+.groupe-stat-mini {
+  text-align: center;
+}
+
+.groupe-stat-mini-value {
+  display: block;
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+}
+
+.groupe-stat-mini-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+/* Questions ratées */
+.groupe-quiz-questions h4 {
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-quiz-question-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-error);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-quiz-question-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.groupe-quiz-question-num {
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+.groupe-quiz-question-echec {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-error);
+  background: #fee2e2;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.groupe-quiz-question-texte {
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--text-sm);
+}
+
+.groupe-quiz-question-reponse {
+  margin-bottom: var(--spacing-sm);
+}
+
+.groupe-quiz-bonne-reponse {
+  font-size: var(--text-sm);
+  color: var(--color-success);
+  font-weight: var(--font-medium);
+}
+
+.groupe-quiz-mauvaises-reponses {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  font-size: var(--text-sm);
+}
+
+.groupe-quiz-mauvaise-reponse {
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+
+/* ==================== ALERTES (ONGLET 4) ==================== */
+
+.groupe-alertes-liste {
   display: flex;
   flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.groupe-alerte-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-left: 4px solid transparent;
+}
+
+.groupe-alerte-critique {
+  border-left-color: var(--color-error);
+  background: #fef2f2;
+}
+
+.groupe-alerte-important {
+  border-left-color: var(--color-warning);
+  background: #fffbeb;
+}
+
+.groupe-alerte-info {
+  border-left-color: var(--color-info);
+  background: #eff6ff;
+}
+
+.groupe-alerte-header {
+  display: flex;
   align-items: center;
-  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.groupe-alerte-emoji {
+  font-size: var(--text-lg);
+}
+
+.groupe-alerte-eleve {
+  font-weight: var(--font-semibold);
+  flex: 1;
+}
+
+.groupe-alerte-badge {
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 11px;
+  font-weight: var(--font-medium);
+}
+
+.groupe-alerte-badge-critique {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.groupe-alerte-badge-important {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.groupe-alerte-badge-info {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.groupe-alerte-message {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin-bottom: var(--spacing-sm);
+}
+
+
+/* ==================== COULEURS DE NOTES ==================== */
+
+.prof-note-excellent { color: #10b981; }   /* >= 16 */
+.prof-note-bien { color: #3b82f6; }        /* >= 12 */
+.prof-note-passable { color: #f59e0b; }    /* >= 10 */
+.prof-note-insuffisant { color: #f97316; } /* >= 8 */
+.prof-note-critique { color: #ef4444; }    /* < 8 */
+
+
+/* ==================== ALERTES & MESSAGES ==================== */
+
+.prof-alert {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: var(--text-sm);
+}
+
+.prof-alert-error {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.prof-alert-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--text-lg);
+  color: inherit;
+  opacity: 0.5;
+}
+
+.prof-alert-close:hover {
+  opacity: 1;
+}
+
+
+/* ==================== ÉTATS VIDES & LOADING ==================== */
+
+.prof-empty-state {
   text-align: center;
   padding: var(--spacing-2xl);
   color: var(--color-text-light);
-  gap: var(--spacing-sm);
 }
-.prof-empty h3 {
+
+.prof-empty-icon {
+  font-size: 3rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.prof-empty-state h3 {
+  margin-bottom: var(--spacing-sm);
   color: var(--color-text);
-  margin-bottom: 4px;
 }
-.prof-empty p {
-  font-size: var(--text-sm);
-  color: var(--color-text-lighter);
+
+.prof-empty-state p {
   max-width: 400px;
+  margin: 0 auto var(--spacing-lg);
 }
 
-/* Variante succès (vert) */
-.prof-empty-success {
-  color: #059669;
-}
-.prof-empty-success h3 {
-  color: #059669;
-}
-
-/* État de chargement */
 .prof-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 50vh;
+  padding: var(--spacing-2xl);
   gap: var(--spacing-md);
-  color: var(--color-text-light);
-}
-
-/* État d'erreur */
-.prof-error {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 40vh;
-  gap: var(--spacing-md);
-  text-align: center;
-}
-.prof-error h2 {
-  color: var(--color-error);
-}
-.prof-error p {
-  color: var(--color-text-light);
-  max-width: 400px;
 }
 
 
-/* ==================== 14. RESPONSIVE (MOBILE-FIRST) ==================== */
+/* ==================== RESPONSIVE MOBILE ==================== */
 
-/* Tablette (< 1024px) */
-@media (max-width: 1024px) {
-  /* Cartes stats : 2 colonnes */
-  .prof-stats-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .prof-stats-grid-4 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Mobile (< 768px) */
 @media (max-width: 768px) {
-  /* Dashboard : marges réduites */
+  /* Dashboard */
   .prof-dashboard {
     padding: var(--spacing-md);
   }
 
-  /* En-tête : empilé verticalement */
-  .prof-header {
+  .prof-dashboard-titre {
+    font-size: var(--text-2xl);
+  }
+
+  /* Overview cards */
+  .prof-overview-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Navigation */
+  .prof-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Groupe grid */
+  .groupe-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Stats grids */
+  .groupe-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Form rows */
+  .prof-form-row {
     flex-direction: column;
-    align-items: stretch;
   }
 
-  /* Titre plus petit */
-  .prof-title {
-    font-size: var(--text-xl);
+  /* Détail header */
+  .groupe-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
   }
 
-  /* Onglets : scroll horizontal, plus compacts */
-  .prof-tabs {
-    gap: 2px;
-    padding-bottom: 4px;
+  /* Onglets */
+  .groupe-detail-onglets {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
-  .prof-tab {
-    padding: var(--spacing-xs) var(--spacing-sm);
+
+  /* Tableau élèves */
+  .groupe-eleves-table {
     font-size: var(--text-xs);
   }
-  /* Cacher le texte des onglets, garder icônes */
-  .prof-tab span {
-    display: none;
+
+  .groupe-eleves-table th,
+  .groupe-eleves-table td {
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
 
-  /* Cartes stats : 1 colonne */
-  .prof-stats-grid,
-  .prof-stats-grid-4 {
+  /* Détail élève */
+  .groupe-eleve-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  /* Carte stat : plus compacte */
-  .prof-stat-card {
-    padding: var(--spacing-md);
-  }
-
-  /* Graphiques : hauteur réduite */
-  .prof-chart-card {
-    padding: var(--spacing-md);
-  }
-
-  /* Filtres : empilés */
-  .prof-filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .prof-search-box {
-    min-width: unset;
-  }
-  .prof-select {
-    min-width: unset;
-    width: 100%;
-  }
-
-  /* Grille disciplines : 1 colonne */
-  .prof-disc-grid,
-  .prof-quiz-grid {
+  /* Classement */
+  .groupe-apercu-classement {
     grid-template-columns: 1fr;
   }
 
-  /* Détail élève : avatar plus petit */
-  .prof-detail-avatar {
-    width: 48px;
-    height: 48px;
-    font-size: var(--text-xl);
-  }
-  .prof-detail-info h2 {
-    font-size: var(--text-xl);
+  /* Quiz stats */
+  .groupe-quiz-stats-grid {
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
   }
 
-  /* Alerte card : tout empilé */
-  .prof-alerte-card {
-    gap: var(--spacing-sm);
-  }
-  .prof-alerte-stats {
+  .groupe-quiz-selector {
     flex-direction: column;
-    gap: var(--spacing-sm);
+    align-items: flex-start;
+  }
+
+  /* Overview groupes grid */
+  .prof-overview-groupes-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-/* Très petit mobile (< 480px) */
 @media (max-width: 480px) {
-  /* Dashboard : marges minimales */
-  .prof-dashboard {
-    padding: var(--spacing-sm);
+  .prof-overview-cards {
+    grid-template-columns: 1fr;
   }
 
-  /* Valeur stat plus petite */
-  .prof-stat-value {
-    font-size: var(--text-xl);
+  .groupe-stats-grid {
+    grid-template-columns: 1fr;
   }
 
-  /* Carte stat icône plus petite */
-  .prof-stat-icon {
-    width: 40px;
-    height: 40px;
+  .groupe-card-infos {
+    flex-wrap: wrap;
+    gap: var(--spacing-xs);
   }
 
-  /* Tableau : font plus petit */
-  .prof-table {
-    font-size: var(--text-xs);
-  }
-  .prof-table thead th,
-  .prof-table tbody td {
-    padding: 6px 8px;
+  .groupe-card-actions {
+    flex-direction: column;
   }
 }

@@ -104,7 +104,7 @@ const QuizPlayer: React.FC = () => {
         try {
           const disciplines = await DisciplineService.getAll();
           const disc = disciplines.find((d: any) => d.id === quizData.disciplineId);
-          setDisciplineNom(disc?.nom || disc?.name || quizData.disciplineId);
+          setDisciplineNom(disc?.nom || quizData.disciplineId);
         } catch {
           setDisciplineNom(quizData.disciplineId);
         }
