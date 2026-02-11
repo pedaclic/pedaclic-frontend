@@ -27,6 +27,7 @@ import StudentSuivi from './components/student/StudentSuivi';
 import ProfDashboard from './components/prof/ProfDashboard';
 import ParentDashboard from './components/parent/ParentDashboard';
 import QuizEditorPage from './pages/QuizEditorPage';
+import QuizAdvancedList from './pages/QuizAdvancedList';
 import QuizPlayerPage from './pages/QuizPlayerPage';
 const App: React.FC = () => {
   return (
@@ -50,6 +51,7 @@ const App: React.FC = () => {
         <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/quiz/nouveau" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
         <Route path="/admin/quiz/modifier/:quizId" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz-avance" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizAdvancedList /></AdminLayout></AdminRoute>} />
         <Route path="/quiz-avance/:quizId" element={<Layout><QuizPlayerPage /></Layout>} />
         <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><UserManager /></AdminLayout></AdminRoute>} />
 	<Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
