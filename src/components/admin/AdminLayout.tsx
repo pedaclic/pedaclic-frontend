@@ -47,6 +47,7 @@ const navigationSections: NavSection[] = [
     title: 'Évaluation',
     items: [
       { id: 'quiz', label: 'Quiz', icon: '🧩', href: '/admin/quiz' },
+            { id: 'quiz', label: 'Quiz Avancés', icon: '📝', href: '/admin/quiz-avance' },
       { id: 'resultats', label: 'Résultats', icon: '📈', href: '/admin/resultats' },
     ]
   },
