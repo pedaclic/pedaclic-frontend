@@ -1325,3 +1325,30 @@
     flex-direction: column;
   }
 }
+/**
+ * ============================================================
+ * PedaClic — CSS additionnel GroupeManager (modification)
+ * ============================================================
+ * AJOUTER à la fin de src/styles/prof.css
+ * ============================================================
+ */
+
+/* <!-- Carte de groupe en cours d'édition --> */
+.groupe-card-editing {
+  border: 2px solid #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+/* <!-- Alerte de succès (verte) --> */
+.prof-alert-success {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
