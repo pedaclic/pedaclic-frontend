@@ -397,3 +397,126 @@ export interface OperationResult<T = void> {
   data?: T;
   error?: string;
 }
+/**
+ * ============================================================
+ * PedaClic — Phase 14 : Types Progression & Badges
+ * ============================================================
+ * INSTRUCTIONS : Copiez ce bloc À LA FIN de src/types/index.ts
+ *                Ne supprimez rien de l'existant.
+ * ============================================================
+ */
+
+/* ──────────────────────────────────────────────
+   Progression d'un élève par discipline
+   Stockée dans la collection Firestore "progressions"
+   Document ID = `${userId}_${disciplineId}`
+   ────────────────────────────────────────────── */
+export interface Progression {
+  /** UID de l'élève (lié à users/{uid}) */
+  userId: string;
+
+  /** ID de la discipline (lié à disciplines/{id}) */
+  disciplineId: string;
+
+  /** Nom de la discipline (dénormalisé pour l'affichage) */
+  disciplineNom: string;
+
+  /** IDs des ressources consultées par l'élève dans cette discipline */
+  ressourcesVues: string[];
+
+  /** IDs des quiz réussis (score ≥ seuil) dans cette discipline */
+  quizReussis: string[];
+
+  /** Nombre total de ressources dans la discipline (snapshot) */
+  totalRessources: number;
+
+  /** Nombre total de quiz dans la discipline (snapshot) */
+  totalQuiz: number;
+
+  /** Pourcentage d'avancement calculé (0–100) */
+  pourcentage: number;
+
+  /** Horodatage du dernier accès à cette discipline */
+  dernierAcces: any; // Timestamp Firestore
+
+  /** Date de création de la progression */
+  createdAt: any;    // Timestamp Firestore
+
+  /** Date de dernière mise à jour */
+  updatedAt: any;    // Timestamp Firestore
+}
+
+/* ──────────────────────────────────────────────
+   Badge de récompense
+   Stocké dans la sous-collection "users/{uid}/badges/{badgeId}"
+   ────────────────────────────────────────────── */
+export interface BadgeDefinition {
+  /** Identifiant unique du badge (ex: "premier_pas") */
+  id: string;
+
+  /** Nom affiché (ex: "Premier pas") */
+  nom: string;
+
+  /** Description courte */
+  description: string;
+
+  /** Emoji ou icône (ex: "🌱") */
+  icone: string;
+
+  /** Texte de la condition à remplir */
+  condition: string;
+
+  /** Catégorie : ressources, quiz, discipline, streak */
+  categorie: 'ressources' | 'quiz' | 'discipline' | 'streak' | 'performance';
+
+  /** Le badge a-t-il été obtenu ? (calculé côté client) */
+  obtenu: boolean;
+
+  /** Date d'obtention (ISO string ou null) */
+  dateObtenue?: string | null;
+}
+
+/* ──────────────────────────────────────────────
+   Streak de connexion (série de jours consécutifs)
+   Stocké dans "users/{uid}" comme champs additionnels
+   ────────────────────────────────────────────── */
+export interface StreakData {
+  /** Nombre actuel de jours consécutifs de connexion */
+  streakActuel: number;
+
+  /** Meilleure série de connexion jamais atteinte */
+  meilleurStreak: number;
+
+  /** Date du dernier accès (format ISO YYYY-MM-DD) */
+  dernierJourAcces: string;
+}
+
+/* ──────────────────────────────────────────────
+   Résumé global de progression (agrégation)
+   Utilisé dans le Dashboard élève
+   ────────────────────────────────────────────── */
+export interface ProgressionGlobale {
+  /** Nombre total de ressources consultées (toutes disciplines) */
+  totalRessourcesVues: number;
+
+  /** Nombre total de quiz réussis (toutes disciplines) */
+  totalQuizReussis: number;
+
+  /** Pourcentage moyen d'avancement (toutes disciplines) */
+  pourcentageMoyen: number;
+
+  /** Nombre de disciplines commencées */
+  disciplinesCommencees: number;
+
+  /** Nombre de disciplines complétées à 100% */
+  disciplinesCompletees: number;
+
+  /** Streak de connexion actuel */
+  streakActuel: number;
+
+  /** Meilleur streak de connexion */
+  meilleurStreak: number;
+
+  /** Liste des progressions par discipline */
+  parDiscipline: Progression[];
+}
