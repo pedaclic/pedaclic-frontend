@@ -5,11 +5,20 @@
  * Tableau de bord principal de l'interface d'administration
  * Affiche les statistiques et l'accès rapide aux fonctionnalités
  * 
+ * ✅ Correctifs :
+ *   - Compteur Quiz : interroge les collections quizzes + quizzes_v2
+ *   - Stat cards : rendues cliquables (liens vers les pages admin)
+ *   - Répartition par type : cartes cliquables
+ *   - Actions rapides : ajout Quiz et Quiz Avancés
+ * 
  * @author PedaClic Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../../firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService } from '../../services/chapitreService';
@@ -23,6 +32,8 @@ interface DashboardStats {
   totalRessources: number;
   ressourcesPremium: number;
   ressourcesGratuites: number;
+  totalQuiz: number;         // Quiz classiques (collection quizzes)
+  totalQuizAvances: number;  // Quiz avancés (collection quizzes_v2)
   ressourcesParType: {
     cours: number;
     exercice: number;
@@ -38,12 +49,15 @@ const AdminDashboard: React.FC = () => {
   // ==================== ÉTAT ====================
   
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats>({
     totalDisciplines: 0,
     totalChapitres: 0,
     totalRessources: 0,
     ressourcesPremium: 0,
     ressourcesGratuites: 0,
+    totalQuiz: 0,
+    totalQuizAvances: 0,
     ressourcesParType: {
       cours: 0,
       exercice: 0,
@@ -63,11 +77,14 @@ const AdminDashboard: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        // Chargement parallèle des données
-        const [disciplines, chapitres, resourceStats] = await Promise.all([
+        // Chargement parallèle : disciplines, chapitres, ressources,
+        // + comptage des quiz depuis leurs collections Firestore dédiées
+        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap] = await Promise.all([
           DisciplineService.getAll(),
           ChapitreService.getAll(),
-          ResourceService.getStats()
+          ResourceService.getStats(),
+          getDocs(collection(db, 'quizzes')),
+          getDocs(collection(db, 'quizzes_v2'))
         ]);
 
         setStats({
@@ -76,6 +93,8 @@ const AdminDashboard: React.FC = () => {
           totalRessources: resourceStats.total,
           ressourcesPremium: resourceStats.premium,
           ressourcesGratuites: resourceStats.gratuit,
+          totalQuiz: quizzesSnap.size,
+          totalQuizAvances: quizzesV2Snap.size,
           ressourcesParType: resourceStats.parType
         });
       } catch (err) {
@@ -124,10 +143,17 @@ const AdminDashboard: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Grille des statistiques principales */}
+          {/* ====== Grille des statistiques principales ====== */}
+          {/* Toutes les cartes sont cliquables et redirigent vers la page admin correspondante */}
           <section className="stats-grid">
-            {/* Carte: Total Disciplines */}
-            <div className="stat-card">
+            {/* Carte: Total Disciplines → /admin/disciplines */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/disciplines')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/disciplines')}
+            >
               <div className="stat-card__icon stat-card__icon--primary">
                 📚
               </div>
@@ -137,8 +163,14 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Carte: Total Chapitres */}
-            <div className="stat-card">
+            {/* Carte: Total Chapitres → /admin/chapitres */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/chapitres')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/chapitres')}
+            >
               <div className="stat-card__icon stat-card__icon--secondary">
                 📖
               </div>
@@ -148,8 +180,14 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Carte: Total Ressources */}
-            <div className="stat-card">
+            {/* Carte: Total Ressources → /admin/ressources */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/ressources')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/ressources')}
+            >
               <div className="stat-card__icon stat-card__icon--info">
                 📝
               </div>
@@ -159,8 +197,14 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Carte: Ressources Premium */}
-            <div className="stat-card">
+            {/* Carte: Ressources Premium → /admin/ressources */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/ressources')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/ressources')}
+            >
               <div className="stat-card__icon stat-card__icon--warning">
                 ⭐
               </div>
@@ -169,9 +213,44 @@ const AdminDashboard: React.FC = () => {
                 <div className="stat-card__label">Ressources Premium</div>
               </div>
             </div>
+
+            {/* Carte: Quiz classiques → /admin/quiz */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/quiz')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/quiz')}
+            >
+              <div className="stat-card__icon stat-card__icon--quiz">
+                🧩
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.totalQuiz}</div>
+                <div className="stat-card__label">Quiz</div>
+              </div>
+            </div>
+
+            {/* Carte: Quiz Avancés → /admin/quiz-avance */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/quiz-avance')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/quiz-avance')}
+            >
+              <div className="stat-card__icon stat-card__icon--advanced">
+                🧠
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.totalQuizAvances}</div>
+                <div className="stat-card__label">Quiz Avancés</div>
+              </div>
+            </div>
           </section>
 
-          {/* Section: Répartition par type */}
+          {/* ====== Section: Répartition par type ====== */}
+          {/* Chaque carte de type redirige vers /admin/ressources */}
           <section className="content-card">
             <div className="content-card__header">
               <h2>Répartition des ressources par type</h2>
@@ -179,7 +258,12 @@ const AdminDashboard: React.FC = () => {
             <div className="content-card__body">
               <div className="resource-type-grid">
                 {/* Cours */}
-                <div className="resource-type-item">
+                <div
+                  className="resource-type-item resource-type-item--clickable"
+                  onClick={() => navigate('/admin/ressources')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="resource-item__icon resource-item__icon--cours">
                     📘
                   </div>
@@ -192,7 +276,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Exercices */}
-                <div className="resource-type-item">
+                <div
+                  className="resource-type-item resource-type-item--clickable"
+                  onClick={() => navigate('/admin/ressources')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="resource-item__icon resource-item__icon--exercice">
                     ✏️
                   </div>
@@ -205,7 +294,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Vidéos */}
-                <div className="resource-type-item">
+                <div
+                  className="resource-type-item resource-type-item--clickable"
+                  onClick={() => navigate('/admin/ressources')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="resource-item__icon resource-item__icon--video">
                     🎬
                   </div>
@@ -218,7 +312,12 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Documents */}
-                <div className="resource-type-item">
+                <div
+                  className="resource-type-item resource-type-item--clickable"
+                  onClick={() => navigate('/admin/ressources')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="resource-item__icon resource-item__icon--document">
                     📄
                   </div>
@@ -230,30 +329,35 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Quiz */}
-                <div className="resource-type-item">
+                {/* Quiz (depuis la collection ressources) */}
+                <div
+                  className="resource-type-item resource-type-item--clickable"
+                  onClick={() => navigate('/admin/quiz')}
+                  role="button"
+                  tabIndex={0}
+                >
                   <div className="resource-item__icon resource-item__icon--quiz">
                     🧩
                   </div>
                   <div className="resource-type-info">
                     <span className="resource-type-value">
-                      {stats.ressourcesParType.quiz}
+                      {stats.totalQuiz + stats.totalQuizAvances}
                     </span>
-                    <span className="resource-type-label">Quiz</span>
+                    <span className="resource-type-label">Quiz (tous)</span>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          {/* Section: Actions rapides */}
+          {/* ====== Section: Actions rapides ====== */}
           <section className="content-card" style={{ marginTop: 'var(--spacing-xl)' }}>
             <div className="content-card__header">
               <h2>Actions rapides</h2>
             </div>
             <div className="content-card__body">
               <div className="quick-actions-grid">
-                {/* Ajouter une discipline */}
+                {/* Gérer les disciplines */}
                 <a href="/admin/disciplines" className="quick-action-card">
                   <div className="quick-action-icon">📚</div>
                   <div className="quick-action-content">
@@ -262,7 +366,7 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </a>
 
-                {/* Ajouter un chapitre */}
+                {/* Gérer les chapitres */}
                 <a href="/admin/chapitres" className="quick-action-card">
                   <div className="quick-action-icon">📖</div>
                   <div className="quick-action-content">
@@ -271,12 +375,30 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </a>
 
-                {/* Ajouter une ressource */}
+                {/* Gérer les ressources */}
                 <a href="/admin/ressources" className="quick-action-card">
                   <div className="quick-action-icon">📝</div>
                   <div className="quick-action-content">
                     <h3>Gérer les ressources</h3>
                     <p>Cours, exercices, vidéos et documents</p>
+                  </div>
+                </a>
+
+                {/* Gérer les quiz */}
+                <a href="/admin/quiz" className="quick-action-card">
+                  <div className="quick-action-icon">🧩</div>
+                  <div className="quick-action-content">
+                    <h3>Gérer les quiz</h3>
+                    <p>Créer et modifier des quiz pour les élèves</p>
+                  </div>
+                </a>
+
+                {/* Gérer les quiz avancés */}
+                <a href="/admin/quiz-avance" className="quick-action-card">
+                  <div className="quick-action-icon">🧠</div>
+                  <div className="quick-action-content">
+                    <h3>Quiz avancés</h3>
+                    <p>Quiz interactifs avec niveaux de difficulté</p>
                   </div>
                 </a>
 
@@ -296,7 +418,33 @@ const AdminDashboard: React.FC = () => {
 
       {/* Styles spécifiques au dashboard */}
       <style>{`
-        /* Grille des types de ressources */
+        /* ====== Stat cards cliquables ====== */
+        /* Curseur pointer + effet hover sur les cartes de statistiques */
+        .stat-card--clickable {
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .stat-card--clickable:hover {
+          transform: translateY(-3px);
+          box-shadow: var(--shadow-lg, 0 8px 24px rgba(0,0,0,0.12));
+          border-color: var(--color-primary, #3182ce);
+        }
+        .stat-card--clickable:active {
+          transform: translateY(-1px);
+        }
+
+        /* Icône quiz (violet) */
+        .stat-card__icon--quiz {
+          background: #f3e8ff;
+          color: #7c3aed;
+        }
+        /* Icône quiz avancé (rose) */
+        .stat-card__icon--advanced {
+          background: #fce7f3;
+          color: #db2777;
+        }
+
+        /* ====== Grille des types de ressources ====== */
         .resource-type-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -310,6 +458,18 @@ const AdminDashboard: React.FC = () => {
           padding: var(--spacing-md);
           background: var(--color-bg-secondary);
           border-radius: var(--radius-lg);
+        }
+
+        /* Cartes de répartition cliquables */
+        .resource-type-item--clickable {
+          cursor: pointer;
+          transition: all 0.2s ease;
+          border: 1px solid transparent;
+        }
+        .resource-type-item--clickable:hover {
+          border-color: var(--color-primary, #3182ce);
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+          transform: translateY(-2px);
         }
 
         .resource-type-info {
@@ -328,7 +488,7 @@ const AdminDashboard: React.FC = () => {
           color: var(--color-text-light);
         }
 
-        /* Actions rapides */
+        /* ====== Actions rapides ====== */
         .quick-actions-grid {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
