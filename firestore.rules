@@ -131,11 +131,10 @@ service cloud.firestore {
     
     // ==================== COLLECTION: ressources ====================
     
-    match /ressources/{ressourceId} {
-      // Lecture: 
-      // - Ressources gratuites: tout le monde
-      // - Ressources premium: uniquement utilisateurs premium
-      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+       match /ressources/{ressourceId} {
+      // Lecture: tout utilisateur authentifié peut lire
+      // (le filtrage Premium se fait côté UI dans ResourceView.tsx)
+      allow read: if isSignedIn();
       
       // Création: admin et professeurs
       allow create: if isAdmin() || isProf();
@@ -357,7 +356,27 @@ service cloud.firestore {
       // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
+      // ==================== COLLECTION: progressions (Phase 14) ====================
     
+    match /progressions/{progressionId} {
+      // Lecture: l'élève voit ses propres progressions, admin/prof peuvent tout voir
+      allow read: if isSignedIn() && (
+                       resource.data.userId == request.auth.uid ||
+                       isAdmin() || isProf() || isParent()
+                     );
+      
+      // Création: l'élève crée sa propre progression
+      allow create: if isSignedIn() && 
+                       request.resource.data.userId == request.auth.uid;
+      
+      // Mise à jour: l'élève met à jour sa propre progression
+      allow update: if isSignedIn() && 
+                       resource.data.userId == request.auth.uid;
+      
+      // Suppression: uniquement admin
+      allow delete: if isAdmin();
+    }    
+
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {
