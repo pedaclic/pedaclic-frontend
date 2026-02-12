@@ -6,6 +6,10 @@
  * Ce fichier est le point d'entrée unique pour les types.
  * 
  * ⚠️ CORRIGÉ : Suppression des doublons Chapitre/ChapitreFormData
+ * ✅ PHASE 13 : Ajout de Formation libre (formation_libre)
+ *    - Nouveau niveau : 'formation_libre'
+ *    - Nouvelles classes : 'debutant', 'intermediaire', 'avance'
+ *    - Constantes et utilitaires pour le mapping niveau → classes
  * ============================================================
  */
 
@@ -54,23 +58,88 @@ export interface LoginFormData {
 
 /**
  * Niveaux scolaires dans le système éducatif sénégalais
+ * ✅ Phase 13 : ajout de 'formation_libre'
  */
-export type Niveau = 'college' | 'lycee';
+export type Niveau = 'college' | 'lycee' | 'formation_libre';
 
 /**
  * Classes disponibles par niveau
+ * ✅ Phase 13 : ajout des niveaux de formation libre
  */
 export type Classe = 
   | '6eme' | '5eme' | '4eme' | '3eme'           // Collège
-  | '2nde' | '1ere' | 'Terminale';              // Lycée
+  | '2nde' | '1ere' | 'Terminale'                // Lycée
+  | 'debutant' | 'intermediaire' | 'avance';     // Formation libre
+
+// ==================== CONSTANTES PHASE 13 ====================
+
+/**
+ * Labels lisibles des classes par niveau
+ * Utilisés dans les formulaires et l'affichage
+ */
+export const CLASSES_COLLEGE: { value: Classe; label: string }[] = [
+  { value: '6eme', label: '6ème' },
+  { value: '5eme', label: '5ème' },
+  { value: '4eme', label: '4ème' },
+  { value: '3eme', label: '3ème' },
+];
+
+export const CLASSES_LYCEE: { value: Classe; label: string }[] = [
+  { value: '2nde', label: '2nde' },
+  { value: '1ere', label: '1ère' },
+  { value: 'Terminale', label: 'Terminale' },
+];
+
+export const CLASSES_FORMATION_LIBRE: { value: Classe; label: string }[] = [
+  { value: 'debutant', label: 'Débutant' },
+  { value: 'intermediaire', label: 'Intermédiaire' },
+  { value: 'avance', label: 'Avancé' },
+];
+
+/**
+ * Labels des niveaux pour l'affichage UI
+ */
+export const NIVEAUX_LABELS: Record<Niveau, string> = {
+  college: 'Collège',
+  lycee: 'Lycée',
+  formation_libre: 'Formation libre',
+};
+
+/**
+ * Retourne les classes disponibles selon le niveau sélectionné
+ * Utilisé dans DisciplineManager pour adapter le formulaire
+ */
+export function getClassesByNiveau(niveau: Niveau): { value: Classe; label: string }[] {
+  switch (niveau) {
+    case 'college':
+      return CLASSES_COLLEGE;
+    case 'lycee':
+      return CLASSES_LYCEE;
+    case 'formation_libre':
+      return CLASSES_FORMATION_LIBRE;
+    default:
+      return [];
+  }
+}
+
+/**
+ * Retourne le label lisible d'une classe
+ */
+export function getClasseLabel(classe: Classe): string {
+  const all = [...CLASSES_COLLEGE, ...CLASSES_LYCEE, ...CLASSES_FORMATION_LIBRE];
+  return all.find((c) => c.value === classe)?.label || classe;
+}
+
+// ==================== INTERFACES DISCIPLINES ====================
 
 /**
  * Interface pour une discipline (matière)
+ * ✅ Phase 13 : le coefficient est optionnel (déjà le cas)
  */
 export interface Discipline {
   id: string;                     // ID unique Firestore
   nom: string;                    // Nom de la discipline (ex: "Français")
-  niveau: Niveau;                 // Niveau (collège ou lycée)
+  niveau: Niveau;                 // Niveau (collège, lycée ou formation_libre)
   classe: Classe;                 // Classe spécifique
   ordre: number;                  // Ordre d'affichage
   coefficient?: number;           // Coefficient pour les examens (optionnel)

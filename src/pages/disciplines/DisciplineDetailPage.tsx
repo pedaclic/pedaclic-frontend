@@ -1,200 +1,100 @@
-/**
- * ============================================================
- * DISCIPLINE DETAIL PAGE — PedaClic
- * ============================================================
- * 
- * Version alternative de la page détail discipline.
- * Située dans src/pages/disciplines/DisciplineDetailPage.tsx
- * 
- * Ce fichier réexporte la logique depuis ../DisciplineDetail
- * pour maintenir la compatibilité avec les imports existants.
- * Si d'autres composants ou routes importent depuis ce chemin,
- * ils obtiendront le même composant fonctionnel.
- * 
- * Fichier : src/pages/disciplines/DisciplineDetailPage.tsx
- * ============================================================
- */
+// ============================================================
+// src/pages/disciplines/DisciplineDetailPage.tsx — PedaClic (Phase 13)
+// Page de détail d'une discipline
+// Adapte les badges et l'affichage selon le niveau :
+// - Collège (bleu), Lycée (jaune), Formation libre (vert)
+// Compatible avec la structure Discipline existante (classe singulier)
+// ============================================================
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { DisciplineService } from '../../services/disciplineService';
-import { ResourceService } from '../../services/ResourceService';
-import type { Discipline, Resource } from '../../types';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
+import {
+  Discipline,
+  Niveau,
+  getClasseLabel,
+  NIVEAUX_LABELS,
+} from '../../types';
 
-/* ==================== INTERFACES LOCALES ==================== */
-
-/** Chapitre avec ses ressources regroupées */
-interface ChapitreAvecRessources {
-  chapitreNom: string;
-  ressources: Resource[];
-}
-
-
-/* ==================== COMPOSANT PRINCIPAL ==================== */
+// --- Configuration des couleurs par niveau ---
+const NIVEAU_STYLES: Record<
+  Niveau,
+  { color: string; bg: string; icon: string; border: string }
+> = {
+  college: {
+    color: '#2b6cb0',
+    bg: '#ebf8ff',
+    icon: '🏫',
+    border: '#90cdf4',
+  },
+  lycee: {
+    color: '#975a16',
+    bg: '#fefcbf',
+    icon: '🎓',
+    border: '#f6e05e',
+  },
+  formation_libre: {
+    color: '#276749',
+    bg: '#f0fff4',
+    icon: '🌍',
+    border: '#9ae6b4',
+  },
+};
 
 const DisciplineDetailPage: React.FC = () => {
-
-  /* ===== Hooks de navigation ===== */
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  /* ===== États ===== */
   const [discipline, setDiscipline] = useState<Discipline | null>(null);
-  const [chapitresMap, setChapitresMap] = useState<ChapitreAvecRessources[]>([]);
-  const [ressourcesSansChapitre, setRessourcesSansChapitre] = useState<Resource[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filtreType, setFiltreType] = useState<string>('tous');
-  const [chapitresOuverts, setChapitresOuverts] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
 
-
-  /* ==================== CHARGEMENT DES DONNÉES ==================== */
-
-  const chargerDonnees = useCallback(async () => {
+  // --- Écoute temps réel du document Firestore ---
+  useEffect(() => {
     if (!id) return;
 
-    try {
-      setLoading(true);
-      setError(null);
-
-      /* --- 1. Charger la discipline --- */
-      const disc = await DisciplineService.getById(id);
-      if (!disc) {
-        setError('Discipline introuvable.');
-        setLoading(false);
-        return;
+    const unsubscribe = onSnapshot(doc(db, 'disciplines', id), (snapshot) => {
+      if (snapshot.exists()) {
+        setDiscipline({
+          id: snapshot.id,
+          ...snapshot.data(),
+          createdAt: snapshot.data().createdAt?.toDate() || new Date(),
+          updatedAt: snapshot.data().updatedAt?.toDate() || new Date(),
+        } as Discipline);
+      } else {
+        setDiscipline(null);
       }
-      setDiscipline(disc);
-
-      /* --- 2. Charger les ressources --- */
-      const ressources = await ResourceService.getAll({ disciplineId: id });
-
-      /* --- 3. Regrouper par chapitre --- */
-      const groupeParChapitre = new Map<string, Resource[]>();
-      const sansChap: Resource[] = [];
-
-      for (const res of ressources) {
-        const chapNom = res.chapitre || res.chapitreId;
-        if (chapNom) {
-          if (!groupeParChapitre.has(chapNom)) {
-            groupeParChapitre.set(chapNom, []);
-          }
-          groupeParChapitre.get(chapNom)!.push(res);
-        } else {
-          sansChap.push(res);
-        }
-      }
-
-      /* --- 4. Convertir en tableau trié --- */
-      const chapitresArr: ChapitreAvecRessources[] = Array.from(groupeParChapitre.entries())
-        .map(([nom, ress]) => ({
-          chapitreNom: nom,
-          ressources: ress.sort((a, b) => a.ordre - b.ordre)
-        }))
-        .sort((a, b) => a.chapitreNom.localeCompare(b.chapitreNom, 'fr'));
-
-      setChapitresMap(chapitresArr);
-      setRessourcesSansChapitre(sansChap);
-
-      if (chapitresArr.length > 0) {
-        setChapitresOuverts(new Set([chapitresArr[0].chapitreNom]));
-      }
-
-    } catch (err) {
-      console.error('Erreur chargement discipline:', err);
-      setError('Impossible de charger les données. Réessayez plus tard.');
-    } finally {
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribe();
   }, [id]);
 
-  useEffect(() => {
-    chargerDonnees();
-  }, [chargerDonnees]);
-
-
-  /* ==================== HANDLERS ==================== */
-
-  const toggleChapitre = (chapNom: string) => {
-    setChapitresOuverts(prev => {
-      const next = new Set(prev);
-      if (next.has(chapNom)) {
-        next.delete(chapNom);
-      } else {
-        next.add(chapNom);
-      }
-      return next;
-    });
-  };
-
-  const filtrerRessources = (ressources: Resource[]): Resource[] => {
-    if (filtreType === 'tous') return ressources;
-    return ressources.filter(r => r.type === filtreType);
-  };
-
-
-  /* ==================== HELPERS ==================== */
-
-  const getTypeIcon = (type: string): string => {
-    const icons: Record<string, string> = {
-      cours: '📖', exercice: '✏️', video: '🎬', document: '📄', quiz: '❓'
-    };
-    return icons[type] || '📌';
-  };
-
-  const getTypeLabel = (type: string): string => {
-    const labels: Record<string, string> = {
-      cours: 'Cours', exercice: 'Exercice', video: 'Vidéo', document: 'Document', quiz: 'Quiz'
-    };
-    return labels[type] || type;
-  };
-
-  const getTypeBadgeColor = (type: string): string => {
-    const colors: Record<string, string> = {
-      cours: '#3b82f6', exercice: '#10b981', video: '#f59e0b', document: '#8b5cf6', quiz: '#ef4444'
-    };
-    return colors[type] || '#6b7280';
-  };
-
-
-  /* ==================== RENDU : LOADING ==================== */
-
+  // --- Chargement ---
   if (loading) {
     return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '4rem 1rem', minHeight: '50vh'
-      }}>
-        <div style={{
-          width: '48px', height: '48px', border: '4px solid #e5e7eb',
-          borderTopColor: '#2563eb', borderRadius: '50%',
-          animation: 'spin 0.8s linear infinite'
-        }} />
-        <p style={{ marginTop: '1rem', color: '#6b7280' }}>Chargement...</p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div style={{ textAlign: 'center', padding: '64px', color: '#a0aec0' }}>
+        Chargement de la discipline...
       </div>
     );
   }
 
-
-  /* ==================== RENDU : ERREUR ==================== */
-
-  if (error || !discipline) {
+  // --- Discipline non trouvée ---
+  if (!discipline) {
     return (
-      <div style={{
-        maxWidth: '600px', margin: '3rem auto', padding: '2rem',
-        textAlign: 'center', background: '#fef2f2', borderRadius: '12px',
-        border: '1px solid #fecaca'
-      }}>
-        <span style={{ fontSize: '3rem' }}>😕</span>
-        <h2 style={{ color: '#991b1b', margin: '1rem 0 0.5rem' }}>
-          {error || 'Discipline introuvable'}
-        </h2>
+      <div style={{ textAlign: 'center', padding: '64px' }}>
+        <p style={{ fontSize: '2rem', marginBottom: '12px' }}>😕</p>
+        <p style={{ color: '#718096', marginBottom: '20px' }}>Discipline introuvable.</p>
         <button
           onClick={() => navigate('/disciplines')}
           style={{
-            padding: '0.75rem 1.5rem', background: '#2563eb', color: '#fff',
-            border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
+            padding: '10px 24px',
+            background: '#3182ce',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: 600,
           }}
         >
           ← Retour aux disciplines
@@ -203,240 +103,200 @@ const DisciplineDetailPage: React.FC = () => {
     );
   }
 
-
-  /* ==================== RENDU PRINCIPAL ==================== */
-
-  const toutesLesRessources = [
-    ...chapitresMap.flatMap(c => c.ressources),
-    ...ressourcesSansChapitre
-  ];
-  const typesDisponibles = [...new Set(toutesLesRessources.map(r => r.type))];
+  // --- Style du niveau actuel ---
+  const niveauStyle = NIVEAU_STYLES[discipline.niveau];
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px' }}>
+      {/* ====== Bouton retour ====== */}
+      <button
+        onClick={() => navigate('/disciplines')}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '8px 16px',
+          background: 'transparent',
+          color: '#3182ce',
+          border: '1px solid #3182ce',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontSize: '0.9rem',
+          fontWeight: 500,
+          marginBottom: '24px',
+        }}
+      >
+        ← Retour aux disciplines
+      </button>
 
-      {/* ===== BREADCRUMB ===== */}
-      <nav style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
-        <Link to="/" style={{ color: '#2563eb', textDecoration: 'none' }}>Accueil</Link>
-        <span style={{ margin: '0 0.5rem' }}>/</span>
-        <Link to="/disciplines" style={{ color: '#2563eb', textDecoration: 'none' }}>Disciplines</Link>
-        <span style={{ margin: '0 0.5rem' }}>/</span>
-        <span style={{ color: '#374151' }}>{discipline.nom}</span>
-      </nav>
+      {/* ====== Card principale ====== */}
+      <div
+        style={{
+          background: '#fff',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+          border: '1px solid #e2e8f0',
+        }}
+      >
+        {/* --- Bandeau coloré en haut --- */}
+        {/* Utilise la couleur custom de la discipline ou la couleur du niveau */}
+        <div
+          style={{
+            background: `linear-gradient(135deg, ${discipline.couleur || niveauStyle.color}, ${discipline.couleur || niveauStyle.color}cc)`,
+            padding: '32px 28px',
+            color: '#fff',
+          }}
+        >
+          {/* Icône + Nom */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '2.5rem' }}>{discipline.icone || '📘'}</span>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>
+              {discipline.nom}
+            </h1>
+          </div>
 
-      {/* ===== EN-TÊTE ===== */}
-      <header style={{
-        background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)',
-        borderRadius: '16px', padding: '2rem', color: '#fff', marginBottom: '2rem'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
-          <span style={{ fontSize: '2.5rem' }}>{discipline.icone || '📚'}</span>
-          <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>{discipline.nom}</h1>
-            {discipline.description && (
-              <p style={{ margin: '0.25rem 0 0', opacity: 0.9 }}>{discipline.description}</p>
-            )}
+          {/* Badges : niveau + classe */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* Badge niveau */}
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                background: 'rgba(255,255,255,0.2)',
+                color: '#fff',
+                fontSize: '0.9rem',
+                fontWeight: 600,
+              }}
+            >
+              {niveauStyle.icon} {NIVEAUX_LABELS[discipline.niveau]}
+            </span>
+            {/* Badge classe */}
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                background: 'rgba(255,255,255,0.15)',
+                color: '#fff',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+              }}
+            >
+              {getClasseLabel(discipline.classe)}
+            </span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
-          <span style={{
-            background: 'rgba(255,255,255,0.2)', padding: '0.35rem 0.75rem',
-            borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600
-          }}>
-            🎓 {discipline.niveau === 'college' ? 'Collège' : 'Lycée'} — {discipline.classe}
-          </span>
-          <span style={{
-            background: 'rgba(255,255,255,0.2)', padding: '0.35rem 0.75rem',
-            borderRadius: '20px', fontSize: '0.8rem', fontWeight: 600
-          }}>
-            📦 {toutesLesRessources.length} ressource{toutesLesRessources.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      </header>
 
-      {/* ===== FILTRES ===== */}
-      {typesDisponibles.length > 1 && (
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-          <button
-            onClick={() => setFiltreType('tous')}
-            style={{
-              padding: '0.5rem 1rem', borderRadius: '20px',
-              border: filtreType === 'tous' ? '2px solid #2563eb' : '1px solid #d1d5db',
-              background: filtreType === 'tous' ? '#2563eb' : '#fff',
-              color: filtreType === 'tous' ? '#fff' : '#374151',
-              cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
-            }}
-          >
-            Tous ({toutesLesRessources.length})
-          </button>
-          {typesDisponibles.map(type => {
-            const count = toutesLesRessources.filter(r => r.type === type).length;
-            const isActive = filtreType === type;
-            return (
-              <button
-                key={type}
-                onClick={() => setFiltreType(type)}
+        {/* --- Corps de la card --- */}
+        <div style={{ padding: '28px' }}>
+          {/* Description */}
+          {discipline.description && (
+            <div style={{ marginBottom: '24px' }}>
+              <h3
                 style={{
-                  padding: '0.5rem 1rem', borderRadius: '20px',
-                  border: isActive ? `2px solid ${getTypeBadgeColor(type)}` : '1px solid #d1d5db',
-                  background: isActive ? getTypeBadgeColor(type) : '#fff',
-                  color: isActive ? '#fff' : '#374151',
-                  cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600
+                  fontSize: '0.9rem',
+                  fontWeight: 600,
+                  color: '#4a5568',
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
                 }}
               >
-                {getTypeIcon(type)} {getTypeLabel(type)} ({count})
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ===== CHAPITRES ===== */}
-      {chapitresMap.length === 0 && ressourcesSansChapitre.length === 0 ? (
-        <div style={{
-          textAlign: 'center', padding: '3rem 1rem', background: '#f9fafb',
-          borderRadius: '12px', border: '1px solid #e5e7eb'
-        }}>
-          <span style={{ fontSize: '3rem' }}>📭</span>
-          <h3 style={{ color: '#374151', margin: '1rem 0 0.5rem' }}>Aucune ressource disponible</h3>
-          <p style={{ color: '#6b7280' }}>Les cours seront bientôt ajoutés.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {chapitresMap.map((chapitre) => {
-            const ressourcesFiltrees = filtrerRessources(chapitre.ressources);
-            if (ressourcesFiltrees.length === 0 && filtreType !== 'tous') return null;
-            const isOuvert = chapitresOuverts.has(chapitre.chapitreNom);
-            const ressourcesAffichees = filtreType === 'tous' ? chapitre.ressources : ressourcesFiltrees;
-
-            return (
-              <div key={chapitre.chapitreNom} style={{
-                background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb',
-                overflow: 'hidden', boxShadow: isOuvert ? '0 4px 12px rgba(0,0,0,0.08)' : 'none'
-              }}>
-                {/* En-tête chapitre */}
-                <button
-                  onClick={() => toggleChapitre(chapitre.chapitreNom)}
-                  style={{
-                    width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', padding: '1rem 1.25rem',
-                    background: isOuvert ? '#f0f5ff' : '#fff', border: 'none',
-                    cursor: 'pointer', textAlign: 'left'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{
-                      fontSize: '1.25rem',
-                      transform: isOuvert ? 'rotate(90deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s'
-                    }}>▶</span>
-                    <div>
-                      <span style={{ fontWeight: 700, color: '#1f2937' }}>{chapitre.chapitreNom}</span>
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
-                        {chapitre.ressources.length} ressource{chapitre.ressources.length !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-
-                {/* Ressources du chapitre */}
-                {isOuvert && (
-                  <div style={{ padding: '0 1.25rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {ressourcesAffichees.map(res => (
-                      <div key={res.id} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px',
-                        border: '1px solid #f3f4f6'
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1 }}>
-                          <span style={{ fontSize: '1.2rem' }}>{getTypeIcon(res.type)}</span>
-                          <div>
-                            <span style={{ fontWeight: 600, color: '#1f2937', fontSize: '0.9rem' }}>{res.titre}</span>
-                            {res.description && (
-                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#9ca3af', marginTop: '2px' }}>
-                                {res.description}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                          <span style={{
-                            padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.7rem',
-                            fontWeight: 600, color: '#fff', background: getTypeBadgeColor(res.type)
-                          }}>
-                            {getTypeLabel(res.type)}
-                          </span>
-                          {res.isPremium && (
-                            <span style={{
-                              padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.7rem',
-                              fontWeight: 600, color: '#92400e', background: '#fef3c7', border: '1px solid #fde68a'
-                            }}>
-                              🔒 Premium
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Ressources sans chapitre */}
-          {filtrerRessources(ressourcesSansChapitre).length > 0 && (
-            <div style={{
-              background: '#fff', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '1rem 1.25rem'
-            }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#374151', marginBottom: '0.75rem' }}>
-                📌 Autres ressources
+                Description
               </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                {filtrerRessources(ressourcesSansChapitre).map(res => (
-                  <div key={res.id} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '0.75rem 1rem', background: '#f9fafb', borderRadius: '8px',
-                    border: '1px solid #f3f4f6'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span>{getTypeIcon(res.type)}</span>
-                      <span style={{ fontWeight: 600, color: '#1f2937', fontSize: '0.9rem' }}>{res.titre}</span>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <span style={{
-                        padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.7rem',
-                        fontWeight: 600, color: '#fff', background: getTypeBadgeColor(res.type)
-                      }}>
-                        {getTypeLabel(res.type)}
-                      </span>
-                      {res.isPremium && (
-                        <span style={{
-                          padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.7rem',
-                          fontWeight: 600, color: '#92400e', background: '#fef3c7'
-                        }}>
-                          🔒 Premium
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
+              <p style={{ fontSize: '1rem', color: '#4a5568', lineHeight: 1.7 }}>
+                {discipline.description}
+              </p>
+            </div>
+          )}
+
+          {/* --- Grille d'informations --- */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '20px',
+              marginBottom: '24px',
+            }}
+          >
+            {/* Classe / Niveau de formation */}
+            <div
+              style={{
+                background: '#f7fafc',
+                borderRadius: '12px',
+                padding: '20px',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <h4 style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '12px', fontWeight: 600 }}>
+                {discipline.niveau === 'formation_libre' ? '📊 Niveau' : '📋 Classe'}
+              </h4>
+              <span
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  background: niveauStyle.bg,
+                  color: niveauStyle.color,
+                  border: `1px solid ${niveauStyle.border}`,
+                }}
+              >
+                {getClasseLabel(discipline.classe)}
+              </span>
+            </div>
+
+            {/* Coefficient (affiché uniquement s'il existe) */}
+            {discipline.coefficient !== undefined && (
+              <div
+                style={{
+                  background: '#f7fafc',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <h4 style={{ fontSize: '0.85rem', color: '#718096', marginBottom: '12px', fontWeight: 600 }}>
+                  ⚖️ Coefficient
+                </h4>
+                <p style={{ fontSize: '1.8rem', fontWeight: 700, color: '#2d3748', margin: 0 }}>
+                  {discipline.coefficient}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* --- Message spécifique Formation libre --- */}
+          {discipline.niveau === 'formation_libre' && (
+            <div
+              style={{
+                background: '#f0fff4',
+                borderRadius: '12px',
+                padding: '16px 20px',
+                border: '1px solid #c6f6d5',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '12px',
+              }}
+            >
+              <span style={{ fontSize: '1.4rem' }}>💡</span>
+              <div>
+                <p style={{ fontSize: '0.9rem', fontWeight: 600, color: '#276749', marginBottom: '4px' }}>
+                  Formation libre
+                </p>
+                <p style={{ fontSize: '0.85rem', color: '#48bb78', lineHeight: 1.5 }}>
+                  Cette formation est ouverte à tous, sans prérequis scolaires.
+                  Progressez à votre rythme du niveau Débutant au niveau Avancé.
+                </p>
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* ===== RETOUR ===== */}
-      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-        <Link
-          to="/disciplines"
-          style={{
-            display: 'inline-block', padding: '0.75rem 1.5rem', background: '#f3f4f6',
-            color: '#374151', borderRadius: '8px', textDecoration: 'none', fontWeight: 600
-          }}
-        >
-          ← Retour aux disciplines
-        </Link>
       </div>
     </div>
   );
