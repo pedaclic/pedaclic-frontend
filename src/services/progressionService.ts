@@ -1,11 +1,18 @@
 /**
  * ============================================================
- * PedaClic - Phase 7 : Service Progression (progressionService.ts)
+ * PedaClic — Phase 14 : progressionService.ts (COMPLET)
  * ============================================================
- * Service Firestore pour :
- *  - Sauvegarder les résultats de quiz (collection "quizResults")
- *  - Calculer les statistiques de progression élèves
- *  - Récupérer l'historique des quiz passés
+ * Service Firestore unifié pour :
+ *  1. Sauvegarder / lire les résultats de quiz (existant Phase 7)
+ *  2. Marquer les ressources comme consultées (NOUVEAU Phase 14)
+ *  3. Calculer le % d'avancement par discipline (NOUVEAU)
+ *  4. Gérer le streak de connexion (NOUVEAU)
+ *  5. Débloquer automatiquement les badges (ENRICHI)
+ *
+ * Collection Firestore "progressions" :
+ *   Document ID = `${userId}_${disciplineId}`
+ *
+ * Collection Firestore "quiz_results" : (inchangée)
  *
  * Placement : src/services/progressionService.ts
  * ============================================================
@@ -14,19 +21,31 @@
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
+  setDoc,
   addDoc,
+  updateDoc,
   query,
   where,
   orderBy,
   limit,
   Timestamp,
+  increment,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 
-/* ──────────────────────────────────────────────
-   Types locaux
-   ────────────────────────────────────────────── */
+/* ── Import des types Phase 14 ── */
+import type {
+  Progression,
+  BadgeDefinition,
+  StreakData,
+  ProgressionGlobale,
+} from '../types';
+
+/* ══════════════════════════════════════════════════════════════
+   TYPES EXISTANTS (Phase 7) — conservés tels quels
+   ══════════════════════════════════════════════════════════════ */
 
 /** Résultat individuel d'un quiz passé */
 export interface QuizResult {
@@ -36,13 +55,13 @@ export interface QuizResult {
   disciplineId: string;
   disciplineNom: string;
   userId: string;
-  score: number;             // Points obtenus
-  totalPoints: number;       // Points maximum
-  pourcentage: number;       // Score en %
-  reponses: number[];        // Index des réponses données
-  tempsEcoule: number;       // Temps en secondes
-  datePassage: any;          // Timestamp Firestore
-  reussi: boolean;           // >= noteMinimale
+  score: number;
+  totalPoints: number;
+  pourcentage: number;
+  reponses: number[];
+  tempsEcoule: number;
+  datePassage: any;
+  reussi: boolean;
   nombreQuestions: number;
   bonnesReponses: number;
 }
@@ -64,56 +83,61 @@ export interface QuizSubmission {
   bonnesReponses: number;
 }
 
-/** Stats globales de progression d'un élève */
+/** Stats globales de progression d'un élève (Phase 7) */
 export interface StudentProgress {
   totalQuizPasses: number;
   totalQuizReussis: number;
-  moyenneGenerale: number;       // en %
-  tempsTotal: number;            // en secondes
-  meilleurScore: number;         // en %
-  serieReussites: number;        // série actuelle de quiz réussis
+  moyenneGenerale: number;
+  tempsTotal: number;
+  meilleurScore: number;
+  serieReussites: number;
   meilleureSerieReussites: number;
 }
 
-/** Stats de progression par discipline */
+/** Stats de progression par discipline (Phase 7) */
 export interface DisciplineProgress {
   disciplineId: string;
   disciplineNom: string;
   nombreQuiz: number;
-  moyenne: number;               // en %
-  meilleurScore: number;         // en %
-  dernierScore: number;          // en %
+  moyenne: number;
+  meilleurScore: number;
+  dernierScore: number;
   quizReussis: number;
-  tempsTotal: number;            // en secondes
-  tendance: 'up' | 'down' | 'stable'; // progression
+  tempsTotal: number;
+  tendance: 'up' | 'down' | 'stable';
 }
 
 /** Évolution dans le temps pour les graphiques */
 export interface ProgressionTemporelle {
-  date: string;                  // format 'DD/MM'
-  score: number;                 // en %
+  date: string;
+  score: number;
   discipline: string;
 }
 
-/** Badge de récompense */
+/** Badge (Phase 7 — conservé pour compatibilité) */
 export interface Badge {
   id: string;
   nom: string;
   description: string;
-  icone: string;                 // emoji
+  icone: string;
   condition: string;
   obtenu: boolean;
   dateObtention?: string;
 }
 
-/* ──────────────────────────────────────────────
-   Référence à la collection Firestore
-   ────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════
+   RÉFÉRENCES FIRESTORE
+   ══════════════════════════════════════════════════════════════ */
+
+/** Collection des résultats de quiz (Phase 7) */
 const quizResultsRef = collection(db, 'quiz_results');
 
-/* ══════════════════════════════════════════════
-   1. SAUVEGARDER UN RÉSULTAT DE QUIZ
-   ══════════════════════════════════════════════ */
+/** Collection des progressions par discipline (Phase 14) */
+const progressionsRef = collection(db, 'progressions');
+
+/* ══════════════════════════════════════════════════════════════
+   SECTION 1 — RÉSULTATS DE QUIZ (Phase 7 — inchangé)
+   ══════════════════════════════════════════════════════════════ */
 
 /**
  * Sauvegarde le résultat d'un quiz passé par un élève.
@@ -125,6 +149,17 @@ export const saveQuizResult = async (submission: QuizSubmission): Promise<string
       ...submission,
       datePassage: Timestamp.now(),
     });
+
+    /* ── Phase 14 : Mettre à jour la progression de la discipline ── */
+    if (submission.reussi) {
+      await enregistrerQuizReussi(
+        submission.userId,
+        submission.disciplineId,
+        submission.disciplineNom,
+        submission.quizId
+      );
+    }
+
     return docRef.id;
   } catch (error) {
     console.error('Erreur lors de la sauvegarde du résultat :', error);
@@ -132,13 +167,8 @@ export const saveQuizResult = async (submission: QuizSubmission): Promise<string
   }
 };
 
-/* ══════════════════════════════════════════════
-   2. HISTORIQUE DES QUIZ D'UN ÉLÈVE
-   ══════════════════════════════════════════════ */
-
 /**
- * Récupère l'historique complet des quiz passés par un élève.
- * Trié par date décroissante (plus récent en premier).
+ * Récupère l'historique des quiz passés par un élève.
  */
 export const getQuizHistory = async (
   userId: string,
@@ -150,10 +180,7 @@ export const getQuizHistory = async (
       where('userId', '==', userId),
       orderBy('datePassage', 'desc')
     );
-
-    if (maxResults) {
-      q = query(q, limit(maxResults));
-    }
+    if (maxResults) q = query(q, limit(maxResults));
 
     const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnap) => ({
@@ -161,13 +188,13 @@ export const getQuizHistory = async (
       ...docSnap.data(),
     })) as QuizResult[];
   } catch (error) {
-    console.error('Erreur lors de la récupération de l\'historique :', error);
+    console.error("Erreur récupération historique :", error);
     throw error;
   }
 };
 
 /**
- * Récupère l'historique des quiz pour une discipline spécifique.
+ * Historique par discipline.
  */
 export const getQuizHistoryByDiscipline = async (
   userId: string,
@@ -180,25 +207,21 @@ export const getQuizHistoryByDiscipline = async (
       where('disciplineId', '==', disciplineId),
       orderBy('datePassage', 'desc')
     );
-
     const snapshot = await getDocs(q);
     return snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
       ...docSnap.data(),
     })) as QuizResult[];
   } catch (error) {
-    console.error('Erreur lors de la récupération par discipline :', error);
+    console.error('Erreur récupération par discipline :', error);
     throw error;
   }
 };
 
-/* ══════════════════════════════════════════════
-   3. STATISTIQUES GLOBALES DE PROGRESSION
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   SECTION 2 — STATS GLOBALES (Phase 7 — inchangé)
+   ══════════════════════════════════════════════════════════════ */
 
-/**
- * Calcule les statistiques globales de progression d'un élève.
- */
 export const getStudentProgress = async (userId: string): Promise<StudentProgress> => {
   try {
     const results = await getQuizHistory(userId);
@@ -215,40 +238,22 @@ export const getStudentProgress = async (userId: string): Promise<StudentProgres
       };
     }
 
-    /* Calcul de la moyenne générale */
     const totalPourcentage = results.reduce((sum, r) => sum + r.pourcentage, 0);
     const moyenneGenerale = Math.round(totalPourcentage / results.length);
-
-    /* Meilleur score */
     const meilleurScore = Math.max(...results.map((r) => r.pourcentage));
-
-    /* Temps total */
     const tempsTotal = results.reduce((sum, r) => sum + (r.tempsEcoule || 0), 0);
-
-    /* Quiz réussis */
     const totalQuizReussis = results.filter((r) => r.reussi).length;
 
-    /* Série de réussites actuelle et meilleure série */
     let serieActuelle = 0;
     let meilleureSerie = 0;
-    /* Les résultats sont triés par date desc, on parcourt du plus récent */
     for (const result of results) {
       if (result.reussi) {
         serieActuelle++;
         meilleureSerie = Math.max(meilleureSerie, serieActuelle);
       } else {
-        /* Pour la série actuelle, on arrête au premier échec */
-        if (serieActuelle === meilleureSerie) {
-          /* La série actuelle est aussi la meilleure, on continue pour la meilleure */
-        }
-        if (result === results.find((r) => !r.reussi)) {
-          /* Premier échec rencontré = fin de la série actuelle */
-        }
-        meilleureSerie = Math.max(meilleureSerie, serieActuelle);
         serieActuelle = 0;
       }
     }
-    /* Série actuelle = depuis le dernier résultat */
     let serieReussites = 0;
     for (const result of results) {
       if (result.reussi) serieReussites++;
@@ -265,7 +270,7 @@ export const getStudentProgress = async (userId: string): Promise<StudentProgres
       meilleureSerieReussites: Math.max(meilleureSerie, serieReussites),
     };
   } catch (error) {
-    console.error('Erreur lors du calcul des stats :', error);
+    console.error('Erreur calcul stats :', error);
     return {
       totalQuizPasses: 0,
       totalQuizReussis: 0,
@@ -278,23 +283,17 @@ export const getStudentProgress = async (userId: string): Promise<StudentProgres
   }
 };
 
-/* ══════════════════════════════════════════════
-   4. PROGRESSION PAR DISCIPLINE
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   SECTION 3 — PROGRESSION PAR DISCIPLINE (Phase 7 — inchangé)
+   ══════════════════════════════════════════════════════════════ */
 
-/**
- * Calcule la progression par discipline pour un élève.
- * Retourne un tableau avec stats par matière.
- */
 export const getDisciplineProgress = async (
   userId: string
 ): Promise<DisciplineProgress[]> => {
   try {
     const results = await getQuizHistory(userId);
-
     if (results.length === 0) return [];
 
-    /* Grouper par discipline */
     const groupes: Record<string, QuizResult[]> = {};
     for (const result of results) {
       const key = result.disciplineId;
@@ -302,9 +301,7 @@ export const getDisciplineProgress = async (
       groupes[key].push(result);
     }
 
-    /* Calculer les stats par discipline */
     return Object.entries(groupes).map(([disciplineId, discResults]) => {
-      /* Trier par date (plus récent en premier — déjà fait) */
       const moyenne = Math.round(
         discResults.reduce((sum, r) => sum + r.pourcentage, 0) / discResults.length
       );
@@ -313,7 +310,6 @@ export const getDisciplineProgress = async (
       const quizReussis = discResults.filter((r) => r.reussi).length;
       const tempsTotal = discResults.reduce((sum, r) => sum + (r.tempsEcoule || 0), 0);
 
-      /* Calculer la tendance (3 derniers vs 3 précédents) */
       let tendance: 'up' | 'down' | 'stable' = 'stable';
       if (discResults.length >= 4) {
         const recents = discResults.slice(0, 3);
@@ -337,32 +333,25 @@ export const getDisciplineProgress = async (
       };
     });
   } catch (error) {
-    console.error('Erreur lors du calcul de la progression par discipline :', error);
+    console.error('Erreur progression par discipline :', error);
     return [];
   }
 };
 
-/* ══════════════════════════════════════════════
-   5. DONNÉES POUR GRAPHIQUES (RECHARTS)
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   SECTION 4 — DONNÉES GRAPHIQUES (Phase 7 — inchangé)
+   ══════════════════════════════════════════════════════════════ */
 
-/**
- * Retourne les données de progression temporelle pour recharts.
- * Chaque point = un quiz passé avec la date et le score.
- */
 export const getProgressionTemporelle = async (
   userId: string,
   maxPoints?: number
 ): Promise<ProgressionTemporelle[]> => {
   try {
     const results = await getQuizHistory(userId, maxPoints || 20);
-
-    /* Inverser pour avoir l'ordre chronologique (ancien → récent) */
     return results.reverse().map((r) => {
       const date = r.datePassage?.toDate
         ? r.datePassage.toDate()
         : new Date(r.datePassage);
-
       return {
         date: date.toLocaleDateString('fr-SN', { day: '2-digit', month: '2-digit' }),
         score: r.pourcentage,
@@ -370,140 +359,594 @@ export const getProgressionTemporelle = async (
       };
     });
   } catch (error) {
-    console.error('Erreur lors de la récupération des données temporelles :', error);
+    console.error('Erreur données temporelles :', error);
     return [];
   }
 };
 
-/* ══════════════════════════════════════════════
-   6. SYSTÈME DE BADGES
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   ┌──────────────────────────────────────────────────────────┐
+   │         SECTION 5 — NOUVEAU Phase 14                     │
+   │         SUIVI DES RESSOURCES CONSULTÉES                  │
+   └──────────────────────────────────────────────────────────┘
+   ══════════════════════════════════════════════════════════════ */
 
 /**
- * Calcule les badges obtenus par un élève
- * en fonction de ses statistiques de progression.
+ * Récupère ou crée le document de progression
+ * pour un couple (userId, disciplineId).
+ *
+ * ID du document = `${userId}_${disciplineId}`
+ */
+const getOrCreateProgression = async (
+  userId: string,
+  disciplineId: string,
+  disciplineNom: string
+): Promise<Progression> => {
+  const docId = `${userId}_${disciplineId}`;
+  const docRef = doc(progressionsRef, docId);
+  const snap = await getDoc(docRef);
+
+  if (snap.exists()) {
+    return { ...snap.data() } as Progression;
+  }
+
+  /* ── Compter les ressources et quiz disponibles dans la discipline ── */
+  const [ressCount, quizCount] = await Promise.all([
+    countDocumentsInDiscipline('ressources', disciplineId),
+    countDocumentsInDiscipline('quizzes', disciplineId),
+  ]);
+
+  const newProg: Progression = {
+    userId,
+    disciplineId,
+    disciplineNom,
+    ressourcesVues: [],
+    quizReussis: [],
+    totalRessources: ressCount,
+    totalQuiz: quizCount,
+    pourcentage: 0,
+    dernierAcces: Timestamp.now(),
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  };
+
+  await setDoc(docRef, newProg);
+  return newProg;
+};
+
+/**
+ * Compte le nombre de documents dans une collection
+ * filtrés par disciplineId.
+ */
+const countDocumentsInDiscipline = async (
+  collectionName: string,
+  disciplineId: string
+): Promise<number> => {
+  try {
+    const q = query(
+      collection(db, collectionName),
+      where('disciplineId', '==', disciplineId)
+    );
+    const snap = await getDocs(q);
+    return snap.size;
+  } catch {
+    return 0;
+  }
+};
+
+/**
+ * Calcule le pourcentage de progression.
+ * Formule : (ressourcesVues + quizReussis) / (totalRessources + totalQuiz) × 100
+ * Pondération : ressources = 40%, quiz = 60% du total
+ */
+const calculerPourcentage = (prog: Progression): number => {
+  const totalItems = prog.totalRessources + prog.totalQuiz;
+  if (totalItems === 0) return 0;
+
+  /* Pondération : ressources 40%, quiz 60% */
+  const poidRessources = prog.totalRessources > 0
+    ? (prog.ressourcesVues.length / prog.totalRessources) * 40
+    : 0;
+  const poidQuiz = prog.totalQuiz > 0
+    ? (prog.quizReussis.length / prog.totalQuiz) * 60
+    : 0;
+
+  /* Si une seule catégorie existe, elle vaut 100% */
+  if (prog.totalRessources === 0) {
+    return Math.min(100, Math.round((prog.quizReussis.length / prog.totalQuiz) * 100));
+  }
+  if (prog.totalQuiz === 0) {
+    return Math.min(100, Math.round((prog.ressourcesVues.length / prog.totalRessources) * 100));
+  }
+
+  return Math.min(100, Math.round(poidRessources + poidQuiz));
+};
+
+/**
+ * ★ Marquer une ressource comme consultée par l'élève.
+ * Met à jour le document de progression et recalcule le %.
+ */
+export const marquerRessourceVue = async (
+  userId: string,
+  disciplineId: string,
+  disciplineNom: string,
+  ressourceId: string
+): Promise<Progression> => {
+  try {
+    const docId = `${userId}_${disciplineId}`;
+    const docRef = doc(progressionsRef, docId);
+
+    /* Récupérer ou créer la progression */
+    const prog = await getOrCreateProgression(userId, disciplineId, disciplineNom);
+
+    /* Éviter les doublons */
+    if (prog.ressourcesVues.includes(ressourceId)) {
+      /* Déjà consultée — on met juste à jour la date d'accès */
+      await updateDoc(docRef, { dernierAcces: Timestamp.now() });
+      return prog;
+    }
+
+    /* Ajouter la ressource et recalculer */
+    const updatedRessources = [...prog.ressourcesVues, ressourceId];
+    const updatedProg: Progression = {
+      ...prog,
+      ressourcesVues: updatedRessources,
+      dernierAcces: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      pourcentage: 0, // sera recalculé
+    };
+    updatedProg.pourcentage = calculerPourcentage(updatedProg);
+
+    await setDoc(docRef, updatedProg);
+
+    /* Mettre à jour le streak */
+    await mettreAJourStreak(userId);
+
+    return updatedProg;
+  } catch (error) {
+    console.error('Erreur marquer ressource vue :', error);
+    throw error;
+  }
+};
+
+/**
+ * ★ Enregistrer la réussite d'un quiz dans la progression.
+ * Appelée automatiquement depuis saveQuizResult si reussi=true.
+ */
+export const enregistrerQuizReussi = async (
+  userId: string,
+  disciplineId: string,
+  disciplineNom: string,
+  quizId: string
+): Promise<Progression> => {
+  try {
+    const docId = `${userId}_${disciplineId}`;
+    const docRef = doc(progressionsRef, docId);
+
+    const prog = await getOrCreateProgression(userId, disciplineId, disciplineNom);
+
+    /* Éviter les doublons */
+    if (prog.quizReussis.includes(quizId)) {
+      await updateDoc(docRef, { dernierAcces: Timestamp.now() });
+      return prog;
+    }
+
+    const updatedQuiz = [...prog.quizReussis, quizId];
+    const updatedProg: Progression = {
+      ...prog,
+      quizReussis: updatedQuiz,
+      dernierAcces: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      pourcentage: 0,
+    };
+    updatedProg.pourcentage = calculerPourcentage(updatedProg);
+
+    await setDoc(docRef, updatedProg);
+    return updatedProg;
+  } catch (error) {
+    console.error('Erreur enregistrement quiz réussi :', error);
+    throw error;
+  }
+};
+
+/**
+ * ★ Récupère toutes les progressions d'un élève (toutes disciplines).
+ */
+export const getProgressionEleve = async (
+  userId: string
+): Promise<Progression[]> => {
+  try {
+    const q = query(progressionsRef, where('userId', '==', userId));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as Progression);
+  } catch (error) {
+    console.error('Erreur récupération progressions :', error);
+    return [];
+  }
+};
+
+/**
+ * ★ Résumé global de progression (agrégation multi-disciplines).
+ */
+export const getProgressionGlobale = async (
+  userId: string
+): Promise<ProgressionGlobale> => {
+  try {
+    const progressions = await getProgressionEleve(userId);
+    const streak = await getStreak(userId);
+
+    const totalRessourcesVues = progressions.reduce(
+      (sum, p) => sum + p.ressourcesVues.length, 0
+    );
+    const totalQuizReussis = progressions.reduce(
+      (sum, p) => sum + p.quizReussis.length, 0
+    );
+    const pourcentageMoyen = progressions.length > 0
+      ? Math.round(progressions.reduce((sum, p) => sum + p.pourcentage, 0) / progressions.length)
+      : 0;
+    const disciplinesCompletees = progressions.filter((p) => p.pourcentage >= 100).length;
+
+    return {
+      totalRessourcesVues,
+      totalQuizReussis,
+      pourcentageMoyen,
+      disciplinesCommencees: progressions.length,
+      disciplinesCompletees,
+      streakActuel: streak.streakActuel,
+      meilleurStreak: streak.meilleurStreak,
+      parDiscipline: progressions,
+    };
+  } catch (error) {
+    console.error('Erreur progression globale :', error);
+    return {
+      totalRessourcesVues: 0,
+      totalQuizReussis: 0,
+      pourcentageMoyen: 0,
+      disciplinesCommencees: 0,
+      disciplinesCompletees: 0,
+      streakActuel: 0,
+      meilleurStreak: 0,
+      parDiscipline: [],
+    };
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ┌──────────────────────────────────────────────────────────┐
+   │         SECTION 6 — NOUVEAU Phase 14                     │
+   │         STREAK DE CONNEXION                              │
+   └──────────────────────────────────────────────────────────┘
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * Obtient la date du jour au format YYYY-MM-DD
+ * (fuseau horaire Dakar = UTC+0)
+ */
+const getAujourdhui = (): string => {
+  const now = new Date();
+  return now.toISOString().split('T')[0]; // YYYY-MM-DD
+};
+
+/**
+ * Obtient la date d'hier au format YYYY-MM-DD
+ */
+const getHier = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split('T')[0];
+};
+
+/**
+ * ★ Récupère les données de streak d'un élève.
+ */
+export const getStreak = async (userId: string): Promise<StreakData> => {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const snap = await getDoc(userDocRef);
+
+    if (!snap.exists()) {
+      return { streakActuel: 0, meilleurStreak: 0, dernierJourAcces: '' };
+    }
+
+    const data = snap.data();
+    return {
+      streakActuel: data.streakActuel || 0,
+      meilleurStreak: data.meilleurStreak || 0,
+      dernierJourAcces: data.dernierJourAcces || '',
+    };
+  } catch (error) {
+    console.error('Erreur récupération streak :', error);
+    return { streakActuel: 0, meilleurStreak: 0, dernierJourAcces: '' };
+  }
+};
+
+/**
+ * ★ Met à jour le streak de connexion de l'élève.
+ * Appelée automatiquement à chaque interaction (ressource vue, quiz passé).
+ *
+ * Logique :
+ *   - Si dernierJourAcces === aujourd'hui → rien à faire
+ *   - Si dernierJourAcces === hier → streak +1
+ *   - Sinon → streak remis à 1
+ */
+export const mettreAJourStreak = async (userId: string): Promise<StreakData> => {
+  try {
+    const userDocRef = doc(db, 'users', userId);
+    const streak = await getStreak(userId);
+    const aujourdhui = getAujourdhui();
+
+    /* Déjà connecté aujourd'hui — rien à faire */
+    if (streak.dernierJourAcces === aujourdhui) {
+      return streak;
+    }
+
+    const hier = getHier();
+    let nouveauStreak: number;
+
+    if (streak.dernierJourAcces === hier) {
+      /* Connexion consécutive — incrémenter */
+      nouveauStreak = streak.streakActuel + 1;
+    } else {
+      /* Connexion non consécutive — réinitialiser */
+      nouveauStreak = 1;
+    }
+
+    const meilleurStreak = Math.max(streak.meilleurStreak, nouveauStreak);
+
+    await updateDoc(userDocRef, {
+      streakActuel: nouveauStreak,
+      meilleurStreak,
+      dernierJourAcces: aujourdhui,
+    });
+
+    return {
+      streakActuel: nouveauStreak,
+      meilleurStreak,
+      dernierJourAcces: aujourdhui,
+    };
+  } catch (error) {
+    console.error('Erreur mise à jour streak :', error);
+    return { streakActuel: 0, meilleurStreak: 0, dernierJourAcces: '' };
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════
+   ┌──────────────────────────────────────────────────────────┐
+   │         SECTION 7 — NOUVEAU Phase 14                     │
+   │         BADGES CONTEXTUALISÉS (Sénégal)                  │
+   └──────────────────────────────────────────────────────────┘
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * ★ Calcule tous les badges (existants Phase 7 + nouveaux Phase 14).
+ *
+ * Badges Phase 14 ajoutés :
+ *   🌱 Premier pas — 1ère ressource consultée
+ *   📖 Lecteur assidu — 10 ressources consultées
+ *   🧩 Challenger — 5 quiz réussis
+ *   🏆 Maître — 100% d'une discipline
+ *   🔥 En feu — 7 jours de connexion consécutifs
+ *   🌍 Explorateur Teranga — 3 disciplines commencées
+ *   💎 Diamant — 50 ressources + 20 quiz réussis
  */
 export const calculateBadges = (
   progress: StudentProgress,
-  disciplineProgress: DisciplineProgress[]
-): Badge[] => {
-  const badges: Badge[] = [
-    /* ── Badges de passage ── */
+  disciplineProgress: DisciplineProgress[],
+  progressionGlobale?: ProgressionGlobale | null
+): BadgeDefinition[] => {
+  /* Valeurs Phase 14 (avec fallback si pas encore chargé) */
+  const totalRessources = progressionGlobale?.totalRessourcesVues || 0;
+  const totalQuizReussisP14 = progressionGlobale?.totalQuizReussis || 0;
+  const disciplinesCompletees = progressionGlobale?.disciplinesCompletees || 0;
+  const streakActuel = progressionGlobale?.streakActuel || 0;
+  const meilleurStreak = progressionGlobale?.meilleurStreak || 0;
+  const disciplinesCommencees = progressionGlobale?.disciplinesCommencees || 0;
+
+  const badges: BadgeDefinition[] = [
+    /* ──────────────────────────────────────
+       Badges Ressources (Phase 14 NOUVEAU)
+       ────────────────────────────────────── */
+    {
+      id: 'premier_pas',
+      nom: 'Premier pas 🌱',
+      description: 'Consulter votre première ressource',
+      icone: '🌱',
+      condition: '1 ressource consultée',
+      categorie: 'ressources',
+      obtenu: totalRessources >= 1,
+    },
+    {
+      id: 'lecteur_assidu',
+      nom: 'Lecteur assidu 📖',
+      description: 'Consulter 10 ressources',
+      icone: '📖',
+      condition: '10 ressources consultées',
+      categorie: 'ressources',
+      obtenu: totalRessources >= 10,
+    },
+    {
+      id: 'bibliophile',
+      nom: 'Bibliophile 📚',
+      description: 'Consulter 25 ressources',
+      icone: '📚',
+      condition: '25 ressources consultées',
+      categorie: 'ressources',
+      obtenu: totalRessources >= 25,
+    },
+    {
+      id: 'savant',
+      nom: 'Savant 🎓',
+      description: 'Consulter 50 ressources',
+      icone: '🎓',
+      condition: '50 ressources consultées',
+      categorie: 'ressources',
+      obtenu: totalRessources >= 50,
+    },
+
+    /* ──────────────────────────────────────
+       Badges Quiz (Phase 7 enrichis)
+       ────────────────────────────────────── */
     {
       id: 'premier_quiz',
-      nom: 'Premier pas',
+      nom: 'Apprenti 🎯',
       description: 'Passer votre premier quiz',
       icone: '🎯',
       condition: '1 quiz passé',
+      categorie: 'quiz',
       obtenu: progress.totalQuizPasses >= 1,
     },
     {
+      id: 'challenger',
+      nom: 'Challenger 🧩',
+      description: 'Réussir 5 quiz',
+      icone: '🧩',
+      condition: '5 quiz réussis',
+      categorie: 'quiz',
+      obtenu: progress.totalQuizReussis >= 5,
+    },
+    {
       id: 'dix_quiz',
-      nom: 'Explorateur',
+      nom: 'Décathlon 🏅',
       description: 'Passer 10 quiz',
-      icone: '🔍',
+      icone: '🏅',
       condition: '10 quiz passés',
+      categorie: 'quiz',
       obtenu: progress.totalQuizPasses >= 10,
     },
     {
-      id: 'vingt_cinq_quiz',
-      nom: 'Assidu',
-      description: 'Passer 25 quiz',
-      icone: '📚',
-      condition: '25 quiz passés',
-      obtenu: progress.totalQuizPasses >= 25,
-    },
-    {
       id: 'cinquante_quiz',
-      nom: 'Champion',
+      nom: 'Marathonien 🏃',
       description: 'Passer 50 quiz',
-      icone: '🏆',
+      icone: '🏃',
       condition: '50 quiz passés',
+      categorie: 'quiz',
       obtenu: progress.totalQuizPasses >= 50,
     },
 
-    /* ── Badges de performance ── */
+    /* ──────────────────────────────────────
+       Badges Performance
+       ────────────────────────────────────── */
     {
       id: 'score_parfait',
-      nom: 'Score parfait',
+      nom: 'Score parfait ⭐',
       description: 'Obtenir 100% à un quiz',
       icone: '⭐',
       condition: '100% à un quiz',
+      categorie: 'performance',
       obtenu: progress.meilleurScore >= 100,
     },
     {
       id: 'moyenne_80',
-      nom: 'Excellent',
-      description: 'Maintenir une moyenne de 80%+',
+      nom: 'Excellent 🌟',
+      description: 'Moyenne générale de 80%+',
       icone: '🌟',
-      condition: 'Moyenne ≥ 80%',
+      condition: 'Moyenne ≥ 80% (min. 5 quiz)',
+      categorie: 'performance',
       obtenu: progress.moyenneGenerale >= 80 && progress.totalQuizPasses >= 5,
     },
     {
-      id: 'moyenne_60',
-      nom: 'Bon élève',
-      description: 'Maintenir une moyenne de 60%+',
-      icone: '👍',
-      condition: 'Moyenne ≥ 60%',
-      obtenu: progress.moyenneGenerale >= 60 && progress.totalQuizPasses >= 5,
-    },
-
-    /* ── Badges de série ── */
-    {
-      id: 'serie_3',
-      nom: 'En forme',
-      description: '3 quiz réussis d\'affilée',
-      icone: '🔥',
-      condition: 'Série de 3 réussites',
-      obtenu: progress.meilleureSerieReussites >= 3,
-    },
-    {
       id: 'serie_5',
-      nom: 'Imbattable',
+      nom: 'Imbattable 💪',
       description: '5 quiz réussis d\'affilée',
       icone: '💪',
       condition: 'Série de 5 réussites',
+      categorie: 'performance',
       obtenu: progress.meilleureSerieReussites >= 5,
     },
     {
       id: 'serie_10',
-      nom: 'Légende',
+      nom: 'Légende 👑',
       description: '10 quiz réussis d\'affilée',
       icone: '👑',
       condition: 'Série de 10 réussites',
+      categorie: 'performance',
       obtenu: progress.meilleureSerieReussites >= 10,
     },
 
-    /* ── Badges multi-disciplines ── */
+    /* ──────────────────────────────────────
+       Badges Discipline (Phase 14 NOUVEAU)
+       ────────────────────────────────────── */
     {
-      id: 'multi_3',
-      nom: 'Polyvalent',
-      description: 'Passer des quiz dans 3 disciplines',
-      icone: '🎨',
-      condition: '3 disciplines différentes',
-      obtenu: disciplineProgress.length >= 3,
+      id: 'maitre',
+      nom: 'Maître 🏆',
+      description: 'Compléter 100% d\'une discipline',
+      icone: '🏆',
+      condition: '1 discipline à 100%',
+      categorie: 'discipline',
+      obtenu: disciplinesCompletees >= 1,
     },
     {
-      id: 'multi_5',
-      nom: 'Touche-à-tout',
-      description: 'Passer des quiz dans 5 disciplines',
-      icone: '🌈',
-      condition: '5 disciplines différentes',
-      obtenu: disciplineProgress.length >= 5,
+      id: 'explorateur_teranga',
+      nom: 'Explorateur Teranga 🌍',
+      description: 'Commencer 3 disciplines différentes',
+      icone: '🌍',
+      condition: '3 disciplines commencées',
+      categorie: 'discipline',
+      obtenu: disciplinesCommencees >= 3 || disciplineProgress.length >= 3,
+    },
+    {
+      id: 'touche_a_tout',
+      nom: 'Touche-à-tout 🎨',
+      description: 'Commencer 5 disciplines différentes',
+      icone: '🎨',
+      condition: '5 disciplines commencées',
+      categorie: 'discipline',
+      obtenu: disciplinesCommencees >= 5 || disciplineProgress.length >= 5,
+    },
+
+    /* ──────────────────────────────────────
+       Badges Streak (Phase 14 NOUVEAU)
+       ────────────────────────────────────── */
+    {
+      id: 'en_feu_3',
+      nom: 'Régulier 🔥',
+      description: '3 jours de connexion consécutifs',
+      icone: '🔥',
+      condition: '3 jours consécutifs',
+      categorie: 'streak',
+      obtenu: meilleurStreak >= 3,
+    },
+    {
+      id: 'en_feu_7',
+      nom: 'En feu 🔥🔥',
+      description: '7 jours de connexion consécutifs',
+      icone: '🔥',
+      condition: '7 jours consécutifs',
+      categorie: 'streak',
+      obtenu: meilleurStreak >= 7,
+    },
+    {
+      id: 'en_feu_30',
+      nom: 'Infatigable ⚡',
+      description: '30 jours de connexion consécutifs',
+      icone: '⚡',
+      condition: '30 jours consécutifs',
+      categorie: 'streak',
+      obtenu: meilleurStreak >= 30,
+    },
+
+    /* ──────────────────────────────────────
+       Badge ultime
+       ────────────────────────────────────── */
+    {
+      id: 'diamant',
+      nom: 'Diamant 💎',
+      description: '50 ressources + 20 quiz réussis',
+      icone: '💎',
+      condition: '50 ressources + 20 quiz',
+      categorie: 'performance',
+      obtenu: totalRessources >= 50 && progress.totalQuizReussis >= 20,
     },
   ];
 
   return badges;
 };
 
-/* ══════════════════════════════════════════════
-   7. UTILITAIRES
-   ══════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════
+   SECTION 8 — UTILITAIRES (Phase 7 — inchangé)
+   ══════════════════════════════════════════════════════════════ */
 
-/**
- * Formate un temps en secondes en chaîne lisible.
- * Ex: 125 → "2 min 05 s"
- */
+/** Formate un temps en secondes → "2 min 05 s" */
 export const formatTemps = (secondes: number): string => {
   if (secondes < 60) return `${secondes} s`;
   const min = Math.floor(secondes / 60);
@@ -511,19 +954,15 @@ export const formatTemps = (secondes: number): string => {
   return sec > 0 ? `${min} min ${sec.toString().padStart(2, '0')} s` : `${min} min`;
 };
 
-/**
- * Retourne une couleur selon le score en pourcentage.
- */
+/** Couleur selon le score (%) */
 export const getScoreColor = (pourcentage: number): string => {
-  if (pourcentage >= 80) return '#10b981'; /* vert */
-  if (pourcentage >= 60) return '#3b82f6'; /* bleu */
-  if (pourcentage >= 40) return '#f59e0b'; /* orange */
-  return '#ef4444';                         /* rouge */
+  if (pourcentage >= 80) return '#10b981';
+  if (pourcentage >= 60) return '#3b82f6';
+  if (pourcentage >= 40) return '#f59e0b';
+  return '#ef4444';
 };
 
-/**
- * Retourne un label selon le score en pourcentage.
- */
+/** Label selon le score (%) */
 export const getScoreLabel = (pourcentage: number): string => {
   if (pourcentage >= 80) return 'Excellent';
   if (pourcentage >= 60) return 'Bien';

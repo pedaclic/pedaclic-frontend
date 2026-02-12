@@ -22,6 +22,8 @@ import { Resource, Discipline, TypeRessource } from '../types';
 import { getResourceById, getResourcesByChapter } from '../services/ResourceService';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { useAuth } from '../contexts/AuthContext';
+import { marquerRessourceVue } from '../services/progressionService';
 
 // ==================== INTERFACES ====================
 
@@ -93,7 +95,8 @@ const ResourceView: React.FC = () => {
   });
 
   // État Premium de l'utilisateur (à connecter avec AuthContext)
-  const [isPremiumUser] = useState(false); // TODO: Connecter avec auth
+  const { currentUser } = useAuth();
+  const isPremiumUser = currentUser?.isPremium || false;
 
   // ===== CHARGEMENT DES DONNÉES =====
   useEffect(() => {
@@ -157,6 +160,25 @@ const ResourceView: React.FC = () => {
     loadResource();
   }, [id]);
 
+
+  // ===== PHASE 14 : SUIVI PROGRESSION =====
+  useEffect(() => {
+    const trackResourceView = async () => {
+      if (!currentUser || !state.resource || !state.discipline) return;
+      if (state.resource.isPremium && !isPremiumUser) return;
+      try {
+        await marquerRessourceVue(
+          currentUser.uid,
+          state.resource.disciplineId,
+          state.discipline.nom || state.resource.disciplineId,
+          state.resource.id!
+        );
+      } catch (err) {
+        console.error("Erreur suivi progression :", err);
+      }
+    };
+    trackResourceView();
+  }, [state.resource, state.discipline, currentUser, isPremiumUser]);
   // ===== HELPERS =====
 
   /**

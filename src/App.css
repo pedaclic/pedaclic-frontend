@@ -1,0 +1,289 @@
+/**
+ * ============================================================
+ * PedaClic — Phase 14 : CSS Additionnel
+ * ============================================================
+ * INSTRUCTIONS : Ajouter ce bloc À LA FIN de votre fichier
+ *                CSS principal (App.css ou index.css)
+ *                NE PAS supprimer le CSS existant.
+ * ============================================================
+ */
+
+/* ══════════════════════════════════════════════════════════════
+   1. COMPOSANT ProgressBar
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Conteneur de la barre de progression --> */
+.progress-bar-wrapper {
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+/* <!-- Ligne label + pourcentage au-dessus de la barre --> */
+.progress-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+/* <!-- Label textuel à gauche --> */
+.progress-bar-label {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+}
+
+/* <!-- Pourcentage affiché à droite --> */
+.progress-bar-percent {
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+/* <!-- Fond gris de la barre (track) --> */
+.progress-bar-track {
+  width: 100%;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* <!-- Remplissage coloré animé --> */
+.progress-bar-fill {
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   2. STREAK BADGE (en-tête du dashboard)
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Conteneur des badges dans l'en-tête --> */
+.sd-welcome-badges-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* <!-- Badge streak affiché en haut à droite --> */
+.sd-streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: linear-gradient(135deg, #fef2f2, #fecaca);
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #fca5a5;
+  animation: pulse-streak 2s infinite;
+}
+
+/* <!-- Animation pulsation subtile du streak --> */
+@keyframes pulse-streak {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   3. ONGLET PROGRESSION (Phase 14)
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Conteneur de l'onglet progression --> */
+.sd-progression {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* <!-- Résumé global en haut --> */
+.sd-prog-summary {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #bae6fd;
+}
+
+/* <!-- Ligne de stats compactes --> */
+.sd-prog-stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #bae6fd;
+}
+
+/* <!-- Item individuel de stat --> */
+.sd-prog-stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+/* <!-- Nombre de la stat --> */
+.sd-prog-stat-number {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #1e40af;
+}
+
+/* <!-- Texte sous le nombre --> */
+.sd-prog-stat-text {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-top: 0.15rem;
+}
+
+/* <!-- Liste des disciplines dans l'onglet progression --> */
+.sd-prog-disciplines {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* <!-- Carte de progression par discipline --> */
+.sd-prog-disc-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  transition: box-shadow 0.2s;
+}
+.sd-prog-disc-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* <!-- En-tête : nom + tag complet --> */
+.sd-prog-disc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+/* <!-- Nom de la discipline --> */
+.sd-prog-disc-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #1f2937;
+}
+
+/* <!-- Tag "Complété" --> */
+.sd-prog-complete-tag {
+  font-size: 0.75rem;
+  background: #d1fae5;
+  color: #065f46;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* <!-- Détails ressources/quiz sous la barre --> */
+.sd-prog-disc-details {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+.sd-prog-disc-details span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   4. FILTRES DE BADGES (Phase 14)
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Conteneur des boutons de filtre --> */
+.sd-badges-filters {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* <!-- Bouton filtre individuel --> */
+.sd-badge-filter-btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+/* <!-- État hover du filtre --> */
+.sd-badge-filter-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* <!-- État actif du filtre --> */
+.sd-badge-filter-btn.active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+/* <!-- Étiquette de catégorie sur chaque badge --> */
+.sd-badge-category {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   5. GRILLE STATS 6 COLONNES (Phase 14)
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Surcharge : 6 cartes stats au lieu de 4 --> */
+.sd-stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   6. RESPONSIVE (ajustements Phase 14)
+   ══════════════════════════════════════════════════════════════ */
+
+/* <!-- Tablette : 2 colonnes pour les stats --> */
+@media (max-width: 768px) {
+  .sd-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sd-prog-stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .sd-badges-filters {
+    gap: 0.35rem;
+  }
+  .sd-badge-filter-btn {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+  }
+}
+
+/* <!-- Mobile : 1 colonne --> */
+@media (max-width: 480px) {
+  .sd-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  .sd-prog-stats-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sd-tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
