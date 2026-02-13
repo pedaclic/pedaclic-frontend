@@ -1,3 +1,20 @@
+/**
+ * ============================================================================
+ * APP.TSX - POINT D'ENTRÉE PRINCIPAL PEDACLIC
+ * ============================================================================
+ * Configuration du routing et structure de l'application.
+ * Toutes les routes sont organisées par section :
+ *   - Pages publiques (avec Header + Footer)
+ *   - Authentification (sans Header/Footer)
+ *   - Admin protégé (avec AdminLayout + sidebar)
+ *   - Quiz publics (avec Header + Footer)
+ *   - Élève / Parent / Professeur
+ *   - Catch-all 404
+ * 
+ * @author PedaClic Team
+ * @version 2.1.0
+ */
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AdminRoute, ProfRoute, ProtectedRoute } from './contexts/AuthContext';
@@ -21,18 +38,32 @@ import ChapitreManager from './components/admin/ChapitreManager';
 import ResourceManager from './components/admin/ResourceManager';
 import QuizManager from './components/admin/QuizManager';
 import UserManager from './components/admin/UserManager';
-import QuizPlayer from './components/student/QuizPlayer';
-import StudentDashboard from './components/student/StudentDashboard';
-import StudentSuivi from './components/student/StudentSuivi';
-import ProfDashboard from './components/prof/ProfDashboard';
-import ParentDashboard from './components/parent/ParentDashboard';
+import ResultsAdmin from './components/admin/ResultsAdmin';
+import SettingsAdmin from './components/admin/SettingsAdmin';
+
+/* ==================== PAGES QUIZ ==================== */
 import QuizEditorPage from './pages/QuizEditorPage';
 import QuizAdvancedList from './pages/QuizAdvancedList';
 import QuizPlayerPage from './pages/QuizPlayerPage';
+
+/* ==================== COMPOSANTS ÉLÈVE ==================== */
+import QuizPlayer from './components/student/QuizPlayer';
+import StudentDashboard from './components/student/StudentDashboard';
+import StudentSuivi from './components/student/StudentSuivi';
+
+/* ==================== COMPOSANTS PROF ==================== */
+import ProfDashboard from './components/prof/ProfDashboard';
+
+/* ==================== COMPOSANTS PARENT ==================== */
+import ParentDashboard from './components/parent/ParentDashboard';
+
+// ==================== APPLICATION ====================
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <Routes>
+
         {/* ========== PAGES PUBLIQUES (avec Header + Footer) ========== */}
         <Route path="/" element={<Layout><Home /></Layout>} />
         <Route path="/disciplines" element={<Layout><DisciplinesPage /></Layout>} />
@@ -43,67 +74,43 @@ const App: React.FC = () => {
         <Route path="/connexion" element={<LoginPage />} />
         <Route path="/inscription" element={<RegisterPage />} />
 
-        {/* ========== ADMIN PROTÉGÉ ========== */}
-        <Route path="/admin" element={<AdminRoute><AdminLayout currentPage="dashboard"><AdminDashboard /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/disciplines" element={<AdminRoute><AdminLayout currentPage="disciplines"><DisciplineManager /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/chapitres" element={<AdminRoute><AdminLayout currentPage="chapitres"><ChapitreManager /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/ressources" element={<AdminRoute><AdminLayout currentPage="ressources"><ResourceManager /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/quiz" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizManager /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/quiz/nouveau" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/quiz/modifier/:quizId" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizEditorPage /></AdminLayout></AdminRoute>} />
-        <Route path="/admin/quiz-avance" element={<AdminRoute><AdminLayout currentPage="quiz"><QuizAdvancedList /></AdminLayout></AdminRoute>} />
+        {/* ========== ADMIN PROTÉGÉ (avec AdminLayout + sidebar) ========== */}
+        <Route path="/admin" element={<AdminRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/disciplines" element={<AdminRoute><AdminLayout><DisciplineManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/chapitres" element={<AdminRoute><AdminLayout><ChapitreManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/ressources" element={<AdminRoute><AdminLayout><ResourceManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz" element={<AdminRoute><AdminLayout><QuizManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz/nouveau" element={<AdminRoute><AdminLayout><QuizEditorPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz/modifier/:quizId" element={<AdminRoute><AdminLayout><QuizEditorPage /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/quiz-avance" element={<AdminRoute><AdminLayout><QuizAdvancedList /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout><UserManager /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/resultats" element={<AdminRoute><AdminLayout><ResultsAdmin /></AdminLayout></AdminRoute>} />
+        <Route path="/admin/settings" element={<AdminRoute><AdminLayout><SettingsAdmin /></AdminLayout></AdminRoute>} />
+
+        {/* ========== ABONNÉS PREMIUM → redirige vers Utilisateurs filtre premium ========== */}
+        <Route path="/admin/premium" element={<Navigate to="/admin/utilisateurs?filter=premium" replace />} />
+
+        {/* ========== QUIZ PUBLICS (avec Header + Footer) ========== */}
+        <Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
         <Route path="/quiz-avance/:quizId" element={<Layout><QuizPlayerPage /></Layout>} />
-        <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout currentPage="utilisateurs"><UserManager /></AdminLayout></AdminRoute>} />
-	<Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
-	<Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
-	<Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
-	<Route path="/parent/dashboard" element={
-	  <ProtectedRoute allowedRoles={['parent', 'admin']}>
-	    <Layout><ParentDashboard /></Layout>
-	  </ProtectedRoute>
-	} />
-	
-	{/* ========== PROF PROTÉGÉ ========== */}
+
+        {/* ========== ESPACE ÉLÈVE ========== */}
+        <Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
+        <Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
+
+        {/* ========== ESPACE PROFESSEUR ========== */}
         <Route path="/prof/dashboard" element={<ProfRoute><Layout><ProfDashboard /></Layout></ProfRoute>} />
-        
-	{/* ========== RÉSULTATS (placeholder) ========== */}
-        <Route path="/admin/resultats" element={
-          <AdminRoute>
-            <AdminLayout>
-              <div style={{padding:'3rem',textAlign:'center'}}>
-                <h2>📈 Résultats des Quiz</h2>
-                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
-              </div>
-            </AdminLayout>
-          </AdminRoute>
+
+        {/* ========== ESPACE PARENT ========== */}
+        <Route path="/parent/dashboard" element={
+          <ProtectedRoute allowedRoles={['parent', 'admin']}>
+            <Layout><ParentDashboard /></Layout>
+          </ProtectedRoute>
         } />
 
-        {/* ========== ABONNÉS PREMIUM (placeholder) ========== */}
-        <Route path="/admin/premium" element={
-          <AdminRoute>
-            <AdminLayout>
-              <div style={{padding:'3rem',textAlign:'center'}}>
-                <h2>⭐ Abonnés Premium</h2>
-                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
-              </div>
-            </AdminLayout>
-          </AdminRoute>
-        } />
-	
-	{/* ========== PARAMÈTRES (placeholder) ========== */}
-        <Route path="/admin/settings" element={
-          <AdminRoute>
-            <AdminLayout>
-              <div style={{padding:'3rem',textAlign:'center'}}>
-                <h2>⚙️ Configuration</h2>
-                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
-              </div>
-            </AdminLayout>
-          </AdminRoute>
-        } />
-
-        {/* ========== 404 ========== */}
+        {/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
+
       </Routes>
     </AuthProvider>
   );
