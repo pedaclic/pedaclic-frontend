@@ -10,7 +10,7 @@
  * Placement : src/components/admin/UserManager.tsx
  * ============================================================
  */
-
+import { useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
@@ -80,6 +80,15 @@ const UserManager: React.FC = () => {
   const [filterPremium, setFilterPremium] = useState<string>('');
   const [filterActive, setFilterActive] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+  
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const filter = searchParams.get('filter');
+    if (filter === 'premium') {
+      setFilterPremium('true');
+    }
+  }, [searchParams]);
 
   /* ── Détail utilisateur ── */
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
