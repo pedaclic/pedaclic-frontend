@@ -66,7 +66,43 @@ const App: React.FC = () => {
 	{/* ========== PROF PROTÉGÉ ========== */}
         <Route path="/prof/dashboard" element={<ProfRoute><Layout><ProfDashboard /></Layout></ProfRoute>} />
         
-	{/* ========== 404 ========== */}
+	{/* ========== RÉSULTATS (placeholder) ========== */}
+        <Route path="/admin/resultats" element={
+          <AdminRoute>
+            <AdminLayout>
+              <div style={{padding:'3rem',textAlign:'center'}}>
+                <h2>📈 Résultats des Quiz</h2>
+                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
+              </div>
+            </AdminLayout>
+          </AdminRoute>
+        } />
+
+        {/* ========== ABONNÉS PREMIUM (placeholder) ========== */}
+        <Route path="/admin/premium" element={
+          <AdminRoute>
+            <AdminLayout>
+              <div style={{padding:'3rem',textAlign:'center'}}>
+                <h2>⭐ Abonnés Premium</h2>
+                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
+              </div>
+            </AdminLayout>
+          </AdminRoute>
+        } />
+	
+	{/* ========== PARAMÈTRES (placeholder) ========== */}
+        <Route path="/admin/settings" element={
+          <AdminRoute>
+            <AdminLayout>
+              <div style={{padding:'3rem',textAlign:'center'}}>
+                <h2>⚙️ Configuration</h2>
+                <p style={{color:'#6b7280',marginTop:'1rem'}}>Cette page sera bientôt disponible.</p>
+              </div>
+            </AdminLayout>
+          </AdminRoute>
+        } />
+
+        {/* ========== 404 ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AuthProvider>

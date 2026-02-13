@@ -2,20 +2,24 @@
  * ============================================================================
  * COMPOSANT ADMIN LAYOUT - PedaClic
  * ============================================================================
- * Layout principal de l'interface d'administration
- * Inclut la sidebar de navigation et le conteneur de contenu
+ * Layout principal de l'interface d'administration avec sidebar de navigation.
+ * Utilise React Router <Link> pour la navigation client-side (SPA).
+ * 
+ * CORRECTION : Remplacement de <a href> par <Link to> pour éviter
+ * le rechargement complet de la page sur GitHub Pages.
  * 
  * @author PedaClic Team
- * @version 1.0.0
+ * @version 2.0.0 (corrigé navigation sidebar)
  */
 
-import React, { useState, ReactNode } from 'react';
+import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 // ==================== INTERFACES ====================
 
 interface AdminLayoutProps {
-  children: ReactNode;
+  children: React.ReactNode;
   currentPage?: string;
 }
 
@@ -43,14 +47,16 @@ const navigationSections: NavSection[] = [
       { id: 'ressources', label: 'Ressources', icon: '📝', href: '/admin/ressources' },
     ]
   },
-  {
+ 
+{
     title: 'Évaluation',
     items: [
       { id: 'quiz', label: 'Quiz', icon: '🧩', href: '/admin/quiz' },
-            { id: 'quiz', label: 'Quiz Avancés', icon: '📝', href: '/admin/quiz-avance' },
+      { id: 'quiz-avance', label: 'Quiz Avancés', icon: '🧠', href: '/admin/quiz-avance' },
       { id: 'resultats', label: 'Résultats', icon: '📈', href: '/admin/resultats' },
     ]
   },
+
   {
     title: 'Utilisateurs',
     items: [
@@ -74,16 +80,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
   const { currentUser, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  
+  /* useLocation pour détecter automatiquement la page active
+     (alternative au prop currentPage, plus fiable) */
+  const location = useLocation();
 
   // ==================== HANDLERS ====================
 
   /**
    * Gère la déconnexion de l'utilisateur
+   * CORRIGÉ : Utilise navigate au lieu de window.location.href
    */
   const handleLogout = async () => {
     try {
       setLoggingOut(true);
       await logout();
+      /* Redirection vers la page de connexion.
+         On utilise window.location.href ici car après logout,
+         le contexte Auth est détruit, donc navigate() ne fonctionnerait
+         pas de manière fiable. */
       window.location.href = '/connexion';
     } catch (error) {
       console.error('Erreur lors de la déconnexion:', error);
@@ -122,18 +137,35 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
     }
   };
 
+  /**
+   * Détermine si un lien de navigation est actif
+   * Utilise le pathname actuel pour une détection automatique
+   * Le prop currentPage est utilisé comme fallback
+   */
+  const isLinkActive = (item: NavItem): boolean => {
+    /* Détection automatique via l'URL */
+    if (item.href === '/admin') {
+      /* Pour le dashboard, on vérifie que le path est exactement /admin */
+      return location.pathname === '/admin' || location.pathname === '/admin/';
+    }
+    /* Pour les autres liens, on vérifie si le path commence par le href */
+    return location.pathname.startsWith(item.href);
+  };
+
   // ==================== RENDU ====================
 
   return (
     <div className="admin-layout">
       {/* ==================== SIDEBAR ==================== */}
       <aside className={`admin-sidebar ${!sidebarOpen ? 'admin-sidebar--collapsed' : ''}`}>
+        
         {/* En-tête avec logo */}
         <header className="admin-sidebar__header">
-          <a href="/" className="admin-sidebar__logo">
+          {/* CORRIGÉ : <Link> au lieu de <a href> pour le logo */}
+          <Link to="/" className="admin-sidebar__logo">
             <div className="admin-sidebar__logo-icon">📖</div>
             <span>PedaClic</span>
-          </a>
+          </Link>
         </header>
 
         {/* Navigation principale */}
@@ -147,15 +179,29 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
               <ul className="admin-nav__list">
                 {section.items.map((item) => (
                   <li key={item.id} className="admin-nav__item">
-                    <a
-                      href={item.href}
+                    {/* ============================================
+                        CORRECTION PRINCIPALE : <Link> au lieu de <a>
+                        ============================================
+                        <a href> provoquait un rechargement complet
+                        de la page, ce qui causait une page blanche
+                        sur GitHub Pages car :
+                        1. La requête HTTP vers /admin/xxx retournait 404
+                        2. Le 404.html redirigeait vers index.html
+                        3. L'app se réinitialisait complètement
+                        4. Firebase Auth perdait le contexte → redirection
+                        
+                        <Link to> fait une navigation client-side
+                        sans rechargement → pas de perte de contexte.
+                        ============================================ */}
+                    <Link
+                      to={item.href}
                       className={`admin-nav__link ${
-                        currentPage === item.id ? 'admin-nav__link--active' : ''
+                        isLinkActive(item) ? 'admin-nav__link--active' : ''
                       }`}
                     >
                       <span className="admin-nav__icon">{item.icon}</span>
                       <span className="admin-nav__label">{item.label}</span>
-                    </a>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -209,7 +255,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
         {children}
       </main>
 
-      {/* Styles spécifiques au layout */}
+      {/* ==================== STYLES SPÉCIFIQUES AU LAYOUT ==================== */}
       <style>{`
         /* Bouton de déconnexion */
         .admin-logout-btn {
@@ -274,7 +320,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
           }
         }
 
-        /* Animation de la sidebar */
+        /* Animation de la sidebar réduite */
         .admin-sidebar--collapsed {
           width: 80px;
         }
