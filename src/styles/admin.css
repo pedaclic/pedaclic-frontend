@@ -4396,3 +4396,1023 @@
     width: 100%;
   }
 }
+/* ============================================================
+ * PEDACLIC — Phase 16 : Styles du Générateur IA
+ * ============================================================
+ * Fichier : ai-generator.css
+ * Usage : Ajouter à la fin de src/styles/admin.css
+ *         cat ai-generator.css >> src/styles/admin.css
+ * 
+ * Respecte le design PedaClic :
+ *   - Header bleu (--color-primary)
+ *   - Cards avec ombres
+ *   - Footer gris
+ *   - Variables CSS globales
+ * ============================================================ */
+
+/* ==================== CONTENEUR PRINCIPAL ==================== */
+
+.ai-generator {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--spacing-lg) var(--spacing-md);
+  min-height: 60vh;
+}
+
+/* ==================== EN-TÊTE ==================== */
+
+.ai-generator__header {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.ai-generator__title {
+  font-size: 2rem;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.ai-generator__subtitle {
+  color: var(--color-text-light);
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-md);
+}
+
+/* Actions en-tête (boutons Historique / Recommencer) */
+.ai-generator__header-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* ==================== INDICATEUR D'ÉTAPES ==================== */
+
+.ai-generator__steps {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xl);
+  flex-wrap: wrap;
+}
+
+.ai-generator__step-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-light);
+  color: var(--color-text-light);
+  font-size: 0.85rem;
+  transition: all var(--transition-base);
+}
+
+/* Étape active */
+.ai-generator__step-indicator--active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: var(--font-semibold);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* Étape terminée */
+.ai-generator__step-indicator--done {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.ai-generator__step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  font-weight: var(--font-bold);
+  font-size: 0.8rem;
+}
+
+.ai-generator__step-label {
+  display: none;
+}
+
+/* Afficher les labels sur écrans larges */
+@media (min-width: 640px) {
+  .ai-generator__step-label {
+    display: inline;
+  }
+}
+
+/* ==================== MESSAGE D'ERREUR ==================== */
+
+.ai-generator__error {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-left: 4px solid var(--color-error);
+  border-radius: var(--radius-md);
+  color: var(--color-error);
+}
+
+.ai-generator__error-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.ai-generator__error-close {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-error);
+  cursor: pointer;
+  font-size: 1rem;
+  padding: var(--spacing-xs);
+  opacity: 0.6;
+}
+
+.ai-generator__error-close:hover {
+  opacity: 1;
+}
+
+/* ==================== CONTENU D'ÉTAPE ==================== */
+
+.ai-generator__step-content {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ai-generator__step-title {
+  font-size: 1.4rem;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-lg);
+  text-align: center;
+}
+
+/* ==================== GATE PREMIUM / CONNEXION ==================== */
+
+.ai-generator__gate {
+  text-align: center;
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.ai-generator__gate-icon {
+  font-size: 3.5rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.ai-generator__gate h2 {
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-md);
+}
+
+.ai-generator__gate p {
+  color: var(--color-text-light);
+  line-height: 1.7;
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Prix Premium */
+.ai-generator__gate-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+}
+
+.ai-generator__gate-price .price {
+  font-size: 2rem;
+  font-weight: var(--font-bold);
+  color: var(--color-primary);
+}
+
+.ai-generator__gate-price .period {
+  font-size: 1rem;
+  color: var(--color-text-light);
+}
+
+/* ==================== GRILLE DISCIPLINES (Étape 1) ==================== */
+
+.ai-generator__discipline-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.ai-generator__discipline-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-lg) var(--spacing-md);
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: center;
+}
+
+.ai-generator__discipline-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.ai-generator__discipline-name {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.ai-generator__discipline-classe {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  background: var(--color-bg-light);
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+}
+
+/* ==================== RÉCAPITULATIF ==================== */
+
+.ai-generator__recap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--spacing-xs) var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.95rem;
+}
+
+.ai-generator__recap--success {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.ai-generator__recap-label {
+  font-weight: var(--font-semibold);
+  color: var(--color-text-light);
+}
+
+.ai-generator__recap-value {
+  color: var(--color-text);
+}
+
+/* ==================== CHAMPS DE FORMULAIRE ==================== */
+
+.ai-generator__field {
+  margin-bottom: var(--spacing-lg);
+}
+
+.ai-generator__label {
+  display: block;
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+  font-size: 0.95rem;
+}
+
+.ai-generator__input {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  color: var(--color-text);
+  transition: border-color var(--transition-base);
+}
+
+.ai-generator__input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.ai-generator__input--small {
+  max-width: 200px;
+}
+
+.ai-generator__textarea {
+  width: 100%;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  color: var(--color-text);
+  resize: vertical;
+  font-family: inherit;
+  transition: border-color var(--transition-base);
+}
+
+.ai-generator__textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Groupe de radio buttons */
+.ai-generator__radio-group {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.ai-generator__radio {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.ai-generator__radio input[type="radio"] {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+}
+
+.ai-generator__radio-label {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+/* ==================== GRILLE DES TYPES (Étape 3) ==================== */
+
+.ai-generator__type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.ai-generator__type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-lg);
+  background: var(--color-bg-card);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-align: left;
+}
+
+.ai-generator__type-card:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.ai-generator__type-icon {
+  font-size: 2rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.ai-generator__type-name {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  font-size: 1.05rem;
+}
+
+.ai-generator__type-desc {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  line-height: 1.5;
+}
+
+/* ==================== NAVIGATION ==================== */
+
+.ai-generator__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-border);
+}
+
+/* ==================== ANIMATION DE GÉNÉRATION ==================== */
+
+.ai-generator__generating {
+  text-align: center;
+  padding: var(--spacing-xl);
+  margin-top: var(--spacing-lg);
+  background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+  border-radius: var(--radius-lg);
+}
+
+.ai-generator__generating-animation {
+  display: flex;
+  justify-content: center;
+  gap: var(--spacing-md);
+  font-size: 2rem;
+  margin-bottom: var(--spacing-md);
+}
+
+.ai-generator__generating-animation span {
+  animation: bounce 1.5s ease-in-out infinite;
+}
+
+.ai-generator__generating-animation span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ai-generator__generating-animation span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.ai-generator__generating p {
+  color: var(--color-text);
+  font-size: 1.1rem;
+  margin-bottom: var(--spacing-xs);
+}
+
+.ai-generator__generating-hint {
+  color: var(--color-text-light);
+  font-size: 0.9rem;
+}
+
+/* ==================== PRÉVISUALISATION (Étape 5) ==================== */
+
+.ai-generator__preview {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--spacing-lg);
+}
+
+.ai-generator__preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-light);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-generator__preview-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.ai-generator__preview-body {
+  padding: var(--spacing-lg);
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* Markdown rendu en HTML */
+.ai-generator__markdown-preview {
+  line-height: 1.8;
+  color: var(--color-text);
+}
+
+.ai-generator__markdown-preview h1 {
+  font-size: 1.6rem;
+  color: var(--color-primary);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.ai-generator__markdown-preview h2 {
+  font-size: 1.3rem;
+  color: var(--color-secondary);
+  margin-top: var(--spacing-lg);
+  margin-bottom: var(--spacing-sm);
+}
+
+.ai-generator__markdown-preview h3 {
+  font-size: 1.1rem;
+  color: var(--color-text);
+  margin-top: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+}
+
+.ai-generator__markdown-preview ul,
+.ai-generator__markdown-preview ol {
+  padding-left: var(--spacing-lg);
+  margin-bottom: var(--spacing-md);
+}
+
+.ai-generator__markdown-preview li {
+  margin-bottom: var(--spacing-xs);
+}
+
+.ai-generator__markdown-preview strong {
+  color: var(--color-primary);
+}
+
+.ai-generator__markdown-preview pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+  font-size: 0.9rem;
+}
+
+.ai-generator__markdown-preview code {
+  background: var(--color-bg-light);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.ai-generator__markdown-preview pre code {
+  background: none;
+  padding: 0;
+}
+
+.ai-generator__markdown-preview hr {
+  border: none;
+  border-top: 2px solid var(--color-border);
+  margin: var(--spacing-lg) 0;
+}
+
+/* ==================== QUIZ PREVIEW ==================== */
+
+.ai-generator__quiz-preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+}
+
+.ai-generator__quiz-count {
+  font-weight: var(--font-semibold);
+  color: var(--color-primary);
+  text-align: center;
+  padding: var(--spacing-sm);
+  background: #eff6ff;
+  border-radius: var(--radius-md);
+}
+
+.ai-generator__quiz-item {
+  padding: var(--spacing-md);
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--color-primary);
+}
+
+.ai-generator__quiz-question {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* Badges de difficulté */
+.ai-generator__quiz-badge {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-medium);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ai-generator__quiz-badge--facile {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ai-generator__quiz-badge--moyen {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.ai-generator__quiz-badge--difficile {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* Options du quiz */
+.ai-generator__quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.ai-generator__quiz-option {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.ai-generator__quiz-option--correct {
+  background: #dcfce7;
+  font-weight: var(--font-semibold);
+  color: #166534;
+}
+
+.ai-generator__quiz-option-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  font-size: 0.8rem;
+  font-weight: var(--font-bold);
+  flex-shrink: 0;
+}
+
+/* Explication */
+.ai-generator__quiz-explanation {
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  padding: var(--spacing-sm);
+  background: #fffbeb;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid #fbbf24;
+}
+
+/* ==================== ACTIONS SAUVEGARDE ==================== */
+
+.ai-generator__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.ai-generator__save-success {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-md);
+  color: #166534;
+  font-weight: var(--font-semibold);
+  flex: 1;
+}
+
+/* ==================== MODAL HISTORIQUE ==================== */
+
+.ai-generator__modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--spacing-md);
+}
+
+.ai-generator__modal {
+  background: var(--color-bg-card);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  max-width: 700px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-xl);
+}
+
+.ai-generator__modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ai-generator__modal-header h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: var(--color-text);
+}
+
+.ai-generator__modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--color-text-light);
+  padding: var(--spacing-xs);
+}
+
+.ai-generator__modal-close:hover {
+  color: var(--color-text);
+}
+
+.ai-generator__modal-body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+}
+
+/* Liste historique */
+.ai-generator__history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.ai-generator__history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-bg-light);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-base);
+}
+
+.ai-generator__history-item:hover {
+  background: #f1f5f9;
+}
+
+.ai-generator__history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-generator__history-type {
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.ai-generator__history-details {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+}
+
+.ai-generator__history-date {
+  font-size: 0.8rem;
+  color: var(--color-text-light);
+  opacity: 0.7;
+}
+
+/* ==================== ÉTATS VIDES & CHARGEMENT ==================== */
+
+.ai-generator__loading {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-light);
+}
+
+.ai-generator__empty {
+  text-align: center;
+  padding: var(--spacing-xl);
+  color: var(--color-text-light);
+}
+
+/* ==================== BOUTONS (hérite de globals.css) ==================== */
+
+/* Taille large */
+.btn--lg {
+  padding: var(--spacing-sm) var(--spacing-xl);
+  font-size: 1.1rem;
+}
+
+/* Taille small */
+.btn--sm {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  font-size: 0.85rem;
+}
+
+/* Variante danger */
+.btn--danger {
+  background: var(--color-error);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.btn--danger:hover {
+  background: #dc2626;
+}
+
+/* Spinner dans les boutons */
+.spinner--sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+  display: inline-block;
+  margin-right: var(--spacing-xs);
+  vertical-align: middle;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 640px) {
+  .ai-generator {
+    padding: var(--spacing-md) var(--spacing-sm);
+  }
+
+  .ai-generator__title {
+    font-size: 1.5rem;
+  }
+
+  .ai-generator__discipline-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: var(--spacing-sm);
+  }
+
+  .ai-generator__type-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-generator__nav {
+    flex-direction: column;
+  }
+
+  .ai-generator__nav .btn {
+    width: 100%;
+  }
+
+  .ai-generator__actions {
+    flex-direction: column;
+  }
+
+  .ai-generator__actions .btn {
+    width: 100%;
+  }
+
+  .ai-generator__quiz-question {
+    flex-direction: column;
+  }
+
+  .ai-generator__quiz-badge {
+    margin-left: 0;
+    align-self: flex-start;
+  }
+
+  .ai-generator__modal {
+    max-height: 90vh;
+  }
+
+  .ai-generator__recap {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================
+   PHASE 16 v2.1 — Styles complémentaires Générateur IA
+   Classe séparée + Durée obligatoire + États sélectionnés
+   ============================================================ */
+
+/* ---- Indicateur champ obligatoire ---- */
+.ai-generator__required {
+  color: #e53e3e;
+  font-weight: bold;
+  margin-left: 2px;
+}
+
+/* ---- Discipline sélectionnée ---- */
+.ai-generator__discipline-card--selected {
+  border-color: var(--color-primary, #2563eb) !important;
+  background: rgba(37, 99, 235, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+  transform: scale(1.02);
+}
+
+/* ---- Grille des classes ---- */
+.ai-generator__classe-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ai-generator__classe-btn {
+  padding: 10px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a5568;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-generator__classe-btn:hover {
+  border-color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #2563eb);
+  background: rgba(37, 99, 235, 0.04);
+}
+
+.ai-generator__classe-btn--selected {
+  border-color: var(--color-primary, #2563eb) !important;
+  background: var(--color-primary, #2563eb) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+/* ---- Groupe durée (boutons rapides + input) ---- */
+.ai-generator__duree-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.ai-generator__duree-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-generator__duree-btn {
+  padding: 8px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #4a5568;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.ai-generator__duree-btn:hover {
+  border-color: var(--color-primary, #2563eb);
+  color: var(--color-primary, #2563eb);
+}
+
+.ai-generator__duree-btn--selected {
+  border-color: var(--color-primary, #2563eb) !important;
+  background: var(--color-primary, #2563eb) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+
+/* ---- Input durée libre ---- */
+.ai-generator__duree-group .ai-generator__input--small {
+  max-width: 200px;
+}
+
+/* ---- Responsive mobile ---- */
+@media (max-width: 640px) {
+  .ai-generator__classe-grid {
+    gap: 6px;
+  }
+
+  .ai-generator__classe-btn {
+    padding: 8px 14px;
+    font-size: 0.85rem;
+  }
+
+  .ai-generator__duree-presets {
+    gap: 6px;
+  }
+
+  .ai-generator__duree-btn {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+  }
+}

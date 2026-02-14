@@ -64,7 +64,13 @@ const navigationSections: NavSection[] = [
       { id: 'premium', label: 'Abonnés Premium', icon: '⭐', href: '/admin/premium' },
     ]
   },
-  {
+   {
+    title: 'Outils IA',
+    items: [
+      { id: 'generateur', label: 'Générateur IA', icon: '🤖', href: '/generateur' },
+    ]
+  },
+   {
     title: 'Paramètres',
     items: [
       { id: 'settings', label: 'Configuration', icon: '⚙️', href: '/admin/settings' },

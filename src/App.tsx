@@ -57,6 +57,9 @@ import ProfDashboard from './components/prof/ProfDashboard';
 /* ==================== COMPOSANTS PARENT ==================== */
 import ParentDashboard from './components/parent/ParentDashboard';
 
+/* ==================== GÉNÉRATEUR IA ==================== */
+import AIGenerator from './components/generator/AIGenerator';
+
 // ==================== APPLICATION ====================
 
 const App: React.FC = () => {
@@ -107,6 +110,9 @@ const App: React.FC = () => {
             <Layout><ParentDashboard /></Layout>
           </ProtectedRoute>
         } />
+	
+	{/* ========== GÉNÉRATEUR IA (Premium) ========== */}
+        <Route path="/generateur" element={<Layout><AIGenerator /></Layout>} />	
 
         {/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
