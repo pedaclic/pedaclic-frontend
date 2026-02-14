@@ -154,9 +154,21 @@ const Navbar: React.FC = () => {
                 <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
               </svg>
               Premium
+          </Link>
+        </li>
+
+        {/* Lien Générateur IA — visible uniquement pour Premium et Admin */}
+        {currentUser && (currentUser.isPremium || currentUser.role === 'admin') && (
+          <li className="navbar__nav-item">
+            <Link
+              to="/generateur"
+              className={`navbar__nav-link navbar__nav-link--ai ${isActiveLink('/generateur') ? 'navbar__nav-link--active' : ''}`}
+            >
+              🤖 Générateur IA
             </Link>
           </li>
-        </ul>
+        )}
+      </ul>
 
         {/* <!-- SECTION UTILISATEUR (Desktop) --> */}
         <div className="navbar__auth">
@@ -245,8 +257,20 @@ const Navbar: React.FC = () => {
                   {/* Séparateur */}
                   <div className="navbar__menu-divider"></div>
                   
+		  {/* Lien Générateur IA mobile — Premium et Admin */}
+        	{currentUser && (currentUser.isPremium || currentUser.role === 'admin') && (
+          	<Link to="/generateur" className="navbar__mobile-link navbar__mobile-link--ai" onClick={() => setMobileMenuOpen(false)}>
+            	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="navbar__mobile-link-icon">
+              	<rect x="3" y="3" width="18" height="18" rx="3" strokeWidth="2"/>
+              	<circle cx="9" cy="10" r="1.5" fill="currentColor"/>
+              	<circle cx="15" cy="10" r="1.5" fill="currentColor"/>
+              	<path d="M9 15h6" strokeWidth="2" strokeLinecap="round"/>
+            	</svg>
+            	Générateur IA
+          	</Link>
+       		 )}
                   {/* Bouton déconnexion */}
-                  <button onClick={handleLogout} className="navbar__menu-item navbar__menu-item--danger">
+		    <button onClick={handleLogout} className="navbar__menu-item navbar__menu-item--danger">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
