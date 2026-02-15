@@ -62,12 +62,13 @@ import AIGenerator from './components/generator/AIGenerator';
 
 /* ==================== PWA INSTALL PROMPT ==================== */
 import InstallPrompt from './components/InstallPrompt';
-// ==================== APPLICATION ====================
+import NetworkIndicator from './components/NetworkIndicator';// ==================== APPLICATION ====================
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
       <InstallPrompt />
+      <NetworkIndicator />
       <Routes>
 
         {/* ========== PAGES PUBLIQUES (avec Header + Footer) ========== */}

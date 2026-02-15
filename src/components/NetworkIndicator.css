@@ -1,0 +1,62 @@
+/* ============================================
+   NETWORK INDICATOR — Barre de statut réseau
+   Positionnée au-dessus du Header (fixe)
+   NE modifie PAS le CSS existant
+   ============================================ */
+
+/* --- Barre fixe tout en haut --- */
+.network-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10001; /* Au-dessus du header */
+  padding: 4px 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  animation: networkSlideDown 0.3s ease-out;
+}
+
+@keyframes networkSlideDown {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --- Contenu centré --- */
+.network-indicator__content {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* --- État hors-ligne (rouge) --- */
+.network-indicator--offline {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* --- État reconnecté (vert, disparaît après 3s) --- */
+.network-indicator--online {
+  background-color: #10b981;
+  color: #ffffff;
+  animation: networkSlideDown 0.3s ease-out, networkFadeOut 0.5s ease-in 2.5s forwards;
+}
+
+@keyframes networkFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
