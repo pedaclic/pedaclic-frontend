@@ -27,7 +27,8 @@ import {
   ChevronDown,
   Home,
   LayoutDashboard,
-  BarChart3
+  BarChart3,
+    Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -91,6 +92,13 @@ const Header: React.FC = () => {
       label: 'Tableau de bord',
       icon: <LayoutDashboard size={18} />,
       requireAuth: true
+    },
+    {
+      path: '/generateur',
+      label: 'Générateur IA',
+      icon: <Sparkles size={18} />,
+      requireAuth: true,
+      requirePremium: true
     },
     {
       path: '/parent/dashboard',
@@ -348,7 +356,9 @@ const Header: React.FC = () => {
 		    {/* Lien Espace Parent (parents uniquement) */}
 		    {currentUser.role === 'parent' && (
 		      <Link to="/parent/dashboard" className="header__dropdown-link">
-		        <BarChart3 size={18} />
+                        <BarChart3 size={18} />
+
+
 		        <span>Espace Parent</span>
 		      </Link>
 		    )}
