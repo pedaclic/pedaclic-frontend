@@ -60,11 +60,14 @@ import ParentDashboard from './components/parent/ParentDashboard';
 /* ==================== GÉNÉRATEUR IA ==================== */
 import AIGenerator from './components/generator/AIGenerator';
 
+/* ==================== PWA INSTALL PROMPT ==================== */
+import InstallPrompt from './components/InstallPrompt';
 // ==================== APPLICATION ====================
 
 const App: React.FC = () => {
   return (
     <AuthProvider>
+      <InstallPrompt />
       <Routes>
 
         {/* ========== PAGES PUBLIQUES (avec Header + Footer) ========== */}

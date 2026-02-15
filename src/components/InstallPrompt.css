@@ -1,0 +1,203 @@
+/* ============================================
+   INSTALL PROMPT — Bannière d'installation PWA
+   Style cohérent avec le design PedaClic
+   NE modifie PAS le CSS existant du Header/Footer
+   ============================================ */
+
+/* --- Conteneur principal (fixé en bas de l'écran) --- */
+.install-prompt {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  padding: 0 16px 16px;
+  pointer-events: none;
+  animation: installPromptSlideUp 0.4s ease-out;
+}
+
+/* --- Animation d'apparition --- */
+@keyframes installPromptSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* --- Carte de la bannière --- */
+.install-prompt__container {
+  max-width: 600px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(37, 99, 235, 0.1);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+/* --- Zone icône + texte --- */
+.install-prompt__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Icône bleue PedaClic --- */
+.install-prompt__icon {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+}
+
+/* --- Texte --- */
+.install-prompt__text {
+  min-width: 0;
+}
+
+.install-prompt__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2px;
+  line-height: 1.3;
+}
+
+.install-prompt__description {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* --- Zone actions --- */
+.install-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* --- Bouton Installer --- */
+.install-prompt__btn--primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.install-prompt__btn--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.install-prompt__btn--primary:active {
+  transform: translateY(0);
+}
+
+.install-prompt__btn--primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* --- Bouton fermer (X) --- */
+.install-prompt__btn--close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.install-prompt__btn--close:hover {
+  color: #475569;
+  background: #f1f5f9;
+}
+
+/* --- Instructions iOS --- */
+.install-prompt__ios {
+  flex-shrink: 0;
+}
+
+.install-prompt__ios-text {
+  font-size: 13px;
+  color: #475569;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.install-prompt__ios-icon {
+  color: #2563eb;
+  vertical-align: middle;
+}
+
+.install-prompt__ios-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+/* ===== RESPONSIVE MOBILE ===== */
+@media (max-width: 480px) {
+  .install-prompt {
+    padding: 0 8px 8px;
+  }
+
+  .install-prompt__container {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 16px;
+    gap: 12px;
+  }
+
+  .install-prompt__actions {
+    justify-content: space-between;
+  }
+
+  .install-prompt__btn--primary {
+    flex: 1;
+    text-align: center;
+  }
+
+  .install-prompt__btn--close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .install-prompt__container {
+    position: relative;
+  }
+}
