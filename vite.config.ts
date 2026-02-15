@@ -11,22 +11,18 @@ export default defineConfig({
     // PLUGIN PWA — Service Worker avec Workbox
     // ============================================
     VitePWA({
-      // --- Génération automatique du SW par Workbox ---
       strategies: 'generateSW',
-
-      // --- Enregistrement automatique du SW ---
       injectRegister: 'auto',
-
-      // --- Mise à jour automatique sans prompt ---
       registerType: 'autoUpdate',
 
-      // --- Inclure les assets statiques dans le précache ---
+      // --- Assets à inclure dans le précache ---
       includeAssets: [
         'icons/*.png',
-        'manifest.json'
+        'manifest.json',
+        'offline.html'
       ],
 
-      // --- On utilise notre propre manifest.json dans public/ ---
+      // --- Notre propre manifest.json ---
       manifest: false,
 
       // --- Configuration Workbox ---
@@ -36,9 +32,19 @@ export default defineConfig({
           '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
         ],
 
+        // --- Page de secours hors-ligne ---
+        // Si une page n'est pas en cache ET pas de réseau → offline.html
+        navigateFallback: '/offline.html',
+
+        // --- Exclure les routes API du fallback navigation ---
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/__(.*)/
+        ],
+
         // --- Stratégies de cache runtime ---
         runtimeCaching: [
-          // 1. Google Fonts — Cache First (ne changent jamais)
+          // 1. Google Fonts — Cache First
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
@@ -118,7 +124,7 @@ export default defineConfig({
             },
           },
 
-          // 5. Images externes — Stale While Revalidate
+          // 5. Images — Stale While Revalidate
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
             handler: 'StaleWhileRevalidate',
@@ -133,7 +139,6 @@ export default defineConfig({
         ],
       },
 
-      // --- Désactivé en développement ---
       devOptions: {
         enabled: false,
       },
@@ -154,5 +159,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // --- Code splitting pour réduire la taille du bundle ---
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Séparer React et ses dépendances
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          // Séparer Firebase (lourd)
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          // Séparer les icônes Lucide
+          'vendor-icons': ['lucide-react'],
+        },
+      },
+    },
   },
 });
