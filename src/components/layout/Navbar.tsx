@@ -21,6 +21,7 @@ import './Navbar.css';
 const Navbar: React.FC = () => {
   // ==================== HOOKS ====================
   const { currentUser, logout } = useAuth();
+  console.log("DEBUG navbar currentUser:", currentUser?.role, currentUser?.isPremium);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -259,7 +260,7 @@ const Navbar: React.FC = () => {
                   
 		  {/* Lien Générateur IA mobile — Premium et Admin */}
         	{currentUser && (currentUser.isPremium || currentUser.role === 'admin') && (
-          	<Link to="/generateur" className="navbar__mobile-link navbar__mobile-link--ai" onClick={() => setMobileMenuOpen(false)}>
+          	<Link to="/generateur" className="navbar__mobile-link navbar__mobile-link--ai" onClick={() => setIsMobileMenuOpen(false)}>
             	<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="navbar__mobile-link-icon">
               	<rect x="3" y="3" width="18" height="18" rx="3" strokeWidth="2"/>
               	<circle cx="9" cy="10" r="1.5" fill="currentColor"/>
