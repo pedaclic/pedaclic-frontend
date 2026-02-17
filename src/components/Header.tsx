@@ -80,6 +80,11 @@ const Header: React.FC = () => {
       label: 'Disciplines',
       icon: <BookOpen size={18} />
     },
+   {
+      path: '/ebooks',
+      label: 'Bibliothèque',
+      icon: <BookOpen size={18} />
+    },
     {
       path: '/quiz',
       label: 'Quiz',

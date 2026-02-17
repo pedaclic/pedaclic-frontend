@@ -1,0 +1,535 @@
+/* ==================== ADMIN EBOOKS - STYLES ====================
+   Phase 20 - PedaClic
+   Interface d'administration de la bibliothèque
+   Formulaire CRUD + tableau + statistiques
+   ============================================================ */
+
+/* ===== CONTENEUR PRINCIPAL ===== */
+.admin-ebooks {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+/* ===== EN-TÊTE ===== */
+.admin-ebooks-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.admin-ebooks-header h1 {
+  color: #1e3a5f;
+  font-size: 1.6rem;
+  margin: 0;
+}
+
+.btn-add-ebook {
+  padding: 12px 24px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-add-ebook:hover {
+  background: #1d4ed8;
+}
+
+/* ===== MESSAGES ALERTES ===== */
+.admin-alert {
+  padding: 14px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.admin-alert.error {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+
+.admin-alert.success {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* ===== STATISTIQUES RAPIDES ===== */
+.admin-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.stat-number {
+  display: block;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+/* ===== FORMULAIRE ===== */
+.admin-ebook-form-container {
+  background: white;
+  border-radius: 14px;
+  padding: 30px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+}
+
+.admin-ebook-form-container h2 {
+  color: #1e3a5f;
+  margin: 0 0 24px;
+  font-size: 1.3rem;
+}
+
+/* Lignes de formulaire */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row-3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+/* Groupes de champs */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  color: #374151;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.form-group label small {
+  color: #9ca3af;
+  font-weight: 400;
+  margin-left: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #374151;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+/* Section fichiers */
+.form-files-section {
+  margin: 24px 0;
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px dashed #d1d5db;
+}
+
+.form-files-section h3 {
+  color: #374151;
+  margin: 0 0 16px;
+  font-size: 1.05rem;
+}
+
+.file-group {
+  margin-bottom: 16px;
+}
+
+.file-input {
+  padding: 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  width: 100%;
+  background: white;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.file-info {
+  display: block;
+  color: #059669;
+  font-size: 0.85rem;
+  margin-top: 6px;
+}
+
+/* Checkbox actif */
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+/* Boutons du formulaire */
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.btn-save {
+  padding: 14px 28px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  padding: 14px 28px;
+  background: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-cancel:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* ===== LISTE DES EBOOKS ===== */
+.admin-ebooks-list h2 {
+  color: #1e3a5f;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.admin-ebooks-table-wrapper {
+  overflow-x: auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.admin-ebooks-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.admin-ebooks-table thead {
+  background: #f9fafb;
+}
+
+.admin-ebooks-table th {
+  padding: 14px 12px;
+  text-align: left;
+  color: #6b7280;
+  font-weight: 600;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.admin-ebooks-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  vertical-align: middle;
+}
+
+.admin-ebooks-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+/* Ligne inactive */
+.row-inactive {
+  opacity: 0.5;
+}
+
+/* Couverture miniature */
+.td-cover {
+  width: 60px;
+}
+
+.mini-cover {
+  width: 50px;
+  height: 65px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+.mini-cover-placeholder {
+  width: 50px;
+  height: 65px;
+  background: #e0e7ff;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+}
+
+/* Titre + Auteur */
+.td-title {
+  min-width: 200px;
+}
+
+.td-title strong {
+  display: block;
+  color: #1e3a5f;
+  margin-bottom: 4px;
+}
+
+.td-author {
+  color: #9ca3af;
+  font-size: 0.82rem;
+}
+
+/* Badge catégorie */
+.badge-category {
+  display: inline-block;
+  background: #e0e7ff;
+  color: #3b5998;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Stats */
+.td-stats {
+  font-size: 0.82rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* Bouton statut */
+.btn-status {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-status.active {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.btn-status.inactive {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.btn-status:hover {
+  opacity: 0.8;
+}
+
+/* Actions */
+.td-actions {
+  white-space: nowrap;
+}
+
+.btn-edit,
+.btn-delete {
+  padding: 6px 10px;
+  border: none;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.btn-edit:hover {
+  background: #dbeafe;
+}
+
+.btn-delete:hover {
+  background: #fee2e2;
+}
+
+/* Confirmation suppression */
+.delete-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.delete-confirm span {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.btn-confirm-yes {
+  padding: 4px 10px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.btn-confirm-no {
+  padding: 4px 10px;
+  background: #e5e7eb;
+  color: #374151;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+/* État vide */
+.admin-empty {
+  text-align: center;
+  padding: 50px 20px;
+  color: #6b7280;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+/* Chargement */
+.admin-loading {
+  text-align: center;
+  padding: 80px 20px;
+  color: #6b7280;
+}
+
+.admin-loading .loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 14px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+/* Tablette */
+@media (max-width: 768px) {
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-row,
+  .form-row-3 {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-ebooks-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .admin-ebook-form-container {
+    padding: 20px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  .admin-ebooks {
+    padding: 12px;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .stat-number {
+    font-size: 1.5rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+  }
+
+  .btn-save,
+  .btn-cancel {
+    width: 100%;
+    text-align: center;
+  }
+}
