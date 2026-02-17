@@ -60,9 +60,16 @@ import ParentDashboard from './components/parent/ParentDashboard';
 /* ==================== GÉNÉRATEUR IA ==================== */
 import AIGenerator from './components/generator/AIGenerator';
 
+/* ==================== BIBLIOTHÈQUE EBOOKS ==================== */
+import EbookLibrary from './pages/EbookLibrary';
+import EbookViewer from './pages/EbookViewer';
+import AdminEbooks from './pages/AdminEbooks';
+
 /* ==================== PWA INSTALL PROMPT ==================== */
 import InstallPrompt from './components/InstallPrompt';
-import NetworkIndicator from './components/NetworkIndicator';// ==================== APPLICATION ====================
+import NetworkIndicator from './components/NetworkIndicator';
+
+// ==================== APPLICATION ====================
 
 const App: React.FC = () => {
   return (
@@ -93,7 +100,7 @@ const App: React.FC = () => {
         <Route path="/admin/utilisateurs" element={<AdminRoute><AdminLayout><UserManager /></AdminLayout></AdminRoute>} />
         <Route path="/admin/resultats" element={<AdminRoute><AdminLayout><ResultsAdmin /></AdminLayout></AdminRoute>} />
         <Route path="/admin/settings" element={<AdminRoute><AdminLayout><SettingsAdmin /></AdminLayout></AdminRoute>} />
-
+	<Route path="/admin/ebooks" element={<AdminRoute><AdminLayout><AdminEbooks /></AdminLayout></AdminRoute>} />
         {/* ========== ABONNÉS PREMIUM → redirige vers Utilisateurs filtre premium ========== */}
         <Route path="/admin/premium" element={<Navigate to="/admin/utilisateurs?filter=premium" replace />} />
 
@@ -117,8 +124,11 @@ const App: React.FC = () => {
 	
 	{/* ========== GÉNÉRATEUR IA (Premium) ========== */}
         <Route path="/generateur" element={<Layout><AIGenerator /></Layout>} />	
-
-        {/* ========== 404 → redirection accueil ========== */}
+	
+	{/* ========== BIBLIOTHÈQUE EBOOKS ========== */}
+        <Route path="/ebooks" element={<Layout><EbookLibrary isPremium={false} onReadEbook={() => {}} /></Layout>} />
+        
+	{/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
