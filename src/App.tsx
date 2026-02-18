@@ -61,8 +61,7 @@ import ParentDashboard from './components/parent/ParentDashboard';
 import AIGenerator from './components/generator/AIGenerator';
 
 /* ==================== BIBLIOTHÈQUE EBOOKS ==================== */
-import EbookLibrary from './pages/EbookLibrary';
-import EbookViewer from './pages/EbookViewer';
+import EbooksPage from './pages/EbooksPage';
 import AdminEbooks from './pages/AdminEbooks';
 
 /* ==================== PWA INSTALL PROMPT ==================== */
@@ -126,8 +125,8 @@ const App: React.FC = () => {
         <Route path="/generateur" element={<Layout><AIGenerator /></Layout>} />	
 	
 	{/* ========== BIBLIOTHÈQUE EBOOKS ========== */}
-        <Route path="/ebooks" element={<Layout><EbookLibrary isPremium={false} onReadEbook={() => {}} /></Layout>} />
-        
+        <Route path="/ebooks" element={<Layout><EbooksPage /></Layout>} />        
+	
 	{/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
 

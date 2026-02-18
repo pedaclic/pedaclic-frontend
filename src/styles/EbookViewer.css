@@ -412,6 +412,35 @@
   background: rgba(255, 255, 255, 0.1);
 }
 
+/* ===== PAS D'APERÇU DISPONIBLE ===== */
+.viewer-no-preview {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1e3a5f, #2563eb);
+  min-height: calc(100vh - 60px);
+}
+
+.no-preview-content {
+  text-align: center;
+  max-width: 450px;
+  padding: 40px;
+}
+
+.no-preview-content h3 {
+  color: white;
+  font-size: 1.4rem;
+  margin-bottom: 12px;
+}
+
+.no-preview-content p {
+  color: #d1d5db;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
 /* ==================== RESPONSIVE ==================== */
 
 /* Tablette */

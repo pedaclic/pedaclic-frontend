@@ -39,7 +39,7 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
    * Détermine l'URL du PDF à afficher
    * Premium → fichier complet | Non-Premium → aperçu ou complet limité
    */
-  const getPdfUrl = (): string => {
+  const getPdfUrl = (): string | null => {
     if (isPremium) {
       return ebook.fichierURL;
     }
@@ -47,8 +47,8 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
     if (ebook.aperçuURL) {
       return ebook.aperçuURL;
     }
-    // Sinon, afficher le PDF complet (la limitation sera visuelle)
-    return ebook.fichierURL;
+    // Pas d'aperçu disponible → bloquer l'accès
+    return null;
   };
 
   /**
@@ -225,32 +225,55 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
       {viewMode === 'read' && (
         <div className="viewer-read-panel">
 
-          {/* <!-- Chargement du PDF --> */}
-          {loading && (
-            <div className="viewer-loading">
-              <div className="loading-spinner"></div>
-              <p>Chargement du document...</p>
-            </div>
-          )}
+          {/* --- PDF disponible --- */}
+          {getPdfUrl() ? (
+            <>
+              {/* Chargement du PDF */}
+              {loading && (
+                <div className="viewer-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Chargement du document...</p>
+                </div>
+              )}
 
-          {/* <!-- iframe PDF --> */}
-          <iframe
-            src={`${getPdfUrl()}#toolbar=1&navpanes=0`}
-            className="pdf-iframe"
-            title={ebook.titre}
-            onLoad={handleIframeLoad}
-            style={{ display: loading ? 'none' : 'block' }}
-          />
+              {/* iframe PDF */}
+              <iframe
+                src={`${getPdfUrl()}#toolbar=1&navpanes=0`}
+                className="pdf-iframe"
+                title={ebook.titre}
+                onLoad={handleIframeLoad}
+                style={{ display: loading ? 'none' : 'block' }}
+              />
 
-          {/* <!-- Overlay "Passer Premium" pour non-Premium --> */}
-          {!isPremium && (
-            <div className="viewer-premium-overlay">
-              <div className="overlay-content">
+              {/* Overlay Premium pour aperçu */}
+              {!isPremium && (
+                <div className="viewer-premium-overlay">
+                  <div className="overlay-content">
+                    <div className="overlay-lock">🔒</div>
+                    <h3>Aperçu limité à {ebook.pagesApercu} pages</h3>
+                    <p>
+                      Pour lire l'intégralité de ce document ({ebook.nombrePages} pages)
+                      et le télécharger, passez à PedaClic Premium.
+                    </p>
+                    <button onClick={onGoPremium} className="btn-overlay-premium">
+                      Passer Premium — 2 000 FCFA/mois
+                    </button>
+                    <button onClick={onBack} className="btn-overlay-back">
+                      Retour à la bibliothèque
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            /* --- Pas d'aperçu disponible (non-Premium sans fichier aperçu) --- */
+            <div className="viewer-no-preview">
+              <div className="no-preview-content">
                 <div className="overlay-lock">🔒</div>
-                <h3>Aperçu limité à {ebook.pagesApercu} pages</h3>
+                <h3>Document réservé aux abonnés Premium</h3>
                 <p>
-                  Pour lire l'intégralité de ce document ({ebook.nombrePages} pages)
-                  et le télécharger, passez à PedaClic Premium.
+                  Ce document de {ebook.nombrePages} pages est accessible uniquement
+                  avec un abonnement PedaClic Premium.
                 </p>
                 <button onClick={onGoPremium} className="btn-overlay-premium">
                   Passer Premium — 2 000 FCFA/mois
