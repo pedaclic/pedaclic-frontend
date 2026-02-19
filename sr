@@ -1,0 +1,580 @@
+// ============================================================
+// PHASE 21 — PAGE : EntreeEditorPage
+// Éditeur de séance (création + modification)
+// Routes :
+//   /prof/cahiers/:cahierId/nouvelle
+//   /prof/cahiers/:cahierId/modifier/:entreeId
+// PedaClic — www.pedaclic.sn
+// ============================================================
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import {
+  createEntree,
+  updateEntree,
+  getEntreeById,
+  getCahierById,
+  uploadPieceJointe,
+  addPiecesJointes,
+  deletePieceJointe,
+} from '../services/cahierTextesService';
+import {
+  TYPE_CONTENU_CONFIG,
+  STATUT_CONFIG,
+  COMPETENCES_PREDEFINIES,
+  TYPE_EVAL_LABELS,
+} from '../types/cahierTextes.types';
+import type {
+  EntreeFormData, TypeContenu, StatutSeance,
+  TypeEvaluation, StatutEvaluation, CahierTextes,
+  EntreeCahier, PieceJointe,
+} from '../types/cahierTextes.types';
+import '../styles/CahierTextes.css';
+
+// ─── Formulaire vide ─────────────────────────────────────────
+const emptyForm = (): EntreeFormData => ({
+  date: new Date().toISOString().slice(0, 10),
+  heureDebut: '',
+  heureFin: '',
+  chapitre: '',
+  typeContenu: 'cours',
+  contenu: '',
+  objectifs: '',
+  competences: [],
+  statut: 'realise',
+  motifAnnulation: '',
+  dateReport: '',
+  notesPrivees: '',
+  isMarqueEvaluation: false,
+  typeEvaluation: '',
+  dateEvaluationPrevue: '',
+  statutEvaluation: 'a_evaluer',
+});
+
+// ─── Composant éditeur de texte riche ────────────────────────
+interface RichEditorProps {
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+}
+
+const RichEditor: React.FC<RichEditorProps> = ({ value, onChange, placeholder }) => {
+  const editorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value;
+    }
+  }, []);
+
+  const execCmd = (cmd: string, val?: string) => {
+    document.execCommand(cmd, false, val);
+    editorRef.current?.focus();
+    syncContent();
+  };
+
+  const syncContent = () => {
+    if (editorRef.current) onChange(editorRef.current.innerHTML);
+  };
+
+  const isActive = (cmd: string) => {
+    try { return document.queryCommandState(cmd); } catch { return false; }
+  };
+
+  return (
+    <div>
+      {/* Barre d'outils */}
+      <div className="rich-editor-toolbar">
+        {[
+          { cmd: 'bold', label: 'G', title: 'Gras' },
+          { cmd: 'italic', label: 'I', title: 'Italique' },
+          { cmd: 'underline', label: 'S̲', title: 'Souligné' },
+        ].map(({ cmd, label, title }) => (
+          <button
+            key={cmd}
+            type="button"
+            className={`toolbar-btn ${isActive(cmd) ? 'active' : ''}`}
+            onMouseDown={e => { e.preventDefault(); execCmd(cmd); }}
+            title={title}
+          >
+            {label}
+          </button>
+        ))}
+        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
+        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('insertUnorderedList'); }} title="Liste à puces">•</button>
+        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('insertOrderedList'); }} title="Liste numérotée">1.</button>
+        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
+        {(['h2', 'h3', 'p'] as const).map(tag => (
+          <button
+            key={tag}
+            type="button"
+            className="toolbar-btn"
+            onMouseDown={e => { e.preventDefault(); execCmd('formatBlock', tag); }}
+            title={tag === 'p' ? 'Paragraphe' : tag.toUpperCase()}
+          >
+            {tag === 'p' ? '¶' : tag.toUpperCase()}
+          </button>
+        ))}
+        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
+        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('removeFormat'); }} title="Effacer la mise en forme">✕</button>
+      </div>
+
+      {/* Zone d'édition */}
+      <div
+        ref={editorRef}
+        className="rich-editor-area"
+        contentEditable
+        suppressContentEditableWarning
+        onInput={syncContent}
+        data-placeholder={placeholder || 'Décrivez le contenu de la séance...'}
+        style={{ position: 'relative' }}
+      />
+    </div>
+  );
+};
+
+// ─── Composant principal ─────────────────────────────────────
+const EntreeEditorPage: React.FC = () => {
+  const { cahierId, entreeId } = useParams<{ cahierId: string; entreeId?: string }>();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
+
+  const [cahier, setCahier] = useState<CahierTextes | null>(null);
+  const [entreeOriginale, setEntreeOriginale] = useState<EntreeCahier | null>(null);
+  const [form, setForm] = useState<EntreeFormData>(emptyForm());
+  const [piecesJointes, setPiecesJointes] = useState<PieceJointe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [error, setError] = useState('');
+
+  const isEdit = !!entreeId;
+
+  // ── Chargement initial ────────────────────────────────────
+  useEffect(() => {
+    if (!cahierId) return;
+    const fetch = async () => {
+      setLoading(true);
+      try {
+        const cahierData = await getCahierById(cahierId);
+        if (!cahierData) { navigate('/prof/cahiers'); return; }
+        setCahier(cahierData);
+
+        if (isEdit && entreeId) {
+          const entreeData = await getEntreeById(entreeId);
+          if (entreeData) {
+            setEntreeOriginale(entreeData);
+            setPiecesJointes(entreeData.piecesJointes || []);
+            // Pré-remplir le formulaire
+            setForm({
+              date: entreeData.date.toDate().toISOString().slice(0, 10),
+              heureDebut: entreeData.heureDebut || '',
+              heureFin: entreeData.heureFin || '',
+              chapitre: entreeData.chapitre,
+              typeContenu: entreeData.typeContenu,
+              contenu: entreeData.contenu,
+              objectifs: entreeData.objectifs || '',
+              competences: entreeData.competences || [],
+              statut: entreeData.statut,
+              motifAnnulation: entreeData.motifAnnulation || '',
+              dateReport: entreeData.dateReport
+                ? entreeData.dateReport.toDate().toISOString().slice(0, 10)
+                : '',
+              notesPrivees: entreeData.notesPrivees || '',
+              isMarqueEvaluation: entreeData.isMarqueEvaluation,
+              typeEvaluation: entreeData.typeEvaluation || '',
+              dateEvaluationPrevue: entreeData.dateEvaluationPrevue
+                ? entreeData.dateEvaluationPrevue.toDate().toISOString().slice(0, 10)
+                : '',
+              statutEvaluation: entreeData.statutEvaluation || 'a_evaluer',
+            });
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [cahierId, entreeId]);
+
+  // ── Toggle compétence ─────────────────────────────────────
+  const toggleCompetence = (comp: string) => {
+    setForm(f => ({
+      ...f,
+      competences: f.competences.includes(comp)
+        ? f.competences.filter(c => c !== comp)
+        : [...f.competences, comp],
+    }));
+  };
+
+  // ── Upload pièce jointe ───────────────────────────────────
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.length || !currentUser?.uid || !cahierId) return;
+    const file = e.target.files[0];
+    if (file.size > 10 * 1024 * 1024) { alert('Fichier trop volumineux (max 10 Mo)'); return; }
+
+    setUploadingFile(true);
+    try {
+      const piece = await uploadPieceJointe(currentUser.uid, cahierId, file);
+      const newPieces = [...piecesJointes, piece];
+      setPiecesJointes(newPieces);
+      // Mettre à jour Firestore si c'est une édition
+      if (isEdit && entreeId && entreeOriginale) {
+        await addPiecesJointes(entreeId, piecesJointes, [piece]);
+      }
+    } catch (err) {
+      alert('Erreur upload fichier.');
+    } finally {
+      setUploadingFile(false);
+      e.target.value = '';
+    }
+  };
+
+  // ── Supprimer pièce jointe ────────────────────────────────
+  const handleDeletePiece = async (url: string) => {
+    if (!entreeId) {
+      setPiecesJointes(prev => prev.filter(p => p.url !== url));
+      return;
+    }
+    try {
+      await deletePieceJointe(entreeId, piecesJointes, url);
+      setPiecesJointes(prev => prev.filter(p => p.url !== url));
+    } catch {
+      alert('Erreur suppression fichier.');
+    }
+  };
+
+  // ── Soumettre ─────────────────────────────────────────────
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.chapitre.trim()) { setError('Le chapitre est obligatoire.'); return; }
+    if (!form.date) { setError('La date est obligatoire.'); return; }
+    if (!currentUser?.uid || !cahierId) return;
+
+    setSaving(true);
+    setError('');
+    try {
+      if (isEdit && entreeId) {
+        await updateEntree(entreeId, cahierId, form);
+      } else {
+        const newId = await createEntree(cahierId, currentUser.uid, form);
+        // Attacher les pièces jointes si elles ont été uploadées avant la création
+        if (piecesJointes.length > 0) {
+          await addPiecesJointes(newId, [], piecesJointes);
+        }
+      }
+      navigate(`/prof/cahiers/${cahierId}`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError('Erreur : ' + msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─────────────────────────────────────────────────────────
+  if (loading) return <div className="loading-spinner"><div className="spinner-circle" /></div>;
+  if (!cahier) return null;
+
+  return (
+    <div className="entree-editor-page">
+      {/* ── En-tête ── */}
+      <div className="editor-header">
+        <button
+          onClick={() => navigate(`/prof/cahiers/${cahierId}`)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1.2rem' }}
+        >
+          ←
+        </button>
+        <div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#1f2937', margin: '0 0 0.2rem' }}>
+            {isEdit ? '✏️ Modifier la séance' : '➕ Nouvelle séance'}
+          </h1>
+          <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>
+            {cahier.titre} • {cahier.classe} • {cahier.matiere}
+          </div>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        {/* ── Informations de base ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">📋 Informations de la séance</div>
+
+          {/* Date + Horaires */}
+          <div className="form-row" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
+            <div className="form-group">
+              <label className="form-label">Date *</label>
+              <input
+                type="date"
+                className="form-input"
+                value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Heure début</label>
+              <input
+                type="time"
+                className="form-input"
+                value={form.heureDebut}
+                onChange={e => setForm(f => ({ ...f, heureDebut: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Heure fin</label>
+              <input
+                type="time"
+                className="form-input"
+                value={form.heureFin}
+                onChange={e => setForm(f => ({ ...f, heureFin: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          {/* Chapitre */}
+          <div className="form-group">
+            <label className="form-label">Chapitre / Titre de la séance *</label>
+            <input
+              className="form-input"
+              placeholder="Ex: Chapitre 3 — Les fonctions affines"
+              value={form.chapitre}
+              onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))}
+              required
+            />
+          </div>
+
+          {/* Type + Statut */}
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Type de séance</label>
+              <select
+                className="form-select"
+                value={form.typeContenu}
+                onChange={e => setForm(f => ({ ...f, typeContenu: e.target.value as TypeContenu }))}
+              >
+                {Object.entries(TYPE_CONTENU_CONFIG).map(([k, cfg]) => (
+                  <option key={k} value={k}>{cfg.emoji} {cfg.label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Statut</label>
+              <select
+                className="form-select"
+                value={form.statut}
+                onChange={e => setForm(f => ({ ...f, statut: e.target.value as StatutSeance }))}
+              >
+                {Object.entries(STATUT_CONFIG).map(([k, cfg]) => (
+                  <option key={k} value={k}>{cfg.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Motif annulation */}
+          {form.statut === 'annule' && (
+            <div className="form-group">
+              <label className="form-label">Motif d'annulation</label>
+              <input
+                className="form-input"
+                placeholder="Ex: Grève enseignants, sortie scolaire..."
+                value={form.motifAnnulation}
+                onChange={e => setForm(f => ({ ...f, motifAnnulation: e.target.value }))}
+              />
+            </div>
+          )}
+
+          {/* Date de report */}
+          {form.statut === 'reporte' && (
+            <div className="form-group">
+              <label className="form-label">Nouvelle date (report)</label>
+              <input
+                type="date"
+                className="form-input"
+                value={form.dateReport}
+                onChange={e => setForm(f => ({ ...f, dateReport: e.target.value }))}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── Contenu pédagogique ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">📝 Contenu de la séance</div>
+
+          <div className="form-group">
+            <label className="form-label">Contenu (mise en forme riche)</label>
+            <RichEditor
+              value={form.contenu}
+              onChange={html => setForm(f => ({ ...f, contenu: html }))}
+              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Objectifs pédagogiques</label>
+            <textarea
+              className="form-textarea"
+              placeholder="Ex: L'élève sera capable de résoudre une équation du second degré..."
+              value={form.objectifs}
+              onChange={e => setForm(f => ({ ...f, objectifs: e.target.value }))}
+              rows={2}
+            />
+          </div>
+
+          {/* Compétences */}
+          <div className="form-group">
+            <label className="form-label">Compétences visées</label>
+            <div className="competences-container">
+              {COMPETENCES_PREDEFINIES.map(comp => (
+                <button
+                  key={comp}
+                  type="button"
+                  className={`competence-tag ${form.competences.includes(comp) ? 'selected' : ''}`}
+                  onClick={() => toggleCompetence(comp)}
+                >
+                  {comp}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Signet d'évaluation ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">📌 Signet d'évaluation</div>
+
+          <div className="signet-section">
+            <div
+              className="signet-toggle"
+              onClick={() => setForm(f => ({ ...f, isMarqueEvaluation: !f.isMarqueEvaluation }))}
+            >
+              <div className={`toggle-switch ${form.isMarqueEvaluation ? 'on' : ''}`} />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1f2937' }}>
+                  Marquer pour évaluation
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+                  Ce contenu sera évalué ultérieurement
+                </div>
+              </div>
+            </div>
+
+            {form.isMarqueEvaluation && (
+              <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Type d'évaluation</label>
+                    <select
+                      className="form-select"
+                      value={form.typeEvaluation}
+                      onChange={e => setForm(f => ({ ...f, typeEvaluation: e.target.value as TypeEvaluation }))}
+                    >
+                      <option value="">Choisir...</option>
+                      {Object.entries(TYPE_EVAL_LABELS).map(([k, label]) => (
+                        <option key={k} value={k}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Date prévue d'évaluation</label>
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={form.dateEvaluationPrevue}
+                      onChange={e => setForm(f => ({ ...f, dateEvaluationPrevue: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Pièces jointes ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">📎 Pièces jointes</div>
+
+          {/* Liste existante */}
+          {piecesJointes.length > 0 && (
+            <div className="pieces-jointes-list">
+              {piecesJointes.map(p => (
+                <div key={p.url} className="piece-jointe-item">
+                  <span>📄</span>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer">{p.nom}</a>
+                  <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+                    ({Math.round(p.taille / 1024)} Ko)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePiece(p.url)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', marginLeft: 'auto' }}
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Zone upload */}
+          <label className="upload-zone">
+            {uploadingFile ? 'Envoi en cours...' : '📂 Cliquer pour ajouter un fichier (PDF, image — max 10 Mo)'}
+            <input
+              type="file"
+              style={{ display: 'none' }}
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx"
+              onChange={handleFileUpload}
+              disabled={uploadingFile}
+            />
+          </label>
+        </div>
+
+        {/* ── Notes privées ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">🔒 Notes privées</div>
+          <textarea
+            className="form-textarea"
+            placeholder="Notes personnelles (non visibles par l'administration)..."
+            value={form.notesPrivees}
+            onChange={e => setForm(f => ({ ...f, notesPrivees: e.target.value }))}
+            rows={3}
+          />
+          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+            Ces notes sont uniquement visibles par vous.
+          </div>
+        </div>
+
+        {/* ── Erreur + Boutons ── */}
+        {error && (
+          <div style={{ color: '#dc2626', background: '#fee2e2', padding: '0.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingBottom: '2rem' }}>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => navigate(`/prof/cahiers/${cahierId}`)}
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={saving}
+            style={{ minWidth: 160 }}
+          >
+            {saving ? 'Enregistrement...' : isEdit ? '💾 Mettre à jour' : '✅ Enregistrer la séance'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default EntreeEditorPage;
