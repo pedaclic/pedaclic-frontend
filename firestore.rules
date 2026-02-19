@@ -165,6 +165,12 @@ service cloud.firestore {
       // Suppression: admin uniquement
       allow delete: if isAdmin();
     }
+   match /quizzes_v2/{quizId} {
+       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+       allow create: if isAdmin() || isProf();
+       allow update: if isAdmin();
+       allow delete: if isAdmin();
+}
     
     // ==================== COLLECTION: quiz_results ====================
     
@@ -376,7 +382,41 @@ service cloud.firestore {
       // Suppression: uniquement admin
       allow delete: if isAdmin();
     }    
+	
+     // ==================== PHASE 21 — CAHIER DE TEXTES ====================
 
+match /cahiers_textes/{cahierId} {
+  allow read: if request.auth != null && (
+    resource.data.profId == request.auth.uid || isAdmin()
+  );
+  allow create: if request.auth != null
+    && request.resource.data.profId == request.auth.uid
+    && getUserData().role == 'prof'
+    && getUserData().isPremium == true;
+  allow update, delete: if request.auth != null && (
+    resource.data.profId == request.auth.uid || isAdmin()
+  );
+}
+
+match /entrees_cahier/{entreeId} {
+  allow read: if request.auth != null && (
+    resource.data.profId == request.auth.uid || isAdmin()
+  );
+  allow create: if request.auth != null
+    && request.resource.data.profId == request.auth.uid
+    && getUserData().role == 'prof'
+    && getUserData().isPremium == true;
+  allow update, delete: if request.auth != null && (
+    resource.data.profId == request.auth.uid || isAdmin()
+  );
+}
+
+match /rappels_prof/{rappelId} {
+  allow read, write: if request.auth != null
+    && resource.data.profId == request.auth.uid;
+  allow create: if request.auth != null
+    && request.resource.data.profId == request.auth.uid;
+}
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {

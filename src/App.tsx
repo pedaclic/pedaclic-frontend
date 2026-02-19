@@ -54,6 +54,11 @@ import StudentSuivi from './components/student/StudentSuivi';
 /* ==================== COMPOSANTS PROF ==================== */
 import ProfDashboard from './components/prof/ProfDashboard';
 
+/* ==================== PHASE 21 — CAHIER DE TEXTES ==================== */
+import CahierTextesPage from './pages/CahierTextesPage';
+import CahierDetailPage from './pages/CahierDetailPage';
+import EntreeEditorPage from './pages/EntreeEditorPage';
+
 /* ==================== COMPOSANTS PARENT ==================== */
 import ParentDashboard from './components/parent/ParentDashboard';
 
@@ -113,6 +118,11 @@ const App: React.FC = () => {
 
         {/* ========== ESPACE PROFESSEUR ========== */}
         <Route path="/prof/dashboard" element={<ProfRoute><Layout><ProfDashboard /></Layout></ProfRoute>} />
+	{/* ========== CAHIER DE TEXTES (Prof Premium) ========== */}
+	<Route path="/prof/cahiers" element={<ProfRoute><Layout><CahierTextesPage /></Layout></ProfRoute>} />
+	<Route path="/prof/cahiers/:cahierId" element={<ProfRoute><Layout><CahierDetailPage /></Layout></ProfRoute>} />
+	<Route path="/prof/cahiers/:cahierId/nouvelle" element={<ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>} />
+	<Route path="/prof/cahiers/:cahierId/modifier/:entreeId" element={<ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>} />	
 
         {/* ========== ESPACE PARENT ========== */}
         <Route path="/parent/dashboard" element={

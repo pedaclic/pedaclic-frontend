@@ -1,0 +1,234 @@
+/* ============================================================
+   PHASE 21 — STYLES CALENDRIER
+   PedaClic — www.pedaclic.sn
+   ============================================================ */
+
+/* ─── Wrapper calendrier ─────────────────────────────────────── */
+.cahier-calendar {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+
+/* Header navigation mois */
+.calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-nav-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1f2937;
+  text-transform: capitalize;
+}
+
+.calendar-nav-btn {
+  background: none;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  transition: all 0.2s;
+}
+.calendar-nav-btn:hover { border-color: #2563eb; color: #2563eb; }
+
+/* Grille jours semaine */
+.calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.calendar-weekday {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Grille des jours */
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  background: #e5e7eb;
+}
+
+.calendar-day {
+  background: white;
+  min-height: 80px;
+  padding: 0.4rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.calendar-day:hover { background: #f9fafb; }
+.calendar-day.other-month { background: #fafafa; }
+.calendar-day.other-month .calendar-day-num { color: #d1d5db; }
+.calendar-day.today .calendar-day-num {
+  background: #2563eb;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.calendar-day.selected { background: #eff6ff; }
+
+.calendar-day-num {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Événements du jour (petits points colorés) */
+.calendar-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.calendar-event-dot {
+  font-size: 0.65rem;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  max-width: 100%;
+}
+
+/* +N more */
+.calendar-more {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Popup séances d'un jour */
+.calendar-day-popup {
+  position: fixed;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+  padding: 1rem;
+  width: 280px;
+  z-index: 500;
+  border: 1px solid #e5e7eb;
+}
+
+.calendar-day-popup-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.calendar-popup-entree {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #f9fafb;
+  cursor: pointer;
+}
+.calendar-popup-entree:hover { background: #f9fafb; }
+.calendar-popup-entree:last-child { border-bottom: none; }
+
+.calendar-popup-entree-type {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.calendar-popup-entree-info {}
+.calendar-popup-entree-chapitre {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #374151;
+}
+.calendar-popup-entree-heure {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* Légende types */
+.calendar-legend {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #4b5563;
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Mobile : vue semaine simplifiée ───────────────────────── */
+@media (max-width: 640px) {
+  .calendar-day { min-height: 50px; }
+  .calendar-event-dot { display: none; }
+  .calendar-day-num { font-size: 0.75rem; }
+
+  /* Barre de semaine */
+  .calendar-week-bar {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .calendar-week-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+    padding: 0.4rem;
+    border-radius: 8px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .calendar-week-day.selected { background: #2563eb; color: white; }
+  .calendar-week-day-name { font-size: 0.65rem; font-weight: 700; }
+  .calendar-week-day-num { font-size: 1rem; font-weight: 700; }
+  .calendar-week-day-dot { width: 4px; height: 4px; border-radius: 50%; background: #2563eb; margin-top: 2px; }
+  .calendar-week-day.selected .calendar-week-day-dot { background: white; }
+}
