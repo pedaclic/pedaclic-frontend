@@ -21,7 +21,6 @@ import {
 import type {
   CahierTextes, EntreeCahier, StatutSeance,
 } from '../types/cahierTextes.types';
-import type { DocumentSnapshot } from 'firebase/firestore';
 import CahierCalendar from '../components/prof/CahierCalendar';
 import RappelWidget from '../components/prof/RappelWidget';
 import SignetFilter from '../components/prof/SignetFilter';
@@ -39,7 +38,6 @@ const CahierDetailPage: React.FC = () => {
 
   const [cahier, setCahier] = useState<CahierTextes | null>(null);
   const [entrees, setEntrees] = useState<EntreeCahier[]>([]);
-  const [lastDoc, setLastDoc] = useState<DocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingCahier, setLoadingCahier] = useState(true);
   const [loadingEntrees, setLoadingEntrees] = useState(true);
@@ -64,27 +62,25 @@ const CahierDetailPage: React.FC = () => {
   }, [cahierId]);
 
   // ── Charger les entrées ───────────────────────────────────
-  const chargerEntrees = useCallback(async (reset = false) => {
-    if (!cahierId) return;
-    setLoadingEntrees(true);
-    try {
-      const prev = reset ? undefined : (lastDoc ?? undefined);
-      const result = await getEntreesByCahier(cahierId, prev);
-      setEntrees(reset ? result.entrees : [...entrees, ...result.entrees]);
-      setLastDoc(result.lastDoc);
-      setHasMore(!!result.lastDoc);
-    } finally {
-      setLoadingEntrees(false);
+  const chargerEntrees = useCallback(async () => {
+  if (!cahierId) return;
+  setLoadingEntrees(true);
+  try {
+    const data = await getEntreesByCahier(cahierId);
+    setEntrees(data);
+    setHasMore(false);
+  } finally {
+    setLoadingEntrees(false);
     }
-  }, [cahierId, lastDoc]);
+   }, [cahierId]);
 
-  useEffect(() => { chargerEntrees(true); }, [cahierId]);
+   useEffect(() => { chargerEntrees(); }, [cahierId]);
 
   // ── Supprimer une entrée ──────────────────────────────────
   const handleDeleteEntree = async (entree: EntreeCahier) => {
     if (!confirm(`Supprimer la séance "${entree.chapitre}" ?`)) return;
     try {
-      await deleteEntree(entree.id, entree.cahierId);
+      await deleteEntree(entree.id);
       setEntrees(prev => prev.filter(e => e.id !== entree.id));
     } catch {
       alert('Erreur lors de la suppression.');
@@ -94,7 +90,7 @@ const CahierDetailPage: React.FC = () => {
   // ── Changer statut rapide ─────────────────────────────────
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
     try {
-      await updateEntree(entree.id, entree.cahierId, { statut });
+      await updateEntree(entree.id, { statut });
       setEntrees(prev => prev.map(e => e.id === entree.id ? { ...e, statut } : e));
     } catch {
       alert('Erreur mise à jour statut.');
@@ -367,7 +363,7 @@ const CahierDetailPage: React.FC = () => {
                   <div style={{ textAlign: 'center', padding: '1rem' }}>
                     <button
                       className="btn-secondary"
-                      onClick={() => chargerEntrees(false)}
+                      onClick={() => chargerEntrees()}
                       disabled={loadingEntrees}
                     >
                       {loadingEntrees ? 'Chargement...' : 'Charger plus de séances'}

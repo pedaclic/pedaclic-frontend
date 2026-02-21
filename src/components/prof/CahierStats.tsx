@@ -60,20 +60,20 @@ const CahierStats: React.FC<CahierStatsProps> = ({ cahier }) => {
           bg="#dbeafe"
         />
         <StatCard
-          value={stats.realises}
+          value={stats.realise}
           label="Réalisées"
           color="#059669"
           bg="#d1fae5"
         />
         <StatCard
-          value={stats.planifies}
+          value={stats.planifie}
           label="Planifiées"
           color="#d97706"
           bg="#fef3c7"
         />
         <StatCard
-          value={`${stats.heuresTotal.toFixed(1)}h`}
-          label="Heures d'enseignement"
+  	  value={`${stats.tauxRealisation}%`}
+          label="Taux de réalisation"
           color="#7c3aed"
           bg="#ede9fe"
         />

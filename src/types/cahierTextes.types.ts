@@ -1,36 +1,57 @@
 // ============================================================
-// PHASE 21 — CAHIER DE TEXTES NUMÉRIQUE
-// Types & Interfaces TypeScript
-// PedaClic — www.pedaclic.sn
+// PedaClic — Cahier de Textes : Types complets
+// Phase 21 (base intacte) + Phase 22 (groupes, médias enrichis)
 // ============================================================
 
 import { Timestamp } from 'firebase/firestore';
 
-// ─── Niveaux de classe ───────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// CLASSES
+// ─────────────────────────────────────────────────────────────
 export type Classe =
   | '6ème' | '5ème' | '4ème' | '3ème'
   | '2nde' | '1ère' | 'Terminale';
 
 export const CLASSES: Classe[] = [
-  '6ème', '5ème', '4ème', '3ème', '2nde', '1ère', 'Terminale'
+  '6ème', '5ème', '4ème', '3ème', '2nde', '1ère', 'Terminale',
 ];
 
-// ─── Matières ───────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// MATIÈRES
+// ─────────────────────────────────────────────────────────────
 export const MATIERES = [
   'Mathématiques', 'Français', 'Physique-Chimie', 'SVT',
   'Histoire-Géographie', 'Anglais', 'Philosophie', 'Économie',
   'Comptabilité', 'Arabe', 'Espagnol', 'Informatique',
-  'Éducation civique', 'Littérature', 'Arts plastiques', 'EPS'
+  'Éducation civique', 'Littérature', 'Arts plastiques', 'EPS',
 ] as const;
 export type Matiere = typeof MATIERES[number];
 
-// ─── Années scolaires ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ANNÉES SCOLAIRES
+// ─────────────────────────────────────────────────────────────
 export const ANNEES_SCOLAIRES = [
-  '2023-2024', '2024-2025', '2025-2026', '2026-2027'
+  '2023-2024', '2024-2025', '2025-2026', '2026-2027',
 ] as const;
 export type AnneeScolaire = typeof ANNEES_SCOLAIRES[number];
 
-// ─── Types de contenu ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// COULEURS DU CAHIER (Phase 21 — palette complète)
+// ─────────────────────────────────────────────────────────────
+export const COULEURS_CAHIER = [
+  '#2563eb', // Bleu PedaClic
+  '#7c3aed', // Violet
+  '#059669', // Vert
+  '#d97706', // Ambre
+  '#dc2626', // Rouge
+  '#0891b2', // Cyan
+  '#db2777', // Rose
+  '#65a30d', // Lime
+] as const;
+
+// ─────────────────────────────────────────────────────────────
+// TYPES DE CONTENU (Phase 21)
+// ─────────────────────────────────────────────────────────────
 export type TypeContenu =
   | 'cours' | 'exercices' | 'correction'
   | 'devoir_surveille' | 'devoir_maison'
@@ -47,8 +68,12 @@ export const TYPE_CONTENU_CONFIG: Record<TypeContenu, { label: string; emoji: st
   revision:          { label: 'Révision',            emoji: '🔄', color: '#f97316' },
 };
 
-// ─── Statut de séance ───────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// STATUT DE SÉANCE (Phase 21)
+// ─────────────────────────────────────────────────────────────
 export type StatutSeance = 'realise' | 'planifie' | 'annule' | 'reporte';
+// Alias Phase 22 (sous-ensemble compatible)
+export type StatutEntree = 'planifie' | 'realise' | 'annule';
 
 export const STATUT_CONFIG: Record<StatutSeance, { label: string; color: string; bg: string }> = {
   realise:  { label: 'Réalisé',  color: '#059669', bg: '#d1fae5' },
@@ -57,30 +82,76 @@ export const STATUT_CONFIG: Record<StatutSeance, { label: string; color: string;
   reporte:  { label: 'Reporté',  color: '#2563eb', bg: '#dbeafe' },
 };
 
-// ─── Évaluation (signets) ────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ÉVALUATION / SIGNETS (Phase 21)
+// ─────────────────────────────────────────────────────────────
 export type TypeEvaluation = 'interro' | 'ds' | 'examen' | 'oral' | 'autre';
 export type StatutEvaluation = 'a_evaluer' | 'evaluation_creee' | 'evaluation_terminee';
 
 export const TYPE_EVAL_LABELS: Record<TypeEvaluation, string> = {
-  interro: 'Interrogation', ds: 'Devoir Surveillé',
-  examen: 'Examen', oral: 'Oral', autre: 'Autre',
+  interro: 'Interrogation',
+  ds:      'Devoir Surveillé',
+  examen:  'Examen',
+  oral:    'Oral',
+  autre:   'Autre',
 };
 
-// ─── Rappels ─────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// RAPPELS (Phase 21)
+// ─────────────────────────────────────────────────────────────
 export type TypeRappel = 'devoir' | 'evaluation' | 'notes' | 'cours' | 'personnalise';
 export type Recurrence = 'unique' | 'quotidien' | 'hebdomadaire';
-export type Priorite = 'normale' | 'urgente';
+export type Priorite   = 'normale' | 'urgente';
 
-// ─── Pièce jointe ────────────────────────────────────────────
+export const TYPE_RAPPEL_CONFIG: Record<TypeRappel, { label: string; emoji: string }> = {
+  devoir:       { label: 'Devoir à corriger',    emoji: '📋' },
+  evaluation:   { label: 'Évaluation à préparer', emoji: '📊' },
+  notes:        { label: 'Notes à saisir',        emoji: '📝' },
+  cours:        { label: 'Cours à préparer',      emoji: '📖' },
+  personnalise: { label: 'Rappel personnalisé',   emoji: '🔔' },
+};
+
+// ─────────────────────────────────────────────────────────────
+// PIÈCE JOINTE — fusionnée Phase 21 + Phase 22
+// ─────────────────────────────────────────────────────────────
+export type MediaType = 'pdf' | 'image' | 'audio' | 'video' | 'autre';
+
 export interface PieceJointe {
-  nom: string;        // Nom du fichier
-  url: string;        // URL Firebase Storage
-  type: string;       // MIME type (application/pdf, image/jpeg, etc.)
-  taille: number;     // Taille en octets
-  uploadedAt: string; // ISO date
+  id?: string;         // Phase 22
+  nom: string;         // Nom du fichier
+  url: string;         // URL Firebase Storage
+  type: string;        // MIME type (Phase 21) ou MediaType (Phase 22)
+  taille?: number;     // Taille en octets
+  mimeType?: string;   // Phase 22
+  uploadedAt?: string; // Phase 21 — ISO date
 }
 
-// ─── CAHIER DE TEXTES ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// PHASE 22 — LIEN EXTERNE
+// ─────────────────────────────────────────────────────────────
+export type LienType = 'video' | 'article' | 'exercice' | 'autre';
+
+export interface LienExterne {
+  id: string;
+  titre: string;
+  url: string;
+  type: LienType;
+  description?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 22 — LIEN EBOOK
+// ─────────────────────────────────────────────────────────────
+export interface LienEbook {
+  ebookId: string;
+  titre: string;
+  categorie: string;
+  auteur?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAHIER DE TEXTES — Phase 21 + Phase 22
+// ─────────────────────────────────────────────────────────────
 export interface CahierTextes {
   id: string;
   profId: string;
@@ -89,12 +160,16 @@ export interface CahierTextes {
   anneeScolaire: AnneeScolaire;
   titre: string;
   description?: string;
-  couleur: string;                // Hex ex: '#2563eb'
+  couleur: string;
   nombreSeancesPrevu: number;
   nombreSeancesRealise: number;
-  isArchived: boolean;
+  isArchived: boolean;     // Phase 21 — avec 'd'
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Phase 22
+  groupeIds: string[];
+  groupeNoms: string[];
+  isPartage: boolean;
 }
 
 export interface CahierFormData {
@@ -105,9 +180,15 @@ export interface CahierFormData {
   description: string;
   couleur: string;
   nombreSeancesPrevu: number;
+  // Phase 22
+  groupeIds?: string[];
+  groupeNoms?: string[];
+  isPartage?: boolean;
 }
 
-// ─── ENTRÉE DU CAHIER (Séance) ───────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// ENTRÉE DU CAHIER (Séance) — Phase 21 + Phase 22
+// ─────────────────────────────────────────────────────────────
 export interface EntreeCahier {
   id: string;
   cahierId: string;
@@ -117,7 +198,7 @@ export interface EntreeCahier {
   heureFin?: string;
   chapitre: string;
   typeContenu: TypeContenu;
-  contenu: string;           // HTML (éditeur riche)
+  contenu: string;
   objectifs?: string;
   competences?: string[];
   statut: StatutSeance;
@@ -125,20 +206,21 @@ export interface EntreeCahier {
   dateReport?: Timestamp;
   piecesJointes?: PieceJointe[];
   notesPrivees?: string;
-
-  // Signets d'évaluation
+  // Signets évaluation (Phase 21)
   isMarqueEvaluation: boolean;
   typeEvaluation?: TypeEvaluation;
   dateEvaluationPrevue?: Timestamp;
   statutEvaluation?: StatutEvaluation;
-
   ordre: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  // Phase 22
+  liens?: LienExterne[];
+  ebooksLies?: LienEbook[];
 }
 
 export interface EntreeFormData {
-  date: string;                // ISO YYYY-MM-DD
+  date: string;
   heureDebut: string;
   heureFin: string;
   chapitre: string;
@@ -156,20 +238,20 @@ export interface EntreeFormData {
   statutEvaluation: StatutEvaluation;
 }
 
-// ─── RAPPEL ──────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// RAPPEL PROF — Phase 21
+// ─────────────────────────────────────────────────────────────
 export interface RappelProf {
   id: string;
   profId: string;
   cahierId?: string;
-  entreeCahierId?: string;
   titre: string;
-  description?: string;
+  description: string;
   typeRappel: TypeRappel;
   dateRappel: Timestamp;
   recurrence: Recurrence;
   priorite: Priorite;
   isLu: boolean;
-  isDone: boolean;
   createdAt: Timestamp;
 }
 
@@ -177,36 +259,48 @@ export interface RappelFormData {
   titre: string;
   description: string;
   typeRappel: TypeRappel;
-  dateRappel: string;        // ISO datetime-local
+  dateRappel: string;    // ISO datetime-local
   recurrence: Recurrence;
   priorite: Priorite;
   cahierId?: string;
 }
 
-// ─── COULEURS DISPONIBLES ─────────────────────────────────────
-export const COULEURS_CAHIER = [
-  '#2563eb', // Bleu PedaClic
-  '#7c3aed', // Violet
-  '#059669', // Vert
-  '#d97706', // Ambre
-  '#dc2626', // Rouge
-  '#0891b2', // Cyan
-  '#db2777', // Rose
-  '#65a30d', // Lime
-];
-
-// ─── COMPÉTENCES PRÉDÉFINIES ──────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// COMPÉTENCES PRÉDÉFINIES (Phase 21 — EntreeEditorPage)
+// ─────────────────────────────────────────────────────────────
 export const COMPETENCES_PREDEFINIES = [
-  'Comprendre', 'Analyser', 'Synthétiser', 'Appliquer',
-  'Évaluer', 'Créer', 'Mémoriser', 'Raisonner',
-  'Communiquer', 'Résoudre', 'Expérimenter', 'Modéliser',
-];
+  'Communiquer à l\'écrit',
+  'Communiquer à l\'oral',
+  'Raisonner et résoudre des problèmes',
+  'Chercher et s\'informer',
+  'Modéliser',
+  'Représenter',
+  'Calculer et algorithmiser',
+  'Analyser et interpréter',
+  'Expérimenter et observer',
+  'Coopérer et mutualiser',
+] as const;
 
-// ─── TYPE RAPPEL CONFIG ───────────────────────────────────────
-export const TYPE_RAPPEL_CONFIG: Record<TypeRappel, { label: string; emoji: string }> = {
-  devoir:      { label: 'Devoir à corriger',     emoji: '📋' },
-  evaluation:  { label: 'Évaluation à préparer', emoji: '📊' },
-  notes:       { label: 'Notes à saisir',         emoji: '📝' },
-  cours:       { label: 'Cours à préparer',       emoji: '📖' },
-  personnalise:{ label: 'Rappel personnalisé',    emoji: '🔔' },
-};
+// ─────────────────────────────────────────────────────────────
+// GROUPE PROF (Phase 11 — pour Phase 22)
+// ─────────────────────────────────────────────────────────────
+export interface GroupeProf {
+  id: string;
+  profId: string;
+  nom: string;
+  classe: string;
+  codeInvitation: string;
+  nombreInscrits: number;
+  anneeScolaire: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// EBOOK APERÇU (Phase 22)
+// ─────────────────────────────────────────────────────────────
+export interface EbookApercu {
+  id: string;
+  titre: string;
+  auteur: string;
+  categorie: string;
+  couvertureUrl?: string;
+}

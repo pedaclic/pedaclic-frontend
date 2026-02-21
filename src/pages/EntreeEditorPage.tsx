@@ -1,6 +1,6 @@
 // ============================================================
-// PHASE 21 — PAGE : EntreeEditorPage
-// Éditeur de séance (création + modification)
+// PHASE 21 + 22 — PAGE : EntreeEditorPage
+// Phase 22 : ajout liens externes, ebooks, médias enrichis
 // Routes :
 //   /prof/cahiers/:cahierId/nouvelle
 //   /prof/cahiers/:cahierId/modifier/:entreeId
@@ -27,10 +27,15 @@ import {
 } from '../types/cahierTextes.types';
 import type {
   EntreeFormData, TypeContenu, StatutSeance,
-  TypeEvaluation, StatutEvaluation, CahierTextes,
+  TypeEvaluation, CahierTextes,
   EntreeCahier, PieceJointe,
+  LienExterne, LienEbook,
 } from '../types/cahierTextes.types';
+// Phase 22 — composants enrichis
+import LienExterneEditor from '../components/prof/LienExterneEditor';
+import EbookSelector from '../components/prof/EbookSelector';
 import '../styles/CahierTextes.css';
+import '../styles/CahierEnrichi.css';
 
 // ─── Formulaire vide ─────────────────────────────────────────
 const emptyForm = (): EntreeFormData => ({
@@ -52,7 +57,7 @@ const emptyForm = (): EntreeFormData => ({
   statutEvaluation: 'a_evaluer',
 });
 
-// ─── Composant éditeur de texte riche ────────────────────────
+// ─── Éditeur de texte riche (Phase 21 — inchangé) ────────────
 interface RichEditorProps {
   value: string;
   onChange: (html: string) => void;
@@ -84,11 +89,10 @@ const RichEditor: React.FC<RichEditorProps> = ({ value, onChange, placeholder })
 
   return (
     <div>
-      {/* Barre d'outils */}
       <div className="rich-editor-toolbar">
         {[
-          { cmd: 'bold', label: 'G', title: 'Gras' },
-          { cmd: 'italic', label: 'I', title: 'Italique' },
+          { cmd: 'bold',      label: 'G',  title: 'Gras' },
+          { cmd: 'italic',    label: 'I',  title: 'Italique' },
           { cmd: 'underline', label: 'S̲', title: 'Souligné' },
         ].map(({ cmd, label, title }) => (
           <button
@@ -117,10 +121,8 @@ const RichEditor: React.FC<RichEditorProps> = ({ value, onChange, placeholder })
           </button>
         ))}
         <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
-        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('removeFormat'); }} title="Effacer la mise en forme">✕</button>
+        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('removeFormat'); }} title="Effacer">✕</button>
       </div>
-
-      {/* Zone d'édition */}
       <div
         ref={editorRef}
         className="rich-editor-area"
@@ -140,14 +142,19 @@ const EntreeEditorPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  const [cahier, setCahier] = useState<CahierTextes | null>(null);
+  // États Phase 21
+  const [cahier, setCahier]                   = useState<CahierTextes | null>(null);
   const [entreeOriginale, setEntreeOriginale] = useState<EntreeCahier | null>(null);
-  const [form, setForm] = useState<EntreeFormData>(emptyForm());
-  const [piecesJointes, setPiecesJointes] = useState<PieceJointe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [uploadingFile, setUploadingFile] = useState(false);
-  const [error, setError] = useState('');
+  const [form, setForm]                       = useState<EntreeFormData>(emptyForm());
+  const [piecesJointes, setPiecesJointes]     = useState<PieceJointe[]>([]);
+  const [loading, setLoading]                 = useState(true);
+  const [saving, setSaving]                   = useState(false);
+  const [uploadingFile, setUploadingFile]     = useState(false);
+  const [error, setError]                     = useState('');
+
+  // États Phase 22 — médias enrichis
+  const [liens, setLiens]           = useState<LienExterne[]>([]);
+  const [ebooksLies, setEbooksLies] = useState<LienEbook[]>([]);
 
   const isEdit = !!entreeId;
 
@@ -166,7 +173,9 @@ const EntreeEditorPage: React.FC = () => {
           if (entreeData) {
             setEntreeOriginale(entreeData);
             setPiecesJointes(entreeData.piecesJointes || []);
-            // Pré-remplir le formulaire
+            // Phase 22 — pré-remplissage médias enrichis
+            setLiens(entreeData.liens ?? []);
+            setEbooksLies(entreeData.ebooksLies ?? []);
             setForm({
               date: entreeData.date.toDate().toISOString().slice(0, 10),
               heureDebut: entreeData.heureDebut || '',
@@ -198,7 +207,7 @@ const EntreeEditorPage: React.FC = () => {
     fetch();
   }, [cahierId, entreeId]);
 
-  // ── Toggle compétence ─────────────────────────────────────
+  // ── Toggle compétence (Phase 21) ──────────────────────────
   const toggleCompetence = (comp: string) => {
     setForm(f => ({
       ...f,
@@ -208,22 +217,20 @@ const EntreeEditorPage: React.FC = () => {
     }));
   };
 
-  // ── Upload pièce jointe ───────────────────────────────────
+  // ── Upload pièce jointe (Phase 21) ────────────────────────
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !currentUser?.uid || !cahierId) return;
     const file = e.target.files[0];
     if (file.size > 10 * 1024 * 1024) { alert('Fichier trop volumineux (max 10 Mo)'); return; }
-
     setUploadingFile(true);
     try {
       const piece = await uploadPieceJointe(currentUser.uid, cahierId, file);
       const newPieces = [...piecesJointes, piece];
       setPiecesJointes(newPieces);
-      // Mettre à jour Firestore si c'est une édition
       if (isEdit && entreeId && entreeOriginale) {
         await addPiecesJointes(entreeId, piecesJointes, [piece]);
       }
-    } catch (err) {
+    } catch {
       alert('Erreur upload fichier.');
     } finally {
       setUploadingFile(false);
@@ -231,7 +238,7 @@ const EntreeEditorPage: React.FC = () => {
     }
   };
 
-  // ── Supprimer pièce jointe ────────────────────────────────
+  // ── Supprimer pièce jointe (Phase 21) ────────────────────
   const handleDeletePiece = async (url: string) => {
     if (!entreeId) {
       setPiecesJointes(prev => prev.filter(p => p.url !== url));
@@ -256,12 +263,19 @@ const EntreeEditorPage: React.FC = () => {
     setError('');
     try {
       if (isEdit && entreeId) {
+        // Phase 21 — mise à jour base + Phase 22 — médias enrichis
         await updateEntree(entreeId, cahierId, form);
+        // Mise à jour séparée des champs Phase 22
+        await updateEntree(entreeId, { liens, ebooksLies });
       } else {
         const newId = await createEntree(cahierId, currentUser.uid, form);
-        // Attacher les pièces jointes si elles ont été uploadées avant la création
+        // Pièces jointes uploadées avant création (Phase 21)
         if (piecesJointes.length > 0) {
           await addPiecesJointes(newId, [], piecesJointes);
+        }
+        // Médias Phase 22 sauvegardés sur la nouvelle entrée
+        if (liens.length > 0 || ebooksLies.length > 0) {
+          await updateEntree(newId, { liens, ebooksLies });
         }
       }
       navigate(`/prof/cahiers/${cahierId}`);
@@ -298,63 +312,41 @@ const EntreeEditorPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit}>
-        {/* ── Informations de base ── */}
+        {/* ── Informations de base (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">📋 Informations de la séance</div>
 
-          {/* Date + Horaires */}
           <div className="form-row" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
             <div className="form-group">
               <label className="form-label">Date *</label>
-              <input
-                type="date"
-                className="form-input"
-                value={form.date}
-                onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
-                required
-              />
+              <input type="date" className="form-input" value={form.date}
+                onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required />
             </div>
             <div className="form-group">
               <label className="form-label">Heure début</label>
-              <input
-                type="time"
-                className="form-input"
-                value={form.heureDebut}
-                onChange={e => setForm(f => ({ ...f, heureDebut: e.target.value }))}
-              />
+              <input type="time" className="form-input" value={form.heureDebut}
+                onChange={e => setForm(f => ({ ...f, heureDebut: e.target.value }))} />
             </div>
             <div className="form-group">
               <label className="form-label">Heure fin</label>
-              <input
-                type="time"
-                className="form-input"
-                value={form.heureFin}
-                onChange={e => setForm(f => ({ ...f, heureFin: e.target.value }))}
-              />
+              <input type="time" className="form-input" value={form.heureFin}
+                onChange={e => setForm(f => ({ ...f, heureFin: e.target.value }))} />
             </div>
           </div>
 
-          {/* Chapitre */}
           <div className="form-group">
             <label className="form-label">Chapitre / Titre de la séance *</label>
-            <input
-              className="form-input"
+            <input className="form-input"
               placeholder="Ex: Chapitre 3 — Les fonctions affines"
               value={form.chapitre}
-              onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))}
-              required
-            />
+              onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
           </div>
 
-          {/* Type + Statut */}
           <div className="form-row">
             <div className="form-group">
               <label className="form-label">Type de séance</label>
-              <select
-                className="form-select"
-                value={form.typeContenu}
-                onChange={e => setForm(f => ({ ...f, typeContenu: e.target.value as TypeContenu }))}
-              >
+              <select className="form-select" value={form.typeContenu}
+                onChange={e => setForm(f => ({ ...f, typeContenu: e.target.value as TypeContenu }))}>
                 {Object.entries(TYPE_CONTENU_CONFIG).map(([k, cfg]) => (
                   <option key={k} value={k}>{cfg.emoji} {cfg.label}</option>
                 ))}
@@ -362,11 +354,8 @@ const EntreeEditorPage: React.FC = () => {
             </div>
             <div className="form-group">
               <label className="form-label">Statut</label>
-              <select
-                className="form-select"
-                value={form.statut}
-                onChange={e => setForm(f => ({ ...f, statut: e.target.value as StatutSeance }))}
-              >
+              <select className="form-select" value={form.statut}
+                onChange={e => setForm(f => ({ ...f, statut: e.target.value as StatutSeance }))}>
                 {Object.entries(STATUT_CONFIG).map(([k, cfg]) => (
                   <option key={k} value={k}>{cfg.label}</option>
                 ))}
@@ -374,68 +363,50 @@ const EntreeEditorPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Motif annulation */}
           {form.statut === 'annule' && (
             <div className="form-group">
               <label className="form-label">Motif d'annulation</label>
-              <input
-                className="form-input"
-                placeholder="Ex: Grève enseignants, sortie scolaire..."
+              <input className="form-input" placeholder="Ex: Grève enseignants, sortie scolaire..."
                 value={form.motifAnnulation}
-                onChange={e => setForm(f => ({ ...f, motifAnnulation: e.target.value }))}
-              />
+                onChange={e => setForm(f => ({ ...f, motifAnnulation: e.target.value }))} />
             </div>
           )}
 
-          {/* Date de report */}
           {form.statut === 'reporte' && (
             <div className="form-group">
               <label className="form-label">Nouvelle date (report)</label>
-              <input
-                type="date"
-                className="form-input"
-                value={form.dateReport}
-                onChange={e => setForm(f => ({ ...f, dateReport: e.target.value }))}
-              />
+              <input type="date" className="form-input" value={form.dateReport}
+                onChange={e => setForm(f => ({ ...f, dateReport: e.target.value }))} />
             </div>
           )}
         </div>
 
-        {/* ── Contenu pédagogique ── */}
+        {/* ── Contenu pédagogique (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">📝 Contenu de la séance</div>
 
           <div className="form-group">
             <label className="form-label">Contenu (mise en forme riche)</label>
-            <RichEditor
-              value={form.contenu}
+            <RichEditor value={form.contenu}
               onChange={html => setForm(f => ({ ...f, contenu: html }))}
-              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..."
-            />
+              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..." />
           </div>
 
           <div className="form-group">
             <label className="form-label">Objectifs pédagogiques</label>
-            <textarea
-              className="form-textarea"
+            <textarea className="form-textarea"
               placeholder="Ex: L'élève sera capable de résoudre une équation du second degré..."
               value={form.objectifs}
-              onChange={e => setForm(f => ({ ...f, objectifs: e.target.value }))}
-              rows={2}
-            />
+              onChange={e => setForm(f => ({ ...f, objectifs: e.target.value }))} rows={2} />
           </div>
 
-          {/* Compétences */}
           <div className="form-group">
             <label className="form-label">Compétences visées</label>
             <div className="competences-container">
               {COMPETENCES_PREDEFINIES.map(comp => (
-                <button
-                  key={comp}
-                  type="button"
+                <button key={comp} type="button"
                   className={`competence-tag ${form.competences.includes(comp) ? 'selected' : ''}`}
-                  onClick={() => toggleCompetence(comp)}
-                >
+                  onClick={() => toggleCompetence(comp)}>
                   {comp}
                 </button>
               ))}
@@ -443,15 +414,12 @@ const EntreeEditorPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Signet d'évaluation ── */}
+        {/* ── Signet d'évaluation (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">📌 Signet d'évaluation</div>
-
           <div className="signet-section">
-            <div
-              className="signet-toggle"
-              onClick={() => setForm(f => ({ ...f, isMarqueEvaluation: !f.isMarqueEvaluation }))}
-            >
+            <div className="signet-toggle"
+              onClick={() => setForm(f => ({ ...f, isMarqueEvaluation: !f.isMarqueEvaluation }))}>
               <div className={`toggle-switch ${form.isMarqueEvaluation ? 'on' : ''}`} />
               <div>
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#1f2937' }}>
@@ -468,11 +436,8 @@ const EntreeEditorPage: React.FC = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Type d'évaluation</label>
-                    <select
-                      className="form-select"
-                      value={form.typeEvaluation}
-                      onChange={e => setForm(f => ({ ...f, typeEvaluation: e.target.value as TypeEvaluation }))}
-                    >
+                    <select className="form-select" value={form.typeEvaluation}
+                      onChange={e => setForm(f => ({ ...f, typeEvaluation: e.target.value as TypeEvaluation }))}>
                       <option value="">Choisir...</option>
                       {Object.entries(TYPE_EVAL_LABELS).map(([k, label]) => (
                         <option key={k} value={k}>{label}</option>
@@ -481,12 +446,8 @@ const EntreeEditorPage: React.FC = () => {
                   </div>
                   <div className="form-group">
                     <label className="form-label">Date prévue d'évaluation</label>
-                    <input
-                      type="date"
-                      className="form-input"
-                      value={form.dateEvaluationPrevue}
-                      onChange={e => setForm(f => ({ ...f, dateEvaluationPrevue: e.target.value }))}
-                    />
+                    <input type="date" className="form-input" value={form.dateEvaluationPrevue}
+                      onChange={e => setForm(f => ({ ...f, dateEvaluationPrevue: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -494,11 +455,9 @@ const EntreeEditorPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Pièces jointes ── */}
+        {/* ── Pièces jointes (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">📎 Pièces jointes</div>
-
-          {/* Liste existante */}
           {piecesJointes.length > 0 && (
             <div className="pieces-jointes-list">
               {piecesJointes.map(p => (
@@ -506,43 +465,45 @@ const EntreeEditorPage: React.FC = () => {
                   <span>📄</span>
                   <a href={p.url} target="_blank" rel="noopener noreferrer">{p.nom}</a>
                   <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
-                    ({Math.round(p.taille / 1024)} Ko)
+                    ({Math.round((p.taille ?? 0) / 1024)} Ko)
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePiece(p.url)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', marginLeft: 'auto' }}
-                  >
+                  <button type="button" onClick={() => handleDeletePiece(p.url)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', marginLeft: 'auto' }}>
                     ✕
                   </button>
                 </div>
               ))}
             </div>
           )}
-
-          {/* Zone upload */}
           <label className="upload-zone">
             {uploadingFile ? 'Envoi en cours...' : '📂 Cliquer pour ajouter un fichier (PDF, image — max 10 Mo)'}
-            <input
-              type="file"
-              style={{ display: 'none' }}
+            <input type="file" style={{ display: 'none' }}
               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx"
-              onChange={handleFileUpload}
-              disabled={uploadingFile}
-            />
+              onChange={handleFileUpload} disabled={uploadingFile} />
           </label>
         </div>
 
-        {/* ── Notes privées ── */}
+        {/* ── PHASE 22 : Ressources enrichies ── */}
+        <div className="editor-card">
+          <div className="editor-section-title">🌐 Ressources enrichies</div>
+          <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 4px' }}>
+            Ajoutez des liens ou des ebooks pour enrichir cette séance.
+          </p>
+
+          {/* Liens externes (vidéos, articles, exercices) */}
+          <LienExterneEditor liens={liens} onChange={setLiens} />
+
+          {/* Ebooks de la bibliothèque */}
+          <EbookSelector ebooksLies={ebooksLies} onChange={setEbooksLies} />
+        </div>
+
+        {/* ── Notes privées (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">🔒 Notes privées</div>
-          <textarea
-            className="form-textarea"
+          <textarea className="form-textarea"
             placeholder="Notes personnelles (non visibles par l'administration)..."
             value={form.notesPrivees}
-            onChange={e => setForm(f => ({ ...f, notesPrivees: e.target.value }))}
-            rows={3}
-          />
+            onChange={e => setForm(f => ({ ...f, notesPrivees: e.target.value }))} rows={3} />
           <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
             Ces notes sont uniquement visibles par vous.
           </div>
@@ -556,19 +517,11 @@ const EntreeEditorPage: React.FC = () => {
         )}
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingBottom: '2rem' }}>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={() => navigate(`/prof/cahiers/${cahierId}`)}
-          >
+          <button type="button" className="btn-secondary"
+            onClick={() => navigate(`/prof/cahiers/${cahierId}`)}>
             Annuler
           </button>
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={saving}
-            style={{ minWidth: 160 }}
-          >
+          <button type="submit" className="btn-primary" disabled={saving} style={{ minWidth: 160 }}>
             {saving ? 'Enregistrement...' : isEdit ? '💾 Mettre à jour' : '✅ Enregistrer la séance'}
           </button>
         </div>

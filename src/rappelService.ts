@@ -8,8 +8,8 @@ import {
   collection, doc, addDoc, updateDoc, deleteDoc,
   getDocs, query, where, orderBy, Timestamp,
 } from 'firebase/firestore';
-import { db } from '../firebase';
-import type { RappelProf, RappelFormData } from '../types/cahierTextes.types';
+import { db } from './firebase';
+import type { RappelProf, RappelFormData } from './types/cahierTextes.types';
 
 const COL_RAPPELS = 'rappels_prof';
 
