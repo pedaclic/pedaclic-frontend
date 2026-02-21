@@ -247,6 +247,21 @@ const entreesFiltrees = entrees.filter(e => {
                   <option key={k} value={k}>{cfg.emoji} {cfg.label}</option>
                 ))}
               </select>
+
+              <select
+                className="filtre-select"
+                value={filtreMois}
+                onChange={e => setFiltreMois(e.target.value)}
+                style={{ fontSize: '0.78rem', padding: '0.3rem 0.75rem' }}
+              >
+                <option value="tous">Tous les mois</option>
+                {moisDisponibles.map(m => {
+                  const [annee, moisNum] = m.split('-');
+                  const label = new Date(Number(annee), Number(moisNum) - 1)
+                    .toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+                  return <option key={m} value={m}>{label}</option>;
+                })}
+              </select>
             </div>
 
             {/* Liste */}
