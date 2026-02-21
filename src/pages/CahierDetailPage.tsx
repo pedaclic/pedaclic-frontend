@@ -44,6 +44,7 @@ const CahierDetailPage: React.FC = () => {
   const [vue, setVue] = useState<VueActive>('liste');
   const [filtreStatut, setFiltreStatut] = useState<StatutSeance | 'tous'>('tous');
   const [filtreType, setFiltreType] = useState<string>('tous');
+  const [filtreMois, setFiltreMois] = useState<string>('tous');
 
   // ── Charger le cahier ─────────────────────────────────────
   useEffect(() => {
@@ -86,23 +87,43 @@ const CahierDetailPage: React.FC = () => {
       alert('Erreur lors de la suppression.');
     }
   };
-
+// ── Recalculer la progression ──────────────────────────────
+  const recalculerProgression = useCallback(async () => {
+  if (!cahierId) return;
+  const data = await getCahierById(cahierId);
+  if (data) setCahier(data);
+}, [cahierId]);
   // ── Changer statut rapide ─────────────────────────────────
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
-    try {
-      await updateEntree(entree.id, { statut });
-      setEntrees(prev => prev.map(e => e.id === entree.id ? { ...e, statut } : e));
-    } catch {
-      alert('Erreur mise à jour statut.');
-    }
-  };
+  try {
+    await updateEntree(entree.id, { statut });
+    setEntrees(prev => prev.map(e => e.id === entree.id ? { ...e, statut } : e));
+    await recalculerProgression(); // ← mise à jour barre de progression
+  } catch {
+    alert('Erreur mise à jour statut.');
+  }
+};
 
   // ── Filtrage côté client ───────────────────────────────────
-  const entreesFiltrees = entrees.filter(e => {
-    const okStatut = filtreStatut === 'tous' || e.statut === filtreStatut;
-    const okType = filtreType === 'tous' || e.typeContenu === filtreType;
-    return okStatut && okType;
-  });
+const moisDisponibles = Array.from(
+  new Set(
+    entrees.map(e => {
+      const d = e.date.toDate();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    })
+  )
+).sort().reverse();
+
+const entreesFiltrees = entrees.filter(e => {
+  const okStatut = filtreStatut === 'tous' || e.statut === filtreStatut;
+  const okType   = filtreType   === 'tous' || e.typeContenu === filtreType;
+  const okMois   = filtreMois   === 'tous' || (() => {
+    const d = e.date.toDate();
+    const mois = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return mois === filtreMois;
+  })();
+  return okStatut && okType && okMois;
+});
 
   // ─────────────────────────────────────────────────────────
   if (loadingCahier) {
@@ -248,10 +269,11 @@ const CahierDetailPage: React.FC = () => {
 
                   return (
                     <div
-                      key={entree.id}
-                      className="entree-card"
-                      style={{ borderLeftColor: typeCfg.color }}
-                    >
+                    key={entree.id}
+                    className="entree-card"
+                    style={{ borderLeftColor: typeCfg.color, cursor: 'pointer' }}
+                    onClick={() => navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`)}
+>
                       <div className="entree-card-top">
                         <div className="entree-card-gauche">
                           {/* Date + horaire */}
@@ -289,19 +311,20 @@ const CahierDetailPage: React.FC = () => {
                         <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
                           <button
                             className="btn-icon"
-                            onClick={() => navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`);
+                            }}
                             title="Modifier"
                           >
                             ✏️
                           </button>
                           <button
                             className="btn-icon"
-                            onClick={() => handleDeleteEntree(entree)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteEntree(entree); }}
                             title="Supprimer"
                             style={{ color: '#ef4444' }}
-                          >
-                            🗑️
-                          </button>
+                          >🗑️</button>
                         </div>
                       </div>
 
@@ -336,7 +359,7 @@ const CahierDetailPage: React.FC = () => {
                             return (
                               <button
                                 key={s}
-                                onClick={() => handleStatutChange(entree, s)}
+                                onClick={(e) => { e.stopPropagation(); handleStatutChange(entree, s); }}
                                 style={{
                                   padding: '0.2rem 0.6rem',
                                   borderRadius: 20,
