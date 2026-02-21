@@ -5,6 +5,7 @@
 // PedaClic — www.pedaclic.sn
 // ============================================================
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -13,6 +14,7 @@ import {
   getEntreesByCahier,
   deleteEntree,
   updateEntree,
+  updateCahier,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -26,6 +28,7 @@ import RappelWidget from '../components/prof/RappelWidget';
 import SignetFilter from '../components/prof/SignetFilter';
 import CahierStats from '../components/prof/CahierStats';
 import '../styles/CahierTextes.css';
+
 
 // ─── Types ───────────────────────────────────────────────────
 type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats';
@@ -87,18 +90,26 @@ const CahierDetailPage: React.FC = () => {
       alert('Erreur lors de la suppression.');
     }
   };
-// ── Recalculer la progression ──────────────────────────────
-  const recalculerProgression = useCallback(async () => {
-  if (!cahierId) return;
-  const data = await getCahierById(cahierId);
-  if (data) setCahier(data);
-}, [cahierId]);
+
   // ── Changer statut rapide ─────────────────────────────────
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
   try {
+    // 1. Mettre à jour le statut de l'entrée
     await updateEntree(entree.id, { statut });
-    setEntrees(prev => prev.map(e => e.id === entree.id ? { ...e, statut } : e));
-    await recalculerProgression(); // ← mise à jour barre de progression
+
+    // 2. Mettre à jour l'état local
+    const nouvellesEntrees = entrees.map(e =>
+      e.id === entree.id ? { ...e, statut } : e
+    );
+    setEntrees(nouvellesEntrees);
+
+    // 3. Recalculer et sauvegarder nombreSeancesRealise dans le cahier
+    const nbRealise = nouvellesEntrees.filter(e => e.statut === 'realise').length;
+    await updateCahier(cahierId!, { nombreSeancesRealise: nbRealise });
+
+    // 4. Mettre à jour l'affichage local du cahier
+    setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
+
   } catch {
     alert('Erreur mise à jour statut.');
   }
