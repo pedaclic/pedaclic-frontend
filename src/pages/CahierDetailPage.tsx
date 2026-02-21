@@ -94,22 +94,14 @@ const CahierDetailPage: React.FC = () => {
   // ── Changer statut rapide ─────────────────────────────────
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
   try {
-    // 1. Mettre à jour le statut de l'entrée
     await updateEntree(entree.id, { statut });
-
-    // 2. Mettre à jour l'état local
     const nouvellesEntrees = entrees.map(e =>
       e.id === entree.id ? { ...e, statut } : e
     );
     setEntrees(nouvellesEntrees);
-
-    // 3. Recalculer et sauvegarder nombreSeancesRealise dans le cahier
     const nbRealise = nouvellesEntrees.filter(e => e.statut === 'realise').length;
     await updateCahier(cahierId!, { nombreSeancesRealise: nbRealise });
-
-    // 4. Mettre à jour l'affichage local du cahier
     setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
-
   } catch {
     alert('Erreur mise à jour statut.');
   }
