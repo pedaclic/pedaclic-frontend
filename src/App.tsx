@@ -59,6 +59,9 @@ import CahierTextesPage from './pages/CahierTextesPage';
 import CahierDetailPage from './pages/CahierDetailPage';
 import EntreeEditorPage from './pages/EntreeEditorPage';
 
+/*/* ==================== PHASE 23 — SÉQUENCES PÉDAGOGIQUES ==================== */import SequencesPage      from './pages/SequencesPage';import SequenceEditorPage from './pages/SequenceEditorPage';import SequenceDetailPage from './pages/SequenceDetailPage';/* ==================== PHASE 22 — VUE ÉLÈVE CAHIER ==================== */
+import ElveCahierPage from './pages/ElveCahierPage';
+
 /* ==================== COMPOSANTS PARENT ==================== */
 import ParentDashboard from './components/parent/ParentDashboard';
 
@@ -118,11 +121,20 @@ const App: React.FC = () => {
 
         {/* ========== ESPACE PROFESSEUR ========== */}
         <Route path="/prof/dashboard" element={<ProfRoute><Layout><ProfDashboard /></Layout></ProfRoute>} />
+
 	{/* ========== CAHIER DE TEXTES (Prof Premium) ========== */}
 	<Route path="/prof/cahiers" element={<ProfRoute><Layout><CahierTextesPage /></Layout></ProfRoute>} />
 	<Route path="/prof/cahiers/:cahierId" element={<ProfRoute><Layout><CahierDetailPage /></Layout></ProfRoute>} />
 	<Route path="/prof/cahiers/:cahierId/nouvelle" element={<ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>} />
 	<Route path="/prof/cahiers/:cahierId/modifier/:entreeId" element={<ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>} />	
+	
+	{/* ========== PHASE 23 — SÉQUENCES PÉDAGOGIQUES (Prof Premium) ==========  */}        <Route path="/prof/sequences" element={<ProfRoute><Layout><SequencesPage /></Layout></ProfRoute>} />        <Route path="/prof/sequences/nouvelle" element={<ProfRoute><Layout><SequenceEditorPage /></Layout></ProfRoute>} />        <Route path="/prof/sequences/:id" element={<ProfRoute><Layout><SequenceDetailPage /></Layout></ProfRoute>} />        <Route path="/prof/sequences/:id/modifier" element={<ProfRoute><Layout><SequenceEditorPage /></Layout></ProfRoute>} />
+	{/* ========== PHASE 22 — CAHIER ÉLÈVE (lecture seule) ==========  */}
+        <Route path="/eleve/cahiers/:cahierId" element={
+          <ProtectedRoute allowedRoles={['eleve', 'admin']}>
+            <Layout><ElveCahierPage /></Layout>
+          </ProtectedRoute>
+        } />	
 
         {/* ========== ESPACE PARENT ========== */}
         <Route path="/parent/dashboard" element={

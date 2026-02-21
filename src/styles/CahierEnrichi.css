@@ -1,0 +1,724 @@
+/* ============================================================
+   PedaClic — Phase 22 : Styles Cahier Enrichi
+   Thème : bleu #2563eb, blanc, gris clair
+   Ne jamais modifier les couleurs de base de PedaClic
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   BADGE GROUPES LIÉS (affiché sur la carte du cahier)
+   ───────────────────────────────────────────────────────────── */
+
+/* Badge principal "Partagé avec X groupe(s)" */
+.badge-partage {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  background-color: #dbeafe; /* bleu très clair */
+  color: #1d4ed8;            /* bleu PedaClic foncé */
+  border-radius: 9999px;     /* pill */
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Variante verte quand isPartage = true */
+.badge-partage.actif {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+/* Toggle "Rendre visible aux élèves" */
+.toggle-partage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-partage input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+.toggle-partage label {
+  font-size: 0.9rem;
+  color: #374151;
+  cursor: pointer;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SÉLECTEUR MULTI-GROUPES (dans formulaire cahier)
+   ───────────────────────────────────────────────────────────── */
+
+/* Conteneur du sélecteur multi-select */
+.groupe-selector {
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.groupe-selector:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Chaque option groupe dans la liste déroulante */
+.groupe-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.groupe-option:hover {
+  background: #eff6ff;
+}
+
+.groupe-option.selected {
+  background: #dbeafe;
+  font-weight: 500;
+  color: #1d4ed8;
+}
+
+.groupe-option input[type='checkbox'] {
+  accent-color: #2563eb;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+/* Tags des groupes sélectionnés (affichage sous le sélecteur) */
+.groupes-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.groupe-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* Bouton × pour retirer un groupe */
+.groupe-tag button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #3b82f6;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+
+.groupe-tag button:hover {
+  color: #dc2626;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SECTION LIENS EXTERNES (dans l'éditeur de séance)
+   ───────────────────────────────────────────────────────────── */
+
+/* Conteneur de la section liens */
+.liens-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.liens-section h4 {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Grille des liens existants */
+.liens-liste {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+/* Carte d'un lien individuel */
+.lien-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: box-shadow 0.15s;
+}
+
+.lien-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+/* Icône du type de lien */
+.lien-icone {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.lien-infos {
+  flex: 1;
+  min-width: 0;
+}
+
+.lien-titre {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #1d4ed8;
+  text-decoration: none;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lien-titre:hover { text-decoration: underline; }
+
+.lien-description {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* Bouton suppression lien */
+.lien-suppr {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 1rem;
+  padding: 2px 4px;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+
+.lien-suppr:hover { color: #dc2626; }
+
+/* Formulaire d'ajout d'un lien */
+.lien-form {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  background: #eff6ff;
+  border-radius: 8px;
+  border: 1px dashed #93c5fd;
+}
+
+.lien-form input,
+.lien-form select,
+.lien-form textarea {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.lien-form input:focus,
+.lien-form select:focus,
+.lien-form textarea:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+/* Boutons d'action formulaire lien */
+.lien-form-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EMBED YOUTUBE (prévisualisation auto)
+   ───────────────────────────────────────────────────────────── */
+
+.youtube-embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.youtube-embed iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SÉLECTEUR EBOOKS
+   ───────────────────────────────────────────────────────────── */
+
+/* Modale / panneau de sélection d'ebooks */
+.ebook-selector-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.ebook-selector-panel {
+  background: #fff;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.ebook-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.ebook-selector-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Input recherche ebooks */
+.ebook-search {
+  padding: 12px 20px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.ebook-search input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+}
+
+.ebook-search input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Liste des ebooks */
+.ebook-liste {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 20px;
+  display: grid;
+  gap: 8px;
+}
+
+.ebook-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.ebook-item:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.ebook-item.selected {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.ebook-item img {
+  width: 36px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.ebook-item-info { flex: 1; min-width: 0; }
+
+.ebook-item-titre {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ebook-item-meta {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EBOOKS LIÉS (affichage dans la séance)
+   ───────────────────────────────────────────────────────────── */
+
+.ebooks-lies {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.ebook-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.ebook-chip:hover { background: #fde68a; }
+
+/* Bouton retrait ebook */
+.ebook-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #b45309;
+  font-size: 0.9rem;
+  padding: 0;
+  line-height: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LECTEUR MULTIMÉDIA (MediaPlayer)
+   ───────────────────────────────────────────────────────────── */
+
+.media-player {
+  margin-top: 10px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+}
+
+/* Lecteur audio stylisé */
+.media-player audio {
+  width: 100%;
+  display: block;
+  height: 48px;
+}
+
+/* Lecteur vidéo locale */
+.media-player video {
+  width: 100%;
+  display: block;
+  max-height: 360px;
+  background: #000;
+}
+
+/* Image inline */
+.media-image {
+  max-width: 100%;
+  border-radius: 8px;
+  cursor: pointer; /* ouvre en plein écran */
+}
+
+/* Overlay image plein écran */
+.image-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.9);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.image-fullscreen-overlay img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   WIDGET CAHIER DANS VUE GROUPE (CahierGroupeWidget)
+   ───────────────────────────────────────────────────────────── */
+
+.cahier-groupe-widget {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cahier-groupe-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  background: #f0f9ff;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.cahier-groupe-widget-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0c4a6e;
+}
+
+.cahier-groupe-widget-body {
+  padding: 12px 18px;
+  display: grid;
+  gap: 8px;
+}
+
+/* Ligne d'un cahier dans le widget */
+.cahier-widget-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  transition: box-shadow 0.15s;
+}
+
+.cahier-widget-ligne:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.cahier-widget-titre {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #111827;
+}
+
+.cahier-widget-meta {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VUE ÉLÈVE (ElveCahierPage — lecture seule)
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahier-header {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #fff;
+  padding: 24px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+.eleve-cahier-header h1 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.eleve-cahier-header p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+
+/* Badge lecture seule */
+.badge-lecture-seule {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* Carte d'une séance réalisée (vue élève) */
+.seance-card-eleve {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  transition: box-shadow 0.15s;
+}
+
+.seance-card-eleve:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.seance-card-eleve-date {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 6px;
+}
+
+.seance-card-eleve h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.seance-card-eleve-contenu {
+  font-size: 0.875rem;
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* Message vide vue élève */
+.eleve-vide {
+  text-align: center;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.eleve-vide .emoji { font-size: 2.5rem; display: block; margin-bottom: 10px; }
+
+/* ─────────────────────────────────────────────────────────────
+   BOUTONS COMMUNS PHASE 22
+   ───────────────────────────────────────────────────────────── */
+
+/* Bouton principal bleu PedaClic */
+.btn-pedaclic {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+.btn-pedaclic:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 12px rgba(37,99,235,0.3);
+}
+
+.btn-pedaclic:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Bouton secondaire */
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.btn-secondary:hover {
+  border-color: #2563eb;
+  color: #2563eb;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE — Mobile (connexions lentes considérées)
+   ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* Lecteur plein écran sur mobile */
+  .media-player video {
+    max-height: 220px;
+  }
+
+  /* Liens cliquables larges */
+  .lien-card {
+    padding: 12px;
+  }
+
+  .lien-titre {
+    font-size: 0.9rem;
+  }
+
+  /* Sélecteur ebook en plein écran */
+  .ebook-selector-panel {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 12px 12px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+  }
+
+  /* Widget groupe en colonne */
+  .cahier-widget-ligne {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* Boutons plus grands sur mobile */
+  .btn-pedaclic,
+  .btn-secondary {
+    padding: 10px 18px;
+    font-size: 0.9rem;
+  }
+}

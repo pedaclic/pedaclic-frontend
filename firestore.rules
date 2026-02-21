@@ -399,14 +399,10 @@ match /cahiers_textes/{cahierId} {
 }
 
 match /entrees_cahier/{entreeId} {
-  allow read: if request.auth != null && (
-    resource.data.profId == request.auth.uid || isAdmin()
-  );
-  allow create: if request.auth != null
-    && request.resource.data.profId == request.auth.uid
-    && getUserData().role == 'prof'
-    && getUserData().isPremium == true;
-  allow update, delete: if request.auth != null && (
+  allow read: if isSignedIn();
+  allow create: if isSignedIn()
+    && request.resource.data.profId == request.auth.uid;
+  allow update, delete: if isSignedIn() && (
     resource.data.profId == request.auth.uid || isAdmin()
   );
 }
@@ -417,6 +413,21 @@ match /rappels_prof/{rappelId} {
   allow create: if request.auth != null
     && request.resource.data.profId == request.auth.uid;
 }
+        // ==================== PHASE 23 — SÉQUENCES PÉDAGOGIQUES ====================
+
+    match /sequences_pedagogiques/{sequenceId} {
+      allow read: if request.auth != null && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+      allow create: if request.auth != null
+        && request.resource.data.profId == request.auth.uid
+        && getUserData().role == 'prof'
+        && getUserData().isPremium == true;
+      allow update, delete: if request.auth != null && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+    }
+
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {

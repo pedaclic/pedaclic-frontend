@@ -44,7 +44,7 @@ const SignetFilter: React.FC<SignetFilterProps> = ({ profId, cahierId }) => {
   // Mettre à jour le statut d'évaluation
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutEvaluation) => {
     try {
-      await updateEntree(entree.id, cahierId, { statutEvaluation: statut });
+      await updateEntree(entree.id, { statutEvaluation: statut });
       setEntrees(prev => prev.map(e => e.id === entree.id ? { ...e, statutEvaluation: statut } : e));
     } catch (err) {
       console.error('Erreur mise à jour statut:', err);

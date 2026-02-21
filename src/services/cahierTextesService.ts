@@ -1,421 +1,596 @@
 // ============================================================
-// PHASE 21 — SERVICE CAHIER DE TEXTES
-// CRUD Firestore pour cahiers et entrées
-// PedaClic — www.pedaclic.sn
+// PedaClic — Service Cahier de Textes
+// Phase 21 (base intacte) + Phase 22 (groupes, vue élève)
 // ============================================================
 
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc,
-  getDocs, getDoc, query, where, orderBy, limit,
-  Timestamp, startAfter, DocumentSnapshot,
+  collection,
+  doc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  getDoc,
+  query,
+  where,
+  orderBy,
+  Timestamp,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import type {
-  CahierTextes, CahierFormData,
-  EntreeCahier, EntreeFormData,
-  PieceJointe,
+  CahierTextes,
+  CahierFormData,
+  EntreeCahier,
+  GroupeProf,
+  EbookApercu,
+  TypeContenu,
+  StatutSeance,
 } from '../types/cahierTextes.types';
 
-// ─── CONSTANTES ──────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────
+// COLLECTIONS
+// ─────────────────────────────────────────────────────────────
 const COL_CAHIERS = 'cahiers_textes';
 const COL_ENTREES = 'entrees_cahier';
-const PAGE_SIZE = 20;
+const COL_GROUPES = 'groupes_prof';
+const COL_EBOOKS  = 'ebooks';
 
-// ============================================================
-// CAHIERS
-// ============================================================
+// ─────────────────────────────────────────────────────────────
+// STATS CAHIER (exporté depuis le service — utilisé par CahierStats)
+// ─────────────────────────────────────────────────────────────
+export interface StatsCahier {
+  total: number;
+  realise: number;
+  planifie: number;
+  annule: number;
+  reporte: number;
+  parType: Partial<Record<TypeContenu, number>>;
+  tauxRealisation: number; // pourcentage
+}
 
-/**
- * Crée un nouveau cahier de textes pour un enseignant.
- */
-export const createCahier = async (
-  profId: string,
-  data: CahierFormData
-): Promise<string> => {
-  const titre = data.titre.trim() || `${data.matiere} - ${data.classe} ${data.anneeScolaire}`;
-  const ref = await addDoc(collection(db, COL_CAHIERS), {
-    profId,
-    classe: data.classe,
-    matiere: data.matiere,
-    anneeScolaire: data.anneeScolaire,
-    titre,
-    description: data.description || '',
-    couleur: data.couleur || '#2563eb',
-    nombreSeancesPrevu: data.nombreSeancesPrevu || 0,
-    nombreSeancesRealise: 0,
-    isArchived: false,
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  });
-  return ref.id;
-};
+// ─────────────────────────────────────────────────────────────
+// CAHIERS — lecture
+// ─────────────────────────────────────────────────────────────
 
 /**
- * Met à jour un cahier existant.
+ * Récupère les cahiers d'un prof avec filtre optionnel sur l'année.
+ * Signature Phase 21 conservée : getCahiersByProf(uid, annee?)
  */
-export const updateCahier = async (
-  cahierId: string,
-  data: Partial<CahierFormData>
-): Promise<void> => {
-  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
-    ...data,
-    updatedAt: Timestamp.now(),
-  });
-};
-
-/**
- * Archive/désarchive un cahier.
- */
-export const toggleArchiveCahier = async (
-  cahierId: string,
-  isArchived: boolean
-): Promise<void> => {
-  await updateDoc(doc(db, COL_CAHIERS, cahierId), { isArchived, updatedAt: Timestamp.now() });
-};
-
-/**
- * Supprime un cahier et toutes ses entrées.
- */
-export const deleteCahier = async (cahierId: string): Promise<void> => {
-  // Supprimer les entrées liées
-  const entreesSnap = await getDocs(
-    query(collection(db, COL_ENTREES), where('cahierId', '==', cahierId))
-  );
-  await Promise.all(entreesSnap.docs.map(d => deleteDoc(d.ref)));
-
-  // Supprimer le cahier
-  await deleteDoc(doc(db, COL_CAHIERS, cahierId));
-};
-
-/**
- * Récupère tous les cahiers d'un professeur pour une année scolaire.
- */
-export const getCahiersByProf = async (
+export async function getCahiersByProf(
   profId: string,
   anneeScolaire?: string
-): Promise<CahierTextes[]> => {
-  let q = query(
-    collection(db, COL_CAHIERS),
+): Promise<CahierTextes[]> {
+  const constraints: Parameters<typeof query>[1][] = [
     where('profId', '==', profId),
-    where('isArchived', '==', false),
-    orderBy('updatedAt', 'desc')
-  );
+    orderBy('updatedAt', 'desc'),
+  ];
   if (anneeScolaire) {
-    q = query(
-      collection(db, COL_CAHIERS),
-      where('profId', '==', profId),
-      where('anneeScolaire', '==', anneeScolaire),
-      where('isArchived', '==', false),
-      orderBy('updatedAt', 'desc')
-    );
+    constraints.splice(1, 0, where('anneeScolaire', '==', anneeScolaire));
   }
+  const q = query(collection(db, COL_CAHIERS), ...constraints);
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
-};
+  return snap.docs.map(d => ({
+    // Valeurs par défaut Phase 22 pour cahiers existants
+    groupeIds:  [],
+    groupeNoms: [],
+    isPartage:  false,
+    isArchived: false,
+    ...d.data(),
+    id: d.id,
+  } as CahierTextes));
+}
+
+/** Alias Phase 22 */
+export const getCahiersProf = (profId: string) => getCahiersByProf(profId);
 
 /**
- * Récupère un cahier par son ID.
+ * Récupère un cahier par son ID (Phase 21 — CahierDetailPage)
  */
-export const getCahierById = async (cahierId: string): Promise<CahierTextes | null> => {
+export async function getCahierById(cahierId: string): Promise<CahierTextes | null> {
   const snap = await getDoc(doc(db, COL_CAHIERS, cahierId));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as CahierTextes;
-};
+  return {
+    groupeIds:  [],
+    groupeNoms: [],
+    isPartage:  false,
+    isArchived: false,
+    ...snap.data(),
+    id: snap.id,
+  } as CahierTextes;
+}
 
 /**
- * Met à jour le compteur de séances réalisées d'un cahier.
+ * Alias de getEntreesCahier (Phase 21 — CahierDetailPage)
  */
-export const updateNombreSeancesRealise = async (cahierId: string): Promise<void> => {
-  const snap = await getDocs(
-    query(
-      collection(db, COL_ENTREES),
-      where('cahierId', '==', cahierId),
-      where('statut', '==', 'realise')
-    )
-  );
-  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
-    nombreSeancesRealise: snap.size,
-    updatedAt: Timestamp.now(),
-  });
-};
-
-// ============================================================
-// ENTRÉES DU CAHIER
-// ============================================================
+export const getEntreesByCahier = (cahierId: string) => getEntreesCahier(cahierId);
 
 /**
- * Crée une nouvelle entrée (séance) dans un cahier.
+ * Récupère une entrée par son ID (Phase 21 — EntreeEditorPage)
  */
-export const createEntree = async (
-  cahierId: string,
-  profId: string,
-  data: EntreeFormData
-): Promise<string> => {
-  const dateTs = Timestamp.fromDate(new Date(data.date));
-  const payload: Omit<EntreeCahier, 'id'> = {
-    cahierId,
-    profId,
-    date: dateTs,
-    heureDebut: data.heureDebut || undefined,
-    heureFin: data.heureFin || undefined,
-    chapitre: data.chapitre,
-    typeContenu: data.typeContenu,
-    contenu: data.contenu,
-    objectifs: data.objectifs || undefined,
-    competences: data.competences.length ? data.competences : undefined,
-    statut: data.statut,
-    motifAnnulation: data.motifAnnulation || undefined,
-    dateReport: data.dateReport ? Timestamp.fromDate(new Date(data.dateReport)) : undefined,
-    notesPrivees: data.notesPrivees || undefined,
-    isMarqueEvaluation: data.isMarqueEvaluation,
-    typeEvaluation: data.typeEvaluation || undefined,
-    dateEvaluationPrevue: data.dateEvaluationPrevue
-      ? Timestamp.fromDate(new Date(data.dateEvaluationPrevue))
-      : undefined,
-    statutEvaluation: data.isMarqueEvaluation ? (data.statutEvaluation || 'a_evaluer') : undefined,
-    piecesJointes: [],
-    ordre: Date.now(),
-    createdAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  };
-  const ref = await addDoc(collection(db, COL_ENTREES), payload);
-
-  // Mettre à jour le compteur si réalisé
-  if (data.statut === 'realise') {
-    await updateNombreSeancesRealise(cahierId);
-  }
-
-  return ref.id;
-};
-
-/**
- * Met à jour une entrée existante.
- */
-export const updateEntree = async (
-  entreeId: string,
-  cahierId: string,
-  data: Partial<EntreeFormData>
-): Promise<void> => {
-  const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
-
-  if (data.date) updates['date'] = Timestamp.fromDate(new Date(data.date));
-  if (data.heureDebut !== undefined) updates['heureDebut'] = data.heureDebut;
-  if (data.heureFin !== undefined) updates['heureFin'] = data.heureFin;
-  if (data.chapitre !== undefined) updates['chapitre'] = data.chapitre;
-  if (data.typeContenu !== undefined) updates['typeContenu'] = data.typeContenu;
-  if (data.contenu !== undefined) updates['contenu'] = data.contenu;
-  if (data.objectifs !== undefined) updates['objectifs'] = data.objectifs;
-  if (data.competences !== undefined) updates['competences'] = data.competences;
-  if (data.statut !== undefined) updates['statut'] = data.statut;
-  if (data.motifAnnulation !== undefined) updates['motifAnnulation'] = data.motifAnnulation;
-  if (data.notesPrivees !== undefined) updates['notesPrivees'] = data.notesPrivees;
-  if (data.isMarqueEvaluation !== undefined) updates['isMarqueEvaluation'] = data.isMarqueEvaluation;
-  if (data.typeEvaluation !== undefined) updates['typeEvaluation'] = data.typeEvaluation;
-  if (data.statutEvaluation !== undefined) updates['statutEvaluation'] = data.statutEvaluation;
-  if (data.dateEvaluationPrevue) {
-    updates['dateEvaluationPrevue'] = Timestamp.fromDate(new Date(data.dateEvaluationPrevue));
-  }
-  if (data.dateReport) {
-    updates['dateReport'] = Timestamp.fromDate(new Date(data.dateReport));
-  }
-
-  await updateDoc(doc(db, COL_ENTREES, entreeId), updates);
-  await updateNombreSeancesRealise(cahierId);
-};
-
-/**
- * Supprime une entrée du cahier.
- */
-export const deleteEntree = async (entreeId: string, cahierId: string): Promise<void> => {
-  await deleteDoc(doc(db, COL_ENTREES, entreeId));
-  await updateNombreSeancesRealise(cahierId);
-};
-
-/**
- * Récupère les entrées d'un cahier (paginées, 20 par page).
- */
-export const getEntreesByCahier = async (
-  cahierId: string,
-  lastDoc?: DocumentSnapshot
-): Promise<{ entrees: EntreeCahier[]; lastDoc: DocumentSnapshot | null }> => {
-  let q = query(
-    collection(db, COL_ENTREES),
-    where('cahierId', '==', cahierId),
-    orderBy('date', 'desc'),
-    limit(PAGE_SIZE)
-  );
-  if (lastDoc) {
-    q = query(
-      collection(db, COL_ENTREES),
-      where('cahierId', '==', cahierId),
-      orderBy('date', 'desc'),
-      startAfter(lastDoc),
-      limit(PAGE_SIZE)
-    );
-  }
-  const snap = await getDocs(q);
-  const entrees = snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
-  const newLastDoc = snap.docs.length === PAGE_SIZE ? snap.docs[snap.docs.length - 1] : null;
-  return { entrees, lastDoc: newLastDoc };
-};
-
-/**
- * Récupère toutes les entrées marquées pour évaluation d'un cahier.
- */
-export const getEntreesMarqueesEvaluation = async (
-  profId: string,
-  cahierId?: string
-): Promise<EntreeCahier[]> => {
-  let q = query(
-    collection(db, COL_ENTREES),
-    where('profId', '==', profId),
-    where('isMarqueEvaluation', '==', true),
-    orderBy('date', 'desc')
-  );
-  if (cahierId) {
-    q = query(
-      collection(db, COL_ENTREES),
-      where('cahierId', '==', cahierId),
-      where('isMarqueEvaluation', '==', true),
-      orderBy('date', 'desc')
-    );
-  }
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
-};
-
-/**
- * Récupère une entrée par ID.
- */
-export const getEntreeById = async (entreeId: string): Promise<EntreeCahier | null> => {
+export async function getEntreeById(entreeId: string): Promise<EntreeCahier | null> {
   const snap = await getDoc(doc(db, COL_ENTREES, entreeId));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as EntreeCahier;
-};
+}
+
+// ─────────────────────────────────────────────────────────────
+// PIÈCES JOINTES — Phase 21 (EntreeEditorPage)
+// ─────────────────────────────────────────────────────────────
+
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { storage } from '../firebase';
+import type { PieceJointe } from '../types/cahierTextes.types';
 
 /**
- * Récupère les entrées d'un cahier pour un mois donné (vue calendrier).
+ * Upload un fichier — Phase 21 : uploadPieceJointe(profId, cahierId, file)
+ * Chemin : cahiers/{profId}/{cahierId}/{timestamp}_{filename}
+ */
+export async function uploadPieceJointe(
+  profId: string,
+  cahierId: string,
+  fichier: File,
+  onProgress?: (pct: number) => void
+): Promise<PieceJointe> {
+  const nom    = `${Date.now()}_${fichier.name}`;
+  const chemin = `cahiers/${profId}/${cahierId}/${nom}`;
+  const ref    = storageRef(storage, chemin);
+  const task   = uploadBytesResumable(ref, fichier);
+
+  return new Promise((resolve, reject) => {
+    task.on(
+      'state_changed',
+      snap => {
+        if (onProgress) {
+          onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
+        }
+      },
+      reject,
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref);
+        resolve({
+          id:         nom,
+          nom:        fichier.name,
+          url,
+          type:       fichier.type,
+          taille:     fichier.size,
+          mimeType:   fichier.type,
+          uploadedAt: new Date().toISOString(),
+        });
+      }
+    );
+  });
+}
+
+/**
+ * Ajoute des pièces jointes — Phase 21 : addPiecesJointes(entreeId, existing, newPieces)
+ */
+export async function addPiecesJointes(
+  entreeId: string,
+  _existing: PieceJointe[],   // Ignoré — on utilise arrayUnion Firestore
+  newPieces: PieceJointe[]
+): Promise<void> {
+  await updateDoc(doc(db, COL_ENTREES, entreeId), {
+    piecesJointes: arrayUnion(...newPieces),
+    updatedAt:     Timestamp.now(),
+  });
+}
+
+/**
+ * Supprime une pièce jointe — Phase 21 : deletePieceJointe(entreeId, allPieces, url)
+ */
+export async function deletePieceJointe(
+  entreeId: string,
+  allPieces: PieceJointe[],
+  url: string
+): Promise<void> {
+  const piece = allPieces.find(p => p.url === url);
+  // Suppression Storage (silencieux si déjà absent)
+  try {
+    if (piece?.id) {
+      await deleteObject(storageRef(storage, `cahiers/${piece.id}`));
+    }
+  } catch { /* ignoré */ }
+  // Mise à jour Firestore
+  if (piece) {
+    await updateDoc(doc(db, COL_ENTREES, entreeId), {
+      piecesJointes: arrayRemove(piece),
+      updatedAt:     Timestamp.now(),
+    });
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAHIERS — création
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Crée un cahier — signature Phase 21 : createCahier(profId, form)
+ */
+export async function createCahier(
+  profId: string,
+  form: CahierFormData
+): Promise<string> {
+  const now = Timestamp.now();
+  const titreAuto = form.titre?.trim() || `${form.matiere} ${form.classe} ${form.anneeScolaire}`;
+  const ref = await addDoc(collection(db, COL_CAHIERS), {
+    profId,
+    titre:                titreAuto,
+    matiere:              form.matiere,
+    classe:               form.classe,
+    anneeScolaire:        form.anneeScolaire,
+    description:          form.description || '',
+    couleur:              form.couleur,
+    nombreSeancesPrevu:   form.nombreSeancesPrevu,
+    nombreSeancesRealise: 0,
+    isArchived:           false,
+    // Phase 22
+    groupeIds:            form.groupeIds  ?? [],
+    groupeNoms:           form.groupeNoms ?? [],
+    isPartage:            form.isPartage  ?? false,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return ref.id;
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAHIERS — mise à jour
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Met à jour un cahier — accepte CahierFormData ou champs partiels.
+ */
+export async function updateCahier(
+  cahierId: string,
+  data: CahierFormData | Partial<Omit<CahierTextes, 'id' | 'createdAt'>>
+): Promise<void> {
+  const payload: Record<string, unknown> = { ...data };
+  // Recalcule le titre si CahierFormData avec titre vide
+  if ('matiere' in data && 'classe' in data && !('id' in data)) {
+    const f = data as CahierFormData;
+    if (!f.titre?.trim()) {
+      payload.titre = `${f.matiere} ${f.classe} ${f.anneeScolaire}`;
+    }
+  }
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    ...payload,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Supprime un cahier.
+ */
+export async function deleteCahier(cahierId: string): Promise<void> {
+  await deleteDoc(doc(db, COL_CAHIERS, cahierId));
+}
+
+/**
+ * Archive / désarchive un cahier (Phase 21).
+ */
+export async function toggleArchiveCahier(
+  cahierId: string,
+  isArchived: boolean
+): Promise<void> {
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    isArchived,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 22 — LIAISON GROUPES
+// ─────────────────────────────────────────────────────────────
+
+export async function lierCahierAuxGroupes(
+  cahierId: string,
+  groupeIds: string[],
+  groupeNoms: string[]
+): Promise<void> {
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    groupeIds:  arrayUnion(...groupeIds),
+    groupeNoms: arrayUnion(...groupeNoms),
+    updatedAt:  Timestamp.now(),
+  });
+}
+
+export async function delierGroupeDuCahier(
+  cahierId: string,
+  groupeId: string,
+  groupeNom: string
+): Promise<void> {
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    groupeIds:  arrayRemove(groupeId),
+    groupeNoms: arrayRemove(groupeNom),
+    updatedAt:  Timestamp.now(),
+  });
+}
+
+export async function setPartage(cahierId: string, isPartage: boolean): Promise<void> {
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    isPartage,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 22 — VUE ÉLÈVE
+// ─────────────────────────────────────────────────────────────
+
+export async function getCahiersPartagesForEleve(
+  groupeIds: string[]
+): Promise<CahierTextes[]> {
+  if (groupeIds.length === 0) return [];
+  const q = query(
+    collection(db, COL_CAHIERS),
+    where('isPartage', '==', true),
+    where('groupeIds', 'array-contains-any', groupeIds.slice(0, 10)),
+    orderBy('updatedAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
+}
+
+export async function getCahierPartageById(
+  cahierId: string
+): Promise<CahierTextes | null> {
+  const snap = await getDoc(doc(db, COL_CAHIERS, cahierId));
+  if (!snap.exists()) return null;
+  const data = snap.data() as Omit<CahierTextes, 'id'>;
+  if (!data.isPartage) return null;
+  return { id: snap.id, ...data };
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 22 — CAHIERS PAR GROUPE
+// ─────────────────────────────────────────────────────────────
+
+export async function getCahiersForGroupe(groupeId: string): Promise<CahierTextes[]> {
+  const q = query(
+    collection(db, COL_CAHIERS),
+    where('groupeIds', 'array-contains', groupeId),
+    orderBy('updatedAt', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
+}
+
+// ─────────────────────────────────────────────────────────────
+// GROUPES DU PROF
+// ─────────────────────────────────────────────────────────────
+
+export async function getGroupesProf(profId: string): Promise<GroupeProf[]> {
+  const q = query(
+    collection(db, COL_GROUPES),
+    where('profId', '==', profId),
+    orderBy('nom', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as GroupeProf));
+}
+
+// ─────────────────────────────────────────────────────────────
+// EBOOKS
+// ─────────────────────────────────────────────────────────────
+
+export async function getEbooksApercu(): Promise<EbookApercu[]> {
+  const snap = await getDocs(collection(db, COL_EBOOKS));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EbookApercu));
+}
+
+// ─────────────────────────────────────────────────────────────
+// ENTRÉES — CRUD
+// ─────────────────────────────────────────────────────────────
+
+export async function getEntreesCahier(cahierId: string): Promise<EntreeCahier[]> {
+  const q = query(
+    collection(db, COL_ENTREES),
+    where('cahierId', '==', cahierId),
+    orderBy('ordre', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+}
+
+/**
+ * Entrées d'un mois donné — Phase 21 (CahierCalendar)
  */
 export const getEntreesByMois = async (
   cahierId: string,
   annee: number,
-  mois: number // 0-indexed
+  mois: number  // 0-indexed
 ): Promise<EntreeCahier[]> => {
-  const debut = new Date(annee, mois, 1);
-  const fin = new Date(annee, mois + 1, 0, 23, 59, 59);
+  const debut = Timestamp.fromDate(new Date(annee, mois, 1));
+  const fin   = Timestamp.fromDate(new Date(annee, mois + 1, 0, 23, 59, 59));
   const q = query(
     collection(db, COL_ENTREES),
     where('cahierId', '==', cahierId),
-    where('date', '>=', Timestamp.fromDate(debut)),
-    where('date', '<=', Timestamp.fromDate(fin)),
+    where('date', '>=', debut),
+    where('date', '<=', fin),
     orderBy('date', 'asc')
   );
   const snap = await getDocs(q);
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
 };
 
-// ============================================================
-// PIÈCES JOINTES — UPLOAD FIREBASE STORAGE
-// ============================================================
-
 /**
- * Upload une pièce jointe vers Firebase Storage.
+ * Entrées marquées évaluation — Phase 21 (SignetFilter)
  */
-export const uploadPieceJointe = async (
+export const getEntreesMarqueesEvaluation = async (
   profId: string,
-  cahierId: string,
-  file: File
-): Promise<PieceJointe> => {
-  const cheminStorage = `cahiers_textes/${profId}/${cahierId}/${Date.now()}_${file.name}`;
-  const storageRef = ref(storage, cheminStorage);
-  await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(storageRef);
-  return {
-    nom: file.name,
-    url,
-    type: file.type,
-    taille: file.size,
-    uploadedAt: new Date().toISOString(),
-  };
-};
-
-/**
- * Ajoute des pièces jointes à une entrée existante.
- */
-export const addPiecesJointes = async (
-  entreeId: string,
-  piecesExistantes: PieceJointe[],
-  nouvellesPieces: PieceJointe[]
-): Promise<void> => {
-  await updateDoc(doc(db, COL_ENTREES, entreeId), {
-    piecesJointes: [...piecesExistantes, ...nouvellesPieces],
-    updatedAt: Timestamp.now(),
-  });
-};
-
-/**
- * Supprime une pièce jointe d'une entrée.
- */
-export const deletePieceJointe = async (
-  entreeId: string,
-  piecesJointes: PieceJointe[],
-  url: string
-): Promise<void> => {
-  // Supprimer du Storage
-  try {
-    const storageRef = ref(storage, url);
-    await deleteObject(storageRef);
-  } catch {
-    // Ignorer si déjà supprimé
+  cahierId?: string
+): Promise<EntreeCahier[]> => {
+  const constraints: Parameters<typeof query>[1][] = [
+    where('profId', '==', profId),
+    where('isMarqueEvaluation', '==', true),
+    orderBy('date', 'desc'),
+  ];
+  if (cahierId) {
+    constraints.unshift(where('cahierId', '==', cahierId));
   }
-  // Mettre à jour Firestore
-  await updateDoc(doc(db, COL_ENTREES, entreeId), {
-    piecesJointes: piecesJointes.filter(p => p.url !== url),
-    updatedAt: Timestamp.now(),
-  });
+  const q = query(collection(db, COL_ENTREES), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
 };
 
-// ============================================================
-// STATISTIQUES DU CAHIER
-// ============================================================
-
-export interface StatsCahier {
-  total: number;
-  realises: number;
-  planifies: number;
-  annules: number;
-  reportes: number;
-  parType: Record<string, number>;
-  heuresTotal: number;
-}
-
 /**
- * Calcule les statistiques d'un cahier.
+ * Statistiques d'un cahier — Phase 21 (CahierStats)
  */
 export const getStatsCahier = async (cahierId: string): Promise<StatsCahier> => {
   const snap = await getDocs(
     query(collection(db, COL_ENTREES), where('cahierId', '==', cahierId))
   );
   const entrees = snap.docs.map(d => d.data() as EntreeCahier);
-
-  const stats: StatsCahier = {
-    total: entrees.length,
-    realises: 0, planifies: 0, annules: 0, reportes: 0,
-    parType: {}, heuresTotal: 0,
-  };
+  const total = entrees.length;
+  const parStatut = { realise: 0, planifie: 0, annule: 0, reporte: 0 };
+  const parType: Partial<Record<TypeContenu, number>> = {};
 
   for (const e of entrees) {
-    stats[`${e.statut}s` as keyof StatsCahier] = ((stats[`${e.statut}s` as keyof StatsCahier] as number) || 0) + 1;
-    stats.parType[e.typeContenu] = (stats.parType[e.typeContenu] || 0) + 1;
-
-    // Calcul heures
-    if (e.heureDebut && e.heureFin) {
-      const [h1, m1] = e.heureDebut.split(':').map(Number);
-      const [h2, m2] = e.heureFin.split(':').map(Number);
-      stats.heuresTotal += ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+    const s = e.statut as StatutSeance;
+    if (s in parStatut) parStatut[s as keyof typeof parStatut]++;
+    if (e.typeContenu) {
+      parType[e.typeContenu] = (parType[e.typeContenu] ?? 0) + 1;
     }
   }
 
-  return stats;
+  return {
+    total,
+    ...parStatut,
+    parType,
+    tauxRealisation: total > 0 ? Math.round((parStatut.realise / total) * 100) : 0,
+  };
 };
+
+/**
+ * Entrées réalisées uniquement — Phase 22 (vue élève)
+ */
+export async function getEntreesRealisees(cahierId: string): Promise<EntreeCahier[]> {
+  const q = query(
+    collection(db, COL_ENTREES),
+    where('cahierId', '==', cahierId),
+    where('statut', '==', 'realise'),
+    orderBy('date', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+}
+
+export async function createEntree(
+  cahierId: string,
+  profId: string,
+  form: import('../types/cahierTextes.types').EntreeFormData
+): Promise<string>;
+export async function createEntree(
+  data: Omit<EntreeCahier, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<string>;
+export async function createEntree(
+  cahierIdOrData: string | Omit<EntreeCahier, 'id' | 'createdAt' | 'updatedAt'>,
+  profId?: string,
+  form?: import('../types/cahierTextes.types').EntreeFormData
+): Promise<string> {
+  const now = Timestamp.now();
+  let payload: Record<string, unknown>;
+
+  if (typeof cahierIdOrData === 'string') {
+    // Signature Phase 21 : createEntree(cahierId, profId, form)
+    const f = form!;
+    payload = {
+      cahierId:             cahierIdOrData,
+      profId:               profId!,
+      date:                 Timestamp.fromDate(new Date(f.date)),
+      heureDebut:           f.heureDebut || '',
+      heureFin:             f.heureFin || '',
+      chapitre:             f.chapitre,
+      typeContenu:          f.typeContenu,
+      contenu:              f.contenu,
+      objectifs:            f.objectifs || '',
+      competences:          f.competences || [],
+      statut:               f.statut,
+      motifAnnulation:      f.motifAnnulation || '',
+      dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
+      notesPrivees:         f.notesPrivees || '',
+      isMarqueEvaluation:   f.isMarqueEvaluation,
+      typeEvaluation:       f.typeEvaluation || null,
+      dateEvaluationPrevue: f.dateEvaluationPrevue
+        ? Timestamp.fromDate(new Date(f.dateEvaluationPrevue))
+        : null,
+      statutEvaluation:     f.statutEvaluation,
+      ordre:                Date.now(),
+      piecesJointes:        [],
+      liens:                [],
+      ebooksLies:           [],
+    };
+  } else {
+    // Signature Phase 22 : createEntree(data)
+    payload = {
+      liens:         [],
+      ebooksLies:    [],
+      piecesJointes: [],
+      ...cahierIdOrData,
+    };
+  }
+
+  const ref = await addDoc(collection(db, COL_ENTREES), {
+    ...payload,
+    createdAt: now,
+    updatedAt: now,
+  });
+  return ref.id;
+}
+
+export async function updateEntree(
+  entreeId: string,
+  cahierIdOrData: string | Partial<Omit<EntreeCahier, 'id' | 'createdAt'>>,
+  form?: import('../types/cahierTextes.types').EntreeFormData
+): Promise<void> {
+  let payload: Record<string, unknown>;
+
+  if (typeof cahierIdOrData === 'string' && form) {
+    // Signature Phase 21 : updateEntree(entreeId, cahierId, form)
+    const f = form;
+    payload = {
+      date:                 Timestamp.fromDate(new Date(f.date)),
+      heureDebut:           f.heureDebut || '',
+      heureFin:             f.heureFin || '',
+      chapitre:             f.chapitre,
+      typeContenu:          f.typeContenu,
+      contenu:              f.contenu,
+      objectifs:            f.objectifs || '',
+      competences:          f.competences || [],
+      statut:               f.statut,
+      motifAnnulation:      f.motifAnnulation || '',
+      dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
+      notesPrivees:         f.notesPrivees || '',
+      isMarqueEvaluation:   f.isMarqueEvaluation,
+      typeEvaluation:       f.typeEvaluation || null,
+      dateEvaluationPrevue: f.dateEvaluationPrevue
+        ? Timestamp.fromDate(new Date(f.dateEvaluationPrevue))
+        : null,
+      statutEvaluation:     f.statutEvaluation,
+    };
+  } else {
+    // Signature Phase 22 : updateEntree(entreeId, data)
+    payload = { ...cahierIdOrData as object };
+  }
+
+  await updateDoc(doc(db, COL_ENTREES, entreeId), {
+    ...payload,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function deleteEntree(entreeId: string): Promise<void> {
+  await deleteDoc(doc(db, COL_ENTREES, entreeId));
+}
+
+export async function mettreAJourCompteurSeances(
+  cahierId: string,
+  nombreSeancesRealise: number
+): Promise<void> {
+  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
+    nombreSeancesRealise,
+    updatedAt: Timestamp.now(),
+  });
+}

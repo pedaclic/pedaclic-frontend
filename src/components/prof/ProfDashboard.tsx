@@ -20,6 +20,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import GroupeManager from './GroupeManager';
 import GroupeDetail from './GroupeDetail';
@@ -43,6 +44,7 @@ const ProfDashboard: React.FC = () => {
 
   // ===== Hooks =====
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
   // ===== États : navigation =====
   const [vueActive, setVueActive] = useState<VueDashboard>('overview');
@@ -183,6 +185,18 @@ const ProfDashboard: React.FC = () => {
           >
             📚 Mes groupes-classes
           </button>
+	  <button
+  	    className="prof-nav-btn"
+  	    onClick={() => navigate('/prof/cahiers')}
+	  >
+  📓 Cahier de textes
+</button>
+	  <button
+	    className="prof-nav-btn"
+	    onClick={() => navigate('/prof/sequences')}
+	  >
+  📚 Séquences pédagogiques
+</button>
         </nav>
       )}
 

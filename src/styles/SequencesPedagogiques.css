@@ -1,0 +1,1465 @@
+/* ============================================================
+   PedaClic — Phase 23 : Styles — Séquences Pédagogiques
+   www.pedaclic.sn | Auteur : Kadou / PedaClic
+   ============================================================
+   Respecte le design system PedaClic :
+   - Header bleu #2563eb, cards blanches avec ombre
+   - Typographie sobre, palette professionnel bleu/vert
+   - Mobile-first (breakpoints : 480px, 768px, 1024px)
+   ============================================================ */
+
+
+/* ────────────────────────────────────────────────────────────
+   PAGE PRINCIPALE — Liste des séquences
+   ──────────────────────────────────────────────────────────── */
+
+/* Conteneur principal de la page liste */
+.sequences-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* En-tête de page avec titre + bouton action */
+.sequences-page__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Titre principal de la page */
+.sequences-page__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* Sous-titre / compteur */
+.sequences-page__subtitle {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 4px 0 0;
+}
+
+/* Bouton principal "Nouvelle séquence" */
+.sequences-page__btn-new {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.sequences-page__btn-new:hover {
+  background: #1d4ed8;
+}
+
+/* Zone de filtres */
+.sequences-filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Champ de recherche */
+.sequences-filters__search {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.sequences-filters__search:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
+}
+
+/* Selects de filtre */
+.sequences-filters__select {
+  padding: 8px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+  cursor: pointer;
+  color: #374151;
+}
+
+.sequences-filters__select:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Grille des cartes séquences */
+.sequences-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* État vide — aucune séquence */
+.sequences-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 24px;
+  color: #94a3b8;
+}
+
+.sequences-empty__icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.sequences-empty__text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0 0 6px;
+}
+
+.sequences-empty__hint {
+  font-size: 0.875rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   CARTE SÉQUENCE — SequenceCard.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* Carte principale */
+.sequence-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px #e2e8f0;
+  padding: 18px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+.sequence-card:hover {
+  box-shadow: 0 4px 16px rgba(37,99,235,0.12), 0 0 0 1px #bfdbfe;
+  transform: translateY(-2px);
+}
+
+/* En-tête de carte : badge statut + badge IA */
+.sequence-card__badges {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Titre de la carte */
+.sequence-card__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Meta-infos : matière, niveau, trimestre */
+.sequence-card__meta {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.sequence-card__meta-chip {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 500;
+}
+
+.sequence-card__meta-chip--grey {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+/* Description courte */
+.sequence-card__desc {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+  /* Limiter à 2 lignes */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Pied de carte : stats séances + lien groupe */
+.sequence-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sequence-card__seances-count {
+  font-size: 0.8125rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+.sequence-card__groupe {
+  font-size: 0.75rem;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Menu actions (trois points) */
+.sequence-card__actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
+  gap: 4px;
+}
+
+.sequence-card__action-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sequence-card__action-btn:hover {
+  background: #f1f5f9;
+  color: #2563eb;
+}
+
+.sequence-card__action-btn--danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   BADGE STATUT — StatutBadge.tsx
+   ──────────────────────────────────────────────────────────── */
+
+.statut-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* Brouillon */
+.statut-badge--brouillon {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* En cours */
+.statut-badge--active {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+/* Terminée */
+.statut-badge--terminee {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+/* Archivée */
+.statut-badge--archivee {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+/* Badge IA */
+.badge-ia {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   ÉDITEUR DE SÉQUENCE — SequenceEditorPage.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* Page éditeur */
+.sequence-editor {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+/* Fil d'Ariane / titre éditeur */
+.sequence-editor__header {
+  margin-bottom: 28px;
+}
+
+.sequence-editor__breadcrumb {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-bottom: 6px;
+}
+
+.sequence-editor__breadcrumb a {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sequence-editor__breadcrumb a:hover { text-decoration: underline; }
+
+.sequence-editor__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+/* Section de formulaire */
+.editor-section {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 22px 20px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+/* Titre de section */
+.editor-section__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Grille de formulaire : 2 colonnes sur desktop */
+.editor-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Champ pleine largeur dans la grille */
+.editor-form-grid--full {
+  grid-column: 1 / -1;
+}
+
+/* Groupe label + input */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #374151;
+}
+
+.form-group label .required {
+  color: #ef4444;
+  margin-left: 2px;
+}
+
+/* Inputs, selects, textareas */
+.form-control {
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  color: #1e293b;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+.form-control--textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+.form-control:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Liste de compétences (tags) */
+.competences-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.competence-tag {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  background: #eff6ff;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.competence-tag__remove {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #93c5fd;
+  padding: 0;
+  line-height: 1;
+  font-size: 1rem;
+}
+
+.competence-tag__remove:hover { color: #dc2626; }
+
+.competence-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.competence-input-row .form-control { flex: 1; }
+
+.btn-add-competence {
+  padding: 9px 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 7px;
+  color: #2563eb;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.btn-add-competence:hover { background: #dbeafe; }
+
+
+/* ────────────────────────────────────────────────────────────
+   ÉDITEUR DE SÉANCES — SeancesEditor.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* En-tête de la section séances */
+.seances-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.seances-editor__count {
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.btn-add-seance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 7px;
+  color: #16a34a;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-add-seance:hover { background: #dcfce7; }
+
+/* Liste des séances */
+.seances-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Carte séance dans l'éditeur */
+.seance-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  transition: box-shadow 0.15s;
+}
+
+.seance-card:focus-within {
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+  border-color: #93c5fd;
+}
+
+/* En-tête de la carte séance (toujours visible, cliquable pour déplier) */
+.seance-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: #f8fafc;
+  transition: background 0.15s;
+}
+
+.seance-card__header:hover { background: #f1f5f9; }
+
+/* Numéro de séance */
+.seance-card__numero {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Numéro évaluation */
+.seance-card__numero--eval {
+  background: #dc2626;
+}
+
+/* Titre de la séance */
+.seance-card__header-title {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Badges type et durée */
+.seance-card__header-badges {
+  display: flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+/* Badge type d'activité */
+.type-activite-badge {
+  font-size: 0.7rem;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.type-activite-badge--cours      { background: #dbeafe; color: #1d4ed8; }
+.type-activite-badge--td         { background: #fef3c7; color: #92400e; }
+.type-activite-badge--tp         { background: #d1fae5; color: #065f46; }
+.type-activite-badge--evaluation { background: #fee2e2; color: #991b1b; }
+.type-activite-badge--revision   { background: #f3e8ff; color: #6b21a8; }
+.type-activite-badge--projet     { background: #e0f2fe; color: #075985; }
+.type-activite-badge--correction { background: #fce7f3; color: #9d174d; }
+
+.seance-card__toggle-icon {
+  color: #94a3b8;
+  font-size: 0.75rem;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.seance-card__toggle-icon--open { transform: rotate(180deg); }
+
+/* Corps de la carte (dépliable) */
+.seance-card__body {
+  padding: 14px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Actions dans la carte séance */
+.seance-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.btn-seance-action {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-seance-action--ia {
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+}
+
+.btn-seance-action--delete {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.btn-seance-action--delete:hover { background: #fee2e2; }
+
+
+/* ────────────────────────────────────────────────────────────
+   PANNEAU IA — IAAssistantPanel.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* Panneau IA global */
+.ia-panel {
+  background: linear-gradient(135deg, #faf5ff, #eff6ff);
+  border: 1px solid #c4b5fd;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Titre du panneau IA */
+.ia-panel__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #4c1d95;
+  margin: 0 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ia-panel__subtitle {
+  font-size: 0.8rem;
+  color: #7c3aed;
+  margin: 0 0 16px;
+}
+
+/* Grille d'inputs IA */
+.ia-panel__form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+/* Textarea instructions supplémentaires */
+.ia-panel__instructions {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #c4b5fd;
+  border-radius: 7px;
+  font-size: 0.875rem;
+  background: #fff;
+  resize: vertical;
+  min-height: 60px;
+  box-sizing: border-box;
+  color: #1e293b;
+}
+
+.ia-panel__instructions:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.1);
+}
+
+/* Bouton générer */
+.ia-panel__btn-generate {
+  width: 100%;
+  padding: 11px 20px;
+  background: linear-gradient(135deg, #7c3aed, #2563eb);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
+  margin-top: 8px;
+}
+
+.ia-panel__btn-generate:hover:not(:disabled) { opacity: 0.9; }
+.ia-panel__btn-generate:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Message d'état / erreur IA */
+.ia-panel__status {
+  font-size: 0.8125rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.ia-panel__status--loading {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.ia-panel__status--error {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.ia-panel__status--success {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+/* Spinner loading */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.spinner--blue {
+  border-color: rgba(37,99,235,0.3);
+  border-top-color: #2563eb;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   PAGE DÉTAIL — SequenceDetailPage.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* Layout principal : infos + sidebar */
+.sequence-detail {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px 16px 60px;
+}
+
+/* En-tête détail */
+.sequence-detail__header {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.sequence-detail__header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.sequence-detail__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.sequence-detail__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.sequence-detail__meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* Bloc info : objectif général */
+.sequence-detail__objectif {
+  font-size: 0.875rem;
+  color: #475569;
+  line-height: 1.6;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border-left: 3px solid #2563eb;
+  margin-top: 10px;
+}
+
+/* Onglets de navigation */
+.sequence-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sequence-tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.sequence-tab:hover { color: #2563eb; }
+
+.sequence-tab--active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+/* Timeline des séances */
+.sequence-timeline {
+  position: relative;
+  padding-left: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Ligne verticale de la timeline */
+.sequence-timeline::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: #e2e8f0;
+}
+
+/* Item de la timeline */
+.timeline-item {
+  position: relative;
+  padding: 0 0 20px;
+}
+
+/* Pastille de la timeline */
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -33px;
+  top: 6px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px #2563eb;
+}
+
+/* Pastille évaluation */
+.timeline-item--eval::before {
+  background: #dc2626;
+  box-shadow: 0 0 0 2px #dc2626;
+}
+
+/* Carte dans la timeline */
+.timeline-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 14px 16px;
+  transition: box-shadow 0.15s;
+}
+
+.timeline-card:hover {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.timeline-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.timeline-card__title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.timeline-card__meta {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.timeline-card__duree {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.timeline-card__objectif {
+  font-size: 0.8125rem;
+  color: #475569;
+  margin: 6px 0;
+  line-height: 1.5;
+}
+
+.timeline-card__contenu {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Ressources de la séance */
+.timeline-card__ressources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.ressource-chip {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  background: #f0fdf4;
+  color: #15803d;
+  border-radius: 4px;
+  border: 1px solid #86efac;
+}
+
+/* Panneau Évaluations (dans détail) */
+.evaluations-panel {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.evaluations-panel__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 16px;
+}
+
+.evaluation-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.evaluation-row:last-child { border-bottom: none; }
+
+.evaluation-row__numero {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #dc2626;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.evaluation-row__info {
+  flex: 1;
+  min-width: 140px;
+}
+
+.evaluation-row__titre {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.evaluation-row__type {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.evaluation-row__note {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.evaluation-row__coeff {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   MODAL EXPORT VERS CAHIER — ExportCahierModal.tsx
+   ──────────────────────────────────────────────────────────── */
+
+/* Overlay */
+.export-modal__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  backdrop-filter: blur(3px);
+}
+
+/* Boîte modale */
+.export-modal {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* En-tête modale */
+.export-modal__header {
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.export-modal__title {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.export-modal__close {
+  background: none;
+  border: none;
+  font-size: 1.375rem;
+  color: #94a3b8;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+.export-modal__close:hover { color: #1e293b; }
+
+/* Corps */
+.export-modal__body {
+  padding: 20px 22px;
+  flex: 1;
+}
+
+/* Ligne séance à exporter */
+.export-seance-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+  flex-wrap: wrap;
+}
+
+.export-seance-row:last-child { border-bottom: none; }
+
+/* Checkbox d'export */
+.export-seance-row__check {
+  width: 18px;
+  height: 18px;
+  margin-top: 4px;
+  accent-color: #2563eb;
+  flex-shrink: 0;
+}
+
+.export-seance-row__info { flex: 1; min-width: 180px; }
+
+.export-seance-row__titre {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.export-seance-row__type {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Champ date de la séance */
+.export-seance-row__date {
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  width: 150px;
+  flex-shrink: 0;
+}
+
+.export-seance-row__date:disabled {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+/* Pied modale */
+.export-modal__footer {
+  padding: 16px 22px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* Badge déjà exporté */
+.export-seance-row__exported {
+  font-size: 0.7rem;
+  padding: 2px 6px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border-radius: 4px;
+  border: 1px solid #86efac;
+  white-space: nowrap;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   BOUTONS GLOBAUX (réutilisés dans toute la Phase 23)
+   ──────────────────────────────────────────────────────────── */
+
+/* Bouton primaire bleu */
+.btn-primary {
+  padding: 9px 18px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover:not(:disabled) { background: #1d4ed8; }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+/* Bouton secondaire */
+.btn-secondary {
+  padding: 9px 18px;
+  background: #fff;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.btn-secondary:hover { background: #f9fafb; }
+
+/* Bouton danger */
+.btn-danger {
+  padding: 9px 18px;
+  background: #dc2626;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-danger:hover { background: #b91c1c; }
+
+/* Bouton success vert */
+.btn-success {
+  padding: 9px 18px;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s;
+}
+
+.btn-success:hover { background: #15803d; }
+
+/* Gate Premium (composant existant) */
+.premium-gate {
+  text-align: center;
+  padding: 60px 24px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  margin: 40px auto;
+  max-width: 480px;
+}
+
+.premium-gate__icon { font-size: 3rem; display: block; margin-bottom: 12px; }
+
+.premium-gate__title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 8px;
+}
+
+.premium-gate__text {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
+
+/* Message d'erreur global */
+.error-banner {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Message succès global */
+.success-banner {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #16a34a;
+  font-size: 0.875rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Skeleton loader */
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.4s ease infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeleton-loading {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   RESPONSIVE — Mobile first
+   ──────────────────────────────────────────────────────────── */
+
+/* Tablettes et petits écrans */
+@media (max-width: 768px) {
+
+  .sequences-page {
+    padding: 16px 12px;
+  }
+
+  .sequences-page__title { font-size: 1.25rem; }
+
+  .sequences-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .editor-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ia-panel__form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sequence-detail__actions {
+    width: 100%;
+  }
+
+  .sequence-detail__actions .btn-primary,
+  .sequence-detail__actions .btn-secondary {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .export-seance-row {
+    flex-direction: column;
+  }
+
+  .export-seance-row__date {
+    width: 100%;
+  }
+
+  .sequence-tabs {
+    gap: 0;
+  }
+
+  .sequence-tab {
+    padding: 10px 14px;
+    font-size: 0.8rem;
+  }
+}
+
+/* Mobiles */
+@media (max-width: 480px) {
+
+  .sequences-page__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sequences-page__btn-new {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .seance-card__header-badges {
+    display: none; /* Masqué sur très petit écran pour gagner de la place */
+  }
+
+  .sequence-detail__header-top {
+    flex-direction: column;
+  }
+
+  .export-modal {
+    border-radius: 14px 14px 0 0;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-height: 85vh;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .export-modal__overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+}
