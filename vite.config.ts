@@ -31,6 +31,7 @@ export default defineConfig({
         // Types de fichiers à précacher
         skipWaiting: true,
 	clientsClaim: true,
+  cleanupOutdatedCaches: true,
 	globPatterns: [
           '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
         ],
