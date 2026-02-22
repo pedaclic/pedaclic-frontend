@@ -21,6 +21,7 @@ import {
 import {
   ANNEES_SCOLAIRES,
   COULEURS_CAHIER,
+  CLASSES,
 } from '../types/cahierTextes.types';
 
 import type {
@@ -66,6 +67,8 @@ const CahierTextesPage: React.FC = () => {
   // Matières et niveaux dynamiques depuis Firestore
   const { matieres: matieresDispos, niveaux: niveauxDispos, loading: loadingDisciplines } = useDisciplinesOptions();
   
+
+
   // ── Phase 22 — états groupes ─────────────────────────────
   const [groupesDispos, setGroupesDispos]             = useState<GroupeProf[]>([]);
   const [groupesSelectionnes, setGroupesSelectionnes] = useState<string[]>([]);
@@ -345,36 +348,45 @@ const CahierTextesPage: React.FC = () => {
 
             <form onSubmit={handleSubmit}>
               {/* Classe + Matière */}
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Classe *</label>
-                  <select
-                    className="form-select"
-                    value={form.classe}
-                    onChange={e => setForm(f => ({ ...f, classe: e.target.value as Classe }))}
-                    required
-                  >
-                   {loadingDisciplines
- 		 ? <option>Chargement…</option>
-  		: niveauxDispos.map(o => <option key={o.valeur} value={o.valeur}>{o.label}</option>)
-		}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Matière *</label>
-                  <select
-                    className="form-select"
-                    value={form.matiere}
-                    onChange={e => setForm(f => ({ ...f, matiere: e.target.value as Matiere }))}
-                    required
-                  >
-                   {loadingDisciplines
- 			 ? <option>Chargement…</option>
- 			 : matieresDispos.map(o => <option key={o.valeur} value={o.valeur}>{o.label}</option>)
-		}
-                  </select>
-                </div>
-              </div>
+              
+              {/* Classe + Matière */}
+<div className="form-row">
+  {/* Classe : liste STATIQUE (référentiel fixe) */}
+  <div className="form-group">
+    <label className="form-label">Classe *</label>
+    <select
+      className="form-select"
+      value={form.classe}
+      onChange={e => setForm(f => ({ ...f, classe: e.target.value as Classe }))}
+      required
+    >
+      {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+    </select>
+  </div>
+
+  {/* Matière : liste DYNAMIQUE depuis Firestore (admin) */}
+  <div className="form-group">
+    <label className="form-label">Matière *</label>
+    <select
+      className="form-select"
+      value={form.matiere}
+      onChange={e => setForm(f => ({ ...f, matiere: e.target.value as Matiere }))}
+      required
+      disabled={loadingDisciplines}
+    >
+      <option value="">
+        {loadingDisciplines ? 'Chargement…' : '— Sélectionner —'}
+      </option>
+      {matieresDispos.map(o => (
+        <option key={o.valeur} value={o.valeur}>{o.label}</option>
+      ))}
+      {/* Fallback : matière existante absente de Firestore */}
+      {form.matiere && !matieresDispos.find(o => o.valeur === form.matiere) && (
+        <option value={form.matiere}>{form.matiere}</option>
+      )}
+    </select>
+  </div>
+</div>
 
               {/* Année scolaire */}
               <div className="form-group">
