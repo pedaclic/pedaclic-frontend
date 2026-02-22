@@ -27,8 +27,11 @@ export default defineConfig({
 
       // --- Configuration Workbox ---
       workbox: {
+
         // Types de fichiers à précacher
-        globPatterns: [
+        skipWaiting: true,
+	clientsClaim: true,
+	globPatterns: [
           '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
         ],
 
