@@ -108,6 +108,12 @@ const CahierTextesPage: React.FC = () => {
 
   useEffect(() => { chargerCahiers(); }, [currentUser?.uid, filtreAnnee]);
 
+  // Recharger les cahiers quand on revient sur la page (focus fenêtre)
+useEffect(() => {
+  window.addEventListener('focus', chargerCahiers);
+  return () => window.removeEventListener('focus', chargerCahiers);
+}, [filtreAnnee]);
+
   // ── Phase 22 — chargement des groupes + pré-remplissage ──
   useEffect(() => {
     if (!currentUser?.uid) return;
