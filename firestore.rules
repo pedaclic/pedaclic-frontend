@@ -427,7 +427,17 @@ match /rappels_prof/{rappelId} {
         resource.data.profId == request.auth.uid || isAdmin()
       );
     }
+	// ==================== COLLECTION: ebooks ====================
+   match /ebooks/{ebookId} {
+     allow read: if isSignedIn();
+   allow create, update, delete: if isAdmin();
+   }
 
+      // ==================== COLLECTION: platform_settings ====================
+   match /platform_settings/{docId} {
+    allow read: if isAdmin();
+    allow write: if isAdmin();
+   }
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {

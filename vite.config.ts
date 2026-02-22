@@ -37,7 +37,7 @@ export default defineConfig({
 
         // --- Page de secours hors-ligne ---
         // Si une page n'est pas en cache ET pas de réseau → offline.html
-        navigateFallback: '/offline.html',
+        navigateFallback: '/index.html',
 
         // --- Exclure les routes API du fallback navigation ---
         navigateFallbackDenylist: [
