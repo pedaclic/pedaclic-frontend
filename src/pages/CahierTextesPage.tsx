@@ -9,6 +9,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+
 import {
   getCahiersByProf,
   createCahier,
@@ -16,15 +17,20 @@ import {
   deleteCahier,
   getGroupesProf,
 } from '../services/cahierTextesService';
+
 import {
-  CLASSES, MATIERES, ANNEES_SCOLAIRES, COULEURS_CAHIER,
+  ANNEES_SCOLAIRES,
+  COULEURS_CAHIER,
 } from '../types/cahierTextes.types';
+
 import type {
   CahierTextes, CahierFormData, GroupeProf,
   Classe, Matiere, AnneeScolaire,
 } from '../types/cahierTextes.types';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
+
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 
 // ─── Formulaire vide ─────────────────────────────────────────
 const emptyForm = (): CahierFormData => ({
@@ -57,6 +63,9 @@ const CahierTextesPage: React.FC = () => {
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState('');
 
+  // Matières et niveaux dynamiques depuis Firestore
+  const { matieres: matieresDispos, niveaux: niveauxDispos, loading: loadingDisciplines } = useDisciplinesOptions();
+  
   // ── Phase 22 — états groupes ─────────────────────────────
   const [groupesDispos, setGroupesDispos]             = useState<GroupeProf[]>([]);
   const [groupesSelectionnes, setGroupesSelectionnes] = useState<string[]>([]);
@@ -345,7 +354,10 @@ const CahierTextesPage: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, classe: e.target.value as Classe }))}
                     required
                   >
-                    {CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                   {loadingDisciplines
+ 		 ? <option>Chargement…</option>
+  		: niveauxDispos.map(o => <option key={o.valeur} value={o.valeur}>{o.label}</option>)
+		}
                   </select>
                 </div>
                 <div className="form-group">
@@ -356,7 +368,10 @@ const CahierTextesPage: React.FC = () => {
                     onChange={e => setForm(f => ({ ...f, matiere: e.target.value as Matiere }))}
                     required
                   >
-                    {MATIERES.map(m => <option key={m} value={m}>{m}</option>)}
+                   {loadingDisciplines
+ 			 ? <option>Chargement…</option>
+ 			 : matieresDispos.map(o => <option key={o.valeur} value={o.valeur}>{o.label}</option>)
+		}
                   </select>
                 </div>
               </div>
