@@ -56,6 +56,7 @@ import ProfDashboard from './components/prof/ProfDashboard';
 
 /* ==================== QUIZ — LISTE UTILISATEURS ==================== */
 import QuizListPage from './pages/QuizListPage';
+import QuizGratuitsPage from './pages/QuizGratuitsPage';
 
 /* ==================== PHASE 21 — CAHIER DE TEXTES ==================== */
 import CahierTextesPage from './pages/CahierTextesPage';
@@ -118,7 +119,7 @@ const App: React.FC = () => {
         <Route path="/quizzes" element={<ProtectedRoute allowedRoles={['eleve', 'prof', 'admin']}><Layout><QuizListPage /></Layout></ProtectedRoute>} />
         <Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
         <Route path="/quiz-avance/:quizId" element={<Layout><QuizPlayerPage /></Layout>} />
-
+	<Route path="/quiz-gratuits" element={<Layout><QuizGratuitsPage /></Layout>} />
         {/* ========== ESPACE ÉLÈVE ========== */}
         <Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
         <Route path="/eleve/suivi" element={<Layout><StudentSuivi /></Layout>} />
