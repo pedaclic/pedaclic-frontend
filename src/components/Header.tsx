@@ -85,11 +85,20 @@ const Header: React.FC = () => {
       label: 'Bibliothèque',
       icon: <BookOpen size={18} />
     },
-    {
-      path: '/quizzes',
-      label: 'Quiz',
-      icon: <GraduationCap size={18} />,
-      requireAuth: true,
+    // APRÈS — Quiz gratuits pour tous
+   {
+  path: '/quiz-gratuits',
+  label: 'Quiz',
+  icon: <GraduationCap size={18} />,
+  requireAuth: false,  // Accessible sans connexion
+  },
+   // Quiz avancés — Premium seulement (visible si premium/prof/admin)
+  {
+    path: '/quizzes',
+    label: 'Quiz Avancés',
+    icon: <GraduationCap size={18} />,
+    requireAuth: true,
+    requirePremium: true,
     },
     {
      path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : '/admin',

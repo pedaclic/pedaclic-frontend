@@ -1,0 +1,467 @@
+/* ============================================================
+   STYLES : QuizGratuitsPage
+   Page des quiz gratuits PedaClic
+   Cohérent avec la charte graphique bleue/verte existante
+   ============================================================ */
+
+/* ===== PAGE CONTENEUR ===== */
+.qg-page {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* ===== HERO / EN-TÊTE ===== */
+.qg-hero {
+  background: linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #059669 100%);
+  color: white;
+  padding: 3rem 2rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.qg-hero__content {
+  flex: 1;
+  min-width: 280px;
+}
+
+/* Titre principal */
+.qg-hero__titre {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem;
+}
+
+/* Sous-titre */
+.qg-hero__sous-titre {
+  font-size: 1.05rem;
+  opacity: 0.9;
+  margin: 0 0 1.5rem;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+/* Stats rapides */
+.qg-hero__stats {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.qg-hero__stat {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+/* Lien vers quiz premium */
+.qg-hero__lien-premium {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  transition: background 0.2s;
+  white-space: nowrap;
+  align-self: center;
+}
+
+.qg-hero__lien-premium:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* ===== FILTRES ===== */
+.qg-filtres {
+  background: white;
+  padding: 1rem 2rem;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* Barre de recherche */
+.qg-filtres__recherche {
+  flex: 1;
+  min-width: 200px;
+}
+
+.qg-filtres__input {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.qg-filtres__input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Sélect filtre */
+.qg-filtres__select {
+  padding: 0.6rem 1rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  outline: none;
+  min-width: 160px;
+  transition: border-color 0.2s;
+}
+
+.qg-filtres__select:focus {
+  border-color: #2563eb;
+}
+
+/* Bouton reset */
+.qg-filtres__reset {
+  padding: 0.6rem 1rem;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: #6b7280;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.qg-filtres__reset:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+/* ===== CONTENU PRINCIPAL ===== */
+.qg-contenu {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 3rem;
+}
+
+/* Compteur résultats */
+.qg-compteur {
+  font-size: 0.9rem;
+  color: #6b7280;
+  margin: 0 0 1.25rem;
+}
+
+/* État de chargement */
+.qg-loading {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.qg-loading p {
+  margin-top: 1rem;
+}
+
+/* Erreur */
+.qg-erreur {
+  text-align: center;
+  padding: 2rem;
+  background: #fee2e2;
+  border-radius: 10px;
+  color: #991b1b;
+}
+
+/* Vide */
+.qg-vide {
+  text-align: center;
+  padding: 3rem;
+  color: #6b7280;
+}
+
+.qg-vide p {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+/* ===== GRILLE DE CARTES ===== */
+.qg-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* ===== CARTE QUIZ GRATUIT ===== */
+.qg-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.qg-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+  border-color: #93c5fd;
+}
+
+/* En-tête carte */
+.qg-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Badge source */
+.qg-card__source {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+}
+
+.qg-card__source--quizzes {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.qg-card__source--quizzes_v2 {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Badge difficulté */
+.qg-card__difficulte {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+}
+
+/* Titre carte */
+.qg-card__titre {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Description carte */
+.qg-card__description {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.5;
+  /* Limiter à 2 lignes */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Métadonnées */
+.qg-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: auto;
+}
+
+.qg-card__meta-item {
+  font-size: 0.8rem;
+  background: #f3f4f6;
+  color: #4b5563;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* Bouton de la carte */
+.qg-card__btn {
+  width: 100%;
+  padding: 0.6rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-top: 0.25rem;
+}
+
+.qg-card__btn:hover {
+  background: #1d4ed8;
+}
+
+/* ===== BANNIÈRES CTA ===== */
+.qg-banniere {
+  border-radius: 12px;
+  padding: 1.75rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+/* Bannière inscription */
+.qg-banniere--inscription {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 1px solid #93c5fd;
+}
+
+/* Bannière premium */
+.qg-banniere--premium {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fcd34d;
+}
+
+/* Icône bannière */
+.qg-banniere__icone {
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+/* Texte bannière */
+.qg-banniere__texte {
+  flex: 1;
+  min-width: 200px;
+}
+
+.qg-banniere__texte h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.4rem;
+}
+
+.qg-banniere__texte p {
+  font-size: 0.9rem;
+  color: #4b5563;
+  margin: 0 0 0.25rem;
+  line-height: 1.5;
+}
+
+.qg-banniere__prix {
+  font-size: 0.95rem !important;
+  color: #1f2937 !important;
+  margin-top: 0.5rem !important;
+}
+
+/* Actions bannière */
+.qg-banniere__actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ===== BOUTONS GLOBAUX ===== */
+.btn {
+  display: inline-block;
+  padding: 0.65rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.btn-primary {
+  background: #2563eb;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.btn-secondary {
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #f9fafb;
+}
+
+.btn-premium {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  white-space: nowrap;
+}
+
+.btn-premium:hover {
+  background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  /* Hero */
+  .qg-hero {
+    padding: 2rem 1rem 1.5rem;
+    flex-direction: column;
+  }
+
+  .qg-hero__titre {
+    font-size: 1.5rem;
+  }
+
+  /* Filtres */
+  .qg-filtres {
+    padding: 0.75rem 1rem;
+  }
+
+  .qg-filtres__recherche {
+    min-width: 100%;
+  }
+
+  .qg-filtres__select {
+    min-width: 100%;
+  }
+
+  /* Grille */
+  .qg-grille {
+    grid-template-columns: 1fr;
+  }
+
+  /* Contenu */
+  .qg-contenu {
+    padding: 1rem 1rem 2rem;
+  }
+
+  /* Bannière */
+  .qg-banniere {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .qg-banniere__actions {
+    justify-content: center;
+  }
+}
