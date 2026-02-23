@@ -85,7 +85,11 @@ const CahierDetailPage: React.FC = () => {
     if (!confirm(`Supprimer la séance "${entree.chapitre}" ?`)) return;
     try {
       await deleteEntree(entree.id);
-      setEntrees(prev => prev.filter(e => e.id !== entree.id));
+      const nouvellesEntrees = entrees.filter(e => e.id !== entree.id);
+      setEntrees(nouvellesEntrees);
+      const nbRealise = nouvellesEntrees.filter(e => e.statut === 'realise').length;
+      await updateCahier(cahierId!, { nombreSeancesRealise: nbRealise });
+      setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
     } catch {
       alert('Erreur lors de la suppression.');
     }
@@ -206,7 +210,12 @@ const entreesFiltrees = entrees.filter(e => {
 
       {vue === 'stats' && (
         <div className="cahier-detail-layout">
-          <CahierStats cahier={cahier} />
+          <CahierStats
+            cahier={{
+              ...cahier,
+              nombreSeancesRealise: entrees.filter(e => e.statut === 'realise').length,
+            }}
+          />
           <RappelWidget profId={currentUser!.uid} cahierId={cahier.id} />
         </div>
       )}

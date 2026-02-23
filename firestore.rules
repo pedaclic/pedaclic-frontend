@@ -438,6 +438,13 @@ match /rappels_prof/{rappelId} {
     allow read: if isAdmin();
     allow write: if isAdmin();
    }
+
+      // ==================== COLLECTION: settings ====================
+      // Utilisée par SettingsAdmin.tsx : doc(db, 'settings', 'platform')
+   match /settings/{docId} {
+    allow read: if isAdmin();
+    allow write: if isAdmin();
+   }
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {

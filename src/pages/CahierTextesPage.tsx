@@ -11,7 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 import {
-  getCahiersByProf,
+  subscribeToCahiers,
   createCahier,
   updateCahier,
   deleteCahier,
@@ -92,27 +92,27 @@ const CahierTextesPage: React.FC = () => {
     );
   }
 
-  // ── Chargement des cahiers ────────────────────────────────
-  const chargerCahiers = async () => {
+  // ── Abonnement temps réel aux cahiers ────────────────────
+  // onSnapshot contourne le cache IndexedDB de persistentLocalCache :
+  // toute écriture Firestore (changement de statut, etc.) déclenche
+  // immédiatement une mise à jour de la liste et des barres de progression.
+  useEffect(() => {
     if (!currentUser?.uid) return;
     setLoading(true);
-    try {
-      const data = await getCahiersByProf(currentUser.uid, filtreAnnee || undefined);
-      setCahiers(data);
-    } catch (err) {
-      console.error('Erreur chargement cahiers:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { chargerCahiers(); }, [currentUser?.uid, filtreAnnee]);
-
-  // Recharger les cahiers quand on revient sur la page (focus fenêtre)
-useEffect(() => {
-  window.addEventListener('focus', chargerCahiers);
-  return () => window.removeEventListener('focus', chargerCahiers);
-}, [filtreAnnee]);
+    const unsubscribe = subscribeToCahiers(
+      currentUser.uid,
+      filtreAnnee || undefined,
+      (data) => {
+        setCahiers(data);
+        setLoading(false);
+      },
+      (err) => {
+        console.error('Erreur chargement cahiers:', err);
+        setLoading(false);
+      }
+    );
+    return () => unsubscribe();
+  }, [currentUser?.uid, filtreAnnee]);
 
   // ── Phase 22 — chargement des groupes + pré-remplissage ──
   useEffect(() => {
@@ -201,7 +201,6 @@ useEffect(() => {
         await createCahier(currentUser.uid, form);
       }
       setShowModal(false);
-      await chargerCahiers();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError('Erreur : ' + msg);

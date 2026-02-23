@@ -86,11 +86,10 @@ const Header: React.FC = () => {
       icon: <BookOpen size={18} />
     },
     {
-      path: '/quiz',
+      path: '/quizzes',
       label: 'Quiz',
       icon: <GraduationCap size={18} />,
       requireAuth: true,
-      requirePremium: true
     },
     {
      path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : '/admin',

@@ -54,6 +54,9 @@ import StudentSuivi from './components/student/StudentSuivi';
 /* ==================== COMPOSANTS PROF ==================== */
 import ProfDashboard from './components/prof/ProfDashboard';
 
+/* ==================== QUIZ — LISTE UTILISATEURS ==================== */
+import QuizListPage from './pages/QuizListPage';
+
 /* ==================== PHASE 21 — CAHIER DE TEXTES ==================== */
 import CahierTextesPage from './pages/CahierTextesPage';
 import CahierDetailPage from './pages/CahierDetailPage';
@@ -111,7 +114,8 @@ const App: React.FC = () => {
         {/* ========== ABONNÉS PREMIUM → redirige vers Utilisateurs filtre premium ========== */}
         <Route path="/admin/premium" element={<Navigate to="/admin/utilisateurs?filter=premium" replace />} />
 
-        {/* ========== QUIZ PUBLICS (avec Header + Footer) ========== */}
+        {/* ========== QUIZ — LISTE + JOUEUR ========== */}
+        <Route path="/quizzes" element={<ProtectedRoute allowedRoles={['eleve', 'prof', 'admin']}><Layout><QuizListPage /></Layout></ProtectedRoute>} />
         <Route path="/quiz/:quizId" element={<Layout><QuizPlayer /></Layout>} />
         <Route path="/quiz-avance/:quizId" element={<Layout><QuizPlayerPage /></Layout>} />
 
