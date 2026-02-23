@@ -15,6 +15,8 @@ import {
   updateEntree,
   getEntreeById,
   getCahierById,
+  getEntreesByCahier,
+  updateCahier,
   uploadPieceJointe,
   addPiecesJointes,
   deletePieceJointe,
@@ -278,6 +280,12 @@ const EntreeEditorPage: React.FC = () => {
           await updateEntree(newId, { liens, ebooksLies });
         }
       }
+
+      // Recalcule le compteur de séances réalisées sur le cahier
+      const toutesEntrees = await getEntreesByCahier(cahierId);
+      const nbRealise = toutesEntrees.filter(e => e.statut === 'realise').length;
+      await updateCahier(cahierId, { nombreSeancesRealise: nbRealise });
+
       navigate(`/prof/cahiers/${cahierId}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

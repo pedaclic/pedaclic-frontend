@@ -34,7 +34,8 @@ const CahierStats: React.FC<CahierStatsProps> = ({ cahier }) => {
     fetch();
   }, [cahier.id]);
 
-  // Progression % du programme
+  // Calculé depuis la prop cahier : le parent (CahierDetailPage) passe
+  // un nombreSeancesRealise dérivé en temps réel du tableau entrees.
   const progressionPct = cahier.nombreSeancesPrevu > 0
     ? Math.min(100, Math.round((cahier.nombreSeancesRealise / cahier.nombreSeancesPrevu) * 100))
     : 0;

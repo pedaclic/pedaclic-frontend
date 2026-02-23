@@ -14,6 +14,7 @@ import {
   query,
   where,
   orderBy,
+  onSnapshot,
   Timestamp,
   arrayUnion,
   arrayRemove,
@@ -84,6 +85,44 @@ export async function getCahiersByProf(
 
 /** Alias Phase 22 */
 export const getCahiersProf = (profId: string) => getCahiersByProf(profId);
+
+/**
+ * Abonnement temps réel aux cahiers d'un prof.
+ * Contourne le cache IndexedDB de persistentLocalCache pour garantir
+ * que la barre de progression reflète les dernières écritures.
+ * Retourne la fonction de désabonnement.
+ */
+export function subscribeToCahiers(
+  profId: string,
+  anneeScolaire: string | undefined,
+  onData: (cahiers: CahierTextes[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const constraints: Parameters<typeof query>[1][] = [
+    where('profId', '==', profId),
+    orderBy('updatedAt', 'desc'),
+  ];
+  if (anneeScolaire) {
+    constraints.splice(1, 0, where('anneeScolaire', '==', anneeScolaire));
+  }
+  const q = query(collection(db, COL_CAHIERS), ...constraints);
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(
+        snap.docs.map(d => ({
+          groupeIds:  [],
+          groupeNoms: [],
+          isPartage:  false,
+          isArchived: false,
+          ...d.data(),
+          id: d.id,
+        } as CahierTextes))
+      );
+    },
+    onError
+  );
+}
 
 /**
  * Récupère un cahier par son ID (Phase 21 — CahierDetailPage)
