@@ -185,18 +185,24 @@ const ProfDashboard: React.FC = () => {
           >
             📚 Mes groupes-classes
           </button>
-	  <button
-  	    className="prof-nav-btn"
-  	    onClick={() => navigate('/prof/cahiers')}
-	  >
-  📓 Cahier de textes
-</button>
-	  <button
-	    className="prof-nav-btn"
-	    onClick={() => navigate('/prof/sequences')}
-	  >
-  📚 Séquences pédagogiques
-</button>
+          <button
+            className="prof-nav-btn"
+            onClick={() => navigate('/prof/cahiers')}
+          >
+            📓 Cahier de textes
+          </button>
+          <button
+            className="prof-nav-btn"
+            onClick={() => navigate('/prof/sequences')}
+          >
+            📚 Séquences pédagogiques
+          </button>
+          <button
+            className="prof-nav-btn"
+            onClick={() => navigate('/prof/cours')}
+          >
+            🎓 Cours en ligne
+          </button>
         </nav>
       )}
 

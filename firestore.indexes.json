@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "cours_en_ligne",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profId",    "order": "ASCENDING"  },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cours_sections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "coursId", "order": "ASCENDING" },
+        { "fieldPath": "ordre",   "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinataireRole", "order": "ASCENDING"  },
+        { "fieldPath": "createdAt",        "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinataireIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt",       "order": "DESCENDING"     }
+      ]
+    },
+    {
+      "collectionGroup": "notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "expediteurId", "order": "ASCENDING"  },
+        { "fieldPath": "createdAt",    "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

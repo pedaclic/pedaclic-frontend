@@ -1,0 +1,442 @@
+/* ==============================================================
+   PedaClic — CoursEnLigne_PHASE25_ADDITIONS.css
+   Phase 25 : Styles pour le composant ImageUploader
+   et les zones d'upload dans CoursEditorPage
+
+   À AJOUTER à la fin de votre CoursEnLigne.css existant.
+   Ne modifie aucun style existant.
+
+   Thème :
+   - Couleur primaire   : #1a73e8 (bleu PedaClic)
+   - Couleur secondaire : #34a853 (vert succès)
+   - Couleur erreur     : #ea4335 (rouge Google)
+   - Couleur warning    : #f9ab00 (orange upload)
+   ============================================================== */
+
+
+/* ────────────────────────────────────────────────────────────
+   COMPOSANT IMAGE UPLOADER — Conteneur principal
+   ──────────────────────────────────────────────────────────── */
+
+.image-uploader {
+  /* Disposition en colonne pour empiler les éléments */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+/* État désactivé — réduire l'opacité */
+.image-uploader--disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   ZONE DE DRAG & DROP
+   ──────────────────────────────────────────────────────────── */
+
+.image-uploader__dropzone {
+  /* Bordure en pointillés caractéristique des zones de drop */
+  border: 2px dashed #c5cae9;
+  border-radius: 12px;
+  padding: 2rem 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  background-color: #f8f9ff;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+
+  /* Accessible au clavier */
+  outline: none;
+}
+
+/* Focus clavier */
+.image-uploader__dropzone:focus-visible {
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.3);
+  border-color: #1a73e8;
+}
+
+/* Hover */
+.image-uploader__dropzone:hover {
+  border-color: #1a73e8;
+  background-color: #eef3ff;
+}
+
+/* Actif lors d'un drag au-dessus */
+.image-uploader--drag-over .image-uploader__dropzone {
+  border-color: #1a73e8;
+  background-color: #e3ecfd;
+  box-shadow: 0 0 0 4px rgba(26, 115, 232, 0.15);
+}
+
+/* Icône centrale */
+.image-uploader__icon {
+  display: block;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  /* Légère animation au hover */
+  transition: transform 0.2s;
+}
+
+.image-uploader__dropzone:hover .image-uploader__icon {
+  transform: scale(1.1);
+}
+
+/* Texte principal */
+.image-uploader__text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #3c4043;
+  margin: 0 0 0.25rem;
+}
+
+/* Texte secondaire (extensions acceptées) */
+.image-uploader__subtext {
+  font-size: 0.8rem;
+  color: #80868b;
+  margin: 0 0 1rem;
+}
+
+/* Bouton "Parcourir" dans la zone de drop */
+.image-uploader__browse-btn {
+  /* Style bouton secondaire PedaClic */
+  display: inline-block;
+  padding: 0.4rem 1.2rem;
+  border: 1.5px solid #1a73e8;
+  border-radius: 20px;
+  background: transparent;
+  color: #1a73e8;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+  pointer-events: none; /* Le clic est géré par le conteneur parent */
+}
+
+.image-uploader__dropzone:hover .image-uploader__browse-btn {
+  background-color: #1a73e8;
+  color: #fff;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   APERÇU DE L'IMAGE
+   ──────────────────────────────────────────────────────────── */
+
+.image-uploader__preview {
+  /* Conteneur relatif pour le bouton de suppression */
+  position: relative;
+  width: 100%;
+  max-height: 280px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e8eaed;
+  background-color: #f1f3f4;
+}
+
+/* Image d'aperçu */
+.image-uploader__preview-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+/* Overlay pendant l'upload (assombrit l'aperçu) */
+.image-uploader__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+}
+
+/* Spinner de chargement */
+.image-uploader__spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: uploader-spin 0.8s linear infinite;
+}
+
+@keyframes uploader-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Bouton de suppression de l'image */
+.image-uploader__remove-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(234, 67, 53, 0.9);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.2s, transform 0.1s;
+  line-height: 1;
+}
+
+.image-uploader__remove-btn:hover {
+  background: #ea4335;
+  transform: scale(1.1);
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   BARRE DE PROGRESSION
+   ──────────────────────────────────────────────────────────── */
+
+.image-uploader__progress {
+  /* Conteneur de la barre de progression */
+  position: relative;
+  width: 100%;
+  height: 28px;
+  background: #e8eaed;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* Barre de remplissage animée */
+.image-uploader__progress-bar {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #1a73e8, #4285f4);
+  border-radius: 14px;
+  transition: width 0.3s ease;
+  /* Effet shimmer pour signaler l'activité */
+  background-size: 200% 100%;
+  animation: progress-shimmer 1.5s infinite;
+}
+
+@keyframes progress-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Texte de pourcentage centré sur la barre */
+.image-uploader__progress-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  z-index: 1;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   MESSAGES D'ÉTAT
+   ──────────────────────────────────────────────────────────── */
+
+/* Message de succès */
+.image-uploader__success {
+  font-size: 0.85rem;
+  color: #137333;
+  background: #e6f4ea;
+  border: 1px solid #a8d5b5;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+/* Message d'erreur */
+.image-uploader__error {
+  font-size: 0.85rem;
+  color: #c5221f;
+  background: #fce8e6;
+  border: 1px solid #f5c6c3;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin: 0;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   INTÉGRATION DANS COURS EDITOR — Image de couverture
+   ──────────────────────────────────────────────────────────── */
+
+/* Hint "upload en cours" sous l'uploader de couverture */
+.cours-editor__upload-hint {
+  font-size: 0.8rem;
+  color: #f9ab00;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Label avec hint de taille recommandée */
+.cours-editor__label-hint {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #80868b;
+  margin-top: 2px;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   BLOC ÉDITEUR — Type "image"
+   ──────────────────────────────────────────────────────────── */
+
+/* Conteneur du bloc image dans l'éditeur de cours */
+.bloc-editor--image {
+  /* Fond légèrement différent pour distinguer visuellement */
+  background: #fafbff;
+  border: 1px solid #dde3f0;
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Badge de type bloc */
+.bloc-editor__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1a73e8;
+  background: #e8f0fe;
+  border-radius: 12px;
+  padding: 0.2rem 0.65rem;
+}
+
+/* En-tête du bloc */
+.bloc-editor__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Zone URL alternative */
+.bloc-editor__alt-url {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bloc-editor__alt-label {
+  font-size: 0.78rem;
+  color: #80868b;
+  font-weight: 500;
+}
+
+/* Input URL externe */
+.bloc-editor__url-input {
+  width: 100%;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #3c4043;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.bloc-editor__url-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+}
+
+/* Input légende de l'image */
+.bloc-editor__caption-input {
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  color: #5f6368;
+  font-style: italic;
+  background: #fff;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.bloc-editor__caption-input::placeholder {
+  color: #bdc1c6;
+}
+
+.bloc-editor__caption-input:focus {
+  outline: none;
+  border-color: #1a73e8;
+  font-style: normal;
+}
+
+
+/* ────────────────────────────────────────────────────────────
+   RESPONSIVE — Mobile first (tablette Sénégal)
+   ──────────────────────────────────────────────────────────── */
+
+/* Tablette et petits écrans */
+@media (max-width: 768px) {
+  /* Réduire le padding de la zone de drop */
+  .image-uploader__dropzone {
+    padding: 1.5rem 1rem;
+  }
+
+  /* Icône légèrement plus petite */
+  .image-uploader__icon {
+    font-size: 2rem;
+  }
+
+  /* Limiter la hauteur de l'aperçu */
+  .image-uploader__preview,
+  .image-uploader__preview-img {
+    max-height: 200px;
+  }
+
+  /* Texte de progression plus petit */
+  .image-uploader__progress-text {
+    font-size: 0.72rem;
+  }
+}
+
+/* Mobile (smartphones courants en Afrique de l'Ouest) */
+@media (max-width: 480px) {
+  /* Aperçu en hauteur réduite pour rester dans l'écran */
+  .image-uploader__preview,
+  .image-uploader__preview-img {
+    max-height: 160px;
+  }
+
+  /* Barre de progression plus fine */
+  .image-uploader__progress {
+    height: 22px;
+  }
+
+  .image-uploader__progress-text {
+    font-size: 0.68rem;
+  }
+
+  /* Bloc image en mobile — padding réduit */
+  .bloc-editor--image {
+    padding: 0.75rem;
+    gap: 0.6rem;
+  }
+}

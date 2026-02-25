@@ -6,6 +6,7 @@ import App from './App';
 // Import des styles
 import './globals.css';
 import './styles/admin.css';
+import './Notifications.css';
 
 const rootElement = document.getElementById('root');
 
