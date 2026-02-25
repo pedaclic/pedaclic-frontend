@@ -14,6 +14,7 @@ export default defineConfig({
       strategies: 'generateSW',
       injectRegister: 'auto',
       registerType: 'autoUpdate',
+      minimizeSW: false,
 
       // --- Assets à inclure dans le précache ---
       includeAssets: [
@@ -27,6 +28,7 @@ export default defineConfig({
 
       // --- Configuration Workbox ---
       workbox: {
+        mode: 'development',
 
         // Types de fichiers à précacher
         skipWaiting: true,
