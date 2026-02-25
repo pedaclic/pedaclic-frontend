@@ -59,7 +59,7 @@ service cloud.firestore {
       // - Utilisateur peut lire son propre profil
       // - Admin peut tout lire
       // - Parent peut lire les profils (pour rechercher un enfant par codeParent)
-      allow read: if isOwner(userId) || isAdmin() || isParent();
+      allow read: if isOwner(userId) || isAdmin() || isParent() || isProf();
       
       // Création: uniquement lors de l'inscription (via Authentication)
       allow create: if isSignedIn() && 
@@ -445,6 +445,70 @@ match /rappels_prof/{rappelId} {
     allow read: if isAdmin();
     allow write: if isAdmin();
    }
+    // ==================== PHASE 24 — COURS EN LIGNE ====================
+
+    // ─── Cours en ligne (Phase 24) ──────────────────────────────
+    match /cours_en_ligne/{coursId} {
+      allow read: if resource.data.statut == 'publie'
+                  || (request.auth != null && resource.data.profId == request.auth.uid)
+                  || request.auth.token.role == 'admin';
+
+      allow create: if request.auth != null
+        && request.resource.data.profId == request.auth.uid;
+
+      allow update, delete: if request.auth != null && (
+        resource.data.profId == request.auth.uid
+        || request.auth.token.role == 'admin'
+      );
+    }
+
+    // ─── Sections des cours (Phase 24) ──────────────────────────
+    match /cours_sections/{sectionId} {
+      allow read:  if true;
+      allow write: if request.auth != null;
+    }
+
+    // ─── Progression élèves — Cours (Phase 24) ──────────────────
+    match /progression_cours/{progressionId} {
+      allow read, update: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ==================== COLLECTION: notifications ====================
+
+    match /notifications/{notifId} {
+
+      // Vérifie si l'utilisateur connecté est destinataire de la notification :
+      //   - diffusion globale (destinataireRole == 'tous')
+      //   - ciblage par rôle (prof, eleve, parent, admin...)
+      //   - ciblage individuel (UID présent dans destinataireIds)
+      function estDestinataire() {
+        let data = resource.data;
+        return data.destinataireId == request.auth.uid
+            || data.destinataireRole == 'tous'
+            || data.destinataireRole == getUserData().role
+            || (data.destinataireIds != null && request.auth.uid in data.destinataireIds);
+      }
+
+      allow read:   if isSignedIn() && (estDestinataire() || isAdmin());
+      allow create: if isProf() || isAdmin();
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.emetteurId == request.auth.uid)
+                    || (isSignedIn() && estDestinataire());
+      allow delete: if isAdmin();
+
+      // ─── Sous-collection : lectures ──────────────────────────────
+      // Stocke l'état "lu/non lu" par utilisateur.
+      // Chaque document est identifié par l'UID du lecteur.
+      match /lectures/{userId} {
+        allow read:          if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId);
+        allow delete:        if isAdmin();
+      }
+    }
+
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {

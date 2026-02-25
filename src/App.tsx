@@ -26,6 +26,7 @@ import Layout from './components/Layout';
 import Home from './pages/Home';
 import LoginPage from './pages/Auth/LoginPage';
 import RegisterPage from './pages/Auth/RegisterPage';
+import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 import DisciplinesPage from './pages/DisciplinesPage';
 import DisciplineDetail from './pages/DisciplineDetail';
 import PremiumPage from './pages/Premium/PremiumPage';
@@ -76,6 +77,16 @@ import AIGenerator from './components/generator/AIGenerator';
 import EbooksPage from './pages/EbooksPage';
 import AdminEbooks from './pages/AdminEbooks';
 
+/* ==================== PHASE 24 — COURS EN LIGNE ==================== */
+import CoursPage       from './pages/CoursPage';
+import CoursDetailPage from './pages/CoursDetailPage';
+import CoursEditorPage from './pages/CoursEditorPage';
+import ProfCoursPage   from './pages/ProfCoursPage';
+
+/* ==================== PHASE 26 — NOTIFICATIONS ==================== */
+import NotificationsPage    from './NotificationsPage';
+import NotificationComposer from './NotificationComposer';
+
 /* ==================== PWA INSTALL PROMPT ==================== */
 import InstallPrompt from './components/InstallPrompt';
 import NetworkIndicator from './components/NetworkIndicator';
@@ -94,10 +105,16 @@ const App: React.FC = () => {
         <Route path="/disciplines" element={<Layout><DisciplinesPage /></Layout>} />
         <Route path="/disciplines/:id" element={<Layout><DisciplineDetail /></Layout>} />
         <Route path="/premium" element={<Layout><PremiumPage /></Layout>} />
+        <Route path="/cours"                        element={<CoursPage />} />
+        <Route path="/cours/:coursId"               element={<CoursDetailPage />} />
+        <Route path="/prof/cours"                   element={<ProfCoursPage />} />
+        <Route path="/prof/cours/nouveau"           element={<CoursEditorPage />} />
+        <Route path="/prof/cours/:coursId/modifier" element={<CoursEditorPage />} />
 
         {/* ========== AUTH (sans Header/Footer) ========== */}
         <Route path="/connexion" element={<LoginPage />} />
         <Route path="/inscription" element={<RegisterPage />} />
+        <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
 
         {/* ========== ADMIN PROTÉGÉ (avec AdminLayout + sidebar) ========== */}
         <Route path="/admin" element={<AdminRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminRoute>} />
@@ -152,9 +169,29 @@ const App: React.FC = () => {
         <Route path="/generateur" element={<Layout><AIGenerator /></Layout>} />	
 	
 	{/* ========== BIBLIOTHÈQUE EBOOKS ========== */}
-        <Route path="/ebooks" element={<Layout><EbooksPage /></Layout>} />        
+        <Route path="/ebooks" element={<Layout><EbooksPage /></Layout>} />
+
+        {/* ========== PHASE 24 — COURS EN LIGNE ========== */}
+        <Route path="/cours" element={<Layout><CoursPage /></Layout>} />
+        <Route path="/cours/:coursId" element={<Layout><CoursDetailPage /></Layout>} />
+        <Route path="/prof/cours" element={<ProfRoute><Layout><ProfCoursPage /></Layout></ProfRoute>} />
+        <Route path="/prof/cours/nouveau" element={<ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>} />
+        <Route path="/prof/cours/:coursId/modifier" element={<ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>} />
 	
-	{/* ========== 404 → redirection accueil ========== */}
+	{/* ========== PHASE 26 — NOTIFICATIONS ========== */}
+	<Route path="/notifications" element={
+  	<ProtectedRoute allowedRoles={['eleve', 'prof', 'admin', 'parent']}>
+    	<Layout><NotificationsPage /></Layout>
+  	</ProtectedRoute>
+	} />
+	<Route path="/prof/notifications/nouvelle" element={
+  	<ProfRoute><Layout><NotificationComposer /></Layout></ProfRoute>
+	} />
+	<Route path="/admin/notifications/nouvelle" element={
+  	<AdminRoute><AdminLayout><NotificationComposer /></AdminLayout></AdminRoute>
+	} />
+
+        {/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>

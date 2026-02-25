@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Heart, BookOpen, Users, FileText, Shield, HelpCircle } from 'lucide-react';
+import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Heart, BookOpen, Users, FileText, Shield, HelpCircle, PlayCircle } from 'lucide-react';
 import './Footer.css';
 
 const Footer: React.FC = () => {
@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
   ];
 
   const resourceLinks = [
-    { label: 'Cours en ligne', path: '/disciplines' },
+    { label: 'Cours en ligne', path: '/cours', badge: 'Nouveau', icon: <PlayCircle size={14} /> },
     { label: 'Exercices corrigés', path: '/disciplines' },
     { label: 'Annales examens', path: '/disciplines' },
     { label: 'Fiches de révision', path: '/disciplines' }
@@ -68,7 +68,14 @@ const Footer: React.FC = () => {
               <ul className="footer__list">
                 {resourceLinks.map((link, index) => (
                   <li key={index} className="footer__item">
-                    <Link to={link.path} className="footer__link">{link.label}</Link>
+                    <Link
+                      to={link.path}
+                      className={`footer__link${link.badge ? ' footer__link--new' : ''}`}
+                    >
+                      {link.icon && <span className="footer__link-icon">{link.icon}</span>}
+                      {link.label}
+                      {link.badge && <span className="footer__badge">{link.badge}</span>}
+                    </Link>
                   </li>
                 ))}
               </ul>

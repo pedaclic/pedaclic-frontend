@@ -369,6 +369,25 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* ══════════════════════════════════════════════
+          COURS EN LIGNE (Phase 24)
+          ══════════════════════════════════════════════ */}
+      <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+        <h3 className="sd-section-title">
+          <BookOpen size={18} /> Cours en ligne
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Des cours complets du programme sénégalais, accessibles partout.
+        </p>
+        <button
+          className="sd-btn sd-btn-primary"
+          onClick={() => navigate('/cours')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <Play size={16} /> Accéder aux cours
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════
           ONGLETS (ajout de "Progression")
           ══════════════════════════════════════════════ */}
       <div className="sd-tabs">

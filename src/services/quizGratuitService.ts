@@ -14,6 +14,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
 
 // ─── Interfaces ──────────────────────────────────────────────
 
@@ -45,7 +46,7 @@ const MAX_PAR_COL    = 50;
 /**
  * Normalise un document quizzes (ancienne collection)
  */
-function normaliserQuizAncien(d: FirebaseFirestore.QueryDocumentSnapshot): QuizGratuit {
+function normaliserQuizAncien(d: QueryDocumentSnapshot): QuizGratuit {
   const data = d.data();
   return {
     id:              d.id,
@@ -66,7 +67,7 @@ function normaliserQuizAncien(d: FirebaseFirestore.QueryDocumentSnapshot): QuizG
 /**
  * Normalise un document quizzes_v2 (collection avancée)
  */
-function normaliserQuizV2(d: FirebaseFirestore.QueryDocumentSnapshot): QuizGratuit {
+function normaliserQuizV2(d: QueryDocumentSnapshot): QuizGratuit {
   const data = d.data();
   return {
     id:              d.id,

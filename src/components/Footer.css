@@ -230,6 +230,51 @@
   opacity: 0.5;
 }
 
+/**
+ * Icône inline dans un lien de navigation
+ */
+.footer__link-icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-primary-light, #f59e0b);
+  flex-shrink: 0;
+}
+
+/**
+ * Lien mis en avant (Cours en ligne)
+ */
+.footer__link--new {
+  color: #e5e7eb;
+  font-weight: var(--font-medium, 500);
+}
+
+.footer__link--new:hover {
+  color: white;
+}
+
+/**
+ * Badge "Nouveau" / "New" sur un lien
+ */
+.footer__badge {
+  display: inline-block;
+  padding: 1px 6px;
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  line-height: 1.6;
+  vertical-align: middle;
+  animation: badge-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.75; }
+}
+
 /* ==================== CONTACT ==================== */
 
 /**

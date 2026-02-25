@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
+import NotificationBell from '../NotificationBell';
 
 /* ==================== INTERFACE ==================== */
 
@@ -293,15 +294,19 @@ const Header: React.FC = () => {
               <div className="header__spinner"></div>
             </div>
           ) : currentUser ? (
-            /* ----- UTILISATEUR CONNECTÉ ----- */
-            <div className="header__user" ref={dropdownRef}>
-              {/* Badge Premium */}
-              {currentUser.isPremium && (
-                <span className="header__premium-tag">
-                  <Crown size={14} />
-                  Premium
-                </span>
-              )}
+            <>
+              {/* ─── Phase 26 : Cloche notifications temps réel ─── */}
+              <NotificationBell />
+
+              {/* ----- UTILISATEUR CONNECTÉ ----- */}
+              <div className="header__user" ref={dropdownRef}>
+                {/* Badge Premium */}
+                {currentUser.isPremium && (
+                  <span className="header__premium-tag">
+                    <Crown size={14} />
+                    Premium
+                  </span>
+                )}
               
               {/* Bouton dropdown utilisateur */}
               <button 
@@ -413,6 +418,7 @@ const Header: React.FC = () => {
                 </div>
               )}
             </div>
+            </>
           ) : (
             /* ----- UTILISATEUR NON CONNECTÉ ----- */
             <div className="header__auth-buttons">

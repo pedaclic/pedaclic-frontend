@@ -257,7 +257,7 @@ const QuizGratuitsPage: React.FC = () => {
         >
           <option value="">Toutes les matières</option>
           {matieresDispos.map(m => (
-            <option key={m} value={m}>{m}</option>
+            <option key={m.valeur} value={m.valeur}>{m.label}</option>
           ))}
         </select>
 
