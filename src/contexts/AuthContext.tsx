@@ -16,6 +16,8 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   updateProfile as updateAuthProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -183,6 +185,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
+   * Connexion / inscription via Google OAuth
+   * - Si l'utilisateur existe déjà : met à jour lastLogin
+   * - Si c'est un nouvel utilisateur : crée le document Firestore avec le rôle fourni (défaut : 'eleve')
+   */
+  const loginWithGoogle = async (role?: import('../types').UserRole): Promise<void> => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      await createOrUpdateUserDoc(result.user, { role: role ?? 'eleve' });
+    } catch (error: any) {
+      throw new Error(getErrorMessage(error.code));
+    }
+  };
+
+  /**
    * Déconnexion de l'utilisateur
    */
   const logout = async (): Promise<void> => {
@@ -242,6 +260,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     currentUser,
     loading,
     login,
+    loginWithGoogle,
     register,
     logout,
     updateProfile

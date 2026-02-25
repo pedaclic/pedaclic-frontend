@@ -26,7 +26,9 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile as updateFirebaseProfile
+  updateProfile as updateFirebaseProfile,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
 import {
   doc,
@@ -77,6 +79,7 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (role?: UserRole) => Promise<void>;
   register: (data: RegisterData) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -228,6 +231,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   /**
+   * Connexion / inscription via Google OAuth
+   * - Utilisateur existant : mise à jour de lastLogin uniquement
+   * - Nouvel utilisateur : document Firestore créé avec le rôle fourni (défaut : 'eleve')
+   */
+  const loginWithGoogle = async (role: UserRole = 'eleve'): Promise<void> => {
+    try {
+      setError(null);
+      setLoading(true);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      const userDocRef = doc(db, 'users', firebaseUser.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        await setDoc(userDocRef, {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || '',
+          photoURL: firebaseUser.photoURL,
+          role,
+          isPremium: false,
+          subscriptionEnd: null,
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp(),
+        });
+      } else {
+        await updateDoc(userDocRef, { lastLogin: serverTimestamp() });
+      }
+    } catch (err: any) {
+      const message = err.code === 'auth/popup-closed-by-user'
+        ? 'Connexion annulée.'
+        : getErrorMessage(err.code);
+      setError(message);
+      throw new Error(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Inscription d'un nouvel utilisateur
    */
   const register = async (data: RegisterData): Promise<void> => {
@@ -336,6 +382,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     error,
     login,
+    loginWithGoogle,
     register,
     logout,
     updateProfile,
