@@ -99,6 +99,7 @@ const AIGenerator: React.FC = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [viewingContent, setViewingContent] = useState<GeneratedContent | null>(null);
 
   // ---- Chargement initial ----
   const [loadingDisciplines, setLoadingDisciplines] = useState(true);
@@ -342,6 +343,106 @@ const AIGenerator: React.FC = () => {
     } finally {
       setLoadingHistory(false);
     }
+  };
+
+  /** Normalise le nom de fichier */
+  const safeFilename = (titre: string) =>
+    titre
+      .replace(/[^\w\u00C0-\u017E\s-]/g, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .slice(0, 60) || 'contenu_pedaclic';
+
+  /** Déclenche un téléchargement navigateur générique */
+  const triggerDownload = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  /** Télécharge le contenu en Word (.doc) via HTML compatible Office */
+  const handleDownloadWord = (content: string, titre: string) => {
+    const html = markdownToHtml(content);
+    const wordHtml = `
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+  <meta charset="utf-8">
+  <title>${titre}</title>
+  <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6; margin: 2cm; color: #1a1a1a; }
+    h1 { font-size: 18pt; color: #1a56db; margin-bottom: 12pt; }
+    h2 { font-size: 15pt; color: #1a56db; margin-top: 18pt; margin-bottom: 8pt; }
+    h3 { font-size: 13pt; color: #333; margin-top: 14pt; }
+    p  { margin-bottom: 8pt; }
+    ul, ol { margin-left: 1cm; margin-bottom: 8pt; }
+    li { margin-bottom: 4pt; }
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+    code { font-family: Courier New; background: #f5f5f5; padding: 1pt 3pt; }
+    pre  { font-family: Courier New; background: #f5f5f5; padding: 8pt; margin: 8pt 0; }
+    hr { border: none; border-top: 1px solid #ccc; margin: 12pt 0; }
+  </style>
+</head>
+<body>
+  <h1>${titre}</h1>
+  ${html}
+</body>
+</html>`;
+    const blob = new Blob(['\ufeff', wordHtml], {
+      type: 'application/msword;charset=utf-8',
+    });
+    triggerDownload(blob, `${safeFilename(titre)}.doc`);
+  };
+
+  /** Ouvre une fenêtre d'impression pour enregistrer en PDF */
+  const handleDownloadPDF = (content: string, titre: string) => {
+    const html = markdownToHtml(content);
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+    printWindow.document.write(`
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${titre}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.7; color: #1a1a1a; padding: 2cm; max-width: 800px; margin: auto; }
+    h1 { font-size: 20pt; color: #1a56db; margin-bottom: 14pt; padding-bottom: 6pt; border-bottom: 2px solid #1a56db; }
+    h2 { font-size: 15pt; color: #1a56db; margin: 18pt 0 8pt; }
+    h3 { font-size: 13pt; color: #333; margin: 14pt 0 6pt; }
+    p  { margin-bottom: 8pt; }
+    ul, ol { margin: 6pt 0 8pt 1.5cm; }
+    li { margin-bottom: 4pt; }
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+    code { font-family: Courier New, monospace; background: #f5f5f5; padding: 1pt 4pt; border-radius: 3pt; font-size: 10pt; }
+    pre  { font-family: Courier New, monospace; background: #f5f5f5; padding: 10pt; margin: 8pt 0; border-radius: 4pt; font-size: 10pt; white-space: pre-wrap; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 14pt 0; }
+    .header-meta { font-size: 9pt; color: #888; margin-bottom: 18pt; }
+    @media print {
+      body { padding: 0; }
+      @page { margin: 2cm; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${titre}</h1>
+  <p class="header-meta">PedaClic · Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+  ${html}
+  <script>window.onload = () => { window.print(); };<\/script>
+</body>
+</html>`);
+    printWindow.document.close();
   };
 
   /** Supprime un élément de l'historique */
@@ -943,19 +1044,49 @@ const AIGenerator: React.FC = () => {
             <div className="ai-generator__preview">
               <div className="ai-generator__preview-header">
                 <h3>Prévisualisation</h3>
-                <button
-                  className="btn btn--outline btn--sm"
-                  onClick={() => {
-                    const text =
-                      generationResult.type === 'quiz'
-                        ? JSON.stringify(generationResult.data.questions, null, 2)
-                        : generationResult.data.content || '';
-                    navigator.clipboard.writeText(text);
-                    alert('Contenu copié dans le presse-papier !');
-                  }}
-                >
-                  📋 Copier
-                </button>
+                <div className="ai-generator__preview-actions">
+                  <button
+                    className="btn btn--outline btn--sm"
+                    onClick={() => {
+                      const text =
+                        generationResult.type === 'quiz'
+                          ? JSON.stringify(generationResult.data.questions, null, 2)
+                          : generationResult.data.content || '';
+                      navigator.clipboard.writeText(text);
+                      alert('Contenu copié dans le presse-papier !');
+                    }}
+                  >
+                    📋 Copier
+                  </button>
+                  {generationResult.type !== 'quiz' && (
+                    <>
+                      <button
+                        className="btn btn--outline btn--sm"
+                        onClick={() =>
+                          handleDownloadPDF(
+                            generationResult.data.content || '',
+                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`
+                          )
+                        }
+                        title="Télécharger en PDF (via impression)"
+                      >
+                        📄 PDF
+                      </button>
+                      <button
+                        className="btn btn--outline btn--sm"
+                        onClick={() =>
+                          handleDownloadWord(
+                            generationResult.data.content || '',
+                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`
+                          )
+                        }
+                        title="Télécharger en Word (.doc)"
+                      >
+                        📝 Word
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="ai-generator__preview-body">
@@ -1057,6 +1188,123 @@ const AIGenerator: React.FC = () => {
         )}
       </div>
 
+      {/* ==================== MODAL LECTURE CONTENU ==================== */}
+      {viewingContent && (
+        <div
+          className="ai-generator__modal-overlay"
+          onClick={() => setViewingContent(null)}
+        >
+          <div
+            className="ai-generator__modal ai-generator__modal--wide"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="ai-generator__modal-header">
+              <div className="ai-generator__modal-title-block">
+                <h2>
+                  {GENERATION_TYPE_ICONS[viewingContent.type]}{' '}
+                  {GENERATION_TYPE_LABELS[viewingContent.type]}
+                </h2>
+                <span className="ai-generator__modal-subtitle">
+                  {viewingContent.discipline} ({viewingContent.classe}) — {viewingContent.chapitre}
+                </span>
+              </div>
+              <div className="ai-generator__modal-header-actions">
+                {viewingContent.type !== 'quiz' && viewingContent.content && (
+                  <>
+                    <button
+                      className="btn btn--outline btn--sm"
+                      onClick={() =>
+                        handleDownloadPDF(
+                          viewingContent.content!,
+                          `${GENERATION_TYPE_LABELS[viewingContent.type]} — ${viewingContent.discipline} ${viewingContent.classe}`
+                        )
+                      }
+                      title="Enregistrer en PDF"
+                    >
+                      📄 PDF
+                    </button>
+                    <button
+                      className="btn btn--outline btn--sm"
+                      onClick={() =>
+                        handleDownloadWord(
+                          viewingContent.content!,
+                          `${GENERATION_TYPE_LABELS[viewingContent.type]} — ${viewingContent.discipline} ${viewingContent.classe}`
+                        )
+                      }
+                      title="Télécharger en Word"
+                    >
+                      📝 Word
+                    </button>
+                  </>
+                )}
+                <button
+                  className="btn btn--outline btn--sm"
+                  onClick={async () => {
+                    setViewingContent(null);
+                    await handleLoadHistory();
+                  }}
+                  title="Retour à l'historique"
+                >
+                  ← Historique
+                </button>
+                <button
+                  className="ai-generator__modal-close"
+                  onClick={() => setViewingContent(null)}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="ai-generator__modal-body">
+              {viewingContent.type === 'quiz' && viewingContent.questions ? (
+                <div className="ai-generator__quiz-preview">
+                  <p className="ai-generator__quiz-count">
+                    {viewingContent.questions.length} questions
+                  </p>
+                  {viewingContent.questions.map((q: QuizQuestion, i: number) => (
+                    <div key={i} className="ai-generator__quiz-item">
+                      <div className="ai-generator__quiz-question">
+                        <strong>Q{i + 1}.</strong> {q.question}
+                        <span className={`ai-generator__quiz-badge ai-generator__quiz-badge--${q.difficulte}`}>
+                          {q.difficulte}
+                        </span>
+                      </div>
+                      <div className="ai-generator__quiz-options">
+                        {q.options.map((opt: string, j: number) => (
+                          <div
+                            key={j}
+                            className={`ai-generator__quiz-option ${j === q.reponseCorrecte ? 'ai-generator__quiz-option--correct' : ''}`}
+                          >
+                            <span className="ai-generator__quiz-option-letter">
+                              {String.fromCharCode(65 + j)}
+                            </span>
+                            {opt}
+                            {j === q.reponseCorrecte && ' ✅'}
+                          </div>
+                        ))}
+                      </div>
+                      {q.explication && (
+                        <div className="ai-generator__quiz-explanation">
+                          💡 {q.explication}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div
+                  className="ai-generator__markdown-preview"
+                  dangerouslySetInnerHTML={{
+                    __html: markdownToHtml(viewingContent.content || ''),
+                  }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ==================== MODAL HISTORIQUE ==================== */}
       {showHistory && (
         <div
@@ -1106,13 +1354,53 @@ const AIGenerator: React.FC = () => {
                             : 'Date inconnue'}
                         </span>
                       </div>
-                      <button
-                        className="btn btn--danger btn--sm"
-                        onClick={() => item.id && handleDeleteHistory(item.id)}
-                        title="Supprimer"
-                      >
-                        🗑️
-                      </button>
+                      <div className="ai-generator__history-actions">
+                        <button
+                          className="btn btn--outline btn--sm"
+                          onClick={() => {
+                            setViewingContent(item);
+                            setShowHistory(false);
+                          }}
+                          title="Lire le contenu"
+                        >
+                          📖 Lire
+                        </button>
+                        {item.type !== 'quiz' && item.content && (
+                          <>
+                            <button
+                              className="btn btn--outline btn--sm"
+                              onClick={() =>
+                                handleDownloadPDF(
+                                  item.content!,
+                                  `${GENERATION_TYPE_LABELS[item.type]} — ${item.discipline} ${item.classe}`
+                                )
+                              }
+                              title="PDF"
+                            >
+                              📄
+                            </button>
+                            <button
+                              className="btn btn--outline btn--sm"
+                              onClick={() =>
+                                handleDownloadWord(
+                                  item.content!,
+                                  `${GENERATION_TYPE_LABELS[item.type]} — ${item.discipline} ${item.classe}`
+                                )
+                              }
+                              title="Word"
+                            >
+                              📝
+                            </button>
+                          </>
+                        )}
+                        <button
+                          className="btn btn--danger btn--sm"
+                          onClick={() => item.id && handleDeleteHistory(item.id)}
+                          title="Supprimer"
+                        >
+                          🗑️
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>

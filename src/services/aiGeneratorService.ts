@@ -240,8 +240,10 @@ async function avecRetry<T>(
  */
 export async function pingServeurIA(): Promise<void> {
   try {
-    await fetch(`${API_BASE_URL}/health`, { method: 'GET' });
-    console.log('[aiGeneratorService] Ping Railway OK');
+    const response = await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' });
+    if (response.ok) {
+      console.log('[aiGeneratorService] Ping Railway OK');
+    }
   } catch {
     // Silencieux — ne pas bloquer l'app si le ping échoue
   }
