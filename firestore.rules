@@ -476,6 +476,26 @@ match /rappels_prof/{rappelId} {
         && request.resource.data.userId == request.auth.uid;
     }
 
+    // ==================== COLLECTION: generated_content (Phase 16 — Générateur IA) ====================
+    // Contenu généré par l'IA et sauvegardé par l'utilisateur.
+    // Accessible uniquement par son auteur (userId) et les admins.
+    // La création est réservée aux utilisateurs Premium, Profs et Admins.
+
+    match /generated_content/{contentId} {
+      allow read:   if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow create: if isSignedIn() &&
+                        request.resource.data.userId == request.auth.uid &&
+                        (isPremium() || isProf() || isAdmin());
+      allow update: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow delete: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+    }
+
     // ==================== COLLECTION: notifications ====================
 
     match /notifications/{notifId} {

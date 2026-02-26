@@ -311,6 +311,15 @@ const AIGenerator: React.FC = () => {
 
       setSavedId(docId);
       setSaveSuccess(true);
+
+      // Rafraîchit silencieusement l'historique pour que le nouvel élément
+      // apparaisse immédiatement sans que l'utilisateur ait à le recharger.
+      try {
+        const items = await getGeneratedHistory(currentUser.uid);
+        setHistory(items);
+      } catch {
+        // Non-bloquant — l'historique se rechargera à la prochaine ouverture manuelle.
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur de sauvegarde';
       setError(message);

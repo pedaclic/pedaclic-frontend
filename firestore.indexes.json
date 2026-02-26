@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "generated_content",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId",    "order": "ASCENDING"  },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cours_en_ligne",
       "queryScope": "COLLECTION",
       "fields": [
