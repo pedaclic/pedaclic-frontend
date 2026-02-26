@@ -5098,23 +5098,27 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 2000;
   padding: var(--spacing-md);
+  overflow-y: auto;
 }
 
 .ai-generator__modal {
-  background: var(--color-bg-card);
+  background: #ffffff;
   border-radius: var(--radius-lg);
   width: 100%;
   max-width: 700px;
-  max-height: 80vh;
+  max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-xl);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+  position: relative;
+  margin: auto;
+  isolation: isolate;
 }
 
 .ai-generator__modal-header {
@@ -5122,7 +5126,10 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  flex-shrink: 0;
 }
 
 .ai-generator__modal-header h2 {
@@ -5144,9 +5151,45 @@
   color: var(--color-text);
 }
 
+/* Modale élargie pour la lecture de contenu */
+.ai-generator__modal--wide {
+  max-width: 860px;
+  background: #ffffff;
+}
+
+/* En-tête modale avec titre + sous-titre */
+.ai-generator__modal-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ai-generator__modal-subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+/* Actions dans l'en-tête de la modale (bouton télécharger + fermer) */
+.ai-generator__modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
 .ai-generator__modal-body {
   padding: var(--spacing-lg);
   overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  background: #ffffff;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+/* Groupe de boutons dans l'en-tête de la prévisualisation (étape 5) */
+.ai-generator__preview-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
 }
 
 /* Liste historique */
@@ -5192,6 +5235,14 @@
   font-size: 0.8rem;
   color: var(--color-text-light);
   opacity: 0.7;
+}
+
+/* Groupe de boutons d'action dans les items d'historique */
+.ai-generator__history-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  flex-shrink: 0;
 }
 
 /* ==================== ÉTATS VIDES & CHARGEMENT ==================== */
