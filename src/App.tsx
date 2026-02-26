@@ -15,7 +15,7 @@
  * @version 2.1.0
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AdminRoute, ProfRoute, ProtectedRoute } from './contexts/AuthContext';
 
@@ -91,9 +91,20 @@ import NotificationComposer from './NotificationComposer';
 import InstallPrompt from './components/InstallPrompt';
 import NetworkIndicator from './components/NetworkIndicator';
 
+/* ==================== GÉNÉRATEUR IA — KEEP-ALIVE ==================== */
+import { pingServeurIA } from './services/aiGeneratorService';
+
 // ==================== APPLICATION ====================
 
 const App: React.FC = () => {
+
+  // Maintient le serveur IA Railway éveillé (évite le cold-start).
+  useEffect(() => {
+    pingServeurIA();
+    const interval = setInterval(pingServeurIA, 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <AuthProvider>
       <InstallPrompt />
