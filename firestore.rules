@@ -496,6 +496,25 @@ match /rappels_prof/{rappelId} {
                       );
     }
 
+    // ==================== COLLECTION: compiled_ebooks (Phase 23 — Ebooks IA compilés) ====================
+    // Ebooks compilés par l'utilisateur depuis ses contenus générés.
+    // Accessible uniquement par son auteur (userId) et les admins.
+
+    match /compiled_ebooks/{ebookId} {
+      allow read:   if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow create: if isSignedIn() &&
+                        request.resource.data.userId == request.auth.uid &&
+                        (isPremium() || isProf() || isAdmin());
+      allow update: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow delete: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+    }
+
     // ==================== COLLECTION: notifications ====================
 
     match /notifications/{notifId} {
