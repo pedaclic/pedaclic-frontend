@@ -1,16 +1,31 @@
 import { Link } from 'react-router-dom';
 import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Heart, BookOpen, Users, FileText, Shield, HelpCircle, PlayCircle } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import './Footer.css';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
+  const { currentUser } = useAuth();
+
+  // Résout la route du tableau de bord selon le rôle de l'utilisateur connecté.
+  // Non connecté → page de connexion avec redirection post-login.
+  const getDashboardPath = (): string => {
+    if (!currentUser) return '/connexion';
+    switch (currentUser.role) {
+      case 'eleve':  return '/eleve/dashboard';
+      case 'prof':   return '/prof/dashboard';
+      case 'parent': return '/parent/dashboard';
+      case 'admin':  return '/admin';
+      default:       return '/connexion';
+    }
+  };
 
   const platformLinks = [
     { label: 'Accueil', path: '/' },
     { label: 'Disciplines', path: '/disciplines' },
-    { label: 'Quiz Premium', path: '/quiz' },
+    { label: 'Quiz Avancés', path: '/quizzes' },
     { label: 'Tarifs', path: '/premium' },
-    { label: 'Tableau de bord', path: '/dashboard' }
+    { label: 'Tableau de bord', path: getDashboardPath() }
   ];
 
   const resourceLinks = [
