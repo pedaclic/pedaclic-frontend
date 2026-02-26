@@ -31,11 +31,13 @@ import type {
   EntreeFormData, TypeContenu, StatutSeance,
   TypeEvaluation, CahierTextes,
   EntreeCahier, PieceJointe,
-  LienExterne, LienEbook,
+  LienExterne, LienEbook, LienContenuIA,
 } from '../types/cahierTextes.types';
 // Phase 22 — composants enrichis
 import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
+// Phase 23 — contenus IA
+import ContenuIASelector from '../components/prof/ContenuIASelector';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -157,6 +159,8 @@ const EntreeEditorPage: React.FC = () => {
   // États Phase 22 — médias enrichis
   const [liens, setLiens]           = useState<LienExterne[]>([]);
   const [ebooksLies, setEbooksLies] = useState<LienEbook[]>([]);
+  // État Phase 23 — contenus IA
+  const [contenuIA, setContenuIA]   = useState<LienContenuIA[]>([]);
 
   const isEdit = !!entreeId;
 
@@ -178,6 +182,8 @@ const EntreeEditorPage: React.FC = () => {
             // Phase 22 — pré-remplissage médias enrichis
             setLiens(entreeData.liens ?? []);
             setEbooksLies(entreeData.ebooksLies ?? []);
+            // Phase 23 — contenus IA
+            setContenuIA(entreeData.contenuIA ?? []);
             setForm({
               date: entreeData.date.toDate().toISOString().slice(0, 10),
               heureDebut: entreeData.heureDebut || '',
@@ -268,7 +274,7 @@ const EntreeEditorPage: React.FC = () => {
         // Phase 21 — mise à jour base + Phase 22 — médias enrichis
         await updateEntree(entreeId, cahierId, form);
         // Mise à jour séparée des champs Phase 22
-        await updateEntree(entreeId, { liens, ebooksLies });
+        await updateEntree(entreeId, { liens, ebooksLies, contenuIA });
       } else {
         const newId = await createEntree(cahierId, currentUser.uid, form);
         // Pièces jointes uploadées avant création (Phase 21)
@@ -276,8 +282,8 @@ const EntreeEditorPage: React.FC = () => {
           await addPiecesJointes(newId, [], piecesJointes);
         }
         // Médias Phase 22 sauvegardés sur la nouvelle entrée
-        if (liens.length > 0 || ebooksLies.length > 0) {
-          await updateEntree(newId, { liens, ebooksLies });
+        if (liens.length > 0 || ebooksLies.length > 0 || contenuIA.length > 0) {
+          await updateEntree(newId, { liens, ebooksLies, contenuIA });
         }
       }
 
@@ -503,6 +509,13 @@ const EntreeEditorPage: React.FC = () => {
 
           {/* Ebooks de la bibliothèque */}
           <EbookSelector ebooksLies={ebooksLies} onChange={setEbooksLies} />
+
+          {/* Contenus générés par l'IA */}
+          <ContenuIASelector
+            userId={currentUser!.uid}
+            contenuIA={contenuIA}
+            onChange={setContenuIA}
+          />
         </div>
 
         {/* ── Notes privées (Phase 21 — inchangé) ── */}

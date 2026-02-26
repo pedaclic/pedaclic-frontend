@@ -75,11 +75,15 @@ const InstallPrompt: React.FC = () => {
   }, [getVisitCount]);
 
   /**
-   * Vérifie si l'utilisateur a déjà fermé la bannière
+   * Vérifie si la bannière a été refusée il y a moins de 30 jours.
+   * Après 30 jours, elle est proposée à nouveau.
    */
   const wasDismissed = (): boolean => {
     try {
-      return localStorage.getItem('pedaclic_install_dismissed') === 'true';
+      const ts = localStorage.getItem('pedaclic_install_dismissed_at');
+      if (!ts) return false;
+      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+      return Date.now() - parseInt(ts, 10) < THIRTY_DAYS;
     } catch {
       return false;
     }
@@ -96,13 +100,11 @@ const InstallPrompt: React.FC = () => {
 
     // --- Cas Android/Chrome : intercepter beforeinstallprompt ---
     const handleBeforeInstallPrompt = (e: Event) => {
-      // Empêcher Chrome d'afficher sa propre bannière
       e.preventDefault();
-      // Stocker l'événement pour l'utiliser plus tard
       setDeferredPrompt(e as BeforeInstallPromptEvent);
 
-      // Afficher notre bannière après 2 visites
-      if (getVisitCount() >= 2) {
+      // Afficher la bannière dès la 1ère visite
+      if (getVisitCount() >= 1) {
         setShowBanner(true);
       }
     };
@@ -110,7 +112,7 @@ const InstallPrompt: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // --- Cas iOS : afficher les instructions manuelles ---
-    if (isIOS() && getVisitCount() >= 2) {
+    if (isIOS() && getVisitCount() >= 1) {
       setShowIOSInstructions(true);
       setShowBanner(true);
     }
@@ -164,7 +166,8 @@ const InstallPrompt: React.FC = () => {
   const handleDismiss = () => {
     setShowBanner(false);
     try {
-      localStorage.setItem('pedaclic_install_dismissed', 'true');
+      localStorage.setItem('pedaclic_install_dismissed_at', Date.now().toString());
+      localStorage.removeItem('pedaclic_install_dismissed');
     } catch {
       // Ignore
     }

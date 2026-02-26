@@ -560,6 +560,7 @@ export async function createEntree(
       piecesJointes:        [],
       liens:                [],
       ebooksLies:           [],
+      contenuIA:            [],
     };
   } else {
     // Signature Phase 22 : createEntree(data)
@@ -567,6 +568,7 @@ export async function createEntree(
       liens:         [],
       ebooksLies:    [],
       piecesJointes: [],
+      contenuIA:     [],
       ...cahierIdOrData,
     };
   }

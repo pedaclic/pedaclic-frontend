@@ -424,6 +424,13 @@
 
 .ebook-chip:hover { background: #fde68a; }
 
+/* Variante IA (bleu) */
+.ebook-chip--ia {
+  background: #eff6ff;
+  color: #1e40af;
+}
+.ebook-chip--ia:hover { background: #dbeafe; }
+
 /* Bouton retrait ebook */
 .ebook-chip button {
   background: none;
@@ -434,6 +441,7 @@
   padding: 0;
   line-height: 1;
 }
+.ebook-chip--ia button { color: #1e40af; }
 
 /* ─────────────────────────────────────────────────────────────
    LECTEUR MULTIMÉDIA (MediaPlayer)

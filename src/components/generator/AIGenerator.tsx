@@ -41,6 +41,12 @@ import {
   GeneratedContent,
   QuizQuestion,
 } from '../../services/aiGeneratorService';
+import EbookCompiler from './EbookCompiler';
+import {
+  getCompiledEbooks,
+  deleteCompiledEbook,
+  CompiledEbook,
+} from '../../services/compiledEbookService';
 
 // ==================== CONSTANTES ====================
 
@@ -100,6 +106,12 @@ const AIGenerator: React.FC = () => {
   const [history, setHistory] = useState<GeneratedContent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [viewingContent, setViewingContent] = useState<GeneratedContent | null>(null);
+
+  // ---- Ebooks compilés ----
+  const [showEbookCompiler, setShowEbookCompiler] = useState(false);
+  const [showMyEbooks, setShowMyEbooks]           = useState(false);
+  const [myEbooks, setMyEbooks]                   = useState<CompiledEbook[]>([]);
+  const [loadingEbooks, setLoadingEbooks]         = useState(false);
 
   // ---- Chargement initial ----
   const [loadingDisciplines, setLoadingDisciplines] = useState(true);
@@ -456,6 +468,53 @@ const AIGenerator: React.FC = () => {
     }
   };
 
+  /** Charge les ebooks compilés de l'utilisateur */
+  const handleLoadMyEbooks = async () => {
+    if (!currentUser) return;
+    setLoadingEbooks(true);
+    try {
+      const books = await getCompiledEbooks(currentUser.uid);
+      setMyEbooks(books);
+      setShowMyEbooks(true);
+    } catch (err) {
+      console.error('[AIGenerator] Erreur chargement ebooks:', err);
+    } finally {
+      setLoadingEbooks(false);
+    }
+  };
+
+  /** Supprime un ebook compilé */
+  const handleDeleteCompiledEbook = async (id: string) => {
+    if (!window.confirm('Supprimer cet ebook ?')) return;
+    try {
+      await deleteCompiledEbook(id);
+      setMyEbooks(prev => prev.filter(e => e.id !== id));
+    } catch (err) {
+      console.error('[AIGenerator] Erreur suppression ebook:', err);
+    }
+  };
+
+  /** Ouvre un ebook compilé pour lecture */
+  const handleViewCompiledEbook = (ebook: CompiledEbook) => {
+    const fullContent = ebook.sections
+      .map((s, i) =>
+        `# ${i + 1}. ${s.chapitre}\n\n**${GENERATION_TYPE_LABELS[s.type]}** · ${s.discipline} · ${s.classe}\n\n${s.content}`
+      )
+      .join('\n\n---\n\n');
+    setViewingContent({
+      id:          ebook.id,
+      userId:      ebook.userId,
+      type:        'cours',
+      discipline:  'Ebook compilé',
+      disciplineId:'',
+      classe:      '',
+      chapitre:    ebook.titre,
+      content:     fullContent,
+      createdAt:   ebook.createdAt,
+    });
+    setShowMyEbooks(false);
+  };
+
   // ==================== UTILITAIRES ====================
 
   /** Convertit le Markdown basique en HTML pour la prévisualisation */
@@ -558,6 +617,21 @@ const AIGenerator: React.FC = () => {
             disabled={loadingHistory}
           >
             {loadingHistory ? '⏳ Chargement...' : '📂 Historique'}
+          </button>
+          <button
+            className="btn btn--outline btn--sm"
+            onClick={() => { handleLoadHistory(); setShowEbookCompiler(true); }}
+            title="Compiler plusieurs contenus en un ebook"
+          >
+            📘 Compiler un Ebook
+          </button>
+          <button
+            className="btn btn--outline btn--sm"
+            onClick={handleLoadMyEbooks}
+            disabled={loadingEbooks}
+            title="Voir mes ebooks compilés"
+          >
+            {loadingEbooks ? '⏳...' : '📚 Mes Ebooks'}
           </button>
           {step > 1 && (
             <button className="btn btn--outline btn--sm" onClick={handleReset}>
@@ -1299,6 +1373,91 @@ const AIGenerator: React.FC = () => {
                     __html: markdownToHtml(viewingContent.content || ''),
                   }}
                 />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL EBOOK COMPILER ==================== */}
+      {showEbookCompiler && (
+        <EbookCompiler
+          userId={currentUser!.uid}
+          history={history}
+          markdownToHtml={markdownToHtml}
+          onClose={() => setShowEbookCompiler(false)}
+          onSaved={async () => {
+            const books = await getCompiledEbooks(currentUser!.uid);
+            setMyEbooks(books);
+          }}
+        />
+      )}
+
+      {/* ==================== MODAL MES EBOOKS ==================== */}
+      {showMyEbooks && (
+        <div
+          className="ai-generator__modal-overlay"
+          onClick={() => setShowMyEbooks(false)}
+        >
+          <div
+            className="ai-generator__modal ai-generator__modal--wide"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="ai-generator__modal-header">
+              <h2>📚 Mes Ebooks compilés</h2>
+              <div className="ai-generator__modal-header-actions">
+                <button
+                  className="btn btn--primary btn--sm"
+                  onClick={() => { setShowMyEbooks(false); setShowEbookCompiler(true); }}
+                >
+                  + Nouvel ebook
+                </button>
+                <button className="ai-generator__modal-close" onClick={() => setShowMyEbooks(false)}>✕</button>
+              </div>
+            </div>
+            <div className="ai-generator__modal-body">
+              {myEbooks.length === 0 ? (
+                <p className="ai-generator__empty">
+                  Vous n'avez pas encore compilé d'ebook. Cliquez sur "Compiler un Ebook" pour commencer.
+                </p>
+              ) : (
+                <div className="ebook-compiler__my-list">
+                  {myEbooks.map(ebook => (
+                    <div key={ebook.id} className="ebook-compiler__my-item">
+                      <div className="ebook-compiler__my-cover">📘</div>
+                      <div className="ebook-compiler__my-info">
+                        <div className="ebook-compiler__my-title">{ebook.titre}</div>
+                        {ebook.description && (
+                          <div className="ebook-compiler__my-desc">{ebook.description}</div>
+                        )}
+                        <div className="ebook-compiler__my-meta">
+                          {ebook.sections.length} chapitre{ebook.sections.length > 1 ? 's' : ''} ·{' '}
+                          {ebook.createdAt?.toDate
+                            ? ebook.createdAt.toDate().toLocaleDateString('fr-FR', {
+                                day: 'numeric', month: 'long', year: 'numeric',
+                              })
+                            : ''}
+                        </div>
+                      </div>
+                      <div className="ai-generator__history-actions">
+                        <button
+                          className="btn btn--outline btn--sm"
+                          onClick={() => handleViewCompiledEbook(ebook)}
+                          title="Lire l'ebook"
+                        >
+                          📖 Lire
+                        </button>
+                        <button
+                          className="btn btn--danger btn--sm"
+                          onClick={() => ebook.id && handleDeleteCompiledEbook(ebook.id)}
+                          title="Supprimer"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>

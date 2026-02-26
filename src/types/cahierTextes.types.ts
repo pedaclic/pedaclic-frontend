@@ -150,6 +150,18 @@ export interface LienEbook {
 }
 
 // ─────────────────────────────────────────────────────────────
+// LIEN CONTENU IA (Phase 23 — Générateur IA)
+// ─────────────────────────────────────────────────────────────
+export interface LienContenuIA {
+  contenuId: string;      // ID du document generated_content
+  type: string;           // GenerationType (cours, exercices, quiz…)
+  discipline: string;
+  classe: string;
+  chapitre: string;
+  createdAt?: string;     // ISO string pour l'affichage
+}
+
+// ─────────────────────────────────────────────────────────────
 // CAHIER DE TEXTES — Phase 21 + Phase 22
 // ─────────────────────────────────────────────────────────────
 export interface CahierTextes {
@@ -217,6 +229,8 @@ export interface EntreeCahier {
   // Phase 22
   liens?: LienExterne[];
   ebooksLies?: LienEbook[];
+  // Phase 23
+  contenuIA?: LienContenuIA[];
 }
 
 export interface EntreeFormData {

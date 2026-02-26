@@ -13,7 +13,7 @@
  * @version 2.0.0
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Menu, 
@@ -28,7 +28,8 @@ import {
   Home,
   LayoutDashboard,
   BarChart3,
-    Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -60,7 +61,8 @@ const Header: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
   // ===== REFS =====
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -138,6 +140,30 @@ const Header: React.FC = () => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  /** Capture l'événement d'installation PWA */
+  useEffect(() => {
+    const handleBeforeInstall = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    const handleInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
+  }, []);
+
+  /** Lance l'installation PWA depuis le Header */
+  const handleInstall = useCallback(async () => {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === 'accepted') setInstallPrompt(null);
+  }, [installPrompt]);
 
   /**
    * Fermer le menu mobile lors du changement de route
@@ -287,7 +313,19 @@ const Header: React.FC = () => {
 
         {/* ----- ACTIONS UTILISATEUR ----- */}
         <div className="header__actions">
-          
+
+          {/* Bouton d'installation PWA — visible quand le navigateur le permet */}
+          {installPrompt && (
+            <button
+              className="header__install-btn"
+              onClick={handleInstall}
+              title="Installer PedaClic sur cet appareil"
+            >
+              <Download size={16} />
+              <span>Installer</span>
+            </button>
+          )}
+
           {/* État de chargement */}
           {loading ? (
             <div className="header__loading">
