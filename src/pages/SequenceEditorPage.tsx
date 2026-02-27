@@ -18,7 +18,7 @@ import {
 }                                                   from '../services/sequencePedagogiqueService';
 import { genererSequenceAvecIA }                    from '../services/sequenceIAService';
 import { getCahiersProf, getGroupesProf }           from '../services/cahierTextesService';
-import { DisciplineService } from '../services/disciplineService';
+import { useDisciplinesOptions }                    from '../hooks/useDisciplinesOptions';
 import type {
   SequencePedagogique,
   SeancePedagogique,
@@ -32,7 +32,6 @@ import {
   LABELS_TYPE_ACTIVITE,
   LABELS_TYPE_EVALUATION,
   NIVEAUX_SCOLAIRES,
-  MATIERES_SENEGAL,
   DUREES_SEANCE,
 }                                                   from '../types/sequencePedagogique.types';
 import '../styles/SequencesPedagogiques.css';
@@ -439,11 +438,7 @@ const IAPanel: React.FC<IAPanelProps> = ({ onSequenceGeneree, defaultMatiere, de
           <label>Matière <span className="required">*</span></label>
           <select className="form-control" value={matiere} onChange={(e) => setMatiere(e.target.value)}>
             <option value="">Sélectionner...</option>
-        
-	{matieres.length > 0
-        ? matieres.map((m) => <option key={m} value={m}>{m}</option>)
-        : MATIERES_SENEGAL.map((m) => <option key={m} value={m}>{m}</option>)
-         }
+            {matieres.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
 
@@ -541,6 +536,7 @@ const SequenceEditorPage: React.FC = () => {
   const navigate        = useNavigate();
   const { id }          = useParams<{ id?: string }>();
   const { currentUser } = useAuth();
+  const { matieres: matieresFirestore } = useDisciplinesOptions();
 
   // Mode : création ou édition
   const isEditMode = Boolean(id);
@@ -572,9 +568,8 @@ const SequenceEditorPage: React.FC = () => {
   const [seances, setSeances] = useState<SeancePedagogique[]>([]);
 
   // ── Ressources externes (cahiers, groupes) ──────────────────
-  const [cahiers, setCahiers]   = useState<CahierTextes[]>([]);
-  const [groupes, setGroupes]   = useState<GroupeProf[]>([]);
-  const [matieres, setMatieres] = useState<string[]>([]);
+  const [cahiers, setCahiers] = useState<CahierTextes[]>([]);
+  const [groupes, setGroupes] = useState<GroupeProf[]>([]);
 
   // ── État UI ─────────────────────────────────────────────────
   const [loading,       setLoading]       = useState(isEditMode);
@@ -590,16 +585,12 @@ const SequenceEditorPage: React.FC = () => {
       if (!currentUser?.uid) return;
 
       // Charger cahiers et groupes en parallèle
-      const [cahiersData, groupesData, disciplinesData] = await Promise.all([
-  getCahiersProf(currentUser.uid).catch(() => []),
-  getGroupesProf(currentUser.uid).catch(() => []),
-  DisciplineService.getAll().catch(() => []),
-]);
-setCahiers(cahiersData);
-setGroupes(groupesData);
-const nomsUniques = [...new Set(disciplinesData.map((d: any) => d.nom))].sort() as string[];
-setMatieres(nomsUniques);
-// Extraire les noms uniques des disciplines, triés alphabétiquement
+      const [cahiersData, groupesData] = await Promise.all([
+        getCahiersProf(currentUser.uid).catch(() => []),
+        getGroupesProf(currentUser.uid).catch(() => []),
+      ]);
+      setCahiers(cahiersData);
+      setGroupes(groupesData);
 
       // Si mode édition, charger la séquence
       if (isEditMode && id) {
@@ -854,7 +845,7 @@ setMatieres(nomsUniques);
           onSequenceGeneree={handleIAResult}
           defaultMatiere={form.matiere}
           defaultNiveau={form.niveau}
-          matieres={matieres}
+          matieres={matieresFirestore.map((m) => m.valeur)}
         />
       )}
 
@@ -888,10 +879,9 @@ setMatieres(nomsUniques);
               onChange={(e) => setForm((f) => ({ ...f, matiere: e.target.value }))}
             >
               <option value="">Sélectionner...</option>
-              {matieres.length > 0
-  	    ? matieres.map((m) => <option key={m} value={m}>{m}</option>)
-  	    : MATIERES_SENEGAL.map((m) => <option key={m} value={m}>{m}</option>)
-	     }
+              {matieresFirestore.map((m) => (
+                <option key={m.valeur} value={m.valeur}>{m.label}</option>
+              ))}
             </select>
           </div>
 
