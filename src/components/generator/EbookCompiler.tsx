@@ -50,7 +50,7 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
   const [error, setError]       = useState('');
 
   // ── Filtrage de l'historique (quiz exclus car non textuels) ──
-  const items = history.filter(it => it.type !== 'quiz' && it.content);
+  const items = history.filter(it => it.type !== 'quiz_auto' && it.content);
 
   // ─────────────────────────────────────────────────────────
   // Gestion de la sélection (toggle + réordonnancement)
