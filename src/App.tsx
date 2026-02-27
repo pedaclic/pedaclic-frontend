@@ -269,6 +269,11 @@ const App: React.FC = () => {
           <AdminRoute><AdminLayout><NotificationComposer /></AdminLayout></AdminRoute>
         } />
 
+        {/* ========== ALIAS DE COMMODITÉ ========== */}
+        {/* /cahiers → /prof/cahiers (évite la redirection vers l'accueil) */}
+        <Route path="/cahiers"    element={<Navigate to="/prof/cahiers"    replace />} />
+        <Route path="/sequences"  element={<Navigate to="/prof/sequences"  replace />} />
+
         {/* ========== 404 → redirection accueil ========== */}
         <Route path="*" element={<Navigate to="/" replace />} />
 

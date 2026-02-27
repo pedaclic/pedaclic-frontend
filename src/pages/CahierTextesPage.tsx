@@ -73,8 +73,8 @@ const CahierTextesPage: React.FC = () => {
   const [groupesDispos, setGroupesDispos]             = useState<GroupeProf[]>([]);
   const [groupesSelectionnes, setGroupesSelectionnes] = useState<string[]>([]);
 
-  // ── Vérification Premium ──────────────────────────────────
-  if (!currentUser?.isPremium) {
+  // ── Vérification Premium (les admins sont toujours exemptés) ─
+  if (!currentUser?.isPremium && currentUser?.role !== 'admin') {
     return (
       <div className="cahier-textes-page">
         <div className="premium-gate">
