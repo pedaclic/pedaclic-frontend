@@ -1,0 +1,610 @@
+/**
+ * ============================================================
+ * PEDACLIC — Styles Page Premium (Moneroo)
+ * ============================================================
+ * Fichier  : src/styles/PremiumPage.css
+ * Auteur   : Kadou / PedaClic — www.pedaclic.sn
+ *
+ * Respecte le thème PedaClic : bleu #2563eb, vert #10b981
+ * Design mobile-first (téléphones sénégalais en priorité)
+ * ============================================================
+ */
+
+/* ============================================================
+   VARIABLES LOCALES (héritées de globals.css)
+   ============================================================ */
+
+:root {
+  --premium-or:       #f59e0b;  /* Couleur "or" pour le Premium */
+  --premium-or-light: #fef3c7;  /* Fond doré léger */
+  --premium-succes:   #10b981;
+  --premium-echec:    #ef4444;
+  --premium-attente:  #f59e0b;
+}
+
+/* ============================================================
+   STRUCTURE GLOBALE DE LA PAGE
+   ============================================================ */
+
+/* Conteneur principal de la page Premium */
+.premium-page {
+  min-height: 100vh;
+  background-color: #f9fafb;
+}
+
+/* Zone de contenu principal (sous le hero) */
+.premium-contenu {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+}
+
+/* ============================================================
+   HERO — En-tête de la page
+   ============================================================ */
+
+/* Bande bleue en haut avec titre */
+.premium-hero {
+  background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+  color: white;
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+/* Contenu centré dans le hero */
+.premium-hero__content {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+/* Badge "PREMIUM" doré */
+.premium-hero__badge {
+  display: inline-block;
+  background: var(--premium-or);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  margin-bottom: 1rem;
+}
+
+/* Titre principal du hero */
+.premium-hero__titre {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: white;
+}
+
+/* Sous-titre descriptif */
+.premium-hero__sous-titre {
+  font-size: 1rem;
+  opacity: 0.9;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+
+/* ============================================================
+   SECTION TITRE GÉNÉRIQUE
+   ============================================================ */
+
+/* Titre de section (Avantages, FAQ, etc.) */
+.premium-section__titre {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* ============================================================
+   BLOC DÉJÀ ABONNÉ
+   ============================================================ */
+
+/* Carte affichée si l'utilisateur est déjà Premium */
+.premium-abonne {
+  background: white;
+  border: 2px solid var(--premium-succes);
+  border-radius: 12px;
+  padding: 2.5rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+/* Grande icône de la carte abonné */
+.premium-abonne__icone {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* ============================================================
+   PLANS DE TARIFICATION
+   ============================================================ */
+
+/* Section des plans */
+.premium-plans {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  margin-bottom: 2rem;
+}
+
+/* Grille des deux cartes plans */
+.premium-plans__grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* Carte d'un plan tarifaire */
+.premium-plan-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+  position: relative;
+  background: white;
+}
+
+/* Hover sur la carte plan */
+.premium-plan-card:hover {
+  border-color: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+}
+
+/* Carte sélectionnée (plan actif) */
+.premium-plan-card--actif {
+  border-color: #2563eb !important;
+  background: #eff6ff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15) !important;
+}
+
+/* Badge "Meilleure offre" sur le plan annuel */
+.premium-plan-card__badge-populaire {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--premium-or);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.75rem;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+/* Indicateur de sélection (radio visuel) */
+.premium-plan-card__select {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.5rem;
+}
+
+/* Cercle radio non sélectionné */
+.premium-plan-card__radio {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #d1d5db;
+  border-radius: 50%;
+  display: block;
+}
+
+/* Cercle radio sélectionné (bleu plein) */
+.premium-plan-card__radio--actif {
+  width: 20px;
+  height: 20px;
+  background: #2563eb;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  display: block;
+}
+
+/* En-tête de la carte plan (icône + nom) */
+.premium-plan-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Émoji de la carte plan */
+.premium-plan-card__icone {
+  font-size: 1.5rem;
+}
+
+/* Nom du plan */
+.premium-plan-card__nom {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+/* Bloc prix */
+.premium-plan-card__prix {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Montant en grand */
+.premium-plan-card__montant {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #2563eb;
+}
+
+/* Devise et durée */
+.premium-plan-card__devise {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Badge économie (plan annuel) */
+.premium-plan-card__economie {
+  background: #d1fae5;
+  color: #059669;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  display: inline-block;
+}
+
+/* Description courte du plan */
+.premium-plan-card__description {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ============================================================
+   ZONE DE PAIEMENT
+   ============================================================ */
+
+/* Bloc bouton + sécurité + moyens de paiement */
+.premium-paiement {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Message de sécurité sous le bouton */
+.premium-paiement__securite {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Bloc des moyens de paiement */
+.premium-moyens-paiement {
+  text-align: center;
+}
+
+/* Label "Moyens acceptés" */
+.premium-moyens-paiement__titre {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-bottom: 0.5rem;
+}
+
+/* Liste des badges moyens de paiement */
+.premium-moyens-paiement__liste {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+/* Badge individuel moyen de paiement */
+.premium-moyen-badge {
+  border: 1.5px solid;
+  border-radius: 20px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: white;
+}
+
+/* Message d'erreur */
+.premium-erreur {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  width: 100%;
+  text-align: center;
+}
+
+/* ============================================================
+   BOUTONS
+   ============================================================ */
+
+/* Base commune des boutons */
+.premium-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.875rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 200ms ease, transform 100ms ease, opacity 200ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+/* Bouton principal (bleu) */
+.premium-btn--principal {
+  background: #2563eb;
+  color: white;
+  width: 100%;
+  max-width: 400px;
+  justify-content: center;
+  font-size: 1.05rem;
+}
+
+.premium-btn--principal:hover:not(:disabled) {
+  background: #1e40af;
+  transform: translateY(-1px);
+}
+
+/* Bouton désactivé (loading) */
+.premium-btn--principal:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Bouton secondaire (contour bleu) */
+.premium-btn--secondaire {
+  background: white;
+  color: #2563eb;
+  border: 2px solid #2563eb;
+}
+
+.premium-btn--secondaire:hover {
+  background: #eff6ff;
+}
+
+/* ============================================================
+   SPINNER DE CHARGEMENT
+   ============================================================ */
+
+/* Petit spinner inline dans le bouton */
+.premium-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: premium-spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* Grand spinner pour la page de confirmation */
+.premium-spinner--lg {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #2563eb;
+  margin-bottom: 1.5rem;
+}
+
+@keyframes premium-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   GRILLE AVANTAGES
+   ============================================================ */
+
+/* Section liste des avantages inclus */
+.premium-avantages {
+  margin-bottom: 2rem;
+}
+
+/* Grille 2 colonnes des avantages */
+.premium-avantages__grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Carte d'un avantage */
+.premium-avantage-card {
+  background: white;
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  transition: box-shadow 200ms ease;
+}
+
+.premium-avantage-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Icône de l'avantage */
+.premium-avantage-card__icone {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+/* Texte de l'avantage */
+.premium-avantage-card__texte h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.premium-avantage-card__texte p {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ============================================================
+   FAQ
+   ============================================================ */
+
+/* Section FAQ */
+.premium-faq {
+  margin-bottom: 2rem;
+}
+
+/* Liste des questions */
+.premium-faq__liste {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Carte d'une question */
+.premium-faq__item {
+  background: white;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.premium-faq__item h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #2563eb;
+  margin-bottom: 0.5rem;
+}
+
+.premium-faq__item p {
+  font-size: 0.85rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ============================================================
+   PAGE DE CONFIRMATION
+   ============================================================ */
+
+/* Conteneur plein écran centré */
+.premium-confirmation {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  padding: 1rem;
+}
+
+/* Carte de confirmation */
+.premium-confirmation__card {
+  background: white;
+  border-radius: 16px;
+  padding: 2.5rem;
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+/* Carte succès : bordure verte */
+.premium-confirmation__card--succes {
+  border-top: 4px solid var(--premium-succes);
+}
+
+/* Carte attente : bordure orange */
+.premium-confirmation__card--attente {
+  border-top: 4px solid var(--premium-attente);
+}
+
+/* Carte échec : bordure rouge */
+.premium-confirmation__card--echec {
+  border-top: 4px solid var(--premium-echec);
+}
+
+/* Grande icône dans la carte de confirmation */
+.premium-confirmation__icone {
+  font-size: 3.5rem;
+  margin-bottom: 1rem;
+  display: block;
+}
+
+/* Message descriptif de la confirmation */
+.premium-confirmation__message {
+  font-size: 0.9rem;
+  color: #4b5563;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+/* Groupe de boutons d'action */
+.premium-confirmation__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* ============================================================
+   RESPONSIVE — MOBILE (max 640px)
+   ============================================================ */
+
+@media (max-width: 640px) {
+
+  /* Hero plus compact */
+  .premium-hero {
+    padding: 2rem 1rem;
+  }
+
+  .premium-hero__titre {
+    font-size: 1.5rem;
+  }
+
+  /* Plans en colonne sur mobile */
+  .premium-plans__grille {
+    grid-template-columns: 1fr;
+  }
+
+  /* Avantages en colonne sur mobile */
+  .premium-avantages__grille {
+    grid-template-columns: 1fr;
+  }
+
+  /* Plans avec moins de padding */
+  .premium-plans {
+    padding: 1.25rem;
+  }
+
+  /* Montant légèrement réduit */
+  .premium-plan-card__montant {
+    font-size: 1.5rem;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — TABLETTE (641px → 768px)
+   ============================================================ */
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .premium-avantages__grille {
+    grid-template-columns: 1fr;
+  }
+}

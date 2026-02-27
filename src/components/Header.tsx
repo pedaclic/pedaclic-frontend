@@ -29,7 +29,8 @@ import {
   LayoutDashboard,
   BarChart3,
   Sparkles,
-  Download
+  Download,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -45,7 +46,8 @@ interface NavLink {
   label: string;
   icon: React.ReactNode;
   requireAuth?: boolean;      // Nécessite connexion
-  requirePremium?: boolean;   // Nécessite Premium
+  requirePremium?: boolean;   // Visible uniquement aux membres Premium
+  hideIfPremium?: boolean;    // Masqué si déjà Premium (CTA d'abonnement)
   requireRole?: ('admin' | 'prof' | 'eleve' | 'parent')[]; // Rôles autorisés
 }
 
@@ -102,6 +104,12 @@ const Header: React.FC = () => {
     icon: <GraduationCap size={18} />,
     requireAuth: true,
     requirePremium: true,
+    },
+    {
+      path: '/premium',
+      label: 'Premium',
+      icon: <Star size={18} />,
+      hideIfPremium: true,   // Masqué dès que l'utilisateur est Premium ou admin
     },
     {
      path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : '/admin',
@@ -227,15 +235,21 @@ const Header: React.FC = () => {
   const shouldShowLink = (link: NavLink): boolean => {
     // Si le lien nécessite une connexion et l'utilisateur n'est pas connecté
     if (link.requireAuth && !currentUser) return false;
-    
+
     // Si le lien nécessite Premium et l'utilisateur n'est pas Premium
     if (link.requirePremium && currentUser && !currentUser.isPremium) return false;
-    
+
+    // CTA Premium : masqué si l'utilisateur est déjà Premium ou s'il est admin
+    if (link.hideIfPremium) {
+      if (currentUser?.isPremium) return false;
+      if (currentUser?.role === 'admin') return false;
+    }
+
     // Si le lien nécessite un rôle spécifique
     if (link.requireRole && currentUser) {
       if (!link.requireRole.includes(currentUser.role)) return false;
     }
-    
+
     return true;
   };
 
@@ -294,13 +308,13 @@ const Header: React.FC = () => {
             {navLinks.map((link) => (
               shouldShowLink(link) && (
                 <li key={link.path} className="header__nav-item">
-                  <Link 
+                  <Link
                     to={link.path}
-                    className={`header__nav-link ${isActiveLink(link.path) ? 'header__nav-link--active' : ''}`}
+                    className={`header__nav-link ${isActiveLink(link.path) ? 'header__nav-link--active' : ''} ${link.hideIfPremium ? 'header__nav-link--premium-cta' : ''}`}
                   >
                     {link.icon}
                     <span>{link.label}</span>
-                    {/* Badge Premium pour les liens Premium */}
+                    {/* Badge couronne pour les liens réservés aux Premium */}
                     {link.requirePremium && (
                       <Crown size={14} className="header__premium-badge" />
                     )}
@@ -497,9 +511,9 @@ const Header: React.FC = () => {
               {navLinks.map((link) => (
                 shouldShowLink(link) && (
                   <li key={link.path} className="header__mobile-item">
-                    <Link 
+                    <Link
                       to={link.path}
-                      className={`header__mobile-link ${isActiveLink(link.path) ? 'header__mobile-link--active' : ''}`}
+                      className={`header__mobile-link ${isActiveLink(link.path) ? 'header__mobile-link--active' : ''} ${link.hideIfPremium ? 'header__mobile-link--premium-cta' : ''}`}
                     >
                       {link.icon}
                       <span>{link.label}</span>
