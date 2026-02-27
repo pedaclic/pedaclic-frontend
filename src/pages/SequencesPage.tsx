@@ -188,8 +188,8 @@ const SequencesPage: React.FC = () => {
     chargerSequences();
   }, [chargerSequences]);
 
-  // ── Gate Premium ────────────────────────────────────────────
-  if (!currentUser?.isPremium) {
+  // ── Gate Premium (les admins sont toujours exemptés) ────────
+  if (!currentUser?.isPremium && currentUser?.role !== 'admin') {
     return (
       <div className="premium-gate">
         <span className="premium-gate__icon">🔒</span>
