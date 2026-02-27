@@ -181,6 +181,42 @@
   margin-left: var(--spacing-xs);
 }
 
+/**
+ * CTA Premium dans la nav — visible uniquement si non-Premium
+ */
+.header__nav-link--premium-cta {
+  color: #d97706;
+  font-weight: 600;
+  border: 1.5px solid #fde68a;
+  border-radius: 20px;
+  padding: 0.3rem 0.85rem;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  transition: all 0.2s ease;
+}
+.header__nav-link--premium-cta:hover {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  color: #b45309;
+  border-color: #f59e0b;
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.2);
+}
+.header__nav-link--premium-cta svg {
+  color: #f59e0b;
+}
+
+/* Version mobile */
+.header__mobile-link--premium-cta {
+  color: #d97706;
+  font-weight: 600;
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+  border-radius: 8px;
+  border-left: 3px solid #f59e0b;
+}
+.header__mobile-link--premium-cta svg {
+  color: #f59e0b;
+}
+
 /* ==================== ACTIONS UTILISATEUR ==================== */
 
 /**
