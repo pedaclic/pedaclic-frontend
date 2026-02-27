@@ -24,9 +24,9 @@ import type {
 import {
   LABELS_TYPE_ACTIVITE,
   CONFIG_STATUT,
-  MATIERES_SENEGAL,
   NIVEAUX_SCOLAIRES,
 } from '../types/sequencePedagogique.types';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import '../styles/SequencesPedagogiques.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -153,6 +153,7 @@ const SequenceCard: React.FC<SequenceCardProps> = ({
 const SequencesPage: React.FC = () => {
   const navigate            = useNavigate();
   const { currentUser }     = useAuth();
+  const { matieres: matieresFirestore } = useDisciplinesOptions();
 
   // ── État des données ────────────────────────────────────────
   const [sequences,     setSequences]     = useState<SequencePedagogique[]>([]);
@@ -209,8 +210,10 @@ const SequencesPage: React.FC = () => {
   // ── Séquences filtrées ──────────────────────────────────────
   const sequencesFiltrees = filtrerSequences(sequences, filtres);
 
-  // Matières distinctes présentes (pour les filtres)
-  const matieresPresentees = [...new Set(sequences.map((s) => s.matiere))].sort();
+  // Matières depuis Firestore (admin/Disciplines), avec fallback sur les séquences existantes
+  const matieresPresentees = matieresFirestore.length > 0
+    ? matieresFirestore.map((m) => m.valeur)
+    : [...new Set(sequences.map((s) => s.matiere))].sort();
 
   // ── Handlers ────────────────────────────────────────────────
 

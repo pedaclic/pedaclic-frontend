@@ -410,6 +410,24 @@ const AdminDashboard: React.FC = () => {
                     <p>Élèves, professeurs et administrateurs</p>
                   </div>
                 </a>
+
+                {/* Cahier de Textes */}
+                <a href="/prof/cahiers" className="quick-action-card">
+                  <div className="quick-action-icon">📒</div>
+                  <div className="quick-action-content">
+                    <h3>Cahier de Textes</h3>
+                    <p>Planifier et suivre l'enseignement</p>
+                  </div>
+                </a>
+
+                {/* Séquences Pédagogiques */}
+                <a href="/prof/sequences" className="quick-action-card">
+                  <div className="quick-action-icon">📋</div>
+                  <div className="quick-action-content">
+                    <h3>Séquences Pédagogiques</h3>
+                    <p>Créer et organiser des séquences de cours</p>
+                  </div>
+                </a>
               </div>
             </div>
           </section>
