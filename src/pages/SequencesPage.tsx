@@ -25,6 +25,7 @@ import {
   LABELS_TYPE_ACTIVITE,
   CONFIG_STATUT,
 } from '../types/sequencePedagogique.types';
+import { CLASSES } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import '../styles/SequencesPedagogiques.css';
 
@@ -51,12 +52,9 @@ const StatutBadge: React.FC<StatutBadgeProps> = ({ statut }) => {
 // SOUS-COMPOSANT : Carte séquence
 // ─────────────────────────────────────────────────────────────
 
-interface NiveauOption { valeur: string; label: string; }
-
 interface SequenceCardProps {
-  sequence:       SequencePedagogique;
-  niveauxOptions: NiveauOption[];
-  onView:         () => void;
+  sequence:    SequencePedagogique;
+  onView:      () => void;
   onEdit:         () => void;
   onDuplicate:    () => void;
   onDelete:       () => void;
@@ -64,7 +62,6 @@ interface SequenceCardProps {
 
 const SequenceCard: React.FC<SequenceCardProps> = ({
   sequence,
-  niveauxOptions,
   onView,
   onEdit,
   onDuplicate,
@@ -92,7 +89,7 @@ const SequenceCard: React.FC<SequenceCardProps> = ({
       <div className="sequence-card__meta">
         <span className="sequence-card__meta-chip">{sequence.matiere}</span>
         <span className="sequence-card__meta-chip sequence-card__meta-chip--grey">
-          {niveauxOptions.find((n) => n.valeur === sequence.niveau)?.label ?? sequence.niveau}
+          {sequence.niveau}
         </span>
         {sequence.trimestre && (
           <span className="sequence-card__meta-chip sequence-card__meta-chip--grey">
@@ -156,7 +153,7 @@ const SequenceCard: React.FC<SequenceCardProps> = ({
 const SequencesPage: React.FC = () => {
   const navigate            = useNavigate();
   const { currentUser }     = useAuth();
-  const { matieres: matieresFirestore, niveaux: niveauxFirestore } = useDisciplinesOptions();
+  const { matieres: matieresFirestore } = useDisciplinesOptions();
 
   // ── État des données ────────────────────────────────────────
   const [sequences,     setSequences]     = useState<SequencePedagogique[]>([]);
@@ -213,13 +210,10 @@ const SequencesPage: React.FC = () => {
   // ── Séquences filtrées ──────────────────────────────────────
   const sequencesFiltrees = filtrerSequences(sequences, filtres);
 
-  // Matières et niveaux depuis Firestore (admin/Disciplines), avec fallback sur les séquences existantes
+  // Matières depuis Firestore (admin/Disciplines), niveaux depuis CLASSES (même source que Cahier de textes)
   const matieresPresentees = matieresFirestore.length > 0
     ? matieresFirestore.map((m) => m.valeur)
     : [...new Set(sequences.map((s) => s.matiere))].sort();
-  const niveauxPresentes = niveauxFirestore.length > 0
-    ? niveauxFirestore
-    : [...new Set(sequences.map((s) => s.niveau))].sort().map((v) => ({ valeur: v, label: v }));
 
   // ── Handlers ────────────────────────────────────────────────
 
@@ -336,8 +330,8 @@ const SequencesPage: React.FC = () => {
           aria-label="Filtrer par niveau"
         >
           <option value="">Tous les niveaux</option>
-          {niveauxPresentes.map((n) => (
-            <option key={n.valeur} value={n.valeur}>{n.label}</option>
+          {CLASSES.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
 
@@ -389,7 +383,6 @@ const SequencesPage: React.FC = () => {
               <div key={seq.id} role="listitem" style={{ opacity: actionLoading === seq.id ? 0.6 : 1 }}>
                 <SequenceCard
                   sequence={seq}
-                  niveauxOptions={niveauxPresentes}
                   onView={() => navigate(`/prof/sequences/${seq.id}`)}
                   onEdit={() => navigate(`/prof/sequences/${seq.id}/modifier`)}
                   onDuplicate={() => handleDuplicate(seq)}

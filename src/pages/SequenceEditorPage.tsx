@@ -28,6 +28,7 @@ import type {
   NiveauScolaire,
 }                                                   from '../types/sequencePedagogique.types';
 import type { CahierTextes, GroupeProf }            from '../types/cahierTextes.types';
+import { CLASSES }                                   from '../types/cahierTextes.types';
 import {
   LABELS_TYPE_ACTIVITE,
   LABELS_TYPE_EVALUATION,
@@ -354,7 +355,6 @@ const SeanceCardEdit: React.FC<SeanceCardEditProps> = ({
 
 interface IAPanelProps {
   matieres: string[];
-  niveaux:  { valeur: string; label: string }[];
   onSequenceGeneree: (data: {
     titre: string;
     description: string;
@@ -367,7 +367,7 @@ interface IAPanelProps {
   defaultNiveau?:  string;
 }
 
-const IAPanel: React.FC<IAPanelProps> = ({ onSequenceGeneree, defaultMatiere, defaultNiveau, matieres, niveaux }) => {
+const IAPanel: React.FC<IAPanelProps> = ({ onSequenceGeneree, defaultMatiere, defaultNiveau, matieres }) => {
   const [matiere,    setMatiere]    = useState(defaultMatiere ?? '');
   const [niveau,     setNiveau]     = useState(defaultNiveau ?? '');
   const [theme,      setTheme]      = useState('');
@@ -447,7 +447,7 @@ const IAPanel: React.FC<IAPanelProps> = ({ onSequenceGeneree, defaultMatiere, de
           <label>Niveau <span className="required">*</span></label>
           <select className="form-control" value={niveau} onChange={(e) => setNiveau(e.target.value)}>
             <option value="">Sélectionner...</option>
-            {niveaux.map((n) => <option key={n.valeur} value={n.valeur}>{n.label}</option>)}
+            {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
 
@@ -536,7 +536,7 @@ const SequenceEditorPage: React.FC = () => {
   const navigate        = useNavigate();
   const { id }          = useParams<{ id?: string }>();
   const { currentUser } = useAuth();
-  const { matieres: matieresFirestore, niveaux: niveauxFirestore } = useDisciplinesOptions();
+  const { matieres: matieresFirestore } = useDisciplinesOptions();
 
   // Mode : création ou édition
   const isEditMode = Boolean(id);
@@ -846,7 +846,6 @@ const SequenceEditorPage: React.FC = () => {
           defaultMatiere={form.matiere}
           defaultNiveau={form.niveau}
           matieres={matieresFirestore.map((m) => m.valeur)}
-          niveaux={niveauxFirestore}
         />
       )}
 
@@ -895,7 +894,7 @@ const SequenceEditorPage: React.FC = () => {
               onChange={(e) => setForm((f) => ({ ...f, niveau: e.target.value }))}
             >
               <option value="">Sélectionner...</option>
-              {niveauxFirestore.map((n) => <option key={n.valeur} value={n.valeur}>{n.label}</option>)}
+              {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
