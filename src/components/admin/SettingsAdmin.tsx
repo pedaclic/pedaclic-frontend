@@ -48,6 +48,9 @@ interface PlatformSettings {
   maintenanceMode: boolean;
   maintenanceMessage: string;
 
+  /* Cahier de textes */
+  cahierPdfExport: boolean;   /* Autoriser l'export PDF du cahier */
+
   /* Métadonnées */
   updatedAt?: any;
   updatedBy?: string;
@@ -66,6 +69,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   quizTentativesMax: 3,
   maintenanceMode: false,
   maintenanceMessage: 'PedaClic est en maintenance. Nous revenons bientôt !',
+  cahierPdfExport: true,
 };
 
 // ==================== COMPOSANT PRINCIPAL ====================
@@ -380,6 +384,36 @@ const SettingsAdmin: React.FC = () => {
               max={10}
             />
             <span className="settings-hint">0 = illimité</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ==================== SECTION : CAHIER DE TEXTES ==================== */}
+      <div className="settings-section">
+        <div className="settings-section__header">
+          <h2 className="settings-section__title">📓 Cahier de Textes</h2>
+          <p className="settings-section__description">
+            Options des fonctionnalités du cahier de textes pour les professeurs
+          </p>
+        </div>
+
+        <div className="settings-grid">
+          <div className="settings-field">
+            <label className="settings-label">Export PDF du cahier</label>
+            <div className="settings-toggle-wrapper">
+              <button
+                className={`settings-toggle ${settings.cahierPdfExport ? 'settings-toggle--active' : ''}`}
+                onClick={() => handleChange('cahierPdfExport', !settings.cahierPdfExport)}
+              >
+                <span className="settings-toggle__knob" />
+              </button>
+              <span className={`settings-toggle-label ${settings.cahierPdfExport ? 'settings-toggle-label--active' : ''}`}>
+                {settings.cahierPdfExport ? '🟢 Export PDF activé' : '🔴 Export PDF désactivé'}
+              </span>
+            </div>
+            <span className="settings-hint">
+              Affiche le bouton "📄 PDF" dans les cahiers de textes des professeurs
+            </span>
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@
 // PedaClic — www.pedaclic.sn
 // ============================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -38,6 +38,7 @@ import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
 // Phase 23 — contenus IA
 import ContenuIASelector from '../components/prof/ContenuIASelector';
+import RichTextEditor from '../components/quiz/RichTextEditor';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -61,84 +62,6 @@ const emptyForm = (): EntreeFormData => ({
   statutEvaluation: 'a_evaluer',
 });
 
-// ─── Éditeur de texte riche (Phase 21 — inchangé) ────────────
-interface RichEditorProps {
-  value: string;
-  onChange: (html: string) => void;
-  placeholder?: string;
-}
-
-const RichEditor: React.FC<RichEditorProps> = ({ value, onChange, placeholder }) => {
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (editorRef.current && editorRef.current.innerHTML !== value) {
-      editorRef.current.innerHTML = value;
-    }
-  }, []);
-
-  const execCmd = (cmd: string, val?: string) => {
-    document.execCommand(cmd, false, val);
-    editorRef.current?.focus();
-    syncContent();
-  };
-
-  const syncContent = () => {
-    if (editorRef.current) onChange(editorRef.current.innerHTML);
-  };
-
-  const isActive = (cmd: string) => {
-    try { return document.queryCommandState(cmd); } catch { return false; }
-  };
-
-  return (
-    <div>
-      <div className="rich-editor-toolbar">
-        {[
-          { cmd: 'bold',      label: 'G',  title: 'Gras' },
-          { cmd: 'italic',    label: 'I',  title: 'Italique' },
-          { cmd: 'underline', label: 'S̲', title: 'Souligné' },
-        ].map(({ cmd, label, title }) => (
-          <button
-            key={cmd}
-            type="button"
-            className={`toolbar-btn ${isActive(cmd) ? 'active' : ''}`}
-            onMouseDown={e => { e.preventDefault(); execCmd(cmd); }}
-            title={title}
-          >
-            {label}
-          </button>
-        ))}
-        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
-        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('insertUnorderedList'); }} title="Liste à puces">•</button>
-        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('insertOrderedList'); }} title="Liste numérotée">1.</button>
-        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
-        {(['h2', 'h3', 'p'] as const).map(tag => (
-          <button
-            key={tag}
-            type="button"
-            className="toolbar-btn"
-            onMouseDown={e => { e.preventDefault(); execCmd('formatBlock', tag); }}
-            title={tag === 'p' ? 'Paragraphe' : tag.toUpperCase()}
-          >
-            {tag === 'p' ? '¶' : tag.toUpperCase()}
-          </button>
-        ))}
-        <div style={{ width: 1, background: '#e5e7eb', margin: '0 0.25rem' }} />
-        <button type="button" className="toolbar-btn" onMouseDown={e => { e.preventDefault(); execCmd('removeFormat'); }} title="Effacer">✕</button>
-      </div>
-      <div
-        ref={editorRef}
-        className="rich-editor-area"
-        contentEditable
-        suppressContentEditableWarning
-        onInput={syncContent}
-        data-placeholder={placeholder || 'Décrivez le contenu de la séance...'}
-        style={{ position: 'relative' }}
-      />
-    </div>
-  );
-};
 
 // ─── Composant principal ─────────────────────────────────────
 const EntreeEditorPage: React.FC = () => {
@@ -401,9 +324,13 @@ const EntreeEditorPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label">Contenu (mise en forme riche)</label>
-            <RichEditor value={form.contenu}
+            <RichTextEditor
+              value={form.contenu}
               onChange={html => setForm(f => ({ ...f, contenu: html }))}
-              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..." />
+              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..."
+              minHeight={220}
+              maxHeight={600}
+            />
           </div>
 
           <div className="form-group">

@@ -504,7 +504,7 @@ const AIGenerator: React.FC = () => {
     setViewingContent({
       id:          ebook.id,
       userId:      ebook.userId,
-      type:        'cours',
+      type:        'cours_complet',
       discipline:  'Ebook compilé',
       disciplineId:'',
       classe:      '',
@@ -1283,7 +1283,7 @@ const AIGenerator: React.FC = () => {
                 </span>
               </div>
               <div className="ai-generator__modal-header-actions">
-                {viewingContent.type !== 'quiz' && viewingContent.content && (
+                {viewingContent.type !== 'quiz_auto' && viewingContent.content && (
                   <>
                     <button
                       className="btn btn--outline btn--sm"
@@ -1331,49 +1331,12 @@ const AIGenerator: React.FC = () => {
             </div>
 
             <div className="ai-generator__modal-body">
-              {viewingContent.type === 'quiz' && viewingContent.questions ? (
-                <div className="ai-generator__quiz-preview">
-                  <p className="ai-generator__quiz-count">
-                    {viewingContent.questions.length} questions
-                  </p>
-                  {viewingContent.questions.map((q: QuizQuestion, i: number) => (
-                    <div key={i} className="ai-generator__quiz-item">
-                      <div className="ai-generator__quiz-question">
-                        <strong>Q{i + 1}.</strong> {q.question}
-                        <span className={`ai-generator__quiz-badge ai-generator__quiz-badge--${q.difficulte}`}>
-                          {q.difficulte}
-                        </span>
-                      </div>
-                      <div className="ai-generator__quiz-options">
-                        {q.options.map((opt: string, j: number) => (
-                          <div
-                            key={j}
-                            className={`ai-generator__quiz-option ${j === q.reponseCorrecte ? 'ai-generator__quiz-option--correct' : ''}`}
-                          >
-                            <span className="ai-generator__quiz-option-letter">
-                              {String.fromCharCode(65 + j)}
-                            </span>
-                            {opt}
-                            {j === q.reponseCorrecte && ' ✅'}
-                          </div>
-                        ))}
-                      </div>
-                      {q.explication && (
-                        <div className="ai-generator__quiz-explanation">
-                          💡 {q.explication}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div
-                  className="ai-generator__markdown-preview"
-                  dangerouslySetInnerHTML={{
-                    __html: markdownToHtml(viewingContent.content || ''),
-                  }}
-                />
-              )}
+              <div
+                className="ai-generator__markdown-preview"
+                dangerouslySetInnerHTML={{
+                  __html: markdownToHtml(viewingContent.content || ''),
+                }}
+              />
             </div>
           </div>
         </div>
@@ -1524,7 +1487,7 @@ const AIGenerator: React.FC = () => {
                         >
                           📖 Lire
                         </button>
-                        {item.type !== 'quiz' && item.content && (
+                        {item.type !== 'quiz_auto' && item.content && (
                           <>
                             <button
                               className="btn btn--outline btn--sm"
