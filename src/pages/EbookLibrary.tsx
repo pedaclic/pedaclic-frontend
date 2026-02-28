@@ -20,6 +20,8 @@ import {
 } from '../services/ebookService';
 import '../styles/EbookLibrary.css';
 
+const MSG_PREMIUM_RESTRICTED = 'Ce contenu est réservé aux utilisateurs Premium.';
+
 // --- Interface des props ---
 interface EbookLibraryProps {
   isPremium: boolean;
@@ -52,7 +54,7 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
       const data = await getAllEbooks();
       setEbooks(data);
     } catch (err: any) {
-      setError('Erreur lors du chargement de la bibliothèque');
+      setError(isPremium ? 'Erreur lors du chargement de la bibliothèque' : MSG_PREMIUM_RESTRICTED);
       console.error(err);
     } finally {
       setLoading(false);
@@ -102,11 +104,16 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
   }
 
   if (error) {
+    const isPremiumRestriction = error === MSG_PREMIUM_RESTRICTED;
     return (
       <div className="ebook-library">
         <div className="ebook-error">
           <p>❌ {error}</p>
-          <button onClick={loadEbooks} className="btn-retry">Réessayer</button>
+          {isPremiumRestriction ? (
+            <a href="/premium" className="btn-retry">Passer à Premium</a>
+          ) : (
+            <button onClick={loadEbooks} className="btn-retry">Réessayer</button>
+          )}
         </div>
       </div>
     );

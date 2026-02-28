@@ -31,6 +31,7 @@ import {
   Sparkles,
   Download,
   Star,
+  Film,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -89,6 +90,11 @@ const Header: React.FC = () => {
       path: '/ebooks',
       label: 'Bibliothèque',
       icon: <BookOpen size={18} />
+    },
+    {
+      path: '/mediatheque',
+      label: 'Médiathèque',
+      icon: <Film size={18} />
     },
     // APRÈS — Quiz gratuits pour tous
    {
