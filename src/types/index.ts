@@ -23,10 +23,11 @@ export type UserRole = 'admin' | 'prof' | 'eleve' | 'parent';
 /**
  * Interface pour un utilisateur PedaClic
  */
-/** Formule d'abonnement Premium (classique ou à la carte) */
+/** Formule d'abonnement Premium (illimité ou à la carte) */
 export type FormulePremium =
-  | 'mensuel'
-  | 'annuel'
+  | 'illimite_3m'
+  | 'illimite_6m'
+  | 'illimite_1an'
   | 'a_la_carte_1'
   | 'a_la_carte_3'
   | 'a_la_carte_7'

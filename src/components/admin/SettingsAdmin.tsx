@@ -35,9 +35,10 @@ interface PlatformSettings {
   contactEmail: string;
   contactPhone: string;
 
-  /* Tarifs Premium (FCFA) */
-  premiumMensuel: number;
-  premiumAnnuel: number;
+  /* Tarifs Premium (FCFA) — Accès illimité */
+  premium3m: number;
+  premium6m: number;
+  premium1an: number;
 
   /* Paramètres des quiz */
   quizDureeDefaut: number;         /* Durée par défaut en minutes */
@@ -62,8 +63,9 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   siteDescription: "L'école en un clic — Plateforme éducative sénégalaise",
   contactEmail: 'contact@pedaclic.sn',
   contactPhone: '+221 XX XXX XX XX',
-  premiumMensuel: 2000,
-  premiumAnnuel: 20000,
+  premium3m: 10000,
+  premium6m: 20000,
+  premium1an: 30000,
   quizDureeDefaut: 15,
   quizNoteMinimale: 10,
   quizTentativesMax: 3,
@@ -100,9 +102,8 @@ const SettingsAdmin: React.FC = () => {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        const data = docSnap.data() as PlatformSettings;
-        /* Fusionner avec les défauts (au cas où de nouveaux champs sont ajoutés) */
-        const merged = { ...DEFAULT_SETTINGS, ...data };
+        const data = docSnap.data() as Record<string, unknown>;
+        const merged = { ...DEFAULT_SETTINGS, ...data } as PlatformSettings;
         setSettings(merged);
         setOriginalSettings(merged);
       } else {
@@ -150,7 +151,7 @@ const SettingsAdmin: React.FC = () => {
       setError(null);
 
       /* Validation basique */
-      if (settings.premiumMensuel < 0 || settings.premiumAnnuel < 0) {
+      if (settings.premium3m < 0 || settings.premium6m < 0 || settings.premium1an < 0) {
         setError('Les tarifs ne peuvent pas être négatifs.');
         return;
       }
@@ -304,34 +305,40 @@ const SettingsAdmin: React.FC = () => {
         </div>
 
         <div className="settings-grid">
-          {/* Mensuel */}
           <div className="settings-field">
-            <label className="settings-label">Abonnement mensuel (FCFA)</label>
+            <label className="settings-label">Accès illimité 3 mois (FCFA)</label>
             <input
               type="number"
               className="admin-input"
-              value={settings.premiumMensuel}
-              onChange={(e) => handleChange('premiumMensuel', parseInt(e.target.value) || 0)}
+              value={settings.premium3m}
+              onChange={(e) => handleChange('premium3m', parseInt(e.target.value) || 0)}
               min={0}
               step={500}
             />
-            <span className="settings-hint">Actuellement : {settings.premiumMensuel.toLocaleString('fr-FR')} FCFA/mois</span>
           </div>
-
-          {/* Annuel */}
           <div className="settings-field">
-            <label className="settings-label">Abonnement annuel (FCFA)</label>
+            <label className="settings-label">Accès illimité 6 mois (FCFA)</label>
             <input
               type="number"
               className="admin-input"
-              value={settings.premiumAnnuel}
-              onChange={(e) => handleChange('premiumAnnuel', parseInt(e.target.value) || 0)}
+              value={settings.premium6m}
+              onChange={(e) => handleChange('premium6m', parseInt(e.target.value) || 0)}
               min={0}
               step={1000}
             />
-            <span className="settings-hint">
-              Économie : {((settings.premiumMensuel * 12) - settings.premiumAnnuel).toLocaleString('fr-FR')} FCFA/an
-            </span>
+            <span className="settings-hint">Économie vs 2×3 mois : {(settings.premium3m * 2 - settings.premium6m).toLocaleString('fr-FR')} FCFA</span>
+          </div>
+          <div className="settings-field">
+            <label className="settings-label">Accès illimité 1 an (FCFA)</label>
+            <input
+              type="number"
+              className="admin-input"
+              value={settings.premium1an}
+              onChange={(e) => handleChange('premium1an', parseInt(e.target.value) || 0)}
+              min={0}
+              step={1000}
+            />
+            <span className="settings-hint">Économie vs 4×3 mois : {(settings.premium3m * 4 - settings.premium1an).toLocaleString('fr-FR')} FCFA</span>
           </div>
         </div>
       </div>

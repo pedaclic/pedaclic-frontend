@@ -360,7 +360,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         <h2>Contenu Premium</h2>
         <p>Cette ressource est réservée aux abonnés Premium.</p>
         <div className="premium-cta">
-          <p><strong>2 000 FCFA/mois</strong> ou <strong>20 000 FCFA/an</strong></p>
+          <p><strong>Dès 10 000 FCFA / 3 mois</strong> — Accès illimité</p>
           <a href="/premium" className="btn btn-premium">Devenir Premium</a>
         </div>
       </div>

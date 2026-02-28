@@ -564,7 +564,7 @@ export default function CoursDetailPage() {
                   <h3>Contenu Premium</h3>
                   <p>
                     Cette section nécessite un abonnement Premium PedaClic.<br />
-                    Formules à partir de <strong>1 000 FCFA/mois</strong> (1 cours) jusqu'à l'accès illimité.
+                    Formules à partir de <strong>1 000 FCFA/mois</strong> (1 cours) jusqu'à l'accès illimité (dès 10 000 FCFA / 3 mois).
                   </p>
                   {user ? (
                     <div className="cours-detail__premium-gate-actions">

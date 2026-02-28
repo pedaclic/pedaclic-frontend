@@ -8,12 +8,13 @@
 
 /**
  * Type de formule Premium
- * - mensuel / annuel : accès illimité (formule classique)
+ * - illimite_3m / illimite_6m / illimite_1an : accès illimité
  * - a_la_carte_1 / a_la_carte_3 / a_la_carte_7 / a_la_carte_tous : Cours à la carte
  */
 export type FormulePremium =
-  | 'mensuel'
-  | 'annuel'
+  | 'illimite_3m'
+  | 'illimite_6m'
+  | 'illimite_1an'
   | 'a_la_carte_1'
   | 'a_la_carte_3'
   | 'a_la_carte_7'
@@ -38,27 +39,37 @@ export interface PlanPremium {
 }
 
 /**
- * Plans Premium classiques (accès illimité)
+ * Plans Premium accès illimité
+ * 10 000 FCFA / 3 mois ; 20 000 FCFA / 6 mois ; 30 000 FCFA / an
  */
 export const PLANS_CLASSIQUES: PlanPremium[] = [
   {
-    id: 'mensuel',
-    nom: 'Mensuel',
+    id: 'illimite_3m',
+    nom: '3 mois',
     description: 'Accès illimité à tous les cours',
-    prix: 2000,
-    duree: '1 mois',
+    prix: 10000,
+    duree: '3 mois',
     nombreCoursMax: null,
     accesIllimite: true,
   },
   {
-    id: 'annuel',
-    nom: 'Annuel',
+    id: 'illimite_6m',
+    nom: '6 mois',
     description: 'Accès illimité à tous les cours',
     prix: 20000,
-    prixOriginal: 24000,
-    duree: '12 mois',
-    economie: '4 000 FCFA',
+    duree: '6 mois',
+    economie: '10 000 FCFA vs 2×3 mois',
     popular: true,
+    nombreCoursMax: null,
+    accesIllimite: true,
+  },
+  {
+    id: 'illimite_1an',
+    nom: '1 an',
+    description: 'Accès illimité à tous les cours',
+    prix: 30000,
+    duree: '12 mois',
+    economie: '30 000 FCFA vs 4×3 mois',
     nombreCoursMax: null,
     accesIllimite: true,
   },
@@ -100,7 +111,7 @@ export const PLANS_A_LA_CARTE: PlanPremium[] = [
     nom: 'Tous les contenus',
     description: 'Accès à l\'intégralité du catalogue',
     prix: 25000,
-    duree: '1 mois',
+    duree: '9 mois',
     nombreCoursMax: null,
     accesIllimite: true,
   },
@@ -122,7 +133,8 @@ export function estFormuleALaCarte(formule: FormulePremium): boolean {
 /**
  * Retourne le nombre max de cours pour une formule
  */
-export function getNombreCoursMax(formule: FormulePremium): number | null {
+export function getNombreCoursMax(formule: FormulePremium | string | undefined): number | null {
+  if (!formule) return null;
   const plan = TOUS_LES_PLANS.find(p => p.id === formule);
   return plan?.nombreCoursMax ?? null;
 }
@@ -130,7 +142,9 @@ export function getNombreCoursMax(formule: FormulePremium): number | null {
 /**
  * Vérifie si l'utilisateur a accès illimité
  */
-export function aAccesIllimite(formule: FormulePremium): boolean {
+export function aAccesIllimite(formule: FormulePremium | string | undefined): boolean {
+  if (!formule) return false;
   const plan = TOUS_LES_PLANS.find(p => p.id === formule);
-  return plan?.accesIllimite ?? false;
+  if (plan) return plan.accesIllimite;
+  return ['mensuel', 'annuel', 'illimite_3m', 'illimite_6m', 'illimite_1an'].includes(formule);
 }

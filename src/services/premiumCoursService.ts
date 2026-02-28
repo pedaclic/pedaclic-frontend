@@ -37,8 +37,8 @@ export function aAccesCours(
   coursChoisis: string[]
 ): boolean {
   if (!isPremium) return false;
-  if (aAccesIllimite(formule || 'mensuel')) return true;
-  if (!estFormuleALaCarte(formule || 'mensuel')) return true; // fallback
+  if (aAccesIllimite(formule || 'illimite_6m')) return true;
+  if (!estFormuleALaCarte(formule || 'illimite_6m')) return true; // fallback
   return coursChoisis.includes(coursId);
 }
 
@@ -49,7 +49,7 @@ export function getCoursRestants(
   formule: FormulePremium | undefined,
   coursChoisis: string[]
 ): number | null {
-  const max = getNombreCoursMax(formule || 'mensuel');
+  const max = getNombreCoursMax(formule || 'a_la_carte_1');
   if (max === null) return null; // illimité
   return Math.max(0, max - coursChoisis.length);
 }
