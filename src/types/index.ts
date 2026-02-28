@@ -23,6 +23,15 @@ export type UserRole = 'admin' | 'prof' | 'eleve' | 'parent';
 /**
  * Interface pour un utilisateur PedaClic
  */
+/** Formule d'abonnement Premium (classique ou à la carte) */
+export type FormulePremium =
+  | 'mensuel'
+  | 'annuel'
+  | 'a_la_carte_1'
+  | 'a_la_carte_3'
+  | 'a_la_carte_7'
+  | 'a_la_carte_tous';
+
 export interface User {
   uid: string;                    // ID Firebase unique
   email: string;                  // Email de l'utilisateur
@@ -30,6 +39,10 @@ export interface User {
   role: UserRole;                 // Rôle de l'utilisateur
   isPremium: boolean;             // Statut Premium
   subscriptionEnd?: Date | null;  // Date de fin d'abonnement Premium
+  /** Formule souscrite (mensuel, annuel, ou cours à la carte) */
+  subscriptionPlan?: FormulePremium;
+  /** IDs des cours choisis (formule à la carte uniquement) */
+  coursChoisis?: string[];
   photoURL?: string;              // URL de la photo de profil (optionnel)
   createdAt: Date;                // Date de création du compte
   lastLogin?: Date;               // Dernière connexion

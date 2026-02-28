@@ -7,6 +7,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { estFormuleALaCarte } from '../types/premiumPlans';
 import { getCoursPublies } from '../services/coursService';
 import type { CoursEnLigne, FiltresCours } from '../cours_types';
 import { NIVEAUX_COURS } from '../cours_types';
@@ -91,7 +93,10 @@ function CoursCatalogCard({ cours, onClick }: CoursCatalogCardProps) {
 
 export default function CoursPage() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
   const { matieres } = useDisciplinesOptions();
+  const formule = currentUser?.subscriptionPlan;
+  const isALaCarte = currentUser?.isPremium && formule && estFormuleALaCarte(formule);
 
   // ── État ──────────────────────────────────────────────────
   const [cours, setCours] = useState<CoursEnLigne[]>([]);
@@ -181,6 +186,15 @@ export default function CoursPage() {
             Des cours complets du programme sénégalais — de la 6ème au Bac.
             Créés par vos professeurs, accessibles partout, même hors-ligne.
           </p>
+          {isALaCarte && (
+            <button
+              className="btn-primary"
+              onClick={() => navigate('/premium/mes-cours')}
+              style={{ marginTop: '1rem' }}
+            >
+              📚 Choisir mes cours
+            </button>
+          )}
           {/* Statistiques globales */}
           <div className="cours-catalogue__hero-stats" aria-label="Statistiques de la plateforme">
             <div className="cours-catalogue__stat">
