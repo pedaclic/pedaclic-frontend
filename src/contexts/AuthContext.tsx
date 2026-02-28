@@ -89,6 +89,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           role: data.role as UserRole,
           isPremium: data.isPremium || false,
           subscriptionEnd: data.subscriptionEnd?.toDate() || null,
+          subscriptionPlan: data.subscriptionPlan || undefined,
+          coursChoisis: data.coursChoisis || [],
           photoURL: data.photoURL,
           createdAt: data.createdAt?.toDate() || new Date(),
           lastLogin: data.lastLogin?.toDate()

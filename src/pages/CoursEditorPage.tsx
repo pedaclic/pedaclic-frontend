@@ -33,6 +33,7 @@ import {
   saveBlocsSection,
   publierCours,
 } from '../services/coursService';
+import { getAllCahiers } from '../services/cahierTextesService';
 import type {
   CoursEnLigne,
   SectionCours,
@@ -449,6 +450,7 @@ export default function CoursEditorPage() {
     objectifs: [''],
     prerequis: '',
     tags: [],
+    cahierTextesId: '',
   });
 
   // ── État des sections ─────────────────────────────────────
@@ -473,6 +475,9 @@ export default function CoursEditorPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [onglet, setOnglet] = useState<'infos' | 'sections'>('infos');
 
+  // ── Cahiers de textes (admin — liaison cours ↔ cahier) ─────
+  const [cahiers, setCahiers] = useState<Array<{ id: string; titre: string }>>([]);
+
   // ── États upload images ───────────────────────────────────
   // coverUploading   : true pendant l'upload de l'image de couverture du cours
   // blocksUploading  : map { [blocId]: boolean } — un booléen par bloc image actif
@@ -486,6 +491,15 @@ export default function CoursEditorPage() {
   useEffect(() => {
     if (isEdition && coursId) chargerCours(coursId);
   }, [coursId]);
+
+  // ── Chargement des cahiers (admin — liaison cours ↔ cahier) ─
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      getAllCahiers()
+        .then(list => setCahiers(list.map(c => ({ id: c.id, titre: c.titre }))))
+        .catch(() => {});
+    }
+  }, [user?.role]);
 
   async function chargerCours(id: string) {
     setLoading(true);
@@ -501,6 +515,7 @@ export default function CoursEditorPage() {
           matiere: coursData.matiere,
           niveau: coursData.niveau,
           classe: coursData.classe ?? '',
+          cahierTextesId: coursData.cahierTextesId ?? '',
           isPremium: coursData.isPremium,
           statut: coursData.statut,
           couvertureUrl: coursData.couvertureUrl ?? '',
@@ -582,6 +597,7 @@ export default function CoursEditorPage() {
         ...formCours,
         objectifs: formCours.objectifs.filter(o => o.trim()),
         statut: publier ? 'publie' : formCours.statut,
+        cahierTextesId: formCours.cahierTextesId?.trim() || undefined,
       };
 
       if (isEdition && coursId) {
@@ -971,6 +987,26 @@ export default function CoursEditorPage() {
                   className="cours-editor__input"
                 />
               </div>
+              {/* Lien cahier de textes (admin uniquement) */}
+              {user?.role === 'admin' && cahiers.length > 0 && (
+                <div className="cours-editor__field cours-editor__field--full">
+                  <label htmlFor="cahierTextesId">📒 Lier à un cahier de textes</label>
+                  <select
+                    id="cahierTextesId"
+                    value={formCours.cahierTextesId ?? ''}
+                    onChange={e => updateFormField('cahierTextesId', e.target.value)}
+                    className="cours-editor__select"
+                  >
+                    <option value="">— Aucun —</option>
+                    {cahiers.map(c => (
+                      <option key={c.id} value={c.id}>{c.titre}</option>
+                    ))}
+                  </select>
+                  <span className="cours-editor__label-hint">
+                    Si le cahier n'existe pas, créez-le d'abord dans Cahier de Textes.
+                  </span>
+                </div>
+              )}
               {/* Image de couverture — Phase 25 : upload Firebase Storage */}
               <div className="cours-editor__field">
                 <label htmlFor="couverture">

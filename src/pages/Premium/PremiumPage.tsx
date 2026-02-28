@@ -1,7 +1,7 @@
 /**
  * PAGE PREMIUM - PedaClic
  * Présentation des avantages Premium et intégration paiement PayTech
- * Tarifs : 2 000 FCFA/mois ou 20 000 FCFA/an
+ * Formules : Cours à la carte (1, 3, 7, tous) + Mensuel/Annuel illimité
  */
 
 import React, { useState } from 'react';
@@ -9,46 +9,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import {
+  PLANS_A_LA_CARTE,
+  PLANS_CLASSIQUES,
+  type FormulePremium,
+} from '../../types/premiumPlans';
 import './PremiumPage.css';
 
-/**
- * Types de plans d'abonnement
- */
-type PlanType = 'mensuel' | 'annuel';
-
-/**
- * Interface pour les plans
- */
-interface Plan {
-  id: PlanType;
-  nom: string;
-  prix: number;
-  prixOriginal?: number;
-  duree: string;
-  economie?: string;
-  popular?: boolean;
-}
-
-/**
- * Configuration des plans Premium
- */
-const PLANS: Plan[] = [
-  {
-    id: 'mensuel',
-    nom: 'Mensuel',
-    prix: 2000,
-    duree: '1 mois',
-  },
-  {
-    id: 'annuel',
-    nom: 'Annuel',
-    prix: 20000,
-    prixOriginal: 24000,
-    duree: '12 mois',
-    economie: '4 000 FCFA',
-    popular: true,
-  },
-];
+/** Tous les plans pour la sélection */
+const TOUS_LES_PLANS = [...PLANS_A_LA_CARTE, ...PLANS_CLASSIQUES];
 
 /**
  * Liste des avantages Premium
@@ -129,7 +98,8 @@ const PremiumPage: React.FC = () => {
   const navigate = useNavigate();
 
   // ==================== ÉTATS ====================
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>('annuel');
+  const [selectedPlan, setSelectedPlan] = useState<FormulePremium>('a_la_carte_3');
+  const [ongletPlans, setOngletPlans] = useState<'a_la_carte' | 'illimite'>('a_la_carte');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -179,7 +149,7 @@ const PremiumPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const plan = PLANS.find(p => p.id === selectedPlan);
+      const plan = TOUS_LES_PLANS.find(p => p.id === selectedPlan);
       if (!plan) {
         throw new Error('Plan invalide');
       }
@@ -189,7 +159,7 @@ const PremiumPage: React.FC = () => {
         userId: currentUser.uid,
         userEmail: currentUser.email,
         planType: selectedPlan,
-        montant: plan.prix,
+        montant: plan?.prix || 0,
         devise: 'XOF',
         statut: 'pending',
         dateTransaction: serverTimestamp(),
@@ -203,8 +173,8 @@ const PremiumPage: React.FC = () => {
         apiSecret: import.meta.env.VITE_PAYTECH_API_SECRET || 'demo_api_secret',
         
         // Informations transaction
-        item_name: `PedaClic Premium ${plan.nom}`,
-        item_price: plan.prix,
+        item_name: `PedaClic Premium ${plan?.nom || selectedPlan}`,
+        item_price: plan?.prix || 0,
         currency: 'XOF',
         ref_command: transactionRef.id,
         
@@ -238,7 +208,7 @@ const PremiumPage: React.FC = () => {
           item_price: paytechConfig.item_price,
           currency: paytechConfig.currency,
           ref_command: paytechConfig.ref_command,
-          command_name: `Abonnement Premium ${plan.nom} - ${currentUser.email}`,
+          command_name: `Abonnement Premium ${plan?.nom || selectedPlan} - ${currentUser.email}`,
           env: paytechConfig.env,
           ipn_url: paytechConfig.ipn_url,
           success_url: paytechConfig.success_url,
@@ -269,7 +239,7 @@ const PremiumPage: React.FC = () => {
         await updateDoc(doc(db, 'users', currentUser.uid), {
           isPremium: true,
           subscriptionEnd: expirationDate,
-          subscriptionPlan: selectedPlan,
+          subscriptionPlan: selectedPlan as string,
           updatedAt: serverTimestamp(),
         });
 
@@ -284,8 +254,8 @@ const PremiumPage: React.FC = () => {
         // Rediriger vers la page de succès
         navigate('/premium/success', { 
           state: { 
-            plan: plan.nom, 
-            montant: plan.prix,
+            plan: plan?.nom || selectedPlan, 
+            montant: plan?.prix || 0,
             expiration: expirationDate.toLocaleDateString('fr-FR'),
           } 
         });
@@ -365,8 +335,26 @@ const PremiumPage: React.FC = () => {
         <div className="container">
           <h2 className="section-title">Choisissez votre formule</h2>
           
+          {/* Onglets : Cours à la carte ou Illimité */}
+          <div className="premium-pricing__tabs">
+            <button
+              type="button"
+              className={`premium-pricing__tab ${ongletPlans === 'a_la_carte' ? 'premium-pricing__tab--active' : ''}`}
+              onClick={() => { setOngletPlans('a_la_carte'); setSelectedPlan('a_la_carte_3'); }}
+            >
+              📚 Cours à la carte
+            </button>
+            <button
+              type="button"
+              className={`premium-pricing__tab ${ongletPlans === 'illimite' ? 'premium-pricing__tab--active' : ''}`}
+              onClick={() => { setOngletPlans('illimite'); setSelectedPlan('annuel'); }}
+            >
+              ⭐ Accès illimité
+            </button>
+          </div>
+          
           <div className="pricing-cards">
-            {PLANS.map((plan) => (
+            {(ongletPlans === 'a_la_carte' ? PLANS_A_LA_CARTE : PLANS_CLASSIQUES).map((plan) => (
               <div 
                 key={plan.id}
                 className={`pricing-card ${selectedPlan === plan.id ? 'pricing-card--selected' : ''} ${plan.popular ? 'pricing-card--popular' : ''}`}
@@ -393,9 +381,7 @@ const PremiumPage: React.FC = () => {
                   <span className="pricing-card__amount">
                     {formatPrice(plan.prix)}
                   </span>
-                  {plan.id === 'mensuel' && (
-                    <span className="pricing-card__period">/mois</span>
-                  )}
+                  <span className="pricing-card__period">/mois</span>
                 </div>
 
                 {/* Économie */}
@@ -451,7 +437,7 @@ const PremiumPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    Payer {formatPrice(PLANS.find(p => p.id === selectedPlan)?.prix || 0)}
+                    Payer {formatPrice(TOUS_LES_PLANS.find(p => p.id === selectedPlan)?.prix || 0)}
                   </>
                 )}
               </button>
@@ -494,39 +480,51 @@ const PremiumPage: React.FC = () => {
       {/* ========== SECTION COMPARAISON ========== */}
       <section className="premium-comparison">
         <div className="container">
-          <h2 className="section-title">Gratuit vs Premium</h2>
+          <h2 className="section-title">Tableau comparatif des formules</h2>
 
-          <div className="comparison-table">
+          <div className="comparison-table comparison-table--extended">
             <div className="comparison-header">
               <div className="comparison-feature">Fonctionnalités</div>
               <div className="comparison-free">Gratuit</div>
-              <div className="comparison-premium">Premium</div>
+              <div className="comparison-col">1 cours</div>
+              <div className="comparison-col">3 cours</div>
+              <div className="comparison-col">7 cours</div>
+              <div className="comparison-col">Tous</div>
+              <div className="comparison-premium">Illimité</div>
             </div>
 
             {[
-              { feature: 'Cours de base', free: true, premium: true },
-              { feature: 'Exercices avec corrections', free: false, premium: true },
-              { feature: 'Vidéos explicatives', free: false, premium: true },
-              { feature: 'Quiz interactifs', free: false, premium: true },
-              { feature: 'Suivi de progression', free: false, premium: true },
-              { feature: 'Téléchargement de documents', free: false, premium: true },
-              { feature: 'Support prioritaire', free: false, premium: true },
-              { feature: 'Accès mobile optimisé', free: true, premium: true },
+              { feature: 'Cours de base', free: true, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Choix par discipline et niveau', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Exercices avec corrections', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Vidéos explicatives', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Quiz interactifs (QCM, glisser-déposer…)', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Suivi de progression', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Téléchargement de documents', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Support prioritaire', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              { feature: 'Accès mobile optimisé', free: true, a1: true, a3: true, a7: true, tous: true, illimite: true },
             ].map((row, index) => (
               <div key={index} className="comparison-row">
                 <div className="comparison-feature">{row.feature}</div>
                 <div className="comparison-free">
-                  {row.free ? (
-                    <span className="check">✓</span>
-                  ) : (
-                    <span className="cross">✗</span>
-                  )}
+                  {row.free ? <span className="check">✓</span> : <span className="cross">✗</span>}
                 </div>
-                <div className="comparison-premium">
-                  <span className="check check--premium">✓</span>
-                </div>
+                <div className="comparison-col">{row.a1 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
+                <div className="comparison-col">{row.a3 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
+                <div className="comparison-col">{row.a7 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
+                <div className="comparison-col">{row.tous ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
+                <div className="comparison-premium">{row.illimite ? <span className="check check--premium">✓</span> : <span className="cross">✗</span>}</div>
               </div>
             ))}
+            <div className="comparison-row comparison-row--prices">
+              <div className="comparison-feature">Prix / mois</div>
+              <div className="comparison-free">—</div>
+              <div className="comparison-col">1 000 FCFA</div>
+              <div className="comparison-col">2 000 FCFA</div>
+              <div className="comparison-col">5 000 FCFA</div>
+              <div className="comparison-col">25 000 FCFA</div>
+              <div className="comparison-premium">2 000 FCFA</div>
+            </div>
           </div>
         </div>
       </section>

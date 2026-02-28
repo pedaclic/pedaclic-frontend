@@ -13,7 +13,13 @@ const API_BASE_URL =
 
 // ── Types ─────────────────────────────────────────────────────
 
-export type PlanPremium = 'mensuel' | 'annuel';
+export type PlanPremium =
+  | 'mensuel'
+  | 'annuel'
+  | 'a_la_carte_1'
+  | 'a_la_carte_3'
+  | 'a_la_carte_7'
+  | 'a_la_carte_tous';
 
 export interface InitiationPaiementParams {
   plan:          PlanPremium;
@@ -43,6 +49,30 @@ export const PLANS_PREMIUM: Record<PlanPremium, {
   duree:       string;
   description: string;
 }> = {
+  a_la_carte_1: {
+    label:       '1 cours',
+    montant:     1000,
+    duree:       '1 mois',
+    description: 'Choisissez 1 cours par discipline et niveau',
+  },
+  a_la_carte_3: {
+    label:       '3 cours',
+    montant:     2000,
+    duree:       '1 mois',
+    description: 'Choisissez 3 cours par discipline et niveau',
+  },
+  a_la_carte_7: {
+    label:       '7 cours',
+    montant:     5000,
+    duree:       '1 mois',
+    description: 'Choisissez 7 cours par discipline et niveau',
+  },
+  a_la_carte_tous: {
+    label:       'Tous les contenus',
+    montant:     25000,
+    duree:       '1 mois',
+    description: 'Accès à l\'intégralité du catalogue',
+  },
   mensuel: {
     label:       'Premium Mensuel',
     montant:     2000,

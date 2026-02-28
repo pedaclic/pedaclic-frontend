@@ -12,6 +12,12 @@
 .premium-pricing { background: white; padding: 3rem 0; margin-top: -2rem; position: relative; border-radius: 2rem 2rem 0 0; }
 .section-title { text-align: center; font-size: 1.5rem; font-weight: 700; margin-bottom: 2rem; }
 
+/* Onglets Cours à la carte / Illimité */
+.premium-pricing__tabs { display: flex; justify-content: center; gap: 0.5rem; margin-bottom: 2rem; flex-wrap: wrap; }
+.premium-pricing__tab { padding: 0.75rem 1.5rem; border: 2px solid #e5e7eb; background: white; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; color: #6b7280; }
+.premium-pricing__tab:hover { border-color: #2563eb; color: #2563eb; }
+.premium-pricing__tab--active { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+
 /* Pricing Cards */
 .pricing-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; max-width: 700px; margin: 0 auto 2rem; }
 .pricing-card { position: relative; padding: 2rem; background: white; border: 2px solid #e5e7eb; border-radius: 1rem; cursor: pointer; text-align: center; transition: all 0.2s; }
@@ -60,14 +66,17 @@
 
 /* Comparison */
 .premium-comparison { background: white; padding: 3rem 0; }
-.comparison-table { max-width: 700px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 1rem; overflow: hidden; }
-.comparison-header, .comparison-row { display: grid; grid-template-columns: 1fr 100px 100px; }
-.comparison-header { background: #f3f4f6; font-weight: 600; font-size: 0.875rem; }
-.comparison-header > div, .comparison-row > div { padding: 1rem; display: flex; align-items: center; }
+.comparison-table { max-width: 100%; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 1rem; overflow-x: auto; }
+.comparison-header, .comparison-row { display: grid; grid-template-columns: 1fr 80px 80px 80px 80px 80px 100px; }
+.comparison-table--extended .comparison-header,
+.comparison-table--extended .comparison-row { grid-template-columns: minmax(180px, 1fr) 70px 70px 70px 70px 70px 90px; }
+.comparison-header { background: #f3f4f6; font-weight: 600; font-size: 0.75rem; }
+.comparison-header > div, .comparison-row > div { padding: 0.75rem; display: flex; align-items: center; }
 .comparison-feature { justify-content: flex-start; }
-.comparison-free, .comparison-premium { justify-content: center; }
-.comparison-row { border-top: 1px solid #e5e7eb; font-size: 0.875rem; }
+.comparison-free, .comparison-col, .comparison-premium { justify-content: center; }
+.comparison-row { border-top: 1px solid #e5e7eb; font-size: 0.8rem; }
 .comparison-row:nth-child(even) { background: rgba(0,0,0,0.02); }
+.comparison-row--prices { font-weight: 600; background: #eff6ff !important; }
 .check { color: #059669; font-weight: 700; font-size: 1.125rem; }
 .check--premium { color: #f59e0b; }
 .cross { color: #9ca3af; font-size: 1.125rem; }

@@ -98,15 +98,17 @@ export interface OptionQuiz {
   estCorrecte: boolean;
 }
 
-/** Bloc quiz — question à choix multiple */
+/** Bloc quiz — question à choix multiple ou référence Quiz avancé */
 export interface BlocQuiz extends BlocBase {
   type: 'quiz';
-  /** Intitulé de la question */
+  /** Intitulé de la question (si quiz inline) */
   question: string;
-  /** Options de réponse (2 à 4) */
+  /** Options de réponse (2 à 4) — ignoré si quizAvanceId est défini */
   options: OptionQuiz[];
   /** Explication affichée après la réponse */
   explication?: string;
+  /** ID d'un quiz avancé (quizzes_v2) — si défini, utilise le Quiz Avancé */
+  quizAvanceId?: string;
 }
 
 /** Bloc exercice — problème avec correction masquée */
@@ -210,6 +212,9 @@ export interface CoursEnLigne {
   isPremium: boolean;
   /** Statut de publication */
   statut: StatutCours;
+
+  /** ID du cahier de textes lié (création par admin uniquement) */
+  cahierTextesId?: string;
 
   // ── Médias ─────────────────────────────────────────────────
 

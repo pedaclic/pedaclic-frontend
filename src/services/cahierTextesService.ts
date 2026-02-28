@@ -14,6 +14,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot,
   Timestamp,
   arrayUnion,
@@ -85,6 +86,22 @@ export async function getCahiersByProf(
 
 /** Alias Phase 22 */
 export const getCahiersProf = (profId: string) => getCahiersByProf(profId);
+
+/**
+ * Récupère tous les cahiers (admin uniquement, pour liaison cours ↔ cahier).
+ */
+export async function getAllCahiers(): Promise<CahierTextes[]> {
+  const q = query(
+    collection(db, COL_CAHIERS),
+    orderBy('updatedAt', 'desc'),
+    limit(100)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({
+    groupeIds: [], groupeNoms: [], isPartage: false, isArchived: false,
+    ...d.data(), id: d.id,
+  } as CahierTextes));
+}
 
 /**
  * Abonnement temps réel aux cahiers d'un prof.

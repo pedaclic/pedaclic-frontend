@@ -9,6 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { aAccesCours } from '../services/premiumCoursService';
 import {
   getCoursById,
   getSectionsCours,
@@ -256,6 +257,12 @@ export default function CoursDetailPage() {
   const navigate = useNavigate();
   const { currentUser: user } = useAuth();
   const userIsPremium = user?.isPremium ?? false;
+  const userHasAccess = userIsPremium && aAccesCours(
+    coursId || '',
+    userIsPremium,
+    user?.subscriptionPlan,
+    user?.coursChoisis ?? []
+  );
 
   // ── Données ───────────────────────────────────────────────
   const [cours, setCours] = useState<CoursEnLigne | null>(null);
@@ -319,12 +326,31 @@ export default function CoursDetailPage() {
     }
   }
 
+  /** Vérifie si l'élève a 60% aux quiz de la section pour pouvoir passer. */
+  function aReussiQuizSection(section: SectionCours): boolean {
+    const quizBlocs = section.blocs.filter(b => b.type === 'quiz');
+    if (quizBlocs.length === 0) return true;
+    const reponsesSection = progression?.reponsesQuiz.filter(r =>
+      quizBlocs.some(q => q.id === r.blocId)
+    ) ?? [];
+    if (reponsesSection.length < quizBlocs.length) return false;
+    const correctes = reponsesSection.filter(r => r.estCorrecte).length;
+    const score = (correctes / quizBlocs.length) * 100;
+    return score >= 60;
+  }
+
   // ── Marquer section comme lue ─────────────────────────────
   async function handleSectionLue(sectionId: string) {
     if (!user || !progression || !cours) return;
 
     // Vérifier si déjà lue
     if (progression.sectionsLues.includes(sectionId)) return;
+
+    const section = sections.find(s => s.id === sectionId);
+    if (section && !aReussiQuizSection(section)) {
+      setError('Réussissez les quiz de cette section (60% minimum) pour continuer.');
+      return;
+    }
 
     try {
       await marquerSectionLue(progression.id, sectionId, cours.nombreSections);
@@ -362,12 +388,12 @@ export default function CoursDetailPage() {
 
   // ── Vérification accès Premium ────────────────────────────
   function peutAccederSection(section: SectionCours): boolean {
-    // La 1ère section est toujours accessible
+    // La 1ère section est toujours accessible (aperçu)
     if (section.estGratuite || section.ordre === 1) return true;
     // Si le cours est gratuit, toutes les sections sont accessibles
     if (!cours?.isPremium) return true;
-    // Si l'utilisateur est premium, accès total
-    if (userIsPremium) return true;
+    // Si l'utilisateur a accès (illimité ou cours choisi), accès total
+    if (userHasAccess) return true;
     return false;
   }
 
@@ -538,22 +564,33 @@ export default function CoursDetailPage() {
                   <h3>Contenu Premium</h3>
                   <p>
                     Cette section nécessite un abonnement Premium PedaClic.<br />
-                    Accédez à tous les cours complets à partir de <strong>2 000 FCFA/mois</strong>.
+                    Formules à partir de <strong>1 000 FCFA/mois</strong> (1 cours) jusqu'à l'accès illimité.
                   </p>
-                  {user
-                    ? <button
+                  {user ? (
+                    <div className="cours-detail__premium-gate-actions">
+                      <button
                         className="btn-primary"
                         onClick={() => navigate('/premium')}
                       >
-                        ✨ Passer Premium
+                        ✨ Découvrir les formules
                       </button>
-                    : <button
-                        className="btn-primary"
-                        onClick={() => navigate('/connexion')}
-                      >
-                        Se connecter pour accéder
-                      </button>
-                  }
+                      {user.isPremium && (
+                        <button
+                          className="btn-secondary"
+                          onClick={() => navigate('/premium/mes-cours')}
+                        >
+                          📚 Choisir mes cours
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <button
+                      className="btn-primary"
+                      onClick={() => navigate('/connexion')}
+                    >
+                      Se connecter pour accéder
+                    </button>
+                  )}
                 </div>
               ) : (
                 <>
@@ -591,8 +628,13 @@ export default function CoursDetailPage() {
                     </div>
                   )}
 
-                  {/* Navigation entre sections */}
+                    {/* Navigation entre sections */}
                   <div className="cours-detail__nav-sections">
+                    {!aReussiQuizSection(sectionCourante) && sectionCourante.blocs.some(b => b.type === 'quiz') && (
+                      <p className="cours-detail__quiz-requis" role="alert">
+                        ⚠️ Réussissez les quiz de cette section (60% minimum) pour passer à la suite.
+                      </p>
+                    )}
                     {/* Section précédente */}
                     {sectionCourante.ordre > 1 && (
                       <button
@@ -610,6 +652,7 @@ export default function CoursDetailPage() {
                       <button
                         className="btn-primary"
                         onClick={() => {
+                          if (!aReussiQuizSection(sectionCourante) && sectionCourante.blocs.some(b => b.type === 'quiz')) return;
                           const next = sections.find(s => s.ordre === sectionCourante.ordre + 1);
                           if (next) setSectionActive(next.id);
                         }}

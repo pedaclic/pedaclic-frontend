@@ -32,6 +32,7 @@ interface DashboardStats {
   totalRessources: number;
   ressourcesPremium: number;
   ressourcesGratuites: number;
+  totalCours: number;       // Cours en ligne (collection cours_en_ligne)
   totalQuiz: number;         // Quiz classiques (collection quizzes)
   totalQuizAvances: number;  // Quiz avancés (collection quizzes_v2)
   ressourcesParType: {
@@ -56,6 +57,7 @@ const AdminDashboard: React.FC = () => {
     totalRessources: 0,
     ressourcesPremium: 0,
     ressourcesGratuites: 0,
+    totalCours: 0,
     totalQuiz: 0,
     totalQuizAvances: 0,
     ressourcesParType: {
@@ -79,12 +81,13 @@ const AdminDashboard: React.FC = () => {
 
         // Chargement parallèle : disciplines, chapitres, ressources,
         // + comptage des quiz depuis leurs collections Firestore dédiées
-        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap] = await Promise.all([
+        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap] = await Promise.all([
           DisciplineService.getAll(),
           ChapitreService.getAll(),
           ResourceService.getStats(),
           getDocs(collection(db, 'quizzes')),
-          getDocs(collection(db, 'quizzes_v2'))
+          getDocs(collection(db, 'quizzes_v2')),
+          getDocs(collection(db, 'cours_en_ligne'))
         ]);
 
         setStats({
@@ -93,6 +96,7 @@ const AdminDashboard: React.FC = () => {
           totalRessources: resourceStats.total,
           ressourcesPremium: resourceStats.premium,
           ressourcesGratuites: resourceStats.gratuit,
+          totalCours: coursSnap.size,
           totalQuiz: quizzesSnap.size,
           totalQuizAvances: quizzesV2Snap.size,
           ressourcesParType: resourceStats.parType
@@ -211,6 +215,23 @@ const AdminDashboard: React.FC = () => {
               <div className="stat-card__content">
                 <div className="stat-card__value">{stats.ressourcesPremium}</div>
                 <div className="stat-card__label">Ressources Premium</div>
+              </div>
+            </div>
+
+            {/* Carte: Cours en ligne → /prof/cours */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/prof/cours')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/prof/cours')}
+            >
+              <div className="stat-card__icon stat-card__icon--primary">
+                📘
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.totalCours}</div>
+                <div className="stat-card__label">Cours en ligne</div>
               </div>
             </div>
 
@@ -426,6 +447,15 @@ const AdminDashboard: React.FC = () => {
                   <div className="quick-action-content">
                     <h3>Séquences Pédagogiques</h3>
                     <p>Créer et organiser des séquences de cours</p>
+                  </div>
+                </a>
+
+                {/* Cours en ligne */}
+                <a href="/prof/cours" className="quick-action-card">
+                  <div className="quick-action-icon">📘</div>
+                  <div className="quick-action-content">
+                    <h3>Cours en ligne</h3>
+                    <p>Créer et gérer les cours en ligne</p>
                   </div>
                 </a>
               </div>

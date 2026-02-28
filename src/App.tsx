@@ -34,6 +34,7 @@ import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
 
 /* ==================== PREMIUM — MONEROO ==================== */
 import PremiumPage             from './pages/PremiumPage';
+import PremiumCoursChoicePage   from './pages/PremiumCoursChoicePage';
 import PremiumConfirmationPage from './pages/PremiumConfirmationPage';
 
 /* ==================== COMPOSANTS ADMIN ==================== */
@@ -138,6 +139,7 @@ const App: React.FC = () => {
         {/* ========== PREMIUM — MONEROO ========== */}
         {/* /premium/confirmation doit être déclaré AVANT /premium (route plus spécifique) */}
         <Route path="/premium/confirmation" element={<PremiumConfirmationPage />} />
+        <Route path="/premium/mes-cours"    element={<Layout><PremiumCoursChoicePage /></Layout>} />
         <Route path="/premium"              element={<Layout><PremiumPage /></Layout>} />
 
         {/* ========== QUIZ — LISTE + JOUEUR ========== */}
@@ -203,15 +205,16 @@ const App: React.FC = () => {
           <ProfRoute><Layout><SequenceEditorPage /></Layout></ProfRoute>
         } />
 
-        {/* ========== COURS EN LIGNE — GESTION PROF ========== */}
+        {/* ========== COURS EN LIGNE — GESTION ========== */}
         <Route path="/prof/cours" element={
           <ProfRoute><Layout><ProfCoursPage /></Layout></ProfRoute>
         } />
+        {/* Création et modification réservées aux admins */}
         <Route path="/prof/cours/nouveau" element={
-          <ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>
+          <AdminRoute><Layout><CoursEditorPage /></Layout></AdminRoute>
         } />
         <Route path="/prof/cours/:coursId/modifier" element={
-          <ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>
+          <AdminRoute><Layout><CoursEditorPage /></Layout></AdminRoute>
         } />
 
         {/* ========== ADMIN PROTÉGÉ (avec AdminLayout + sidebar) ========== */}

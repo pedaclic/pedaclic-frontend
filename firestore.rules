@@ -448,18 +448,15 @@ match /rappels_prof/{rappelId} {
     // ==================== PHASE 24 — COURS EN LIGNE ====================
 
     // ─── Cours en ligne (Phase 24) ──────────────────────────────
+    // Création réservée aux admins uniquement (extension Cours à la carte)
     match /cours_en_ligne/{coursId} {
       allow read: if resource.data.statut == 'publie'
                   || (request.auth != null && resource.data.profId == request.auth.uid)
-                  || request.auth.token.role == 'admin';
+                  || (isAdmin());
 
-      allow create: if request.auth != null
-        && request.resource.data.profId == request.auth.uid;
+      allow create: if isAdmin();
 
-      allow update, delete: if request.auth != null && (
-        resource.data.profId == request.auth.uid
-        || request.auth.token.role == 'admin'
-      );
+      allow update, delete: if isAdmin();
     }
 
     // ─── Sections des cours (Phase 24) ──────────────────────────

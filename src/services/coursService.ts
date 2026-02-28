@@ -117,6 +117,19 @@ export async function getCoursProf(profId: string): Promise<CoursEnLigne[]> {
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as CoursEnLigne));
 }
 
+/**
+ * Récupère tous les cours (admin uniquement).
+ */
+export async function getAllCours(): Promise<CoursEnLigne[]> {
+  const q = query(
+    collection(db, COL_COURS),
+    orderBy('updatedAt', 'desc'),
+    limit(200)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CoursEnLigne));
+}
+
 // ─────────────────────────────────────────────────────────────
 // COURS — ÉCRITURE (professeur)
 // ─────────────────────────────────────────────────────────────

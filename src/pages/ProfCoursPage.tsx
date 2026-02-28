@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getCoursProf,
+  getAllCours,
   deleteCours,
   archiverCours,
   publierCours,
@@ -240,11 +241,13 @@ export default function ProfCoursPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCoursProf(user.uid);
+      const data = user.role === 'admin'
+        ? await getAllCours()
+        : await getCoursProf(user.uid);
       setCours(data);
       setCoursFiltres(data);
     } catch (err) {
-      setError('Impossible de charger vos cours.');
+      setError('Impossible de charger les cours.');
     } finally {
       setLoading(false);
     }
@@ -314,15 +317,19 @@ export default function ProfCoursPage() {
         <div>
           <h1 className="prof-cours-page__titre">📚 Mes cours en ligne</h1>
           <p className="prof-cours-page__sous-titre">
-            Créez, gérez et publiez vos cours pour vos élèves.
+            {user?.role === 'admin'
+              ? 'Gérez tous les cours de la plateforme. Seul l\'admin peut créer des cours.'
+              : 'Consultez les cours publiés par vos collègues.'}
           </p>
         </div>
-        <button
-          className="btn-primary"
-          onClick={() => navigate('/prof/cours/nouveau')}
-        >
-          ✨ Créer un cours
-        </button>
+        {user?.role === 'admin' && (
+          <button
+            className="btn-primary"
+            onClick={() => navigate('/prof/cours/nouveau')}
+          >
+            ✨ Créer un cours
+          </button>
+        )}
       </header>
 
       {/* Banners */}
@@ -423,10 +430,12 @@ export default function ProfCoursPage() {
             <span aria-hidden="true">📭</span>
             <h3>
               {cours.length === 0
-                ? 'Vous n\'avez pas encore créé de cours.'
+                ? (user?.role === 'admin'
+                    ? 'Aucun cours sur la plateforme.' 
+                    : 'Aucun cours dans cette catégorie.')
                 : 'Aucun cours dans cette catégorie.'}
             </h3>
-            {cours.length === 0 && (
+            {cours.length === 0 && user?.role === 'admin' && (
               <button
                 className="btn-primary"
                 onClick={() => navigate('/prof/cours/nouveau')}

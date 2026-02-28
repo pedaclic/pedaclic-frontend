@@ -45,8 +45,9 @@ const navigationSections: NavSection[] = [
       { id: 'disciplines', label: 'Disciplines', icon: '📚', href: '/admin/disciplines' },
       { id: 'chapitres', label: 'Chapitres', icon: '📖', href: '/admin/chapitres' },
       { id: 'ressources', label: 'Ressources', icon: '📝', href: '/admin/ressources' },
-      { id: 'ebooks', label: 'Bibliothèque Ebooks', icon: '📚', href: '/admin/ebooks' },    
-]
+      { id: 'cours', label: 'Cours en ligne', icon: '📘', href: '/prof/cours' },
+      { id: 'ebooks', label: 'Bibliothèque Ebooks', icon: '📚', href: '/admin/ebooks' },
+    ]
   },
  
 {
