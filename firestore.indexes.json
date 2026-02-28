@@ -161,16 +161,6 @@
           "order": "DESCENDING"
         }
       ]
-    },
-    {
-      "collectionGroup": "mediatheque_vues",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "mediaId",
-          "order": "ASCENDING"
-        }
-      ]
     }
   ],
   "fieldOverrides": []
