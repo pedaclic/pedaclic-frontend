@@ -22,7 +22,7 @@ const INITIAL_FORM_DATA: Omit<ChapitreFormData, 'disciplineId'> = {
   titre: '',
   description: '',
   objectifs: [],
-  dureeEstimee: undefined,
+  dureeEstimee: 0,
   isPremium: false,
   actif: true
 };
