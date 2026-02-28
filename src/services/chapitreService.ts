@@ -66,6 +66,15 @@ const COLLECTION_NAME = 'chapitres';
 // ==================== FONCTIONS UTILITAIRES ====================
 
 /**
+ * Supprime les champs undefined d'un objet (Firestore refuse undefined)
+ */
+const stripUndefined = <T extends Record<string, unknown>>(obj: T): Partial<T> => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined)
+  ) as Partial<T>;
+};
+
+/**
  * Convertit un document Firestore en objet Chapitre
  * @param docSnapshot - Document Firestore
  * @returns Objet Chapitre formaté
@@ -180,10 +189,11 @@ export const ChapitreService = {
   async update(id: string, data: Partial<ChapitreFormData>): Promise<void> {
     try {
       const docRef = doc(db, COLLECTION_NAME, id);
-      await updateDoc(docRef, {
+      const payload = stripUndefined({
         ...data,
         updatedAt: serverTimestamp()
       });
+      await updateDoc(docRef, payload);
     } catch (error) {
       console.error('Erreur lors de la mise à jour du chapitre:', error);
       throw new Error('Impossible de mettre à jour le chapitre');
