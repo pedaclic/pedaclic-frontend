@@ -85,7 +85,7 @@ define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
     "revision": "9e820a797a6c7f5cd34a106890bd0752"
   }, {
     "url": "index.html",
-    "revision": "903403fd7807a1d006b5d0e7e6b5bdb2"
+    "revision": "d44c7d74464b3f0a4b42ed80f6b8acda"
   }, {
     "url": "404.html",
     "revision": "d0e9f9bdb9145562f5d9f35dca8b2840"
@@ -192,7 +192,7 @@ define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
     "url": "assets/index-oM8UUgfF.css",
     "revision": null
   }, {
-    "url": "assets/index-CxAW31gz.js",
+    "url": "assets/index-WwuJ0fDY.js",
     "revision": null
   }, {
     "url": "manifest.json",
