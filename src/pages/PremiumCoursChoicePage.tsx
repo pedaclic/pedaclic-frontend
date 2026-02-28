@@ -117,7 +117,7 @@ export default function PremiumCoursChoicePage() {
         </p>
         <div className="premium-cours-choice__plan">
           <span className="badge badge--premium">
-            {planConfig?.nom} — {planConfig?.prix.toLocaleString('fr-FR')} FCFA/mois
+            {planConfig?.nom} — {planConfig?.prix.toLocaleString('fr-FR')} FCFA / {planConfig?.duree}
           </span>
           <span className="premium-cours-choice__count">
             {selection.length} / {maxCours} cours sélectionnés
