@@ -163,11 +163,7 @@ export default function PremiumPage() {
 
             <div
               className="premium-plans__grille"
-              style={{
-                gridTemplateColumns: ongletPlans === 'a_la_carte'
-                  ? 'repeat(auto-fit, minmax(160px, 1fr))'
-                  : undefined,
-              }}
+              style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}
             >
 
               {ongletPlans === 'a_la_carte' ? (
@@ -191,7 +187,7 @@ export default function PremiumPage() {
                       </div>
                       <div className="premium-plan-card__prix">
                         <span className="premium-plan-card__montant">{PLANS_PREMIUM[planId].montant.toLocaleString('fr-FR')}</span>
-                        <span className="premium-plan-card__devise">FCFA / mois</span>
+                        <span className="premium-plan-card__devise">FCFA / {PLANS_PREMIUM[planId].duree}</span>
                       </div>
                       <p className="premium-plan-card__description">{PLANS_PREMIUM[planId].description}</p>
                     </div>

@@ -18,8 +18,8 @@
 .premium-pricing__tab:hover { border-color: #2563eb; color: #2563eb; }
 .premium-pricing__tab--active { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
 
-/* Pricing Cards */
-.pricing-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; max-width: 700px; margin: 0 auto 2rem; }
+/* Pricing Cards — grille alignée pour À la carte (4) et Illimité (3) */
+.pricing-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; max-width: 900px; margin: 0 auto 2rem; }
 .pricing-card { position: relative; padding: 2rem; background: white; border: 2px solid #e5e7eb; border-radius: 1rem; cursor: pointer; text-align: center; transition: all 0.2s; }
 .pricing-card:hover { border-color: #2563eb; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
 .pricing-card--selected { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,0.1); }
