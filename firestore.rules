@@ -433,6 +433,63 @@ match /rappels_prof/{rappelId} {
    allow create, update, delete: if isAdmin();
    }
 
+    // ==================== PHASE 27 — MÉDIATHÈQUE ====================
+    match /mediatheque/{mediaId} {
+      allow read: if
+        (request.auth != null &&
+         getUserData().role == 'admin')
+        || (request.auth != null &&
+            resource.data.auteurId == request.auth.uid)
+        || resource.data.statut == 'publie';
+
+      allow create: if
+        request.auth != null &&
+        getUserData().role in ['admin', 'prof']
+        && request.resource.data.keys().hasAll([
+          'titre', 'description', 'type', 'url', 'duree',
+          'discipline', 'disciplineId', 'classe', 'niveau',
+          'isPremium', 'auteurId', 'auteurNom', 'statut',
+          'vues', 'tags', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.auteurId == request.auth.uid
+        && request.resource.data.vues == 0;
+
+      allow update: if
+        request.auth != null &&
+        (getUserData().role == 'admin' || resource.data.auteurId == request.auth.uid)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['auteurId', 'createdAt']);
+
+      allow update: if
+        request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vues'])
+        && request.resource.data.vues == resource.data.vues + 1;
+
+      allow delete: if
+        request.auth != null &&
+        getUserData().role == 'admin';
+    }
+
+    match /mediatheque_vues/{vueId} {
+      allow read: if
+        request.auth != null &&
+        (resource.data.userId == request.auth.uid
+         || getUserData().role == 'admin');
+
+      allow create, update: if
+        request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'mediaId', 'userId', 'dureeVisionnee', 'positionReprise',
+          'estTermine', 'vueAt'
+        ]);
+
+      allow delete: if
+        request.auth != null &&
+        (resource.data.userId == request.auth.uid
+         || getUserData().role == 'admin');
+    }
+
       // ==================== COLLECTION: platform_settings ====================
    match /platform_settings/{docId} {
     allow read: if isAdmin();

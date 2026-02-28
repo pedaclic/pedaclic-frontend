@@ -1,0 +1,1276 @@
+/* ============================================================
+   PedaClic — Phase 27 : Styles Médiathèque
+   www.pedaclic.sn | Design : Header #2563eb, cards blanches
+   NE JAMAIS MODIFIER le header, les cards, le footer global
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   VARIABLES CSS — Palette cohérente avec PedaClic
+   ───────────────────────────────────────────────────────────── */
+:root {
+  /* Couleurs principales (héritées du design PedaClic) */
+  --pc-bleu:       #2563eb;
+  --pc-bleu-clair: #eff6ff;
+  --pc-bleu-hover: #1d4ed8;
+
+  /* Couleurs types de média */
+  --media-video:     #2563eb; /* Bleu — vidéo */
+  --media-audio:     #7c3aed; /* Violet — audio */
+  --media-podcast:   #059669; /* Vert — podcast */
+  --media-webinaire: #d97706; /* Orange — webinaire */
+
+  /* Grilles et espaces */
+  --gap-sm:  0.75rem;
+  --gap-md:  1.25rem;
+  --gap-lg:  2rem;
+
+  /* Ombres et rayons */
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 6px 20px rgba(0, 0, 0, 0.12);
+  --radius-card: 12px;
+  --radius-btn:  8px;
+
+  /* Couleurs texte */
+  --texte-principal:  #111827;
+  --texte-secondaire: #6b7280;
+  --texte-tertiaire:  #9ca3af;
+
+  /* Fond de page */
+  --fond-page: #f8fafc;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE PRINCIPALE — MediathequePage
+   ───────────────────────────────────────────────────────────── */
+
+/* Wrapper général de la page médiathèque */
+.mediatheque-page {
+  min-height: 100vh;
+  background: var(--fond-page);
+  padding-bottom: 4rem;
+}
+
+/* ── En-tête de page (héro de la médiathèque) ── */
+.mediatheque-hero {
+  background: linear-gradient(135deg, var(--pc-bleu) 0%, #1e40af 100%);
+  color: white;
+  padding: 3rem 2rem 2.5rem;
+  text-align: center;
+}
+
+.mediatheque-hero__titre {
+  font-size: 2.2rem;
+  font-weight: 800;
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.mediatheque-hero__sous-titre {
+  font-size: 1.05rem;
+  opacity: 0.85;
+  margin: 0 0 2rem;
+}
+
+/* ── Compteur de médias disponibles ── */
+.mediatheque-hero__stats {
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.mediatheque-hero__stat {
+  text-align: center;
+}
+
+.mediatheque-hero__stat-nombre {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.mediatheque-hero__stat-label {
+  font-size: 0.8rem;
+  opacity: 0.75;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FILTRES — Barre de recherche + filtres
+   ───────────────────────────────────────────────────────────── */
+
+/* Conteneur des filtres (sticky sur mobile) */
+.mediatheque-filtres {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Ligne principale : recherche + sélecteurs */
+.mediatheque-filtres__ligne {
+  display: flex;
+  gap: var(--gap-sm);
+  align-items: center;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Champ de recherche textuelle */
+.mediatheque-filtres__recherche {
+  flex: 1;
+  min-width: 200px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.mediatheque-filtres__recherche-icone {
+  position: absolute;
+  left: 0.875rem;
+  color: var(--texte-tertiaire);
+  font-size: 1rem;
+  pointer-events: none;
+}
+
+.mediatheque-filtres__recherche-input {
+  width: 100%;
+  padding: 0.6rem 1rem 0.6rem 2.5rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  background: var(--fond-page);
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.mediatheque-filtres__recherche-input:focus {
+  border-color: var(--pc-bleu);
+  background: white;
+}
+
+/* Sélecteurs de filtre (type, discipline, niveau, accès) */
+.mediatheque-filtres__select {
+  padding: 0.6rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: var(--radius-btn);
+  font-size: 0.875rem;
+  background: white;
+  color: var(--texte-principal);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 130px;
+}
+
+.mediatheque-filtres__select:focus {
+  border-color: var(--pc-bleu);
+}
+
+/* Boutons de type rapide (onglets visuels) */
+.mediatheque-filtres__types {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  max-width: 1200px;
+  margin: 0.75rem auto 0;
+}
+
+/* Bouton type de média (Vidéo, Audio, Podcast, Webinaire, Tous) */
+.mediatheque-filtres__type-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: white;
+  color: var(--texte-secondaire);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.mediatheque-filtres__type-btn:hover {
+  border-color: var(--pc-bleu);
+  color: var(--pc-bleu);
+}
+
+/* Bouton actif — couleur dynamique selon le type */
+.mediatheque-filtres__type-btn--actif {
+  background: var(--pc-bleu-clair);
+  border-color: var(--pc-bleu);
+  color: var(--pc-bleu);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GRILLE DU CATALOGUE
+   ───────────────────────────────────────────────────────────── */
+
+/* Zone de contenu principal */
+.mediatheque-contenu {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+}
+
+/* En-tête du catalogue (titre + compteur) */
+.mediatheque-catalogue__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mediatheque-catalogue__titre {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  margin: 0;
+}
+
+.mediatheque-catalogue__compteur {
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+  background: #f3f4f6;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+}
+
+/* Grille de cartes — responsive */
+.mediatheque-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--gap-md);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CARTE MÉDIA — Card individuelle du catalogue
+   ───────────────────────────────────────────────────────────── */
+
+/* Carte principale */
+.media-card {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f1f5f9;
+}
+
+.media-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+}
+
+/* ── Vignette / Thumbnail ── */
+.media-card__vignette {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* Ratio 16:9 */
+  background: #1e293b; /* Fond sombre par défaut */
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Image de vignette */
+.media-card__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Vignette par défaut si pas d'image */
+.media-card__vignette-default {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Durée affichée en bas à droite de la vignette */
+.media-card__duree {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+/* Badge "PREMIUM" sur la vignette */
+.media-card__badge-premium {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Badge "GRATUIT" */
+.media-card__badge-gratuit {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  background: #16a34a;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Overlay "APERÇU 30s" pour les non-premium */
+.media-card__apercu-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0,0,0,0.7));
+  color: white;
+  font-size: 0.72rem;
+  padding: 1rem 0.75rem 0.5rem;
+  text-align: center;
+}
+
+/* Icône play centrée sur la vignette */
+.media-card__play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  background: rgba(0, 0, 0, 0.3);
+  transition: opacity 0.2s;
+}
+
+.media-card__play-icone {
+  width: 52px;
+  height: 52px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.media-card:hover .media-card__play {
+  opacity: 1;
+}
+
+/* ── Corps de la carte ── */
+.media-card__corps {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Badge du type de média (Vidéo, Audio, etc.) */
+.media-card__type {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  width: fit-content;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Titre du média */
+.media-card__titre {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  margin: 0 0 0.4rem;
+  line-height: 1.35;
+  /* Limite à 2 lignes */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Auteur du média */
+.media-card__auteur {
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+  margin: 0 0 0.6rem;
+}
+
+/* ── Pied de carte ── */
+.media-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* Discipline + classe */
+.media-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.media-card__discipline {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--pc-bleu);
+}
+
+.media-card__classe {
+  font-size: 0.72rem;
+  color: var(--texte-tertiaire);
+}
+
+/* Compteur de vues */
+.media-card__vues {
+  font-size: 0.75rem;
+  color: var(--texte-tertiaire);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ÉTATS — Chargement, vide, erreur
+   ───────────────────────────────────────────────────────────── */
+
+/* Spinner de chargement */
+.mediatheque-chargement {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  gap: 1rem;
+  color: var(--texte-secondaire);
+}
+
+.mediatheque-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e5e7eb;
+  border-top-color: var(--pc-bleu);
+  border-radius: 50%;
+  animation: mediatheque-spin 0.7s linear infinite;
+}
+
+@keyframes mediatheque-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* État vide (aucun résultat) */
+.mediatheque-vide {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--texte-secondaire);
+}
+
+.mediatheque-vide__emoji {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.mediatheque-vide__titre {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  margin: 0 0 0.5rem;
+}
+
+.mediatheque-vide__message {
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE DÉTAIL — MediaDetailPage
+   ───────────────────────────────────────────────────────────── */
+
+/* Layout deux colonnes sur desktop */
+.media-detail-page {
+  min-height: 100vh;
+  background: var(--fond-page);
+  padding-bottom: 4rem;
+}
+
+/* En-tête de retour */
+.media-detail-header {
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Bouton retour */
+.media-detail-retour {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--pc-bleu);
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-btn);
+  transition: background 0.2s;
+}
+
+.media-detail-retour:hover {
+  background: var(--pc-bleu-clair);
+}
+
+/* Layout principal (lecteur + sidebar) */
+.media-detail-layout {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: var(--gap-lg);
+  align-items: start;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LECTEUR MULTIMÉDIA — Colonne principale
+   ───────────────────────────────────────────────────────────── */
+
+/* Wrapper du lecteur */
+.media-player {
+  background: #0f172a;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Zone vidéo native (ratio 16:9) */
+.media-player__video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%;
+  background: #000;
+}
+
+.media-player__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+/* Zone audio — design compact */
+.media-player__audio-wrapper {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  min-height: 200px;
+}
+
+/* Image d'illustration pour l'audio */
+.media-player__audio-art {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  object-fit: cover;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* Art placeholder si pas de vignette audio */
+.media-player__audio-art-placeholder {
+  width: 120px;
+  height: 120px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+}
+
+/* Titre dans le lecteur audio */
+.media-player__audio-titre {
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+}
+
+/* Élément audio natif (stylisé par le navigateur) */
+.media-player__audio {
+  width: 100%;
+  max-width: 400px;
+}
+
+/* ── Overlay Premium (30s écoulées) ── */
+.media-player__overlay-premium {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  z-index: 10;
+}
+
+.media-player__overlay-premium h3 {
+  color: white;
+  font-size: 1.3rem;
+  margin: 0;
+}
+
+.media-player__overlay-premium p {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.9rem;
+  margin: 0;
+  max-width: 280px;
+}
+
+/* Bouton "Devenir Premium" dans l'overlay */
+.btn-premium-overlay {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  padding: 0.75rem 2rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  text-decoration: none;
+  display: inline-block;
+  margin-top: 0.5rem;
+}
+
+.btn-premium-overlay:hover {
+  opacity: 0.9;
+}
+
+/* ── Progression de reprise ── */
+.media-player__reprise {
+  padding: 0.75rem 1.25rem;
+  background: rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.media-player__reprise-texte {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.8rem;
+}
+
+.media-player__reprise-btn {
+  background: var(--pc-bleu);
+  color: white;
+  border: none;
+  padding: 0.35rem 0.875rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ── Barre de progression du visionnage ── */
+.media-player__progression-barre {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  position: relative;
+}
+
+.media-player__progression-rempli {
+  height: 100%;
+  background: var(--pc-bleu);
+  transition: width 0.3s;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   INFOS DU MÉDIA — Sous le lecteur
+   ───────────────────────────────────────────────────────────── */
+
+/* Conteneur des infos */
+.media-detail-infos {
+  background: white;
+  border-radius: var(--radius-card);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-card);
+  margin-top: var(--gap-md);
+}
+
+/* Titre principal */
+.media-detail-infos__titre {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--texte-principal);
+  margin: 0 0 0.75rem;
+  line-height: 1.3;
+}
+
+/* Ligne de métadonnées (auteur · discipline · classe · vues) */
+.media-detail-infos__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.media-detail-infos__meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* Description longue */
+.media-detail-infos__description {
+  font-size: 0.925rem;
+  color: var(--texte-principal);
+  line-height: 1.65;
+  margin: 0 0 1.25rem;
+}
+
+/* Tags */
+.media-detail-infos__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.media-detail-infos__tag {
+  background: var(--pc-bleu-clair);
+  color: var(--pc-bleu);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SIDEBAR — Médias similaires + info premium
+   ───────────────────────────────────────────────────────────── */
+
+/* Conteneur sidebar */
+.media-detail-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-md);
+  position: sticky;
+  top: 4.5rem; /* Sous la barre de filtres */
+}
+
+/* Carte info premium */
+.media-sidebar-premium {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1.5px solid #f59e0b;
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  text-align: center;
+}
+
+.media-sidebar-premium__titre {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #92400e;
+  margin: 0 0 0.5rem;
+}
+
+.media-sidebar-premium__prix {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #d97706;
+  margin: 0 0 0.25rem;
+}
+
+.media-sidebar-premium__prix-annuel {
+  font-size: 0.8rem;
+  color: #92400e;
+  margin: 0 0 1rem;
+}
+
+/* Bouton abonnement premium */
+.btn-abonnement {
+  width: 100%;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-abonnement:hover {
+  opacity: 0.9;
+}
+
+/* Liste des avantages premium */
+.media-sidebar-premium__avantages {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #78350f;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.media-sidebar-premium__avantages li::before {
+  content: '✓ ';
+  color: #d97706;
+  font-weight: 700;
+}
+
+/* Section "Médias similaires" */
+.media-sidebar-similaires {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.media-sidebar-similaires__titre {
+  padding: 1rem 1.25rem 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--texte-principal);
+  border-bottom: 1px solid #f3f4f6;
+  margin: 0;
+}
+
+/* Carte de média similaire (liste compacte) */
+.media-similaire-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  border-bottom: 1px solid #f9fafb;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-decoration: none;
+  color: inherit;
+}
+
+.media-similaire-item:hover {
+  background: var(--fond-page);
+}
+
+.media-similaire-item:last-child {
+  border-bottom: none;
+}
+
+/* Vignette compacte du média similaire */
+.media-similaire-item__vignette {
+  width: 80px;
+  height: 52px;
+  border-radius: 6px;
+  background: #1e293b;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.media-similaire-item__vignette img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-similaire-item__vignette-emoji {
+  font-size: 1.5rem;
+  color: rgba(255,255,255,0.4);
+}
+
+/* Infos du média similaire */
+.media-similaire-item__infos {
+  flex: 1;
+  min-width: 0;
+}
+
+.media-similaire-item__titre {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+  margin: 0 0 0.2rem;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.media-similaire-item__meta {
+  font-size: 0.72rem;
+  color: var(--texte-secondaire);
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FORMULAIRE D'AJOUT / ÉDITION — Admin et Prof
+   ───────────────────────────────────────────────────────────── */
+
+/* Modal / page d'ajout */
+.media-form {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 2rem;
+  max-width: 700px;
+  margin: 2rem auto;
+}
+
+.media-form__titre {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--texte-principal);
+  margin: 0 0 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* Groupe de champ */
+.media-form__groupe {
+  margin-bottom: 1.25rem;
+}
+
+.media-form__label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--texte-principal);
+  margin-bottom: 0.4rem;
+}
+
+.media-form__label span {
+  color: #dc2626; /* Astérisque requis */
+}
+
+/* Inputs, textareas, selects du formulaire */
+.media-form__input,
+.media-form__select,
+.media-form__textarea {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  color: var(--texte-principal);
+  background: white;
+  transition: border-color 0.2s;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.media-form__input:focus,
+.media-form__select:focus,
+.media-form__textarea:focus {
+  border-color: var(--pc-bleu);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.media-form__textarea {
+  resize: vertical;
+  min-height: 100px;
+  font-family: inherit;
+}
+
+/* Zone d'upload de fichier */
+.media-form__upload-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: var(--radius-card);
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.media-form__upload-zone:hover,
+.media-form__upload-zone--active {
+  border-color: var(--pc-bleu);
+  background: var(--pc-bleu-clair);
+}
+
+.media-form__upload-icone {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.media-form__upload-texte {
+  font-size: 0.875rem;
+  color: var(--texte-secondaire);
+  margin: 0;
+}
+
+.media-form__upload-texte strong {
+  color: var(--pc-bleu);
+}
+
+/* Barre de progression d'upload */
+.media-form__progress {
+  margin-top: 0.75rem;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.media-form__progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--pc-bleu), #7c3aed);
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+
+.media-form__progress-texte {
+  font-size: 0.8rem;
+  color: var(--texte-secondaire);
+  margin-top: 0.4rem;
+  text-align: right;
+}
+
+/* Grille deux colonnes dans le formulaire */
+.media-form__grille-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap-sm);
+}
+
+/* Ligne d'actions (Annuler / Enregistrer) */
+.media-form__actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+/* Bouton principal */
+.btn-principal {
+  background: var(--pc-bleu);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.75rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-principal:hover:not(:disabled) {
+  background: var(--pc-bleu-hover);
+}
+
+.btn-principal:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Bouton secondaire */
+.btn-secondaire {
+  background: white;
+  color: var(--texte-principal);
+  border: 1.5px solid #e5e7eb;
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.btn-secondaire:hover {
+  border-color: #9ca3af;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE — Mobile first
+   ───────────────────────────────────────────────────────────── */
+
+/* Tablette (≤ 900px) : sidebar passe en bas */
+@media (max-width: 900px) {
+  .media-detail-layout {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+
+  .media-detail-sidebar {
+    position: static;
+  }
+
+  /* Sidebar similaires en grille horizontale */
+  .media-sidebar-similaires__liste {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile (≤ 640px) : adaptations compactes */
+@media (max-width: 640px) {
+  /* Héro réduit */
+  .mediatheque-hero {
+    padding: 2rem 1rem 1.5rem;
+  }
+
+  .mediatheque-hero__titre {
+    font-size: 1.6rem;
+  }
+
+  .mediatheque-hero__stats {
+    gap: 1.25rem;
+  }
+
+  /* Filtres empilés */
+  .mediatheque-filtres {
+    padding: 0.75rem 1rem;
+  }
+
+  .mediatheque-filtres__ligne {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mediatheque-filtres__select {
+    width: 100%;
+  }
+
+  /* Grille 1 colonne sur mobile */
+  .mediatheque-grille {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .mediatheque-contenu {
+    padding: 1rem;
+  }
+
+  /* Formulaire pleine page */
+  .media-form {
+    padding: 1.25rem;
+    margin: 1rem;
+    border-radius: var(--radius-btn);
+  }
+
+  .media-form__grille-2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Layout header détail */
+  .media-detail-header {
+    padding: 0.75rem 1rem;
+  }
+
+  /* Sidebar similaires en colonne sur mobile */
+  .media-sidebar-similaires__liste {
+    display: block;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ANIMATIONS — Transitions globales
+   ───────────────────────────────────────────────────────────── */
+
+/* Animation d'apparition des cards au chargement */
+@keyframes mediatheque-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.media-card {
+  animation: mediatheque-fadeIn 0.3s ease both;
+}
+
+/* Décalage d'animation en cascade pour les premières cards */
+.media-card:nth-child(1) { animation-delay: 0.05s; }
+.media-card:nth-child(2) { animation-delay: 0.10s; }
+.media-card:nth-child(3) { animation-delay: 0.15s; }
+.media-card:nth-child(4) { animation-delay: 0.20s; }
+.media-card:nth-child(5) { animation-delay: 0.25s; }
+.media-card:nth-child(6) { animation-delay: 0.30s; }
+
+/* Pulsation du badge PREMIUM */
+@keyframes pulse-premium {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+  50%       { box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
+}
+
+.media-card__badge-premium {
+  animation: pulse-premium 2.5s ease infinite;
+}
