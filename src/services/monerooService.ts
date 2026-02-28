@@ -14,8 +14,9 @@ const API_BASE_URL =
 // ── Types ─────────────────────────────────────────────────────
 
 export type PlanPremium =
-  | 'mensuel'
-  | 'annuel'
+  | 'illimite_3m'
+  | 'illimite_6m'
+  | 'illimite_1an'
   | 'a_la_carte_1'
   | 'a_la_carte_3'
   | 'a_la_carte_7'
@@ -70,20 +71,26 @@ export const PLANS_PREMIUM: Record<PlanPremium, {
   a_la_carte_tous: {
     label:       'Tous les contenus',
     montant:     25000,
-    duree:       '1 mois',
-    description: 'Accès à l\'intégralité du catalogue',
+    duree:       '9 mois',
+    description: 'Accès à l\'intégralité du catalogue pendant 9 mois',
   },
-  mensuel: {
-    label:       'Premium Mensuel',
-    montant:     2000,
-    duree:       '1 mois',
-    description: 'Accès illimité aux cours, quiz et ressources pendant 1 mois',
+  illimite_3m: {
+    label:       '3 mois',
+    montant:     10000,
+    duree:       '3 mois',
+    description: 'Accès illimité aux cours, quiz et ressources pendant 3 mois',
   },
-  annuel: {
-    label:       'Premium Annuel',
+  illimite_6m: {
+    label:       '6 mois',
     montant:     20000,
+    duree:       '6 mois',
+    description: 'Accès illimité pendant 6 mois — économisez 10 000 FCFA !',
+  },
+  illimite_1an: {
+    label:       '1 an',
+    montant:     30000,
     duree:       '1 an',
-    description: 'Accès illimité toute l\'année — économisez 4 000 FCFA !',
+    description: 'Accès illimité toute l\'année — économisez 30 000 FCFA !',
   },
 };
 

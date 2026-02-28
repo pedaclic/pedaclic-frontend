@@ -266,14 +266,14 @@ const Home: React.FC = () => {
             <div className="home-page__premium-pricing">
               <div className="home-page__pricing-card">
                 <span className="home-page__pricing-popular">Plus populaire</span>
-                <h3>Abonnement Annuel</h3>
+                <h3>Accès illimité 6 mois</h3>
                 <div className="home-page__pricing-price">
                   <span className="home-page__pricing-amount">20 000</span>
                   <span className="home-page__pricing-currency">FCFA</span>
-                  <span className="home-page__pricing-period">/an</span>
+                  <span className="home-page__pricing-period">/6 mois</span>
                 </div>
                 <p className="home-page__pricing-save">
-                  Économisez 4 000 FCFA vs mensuel
+                  Économisez 10 000 FCFA vs 2×3 mois
                 </p>
                 <Link to="/premium" className="home-page__btn home-page__btn--primary home-page__btn--block">
                   Choisir ce plan

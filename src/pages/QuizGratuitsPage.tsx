@@ -121,7 +121,7 @@ const BannierePremium: React.FC = () => (
         suivi de progression et bien plus encore.
       </p>
       <p className="qg-banniere__prix">
-        <strong>2 000 FCFA/mois</strong> · <strong>20 000 FCFA/an</strong>
+        <strong>Dès 10 000 FCFA / 3 mois</strong> — Accès illimité
       </p>
     </div>
     <Link to="/premium" className="btn btn-premium">

@@ -229,10 +229,17 @@ const PremiumPage: React.FC = () => {
         // Calculer la date d'expiration
         const now = new Date();
         const expirationDate = new Date(now);
-        if (selectedPlan === 'mensuel') {
-          expirationDate.setMonth(expirationDate.getMonth() + 1);
-        } else {
+        const plan = TOUS_LES_PLANS.find(p => p.id === selectedPlan);
+        if (plan?.duree.includes('3 mois')) {
+          expirationDate.setMonth(expirationDate.getMonth() + 3);
+        } else if (plan?.duree.includes('6 mois')) {
+          expirationDate.setMonth(expirationDate.getMonth() + 6);
+        } else if (plan?.duree.includes('9 mois')) {
+          expirationDate.setMonth(expirationDate.getMonth() + 9);
+        } else if (plan?.duree.includes('12') || plan?.duree.includes('an')) {
           expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+        } else {
+          expirationDate.setMonth(expirationDate.getMonth() + 1);
         }
 
         // Mettre à jour le statut Premium de l'utilisateur
@@ -347,7 +354,7 @@ const PremiumPage: React.FC = () => {
             <button
               type="button"
               className={`premium-pricing__tab ${ongletPlans === 'illimite' ? 'premium-pricing__tab--active' : ''}`}
-              onClick={() => { setOngletPlans('illimite'); setSelectedPlan('annuel'); }}
+              onClick={() => { setOngletPlans('illimite'); setSelectedPlan('illimite_6m'); }}
             >
               ⭐ Accès illimité
             </button>
@@ -381,7 +388,7 @@ const PremiumPage: React.FC = () => {
                   <span className="pricing-card__amount">
                     {formatPrice(plan.prix)}
                   </span>
-                  <span className="pricing-card__period">/mois</span>
+                  <span className="pricing-card__period">/{plan.duree}</span>
                 </div>
 
                 {/* Économie */}
@@ -517,13 +524,13 @@ const PremiumPage: React.FC = () => {
               </div>
             ))}
             <div className="comparison-row comparison-row--prices">
-              <div className="comparison-feature">Prix / mois</div>
+              <div className="comparison-feature">Prix</div>
               <div className="comparison-free">—</div>
-              <div className="comparison-col">1 000 FCFA</div>
-              <div className="comparison-col">2 000 FCFA</div>
-              <div className="comparison-col">5 000 FCFA</div>
-              <div className="comparison-col">25 000 FCFA</div>
-              <div className="comparison-premium">2 000 FCFA</div>
+              <div className="comparison-col">1 000 /mois</div>
+              <div className="comparison-col">2 000 /mois</div>
+              <div className="comparison-col">5 000 /mois</div>
+              <div className="comparison-col">25 000 /9 mois</div>
+              <div className="comparison-premium">Dès 10 000 /3 mois</div>
             </div>
           </div>
         </div>
@@ -572,7 +579,7 @@ const PremiumPage: React.FC = () => {
                 {'★'.repeat(5)}
               </div>
               <p className="testimonial-card__text">
-                "20 000 FCFA pour l'année, c'est vraiment abordable. Mon fils a accès à tout ce dont il a besoin."
+                "20 000 FCFA pour 6 mois, c'est vraiment abordable. Mon fils a accès à tout ce dont il a besoin."
               </p>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">FD</div>

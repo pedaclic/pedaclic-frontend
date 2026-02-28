@@ -155,7 +155,7 @@ export default function PremiumPage() {
               <button
                 type="button"
                 className={`premium-pricing__tab ${ongletPlans === 'illimite' ? 'premium-pricing__tab--active' : ''}`}
-                onClick={() => { setOngletPlans('illimite'); setPlanSelectionne('annuel'); }}
+                onClick={() => { setOngletPlans('illimite'); setPlanSelectionne('illimite_6m'); }}
               >
                 ⭐ Accès illimité
               </button>
@@ -199,51 +199,36 @@ export default function PremiumPage() {
                 </>
               ) : (
                 <>
-                  {/* Plan Mensuel */}
-                  <div
-                    className={`premium-plan-card ${planSelectionne === 'mensuel' ? 'premium-plan-card--actif' : ''}`}
-                    onClick={() => setPlanSelectionne('mensuel')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && setPlanSelectionne('mensuel')}
-                  >
-                    <div className="premium-plan-card__select">
-                      <span className={planSelectionne === 'mensuel' ? 'premium-plan-card__radio--actif' : 'premium-plan-card__radio'} />
+                  {(['illimite_3m', 'illimite_6m', 'illimite_1an'] as const).map(planId => (
+                    <div
+                      key={planId}
+                      className={`premium-plan-card ${planSelectionne === planId ? 'premium-plan-card--actif' : ''} ${planId === 'illimite_6m' ? 'premium-plan-card--populaire' : ''}`}
+                      onClick={() => setPlanSelectionne(planId)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={e => e.key === 'Enter' && setPlanSelectionne(planId)}
+                    >
+                      {planId === 'illimite_6m' && <div className="premium-plan-card__badge-populaire">🏆 Meilleure offre</div>}
+                      <div className="premium-plan-card__select">
+                        <span className={planSelectionne === planId ? 'premium-plan-card__radio--actif' : 'premium-plan-card__radio'} />
+                      </div>
+                      <div className="premium-plan-card__header">
+                        <span className="premium-plan-card__icone">⭐</span>
+                        <h3 className="premium-plan-card__nom">{PLANS_PREMIUM[planId].label}</h3>
+                      </div>
+                      <div className="premium-plan-card__prix">
+                        <span className="premium-plan-card__montant">{PLANS_PREMIUM[planId].montant.toLocaleString('fr-FR')}</span>
+                        <span className="premium-plan-card__devise">FCFA / {PLANS_PREMIUM[planId].duree}</span>
+                      </div>
+                      {planId === 'illimite_6m' && (
+                        <div className="premium-plan-card__economie">💰 Économisez 10 000 FCFA vs 2×3 mois</div>
+                      )}
+                      {planId === 'illimite_1an' && (
+                        <div className="premium-plan-card__economie">💰 Économisez 30 000 FCFA vs 4×3 mois</div>
+                      )}
+                      <p className="premium-plan-card__description">{PLANS_PREMIUM[planId].description}</p>
                     </div>
-                    <div className="premium-plan-card__header">
-                      <span className="premium-plan-card__icone">📅</span>
-                      <h3 className="premium-plan-card__nom">Mensuel</h3>
-                    </div>
-                    <div className="premium-plan-card__prix">
-                      <span className="premium-plan-card__montant">2 000</span>
-                      <span className="premium-plan-card__devise">FCFA / mois</span>
-                    </div>
-                    <p className="premium-plan-card__description">{PLANS_PREMIUM.mensuel.description}</p>
-                  </div>
-
-                  {/* Plan Annuel */}
-                  <div
-                    className={`premium-plan-card premium-plan-card--populaire ${planSelectionne === 'annuel' ? 'premium-plan-card--actif' : ''}`}
-                    onClick={() => setPlanSelectionne('annuel')}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={e => e.key === 'Enter' && setPlanSelectionne('annuel')}
-                  >
-                    <div className="premium-plan-card__badge-populaire">🏆 Meilleure offre</div>
-                    <div className="premium-plan-card__select">
-                      <span className={planSelectionne === 'annuel' ? 'premium-plan-card__radio--actif' : 'premium-plan-card__radio'} />
-                    </div>
-                    <div className="premium-plan-card__header">
-                      <span className="premium-plan-card__icone">🎓</span>
-                      <h3 className="premium-plan-card__nom">Annuel</h3>
-                    </div>
-                    <div className="premium-plan-card__prix">
-                      <span className="premium-plan-card__montant">20 000</span>
-                      <span className="premium-plan-card__devise">FCFA / an</span>
-                    </div>
-                    <div className="premium-plan-card__economie">💰 Économisez 4 000 FCFA vs mensuel</div>
-                    <p className="premium-plan-card__description">{PLANS_PREMIUM.annuel.description}</p>
-                  </div>
+                  ))}
                 </>
               )}
 
@@ -331,7 +316,7 @@ export default function PremiumPage() {
             </div>
 
             <div className="premium-faq__item">
-              <h3>Le plan annuel est-il renouvelé automatiquement ?</h3>
+              <h3>L'abonnement est-il renouvelé automatiquement ?</h3>
               <p>Non. Tu recevras une notification avant l'expiration pour renouveler si tu le souhaites.</p>
             </div>
 
