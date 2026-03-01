@@ -189,22 +189,22 @@ const Footer: React.FC = () => {
           <h4 className="footer__title">Niveaux</h4>
           <ul className="footer__list">
             <li>
-              <Link to="/disciplines?niveau=college&classe=6eme" className="footer__link">
+              <Link to="/disciplines?niveau=college&classe=6ème" className="footer__link">
                 6ème
               </Link>
             </li>
             <li>
-              <Link to="/disciplines?niveau=college&classe=5eme" className="footer__link">
+              <Link to="/disciplines?niveau=college&classe=5ème" className="footer__link">
                 5ème
               </Link>
             </li>
             <li>
-              <Link to="/disciplines?niveau=college&classe=4eme" className="footer__link">
+              <Link to="/disciplines?niveau=college&classe=4ème" className="footer__link">
                 4ème
               </Link>
             </li>
             <li>
-              <Link to="/disciplines?niveau=college&classe=3eme" className="footer__link">
+              <Link to="/disciplines?niveau=college&classe=3ème" className="footer__link">
                 3ème
               </Link>
             </li>

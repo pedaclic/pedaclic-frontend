@@ -41,34 +41,34 @@ import {
 } from 'lucide-react';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import {
+  CLASSES_COLLEGE_OPTIONS,
+  CLASSES_LYCEE_OPTIONS,
+  normaliserClassePourComparaison,
+  type Classe
+} from '../types/cahierTextes.types';
 import './Disciplines.css';
 
 /* ==================== TYPES ==================== */
 
-/**
- * Niveaux scolaires
- */
 type Niveau = 'college' | 'lycee';
 
-/**
- * Classes disponibles
- */
-type Classe = '6eme' | '5eme' | '4eme' | '3eme' | '2nde' | '1ere' | 'Terminale';
-
-/**
- * Interface pour une discipline
- */
 interface Discipline {
   id: string;
   nom: string;
   niveau: Niveau;
-  classe: Classe;
+  classe: string;  // Firestore : 6eme/6ème, etc.
   ordre: number;
   coefficient?: number;
   couleur?: string;
   icone?: string;
   description?: string;
 }
+
+const classesByNiveau: Record<Niveau, Array<{ valeur: Classe; label: string }>> = {
+  college: CLASSES_COLLEGE_OPTIONS,
+  lycee: CLASSES_LYCEE_OPTIONS
+};
 
 /* ==================== DONNÉES STATIQUES ==================== */
 
@@ -108,27 +108,6 @@ const disciplineColors: Record<string, string> = {
   'EPS': '#22c55e',
   'Arts Plastiques': '#ec4899',
   'Musique': '#a855f7'
-};
-
-/**
- * Labels des classes
- */
-const classeLabels: Record<Classe, string> = {
-  '6eme': '6ème',
-  '5eme': '5ème',
-  '4eme': '4ème',
-  '3eme': '3ème',
-  '2nde': '2nde',
-  '1ere': '1ère',
-  'Terminale': 'Terminale'
-};
-
-/**
- * Classes par niveau
- */
-const classesByNiveau: Record<Niveau, Classe[]> = {
-  college: ['6eme', '5eme', '4eme', '3eme'],
-  lycee: ['2nde', '1ere', 'Terminale']
 };
 
 /* ==================== COMPOSANT DISCIPLINES ==================== */
@@ -189,9 +168,10 @@ const Disciplines: React.FC = () => {
   useEffect(() => {
     let filtered = disciplines.filter(d => d.niveau === selectedNiveau);
 
-    // Filtre par classe si sélectionnée
+    // Filtre par classe (normalisation pour rétrocompat 6eme/6ème)
     if (selectedClasse !== 'all') {
-      filtered = filtered.filter(d => d.classe === selectedClasse);
+      const selNorm = normaliserClassePourComparaison(selectedClasse);
+      filtered = filtered.filter(d => normaliserClassePourComparaison(d.classe) === selNorm);
     }
 
     // Filtre par recherche
@@ -291,9 +271,9 @@ const Disciplines: React.FC = () => {
                 onChange={(e) => setSelectedClasse(e.target.value as Classe | 'all')}
               >
                 <option value="all">Toutes les classes</option>
-                {classesByNiveau[selectedNiveau].map((classe) => (
-                  <option key={classe} value={classe}>
-                    {classeLabels[classe]}
+                {classesByNiveau[selectedNiveau].map((c) => (
+                  <option key={c.valeur} value={c.valeur}>
+                    {c.label}
                   </option>
                 ))}
               </select>
@@ -366,7 +346,7 @@ const Disciplines: React.FC = () => {
               {/* Compteur de résultats */}
               <p className="disciplines-page__results-count">
                 {filteredDisciplines.length} discipline{filteredDisciplines.length > 1 ? 's' : ''} 
-                {selectedClasse !== 'all' && ` en ${classeLabels[selectedClasse]}`}
+                {selectedClasse !== 'all' && ` en ${selectedClasse}`}
               </p>
 
               {/* Grille */}
@@ -404,7 +384,7 @@ const Disciplines: React.FC = () => {
                           </span>
                         )}
                         <span className="discipline-card__classe">
-                          {classeLabels[discipline.classe]}
+                          {normaliserClassePourComparaison(discipline.classe)}
                         </span>
                       </div>
                     </div>

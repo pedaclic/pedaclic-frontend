@@ -33,6 +33,7 @@ import {
 } from '../../services/profGroupeService';
 import DisciplineService from '../../services/disciplineService';
 import type { GroupeProf, GroupeFormData, StatsGroupe } from '../../types/prof';
+import { CLASSES_OPTIONS, CLASSES, normaliserClassePourComparaison } from '../../types/cahierTextes.types';
 import '../../styles/prof.css';
 
 
@@ -67,16 +68,8 @@ const getAnneeScolaireEnCours = (): string => {
   return `${debut}-${debut + 1}`;
 };
 
-/** Niveaux de classe disponibles */
-const NIVEAUX_CLASSES = [
-  { value: '6eme', label: '6ème' },
-  { value: '5eme', label: '5ème' },
-  { value: '4eme', label: '4ème' },
-  { value: '3eme', label: '3ème' },
-  { value: '2nde', label: '2nde' },
-  { value: '1ere', label: '1ère' },
-  { value: 'Terminale', label: 'Terminale' }
-];
+// Niveaux/classes : source unique (cahierTextes, médiathèque, premium)
+const NIVEAUX_CLASSES = CLASSES_OPTIONS.map((c) => ({ value: c.valeur, label: c.label }));
 
 
 // ==================== INTERFACES ====================
@@ -118,12 +111,12 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
   // ===== États : formulaires =====
   const [formData, setFormData] = useState<GroupeFormData>({
     nom: '', description: '', matiereId: '', matiereNom: '',
-    classeNiveau: '6eme', anneeScolaire: getAnneeScolaireEnCours()
+    classeNiveau: CLASSES[0], anneeScolaire: getAnneeScolaireEnCours()
   });
 
   const [editFormData, setEditFormData] = useState<GroupeFormData>({
     nom: '', description: '', matiereId: '', matiereNom: '',
-    classeNiveau: '6eme', anneeScolaire: getAnneeScolaireEnCours()
+    classeNiveau: CLASSES[0], anneeScolaire: getAnneeScolaireEnCours()
   });
 
   const [filtreStatut, setFiltreStatut] = useState<'actif' | 'archive' | 'tous'>('actif');
@@ -216,7 +209,7 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
       );
       setFormData({
         nom: '', description: '', matiereId: '', matiereNom: '',
-        classeNiveau: '6eme', anneeScolaire: getAnneeScolaireEnCours()
+        classeNiveau: CLASSES[0], anneeScolaire: getAnneeScolaireEnCours()
       });
       setShowFormCreation(false);
       setSuccessMessage('Groupe créé avec succès !');
@@ -231,12 +224,13 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
 
   const handleOuvrirModification = (groupe: GroupeProf) => {
     setGroupeEnEdition(groupe);
+    const classeNorm = normaliserClassePourComparaison(groupe.classeNiveau) || CLASSES[0];
     setEditFormData({
       nom: groupe.nom,
       description: groupe.description || '',
       matiereId: groupe.matiereId,
       matiereNom: groupe.matiereNom,
-      classeNiveau: groupe.classeNiveau,
+      classeNiveau: classeNorm,
       anneeScolaire: groupe.anneeScolaire
     });
     setShowFormCreation(false);
@@ -246,7 +240,7 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
     setGroupeEnEdition(null);
     setEditFormData({
       nom: '', description: '', matiereId: '', matiereNom: '',
-      classeNiveau: '6eme', anneeScolaire: getAnneeScolaireEnCours()
+      classeNiveau: CLASSES[0], anneeScolaire: getAnneeScolaireEnCours()
     });
   };
 

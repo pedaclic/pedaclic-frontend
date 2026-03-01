@@ -20,7 +20,7 @@ import {
   type PlanPremium,
 } from '../services/monerooService';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
-import { NIVEAUX_COURS } from '../cours_types';
+import { CLASSES_OPTIONS } from '../types/cahierTextes.types';
 import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';
 import { estFormuleALaCarte } from '../types/premiumPlans';
 import '../styles/PremiumPage.css';
@@ -264,7 +264,7 @@ export default function PremiumPage() {
                 </p>
                 <MatieresNiveauxSelector
                   matieres={matieres}
-                  niveaux={NIVEAUX_COURS}
+                  niveaux={CLASSES_OPTIONS}
                   value={filtresSelection}
                   onChange={setFiltresSelection}
                   formule={planSelectionne}

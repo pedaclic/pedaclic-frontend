@@ -347,16 +347,9 @@ export const CONFIG_ENCADRE: Record<TypeEncadre, { label: string; emoji: string;
 
 /**
  * Niveaux scolaires pour les Cours en ligne.
- * Dérivés de CLASSES (cahierTextes.types.ts) — source unique partagée.
- * Les labels enrichis (BFEM, BAC) sont ajoutés ici pour le contexte cours.
+ * Réexport de CLASSES_OPTIONS (cahierTextes.types.ts) — source unique partagée.
  */
-export const NIVEAUX_COURS: Array<{ valeur: Classe; label: string }> = CLASSES.map(c => ({
-  valeur: c,
-  label:
-    c === '3ème'      ? '3ème (BFEM)'      :
-    c === 'Terminale' ? 'Terminale (BAC)'  :
-    c,
-}));
+export { CLASSES_OPTIONS as NIVEAUX_COURS } from './types/cahierTextes.types';
 
 /** Matières du programme sénégalais */
 export const MATIERES_COURS = [

@@ -34,6 +34,7 @@ import {
   CategorieEbook,
   CATEGORIE_LABELS
 } from '../types/ebook.types';
+import { normaliserClassePourComparaison } from '../types/cahierTextes.types';
 
 // --- Référence à la collection Firestore ---
 const EBOOKS_COLLECTION = 'ebooks';
@@ -122,9 +123,13 @@ export function filterEbooks(ebooks: Ebook[], filters: EbookFilters): Ebook[] {
     result = result.filter(e => e.niveau === filters.niveau);
   }
 
-  // --- Filtre par classe ---
+  // --- Filtre par classe (normalisation pour rétrocompat 6eme/6ème) ---
   if (filters.classe && filters.classe !== 'all') {
-    result = result.filter(e => e.classe === filters.classe || e.classe === 'all');
+    const fNorm = normaliserClassePourComparaison(filters.classe);
+    result = result.filter((e) => {
+      if (e.classe === 'all') return true;
+      return normaliserClassePourComparaison(e.classe as string) === fNorm;
+    });
   }
 
   // --- Filtre par matière ---
