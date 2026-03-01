@@ -1,6 +1,7 @@
 // ============================================================
 // PedaClic — Phase 27 : MediaDetailPage
 // Lecteur multimédia + informations + médias similaires
+// Support YouTube et fichiers directs (Firebase Storage)
 // ============================================================
 
 import {
@@ -26,8 +27,49 @@ import {
 } from '../types/mediatheque_types';
 import '../styles/Mediatheque.css';
 
+// ─────────────────────────────────────────────────────────────
+// UTILITAIRE — Détection et extraction YouTube
+// Supporte : youtu.be/ID, youtube.com/watch?v=ID, youtube.com/embed/ID, youtube.com/shorts/ID
+// ─────────────────────────────────────────────────────────────
+
+function extraireYoutubeId(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'youtu.be') {
+      return u.pathname.slice(1).split('?')[0] || null;
+    }
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) return v;
+      const segments = u.pathname.split('/').filter(Boolean);
+      const idx = segments.findIndex(s => s === 'embed' || s === 'shorts');
+      if (idx !== -1 && segments[idx + 1]) return segments[idx + 1];
+    }
+  } catch {
+    // URL malformée
+  }
+  return null;
+}
+
+function construireUrlEmbed(youtubeId: string, debutSecondes = 0): string {
+  const params = new URLSearchParams({
+    rel: '0',
+    modestbranding: '1',
+    enablejsapi: '0',
+    origin: window.location.origin,
+    ...(debutSecondes > 5 ? { start: String(Math.floor(debutSecondes)) } : {}),
+  });
+  return `https://www.youtube-nocookie.com/embed/${youtubeId}?${params.toString()}`;
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPOSANT LECTEUR VIDÉO — YouTube iframe ou fichier HTML5
+// ─────────────────────────────────────────────────────────────
+
 interface LecteurVideoProps {
   url: string;
+  mimeType?: string;
   titre: string;
   thumbnailUrl?: string;
   aAccesPremium: boolean;
@@ -38,6 +80,7 @@ interface LecteurVideoProps {
 
 function LecteurVideo({
   url,
+  mimeType,
   titre,
   thumbnailUrl,
   aAccesPremium,
@@ -45,24 +88,47 @@ function LecteurVideo({
   onTempsChange,
   onAperçuTermine,
 }: LecteurVideoProps) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [overlayPremium, setOverlayPremium] = useState(false);
-  const [repriseProposee, setRepriseProposee] = useState(
-    positionInitiale > 5
-  );
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const handleMetadata = () => {
-    if (videoRef.current && positionInitiale > 0 && repriseProposee) {
-      // Proposition de reprise gérée via l'UI
+  const [overlayPremium, setOverlayPremium]   = useState(false);
+  const [repriseProposee, setRepriseProposee] = useState(positionInitiale > 5);
+  const [erreurVideo, setErreurVideo]         = useState<string | null>(null);
+
+  const youtubeId = extraireYoutubeId(url);
+  const estYoutube = youtubeId !== null;
+
+  const urlEmbed = estYoutube
+    ? construireUrlEmbed(youtubeId!, positionInitiale)
+    : null;
+
+  useEffect(() => {
+    setOverlayPremium(false);
+    setErreurVideo(null);
+    if (timerRef.current) clearInterval(timerRef.current);
+
+    if (estYoutube && !aAccesPremium) {
+      let ecoulees = 0;
+      timerRef.current = setInterval(() => {
+        ecoulees += 1;
+        onTempsChange(ecoulees);
+        if (ecoulees >= DUREE_APERCU_GRATUIT) {
+          clearInterval(timerRef.current!);
+          setOverlayPremium(true);
+          onAperçuTermine();
+        }
+      }, 1000);
     }
-  };
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [url, aAccesPremium, estYoutube, onTempsChange, onAperçuTermine]);
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
     const t = videoRef.current.currentTime;
-
     onTempsChange(t);
-
     if (!aAccesPremium && t >= DUREE_APERCU_GRATUIT) {
       videoRef.current.pause();
       setOverlayPremium(true);
@@ -70,10 +136,30 @@ function LecteurVideo({
     }
   };
 
+  const handleError = () => {
+    const video = videoRef.current;
+    let message = 'Impossible de charger la vidéo.';
+    if (!url || url.trim() === '') {
+      message = 'Aucune URL vidéo configurée pour ce contenu.';
+    } else if (video?.error) {
+      switch (video.error.code) {
+        case MediaError.MEDIA_ERR_NETWORK:
+          message = 'Erreur réseau — vérifiez votre connexion.'; break;
+        case MediaError.MEDIA_ERR_DECODE:
+          message = 'Format vidéo non supporté par ce navigateur.'; break;
+        case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+          message = 'Fichier introuvable ou format non supporté.'; break;
+        default:
+          message = `Erreur de lecture (code ${video.error.code}).`;
+      }
+    }
+    setErreurVideo(message);
+  };
+
   const reprendreDepuisSauvegarde = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = positionInitiale;
-      videoRef.current.play();
+      videoRef.current.play().catch(console.warn);
       setRepriseProposee(false);
     }
   };
@@ -81,29 +167,101 @@ function LecteurVideo({
   const commencerDepuisDebut = () => {
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play();
+      videoRef.current.play().catch(console.warn);
       setRepriseProposee(false);
     }
   };
 
+  const typeMime = mimeType || 'video/mp4';
+
   return (
     <div className="media-player">
       <div className="media-player__video-wrapper">
-        <video
-          ref={videoRef}
-          className="media-player__video"
-          controls
-          preload="auto"
-          poster={thumbnailUrl}
-          onLoadedMetadata={handleMetadata}
-          onTimeUpdate={handleTimeUpdate}
-          playsInline
-          aria-label={`Lecteur vidéo : ${titre}`}
-        >
-          <source src={url} />
-          <p>Votre navigateur ne supporte pas la lecture vidéo.</p>
-        </video>
 
+        {/* YouTube → Iframe embed */}
+        {estYoutube && !overlayPremium && urlEmbed && (
+          <iframe
+            src={urlEmbed}
+            title={titre}
+            className="media-player__video"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            style={{ border: 'none' }}
+            aria-label={`Lecteur YouTube : ${titre}`}
+          />
+        )}
+
+        {/* Fichier direct (Firebase Storage, MP4…) */}
+        {!estYoutube && !erreurVideo && (
+          <video
+            ref={videoRef}
+            className="media-player__video"
+            controls
+            preload="metadata"
+            poster={thumbnailUrl}
+            onTimeUpdate={handleTimeUpdate}
+            onError={handleError}
+            playsInline
+            aria-label={`Lecteur vidéo : ${titre}`}
+          >
+            {url && url.trim() !== '' && (
+              <source src={url} type={typeMime} />
+            )}
+            <p>Votre navigateur ne supporte pas la lecture vidéo HTML5.</p>
+          </video>
+        )}
+
+        {/* Erreur fichier direct */}
+        {!estYoutube && erreurVideo && (
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              background: '#0f172a', color: 'white',
+              gap: '0.75rem', padding: '2rem', textAlign: 'center',
+            }}
+            role="alert"
+          >
+            <span style={{ fontSize: '2.5rem' }}>🎬</span>
+            <p style={{ margin: 0, fontWeight: 700 }}>Vidéo indisponible</p>
+            <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.7, maxWidth: 300 }}>
+              {erreurVideo}
+            </p>
+            <button
+              type="button"
+              style={{
+                marginTop: '0.5rem', background: '#2563eb', color: 'white',
+                border: 'none', padding: '0.5rem 1.25rem', borderRadius: '6px',
+                cursor: 'pointer', fontSize: '0.85rem',
+              }}
+              onClick={() => {
+                setErreurVideo(null);
+                if (videoRef.current) videoRef.current.load();
+              }}
+            >
+              🔄 Réessayer
+            </button>
+          </div>
+        )}
+
+        {/* URL vide */}
+        {!estYoutube && !erreurVideo && (!url || url.trim() === '') && (
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              background: '#0f172a', color: 'rgba(255,255,255,0.5)',
+              gap: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '3rem' }}>🎬</span>
+            <p style={{ margin: 0, fontSize: '0.9rem' }}>Aucun fichier vidéo configuré</p>
+          </div>
+        )}
+
+        {/* Overlay Premium */}
         {overlayPremium && (
           <div className="media-player__overlay-premium" role="dialog" aria-modal>
             <div style={{ fontSize: '3rem' }}>🔒</div>
@@ -119,13 +277,15 @@ function LecteurVideo({
         )}
       </div>
 
-      {repriseProposee && positionInitiale > 5 && (
+      {/* Reprise (fichier direct uniquement) */}
+      {!estYoutube && repriseProposee && positionInitiale > 5 && (
         <div className="media-player__reprise" role="complementary">
           <span className="media-player__reprise-texte">
             ▶ Reprendre à {formatDuree(positionInitiale)}
           </span>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button
+              type="button"
               className="btn-secondaire"
               style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
               onClick={commencerDepuisDebut}
@@ -133,6 +293,7 @@ function LecteurVideo({
               Depuis le début
             </button>
             <button
+              type="button"
               className="media-player__reprise-btn"
               onClick={reprendreDepuisSauvegarde}
             >
@@ -159,6 +320,10 @@ function LecteurVideo({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// COMPOSANT LECTEUR AUDIO
+// ─────────────────────────────────────────────────────────────
 
 interface LecteurAudioProps {
   url: string;
@@ -221,12 +386,14 @@ function LecteurAudio({
           ref={audioRef}
           className="media-player__audio"
           controls
-          preload="auto"
+          preload="metadata"
           onLoadedMetadata={handleLoaded}
           onTimeUpdate={handleTimeUpdate}
           aria-label={`Lecteur audio : ${titre}`}
         >
-          <source src={url} />
+          {url && url.trim() !== '' && (
+            <source src={url} type="audio/mpeg" />
+          )}
           <p>Votre navigateur ne supporte pas la lecture audio.</p>
         </audio>
       </div>
@@ -245,6 +412,10 @@ function LecteurAudio({
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// COMPOSANT PRINCIPAL — MediaDetailPage
+// ─────────────────────────────────────────────────────────────
+
 export default function MediaDetailPage() {
   const { mediaId } = useParams<{ mediaId: string }>();
   const { currentUser } = useAuth();
@@ -255,8 +426,6 @@ export default function MediaDetailPage() {
   const [progression, setProgression] = useState<MediaVue | null>(null);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
-
-  const [aperçuTermine, setAperçuTermine] = useState(false);
 
   const positionRef = useRef(0);
   const sauvegardeTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -340,7 +509,7 @@ export default function MediaDetailPage() {
   }, []);
 
   const handleAperçuTermine = useCallback(() => {
-    setAperçuTermine(true);
+    // no-op, état géré dans les lecteurs
   }, []);
 
   if (chargement) {
@@ -358,7 +527,7 @@ export default function MediaDetailPage() {
     return (
       <div className="media-detail-page">
         <div className="media-detail-header">
-          <button className="media-detail-retour" onClick={() => navigate('/mediatheque')}>
+          <button type="button" className="media-detail-retour" onClick={() => navigate('/mediatheque')}>
             ← Retour à la médiathèque
           </button>
         </div>
@@ -367,6 +536,7 @@ export default function MediaDetailPage() {
           <h3 className="mediatheque-vide__titre">Contenu introuvable</h3>
           <p className="mediatheque-vide__message">{erreur}</p>
           <button
+            type="button"
             className="btn-principal"
             onClick={() => navigate('/mediatheque')}
           >
@@ -384,6 +554,7 @@ export default function MediaDetailPage() {
 
       <header className="media-detail-header">
         <button
+          type="button"
           className="media-detail-retour"
           onClick={() => navigate('/mediatheque')}
           aria-label="Retourner au catalogue"
@@ -424,6 +595,7 @@ export default function MediaDetailPage() {
           {(media.type === 'video' || media.type === 'webinaire') ? (
             <LecteurVideo
               url={media.url}
+              mimeType={media.mimeType}
               titre={media.titre}
               thumbnailUrl={media.thumbnailUrl}
               aAccesPremium={aAccesPremium}
@@ -529,7 +701,6 @@ export default function MediaDetailPage() {
                         </span>
                       )}
                     </div>
-
                     <div className="media-similaire-item__infos">
                       <p className="media-similaire-item__titre">{sim.titre}</p>
                       <div className="media-similaire-item__meta">

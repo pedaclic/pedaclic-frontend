@@ -40,16 +40,20 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--spacing-sm);
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--spacing-sm) var(--spacing-md);
   height: 64px;
+  min-width: 0; /* Permet aux enfants flex de rétrécir */
+  overflow: hidden; /* Évite le débordement du header */
 }
 
 /* ==================== LOGO ==================== */
 
 /**
  * Zone du logo - lien cliquable
+ * flex-shrink: 0 pour ne jamais masquer le logo
  */
 .header__logo {
   display: flex;
@@ -58,6 +62,7 @@
   text-decoration: none;
   color: inherit;
   transition: opacity var(--transition-base);
+  flex-shrink: 0;
 }
 
 .header__logo:hover {
@@ -120,11 +125,22 @@
   .header__nav--desktop {
     display: flex;
     align-items: center;
+    flex: 1 1 auto;
+    min-width: 0; /* Permet à la nav de rétrécir */
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    /* Masquer la scrollbar tout en gardant le défilement possible */
+  }
+  .header__nav--desktop::-webkit-scrollbar {
+    height: 2px;
   }
 }
 
 /**
  * Liste des liens de navigation
+ * flex-shrink: 0 sur les items pour garder les liens lisibles
  */
 .header__nav-list {
   display: flex;
@@ -133,6 +149,7 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  flex-shrink: 0; /* La liste ne rétrécit pas, le conteneur scroll si besoin */
 }
 
 /**
@@ -221,11 +238,13 @@
 
 /**
  * Zone des actions (auth buttons ou user dropdown)
+ * flex-shrink: 0 pour toujours garder visible la zone utilisateur
  */
 .header__actions {
   display: flex;
   align-items: center;
   gap: var(--spacing-sm);
+  flex-shrink: 0;
 }
 
 /**
