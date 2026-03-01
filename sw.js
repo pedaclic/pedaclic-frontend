@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
+define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -85,7 +85,7 @@ define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
     "revision": "9e820a797a6c7f5cd34a106890bd0752"
   }, {
     "url": "index.html",
-    "revision": "0a95c28ef4b4638722fd04d4b5359517"
+    "revision": "f52387f82450bbf3a9e741213efbcd10"
   }, {
     "url": "404.html",
     "revision": "d0e9f9bdb9145562f5d9f35dca8b2840"
@@ -192,7 +192,7 @@ define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
     "url": "assets/index-DyLbqzUy.css",
     "revision": null
   }, {
-    "url": "assets/index-CCivCK-U.js",
+    "url": "assets/index-DMGC18Qm.js",
     "revision": null
   }, {
     "url": "manifest.json",
@@ -342,6 +342,7 @@ define(['./workbox-15ec2ecc'], (function (workbox) { 'use strict';
       statuses: [0, 200]
     })]
   }), 'GET');
+  workbox.registerRoute(/^https:\/\/firebasestorage\.googleapis\.com\/.*/i, new workbox.NetworkOnly(), 'GET');
   workbox.registerRoute(/\.(?:png|jpg|jpeg|svg|gif|webp)$/i, new workbox.StaleWhileRevalidate({
     "cacheName": "images-cache",
     plugins: [new workbox.ExpirationPlugin({
