@@ -130,7 +130,15 @@ export default defineConfig({
             },
           },
 
-          // 5. Images — Stale While Revalidate
+          // 5. Firebase Storage (vidéo/audio) — Network Only
+          // Les flux vidéo/audio utilisent des requêtes Range (206 Partial Content).
+          // Ne jamais cacher pour éviter les problèmes de lecture.
+          {
+            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
+            handler: 'NetworkOnly',
+          },
+
+          // 6. Images — Stale While Revalidate
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
             handler: 'StaleWhileRevalidate',

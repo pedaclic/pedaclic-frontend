@@ -93,7 +93,7 @@ function LecteurVideo({
           ref={videoRef}
           className="media-player__video"
           controls
-          preload="metadata"
+          preload="auto"
           poster={thumbnailUrl}
           onLoadedMetadata={handleMetadata}
           onTimeUpdate={handleTimeUpdate}
@@ -221,7 +221,7 @@ function LecteurAudio({
           ref={audioRef}
           className="media-player__audio"
           controls
-          preload="metadata"
+          preload="auto"
           onLoadedMetadata={handleLoaded}
           onTimeUpdate={handleTimeUpdate}
           aria-label={`Lecteur audio : ${titre}`}
