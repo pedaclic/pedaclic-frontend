@@ -16,7 +16,7 @@ import {
   PLANS_A_LA_CARTE,
 } from '../types/premiumPlans';
 import type { CoursEnLigne } from '../cours_types';
-import { NIVEAUX_COURS } from '../cours_types';
+import { CLASSES_OPTIONS } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';
 import '../styles/CoursEnLigne.css';
@@ -173,7 +173,7 @@ export default function PremiumCoursChoicePage() {
               {coursFiltres.map(c => {
                 const estSelectionne = selection.includes(c.id);
                 const peutAjouter = selection.length < (maxCours || 0) || estSelectionne;
-                const niveauLabel = NIVEAUX_COURS.find(n => n.valeur === c.niveau)?.label ?? c.niveau;
+                const niveauLabel = CLASSES_OPTIONS.find(n => n.valeur === c.niveau)?.label ?? c.niveau;
 
                 return (
                   <article

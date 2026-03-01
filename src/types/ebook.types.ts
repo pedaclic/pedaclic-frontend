@@ -3,7 +3,8 @@
 // Interfaces TypeScript pour la gestion des ebooks
 // =============================================================
 
-import { Classe, Niveau } from './index';
+import { Niveau } from './index';
+import type { Classe } from './cahierTextes.types';
 
 /**
  * Catégories d'ebooks disponibles sur PedaClic

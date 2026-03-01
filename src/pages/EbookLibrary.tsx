@@ -18,6 +18,7 @@ import {
   formatFileSize,
   MATIERES_DISPONIBLES
 } from '../services/ebookService';
+import { CLASSES } from '../types/cahierTextes.types';
 import '../styles/EbookLibrary.css';
 
 const MSG_PREMIUM_RESTRICTED = 'Ce contenu est réservé aux utilisateurs Premium.';
@@ -185,20 +186,16 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
           <option value="lycee">Lycée</option>
         </select>
 
-        {/* <!-- Filtre par classe --> */}
+        {/* <!-- Filtre par classe (source cahierTextes) --> */}
         <select
           value={filters.classe || 'all'}
           onChange={(e) => handleFilterChange('classe', e.target.value)}
           className="filter-select"
         >
           <option value="all">Toutes les classes</option>
-          <option value="6eme">6ème</option>
-          <option value="5eme">5ème</option>
-          <option value="4eme">4ème</option>
-          <option value="3eme">3ème</option>
-          <option value="2nde">2nde</option>
-          <option value="1ere">1ère</option>
-          <option value="Terminale">Terminale</option>
+          {CLASSES.map((cls) => (
+            <option key={cls} value={cls}>{cls}</option>
+          ))}
         </select>
 
         {/* <!-- Filtre par matière --> */}

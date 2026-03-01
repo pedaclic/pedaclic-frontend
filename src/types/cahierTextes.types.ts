@@ -16,6 +16,36 @@ export const CLASSES: Classe[] = [
   '6ème', '5ème', '4ème', '3ème', '2nde', '1ère', 'Terminale',
 ];
 
+/**
+ * Options pour sélecteurs (valeur + label) — source unique Cahier, Médiathèque, Premium, Cours.
+ * Labels enrichis pour 3ème (BFEM) et Terminale (BAC).
+ */
+export const CLASSES_OPTIONS: Array<{ valeur: Classe; label: string }> = CLASSES.map((c) => ({
+  valeur: c,
+  label: c === '3ème' ? '3ème (BFEM)' : c === 'Terminale' ? 'Terminale (BAC)' : c,
+}));
+
+/**
+ * Normalise une valeur classe pour comparaison (rétrocompat avec ancien format sans accents).
+ * Utilisé pour filtrage Ebooks, Disciplines, etc.
+ */
+export function normaliserClassePourComparaison(classe: string | undefined): string {
+  if (!classe) return '';
+  const m: Record<string, string> = {
+    '6eme': '6ème', '5eme': '5ème', '4eme': '4ème', '3eme': '3ème',
+    '1ere': '1ère',
+  };
+  return m[classe] || classe;
+}
+
+/** Classes collège (6ème→3ème) et lycée (2nde→Terminale) pour Disciplines */
+export const CLASSES_COLLEGE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
+  ['6ème', '5ème', '4ème', '3ème'].includes(c.valeur)
+);
+export const CLASSES_LYCEE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
+  ['2nde', '1ère', 'Terminale'].includes(c.valeur)
+);
+
 // ─────────────────────────────────────────────────────────────
 // MATIÈRES
 // ─────────────────────────────────────────────────────────────

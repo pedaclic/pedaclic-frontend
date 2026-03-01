@@ -23,6 +23,7 @@ import {
   formatFileSize,
   MATIERES_DISPONIBLES
 } from '../services/ebookService';
+import { CLASSES } from '../types/cahierTextes.types';
 import '../styles/AdminEbooks.css';
 
 export const AdminEbooks: React.FC = () => {
@@ -372,13 +373,9 @@ export const AdminEbooks: React.FC = () => {
                   onChange={handleInputChange}
                 >
                   <option value="all">Toutes les classes</option>
-                  <option value="6eme">6ème</option>
-                  <option value="5eme">5ème</option>
-                  <option value="4eme">4ème</option>
-                  <option value="3eme">3ème</option>
-                  <option value="2nde">2nde</option>
-                  <option value="1ere">1ère</option>
-                  <option value="Terminale">Terminale</option>
+                  {CLASSES.map((cls) => (
+                    <option key={cls} value={cls}>{cls}</option>
+                  ))}
                 </select>
               </div>
             </div>

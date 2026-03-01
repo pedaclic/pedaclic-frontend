@@ -51,19 +51,9 @@ import {
   deleteCompiledEbook,
   CompiledEbook,
 } from '../../services/compiledEbookService';
+import { CLASSES } from '../../types/cahierTextes.types';
 
 // ==================== CONSTANTES ====================
-
-/** Classes du système éducatif sénégalais (6ème → Terminale) */
-const CLASSES_SENEGAL = [
-  '6ème',
-  '5ème',
-  '4ème',
-  '3ème',
-  '2nde',
-  '1ère',
-  'Terminale',
-];
 
 /** Options de durée prédéfinies (en minutes) */
 const DUREE_OPTIONS = [30, 45, 60, 90, 120];
@@ -766,7 +756,7 @@ const AIGenerator: React.FC = () => {
                 Classe <span className="ai-generator__required">*</span>
               </label>
               <div className="ai-generator__classe-grid">
-                {CLASSES_SENEGAL.map((cls) => (
+                {CLASSES.map((cls) => (
                   <button
                     key={cls}
                     className={`ai-generator__classe-btn ${
