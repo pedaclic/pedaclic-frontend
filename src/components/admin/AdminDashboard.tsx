@@ -458,6 +458,15 @@ const AdminDashboard: React.FC = () => {
                     <p>Créer et gérer les cours en ligne</p>
                   </div>
                 </a>
+
+                {/* Médiathèque */}
+                <a href="/mediatheque" className="quick-action-card">
+                  <div className="quick-action-icon">🎬</div>
+                  <div className="quick-action-content">
+                    <h3>Médiathèque</h3>
+                    <p>Vidéos, podcasts et webinaires pédagogiques</p>
+                  </div>
+                </a>
               </div>
             </div>
           </section>
