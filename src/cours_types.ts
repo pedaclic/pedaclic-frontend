@@ -210,6 +210,8 @@ export interface CoursEnLigne {
    * Dépend de la matière — aligné avec la logique existante `isPremium` de la plateforme.
    */
   isPremium: boolean;
+  /** Si true : cours réservé aux professeurs Premium (non visible aux élèves) */
+  reservedPro?: boolean;
   /** Statut de publication */
   statut: StatutCours;
 

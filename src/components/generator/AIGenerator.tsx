@@ -41,6 +41,10 @@ import {
   GeneratedContent,
   QuizQuestion,
 } from '../../services/aiGeneratorService';
+import {
+  verifierQuotaRessources,
+  incrementerUsage,
+} from '../../services/premiumProService';
 import EbookCompiler from './EbookCompiler';
 import {
   getCompiledEbooks,
@@ -100,6 +104,9 @@ const AIGenerator: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
+
+  // ---- Quota (limite 30 pour non-Pro) ----
+  const [quotaInfo, setQuotaInfo] = useState<{ usage: number; limite: number | null } | null>(null);
 
   // ---- Historique ----
   const [showHistory, setShowHistory] = useState(false);
@@ -169,6 +176,14 @@ const AIGenerator: React.FC = () => {
 
     loadDisciplines();
   }, []);
+
+  /** Charge le quota ressources (usage/limite) pour les formules non-Pro */
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    verifierQuotaRessources(currentUser.uid, currentUser.subscriptionPlan).then(
+      ({ usage, limite }) => setQuotaInfo({ usage, limite })
+    );
+  }, [currentUser?.uid, currentUser?.subscriptionPlan]);
 
   // ==================== HANDLERS ====================
 
@@ -281,6 +296,19 @@ const AIGenerator: React.FC = () => {
   const handleSave = async () => {
     if (!currentUser || !generationResult || !selectedDiscipline || !selectedType) return;
 
+    // Vérifier le quota ressources (limite 30 pour formules non-Pro)
+    const { autorise, usage, limite } = await verifierQuotaRessources(
+      currentUser.uid,
+      currentUser.subscriptionPlan
+    );
+    if (!autorise && limite !== null) {
+      setError(
+        `Vous avez atteint la limite de ${limite} ressources (${usage}/${limite} utilisées). ` +
+        'Passez à Premium Pro (abonnement annuel ou 9 mois) pour un accès illimité.'
+      );
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -324,6 +352,9 @@ const AIGenerator: React.FC = () => {
 
       setSavedId(docId);
       setSaveSuccess(true);
+
+      // Incrémenter le compteur de ressources consommées
+      await incrementerUsage(currentUser.uid);
 
       // Rafraîchit silencieusement l'historique pour que le nouvel élément
       // apparaisse immédiatement sans que l'utilisateur ait à le recharger.
@@ -608,6 +639,11 @@ const AIGenerator: React.FC = () => {
         <p className="ai-generator__subtitle">
           Créez des cours, exercices, quiz et sujets d'examen adaptés au programme sénégalais
         </p>
+        {quotaInfo && quotaInfo.limite !== null && (
+          <p className="ai-generator__quota" style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+            Ressources utilisées : {quotaInfo.usage} / {quotaInfo.limite}
+          </p>
+        )}
 
         {/* Boutons en-tête */}
         <div className="ai-generator__header-actions">
@@ -1346,6 +1382,7 @@ const AIGenerator: React.FC = () => {
       {showEbookCompiler && (
         <EbookCompiler
           userId={currentUser!.uid}
+          subscriptionPlan={currentUser?.subscriptionPlan}
           history={history}
           markdownToHtml={markdownToHtml}
           onClose={() => setShowEbookCompiler(false)}

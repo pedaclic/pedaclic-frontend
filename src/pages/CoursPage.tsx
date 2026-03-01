@@ -113,13 +113,17 @@ export default function CoursPage() {
   // ── Chargement initial ────────────────────────────────────
   useEffect(() => {
     chargerCours();
-  }, []);
+  }, [currentUser?.role]);
 
   async function chargerCours() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getCoursPublies();
+      let data = await getCoursPublies();
+      // Exclure les cours reservedPro pour les élèves et visiteurs
+      if (currentUser?.role !== 'prof' && currentUser?.role !== 'admin') {
+        data = data.filter(c => !c.reservedPro);
+      }
       setCours(data);
       setCoursFiltres(data);
     } catch (err) {

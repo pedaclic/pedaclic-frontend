@@ -74,6 +74,7 @@ import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ P
 import { getQuizzes, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
+import { estFormuleALaCarte } from '../../types/premiumPlans';
 import RejoindreGroupe from './RejoindreGroupe';
 import ProgressBar from '../shared/ProgressBar';                        // ★ Phase 14
 
@@ -369,7 +370,8 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* ══════════════════════════════════════════════
-          COURS EN LIGNE (Phase 24)
+          COURS EN LIGNE (Phase 24) — Non-premium : accès + CTA formules
+          Premium : matières formule + classes + lien Choisir mes cours
           ══════════════════════════════════════════════ */}
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <h3 className="sd-section-title">
@@ -378,13 +380,42 @@ const StudentDashboard: React.FC = () => {
         <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
           Des cours complets du programme sénégalais, accessibles partout.
         </p>
-        <button
-          className="sd-btn sd-btn-primary"
-          onClick={() => navigate('/cours')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Play size={16} /> Accéder aux cours
-        </button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
+          <button
+            className="sd-btn sd-btn-primary"
+            onClick={() => navigate('/cours')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+          >
+            <Play size={16} /> Accéder aux cours
+          </button>
+          {currentUser?.isPremium && estFormuleALaCarte(currentUser.subscriptionPlan) && (
+            <button
+              className="sd-btn"
+              onClick={() => navigate('/premium/mes-cours')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                background: '#f0fdf4', color: '#15803d', border: '1px solid #86efac',
+              }}
+            >
+              <Star size={16} /> Choisir mes cours
+            </button>
+          )}
+        </div>
+        {!currentUser?.isPremium && (
+          <div style={{ marginTop: '1.25rem', padding: '1rem', background: '#eff6ff', borderRadius: '12px', border: '1px solid #93c5fd' }}>
+            <p style={{ fontWeight: 600, color: '#1e40af', marginBottom: '0.5rem' }}>Passer Premium</p>
+            <p style={{ fontSize: '0.875rem', color: '#3b82f6', marginBottom: '0.75rem' }}>
+              Débloquez tous les cours premium et accédez aux quiz illimités.
+            </p>
+            <button
+              className="sd-btn sd-btn-primary"
+              onClick={() => navigate('/premium')}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Star size={16} /> Découvrir les formules
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ══════════════════════════════════════════════

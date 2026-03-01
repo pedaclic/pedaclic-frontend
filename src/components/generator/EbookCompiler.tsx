@@ -14,11 +14,16 @@ import {
   saveCompiledEbook,
   CompiledSection,
 } from '../../services/compiledEbookService';
+import {
+  verifierQuotaRessources,
+  incrementerUsage,
+} from '../../services/premiumProService';
 
 // ==================== PROPS ====================
 
 interface EbookCompilerProps {
   userId: string;
+  subscriptionPlan?: string;
   history: GeneratedContent[];
   onClose: () => void;
   onSaved: () => void;            // Callback après sauvegarde réussie
@@ -29,6 +34,7 @@ interface EbookCompilerProps {
 
 const EbookCompiler: React.FC<EbookCompilerProps> = ({
   userId,
+  subscriptionPlan,
   history,
   onClose,
   onSaved,
@@ -295,6 +301,15 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
 
   async function handleSave() {
     if (!titre.trim()) { setError('Veuillez donner un titre à l\'ebook.'); return; }
+
+    const { autorise, usage, limite } = await verifierQuotaRessources(userId, subscriptionPlan);
+    if (!autorise && limite !== null) {
+      setError(
+        `Limite de ${limite} ressources atteinte (${usage}/${limite}). Passez à Premium Pro pour un accès illimité.`
+      );
+      return;
+    }
+
     setSaving(true);
     setError('');
     try {
@@ -307,6 +322,7 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
         content:    item.content,
       }));
       await saveCompiledEbook(userId, titre, description, sections);
+      await incrementerUsage(userId);
       setSaved(true);
       onSaved();
     } catch {

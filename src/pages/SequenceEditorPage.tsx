@@ -16,6 +16,10 @@ import {
   updateSequence,
   getSequenceById,
 }                                                   from '../services/sequencePedagogiqueService';
+import {
+  verifierQuotaRessources,
+  incrementerUsage,
+}                                                   from '../services/premiumProService';
 import { genererSequenceAvecIA }                    from '../services/sequenceIAService';
 import { getCahiersProf, getGroupesProf }           from '../services/cahierTextesService';
 import { useDisciplinesOptions }                    from '../hooks/useDisciplinesOptions';
@@ -782,7 +786,19 @@ const SequenceEditorPage: React.FC = () => {
         setSuccessMsg('Séquence mise à jour avec succès !');
         setTimeout(() => navigate(`/prof/sequences/${id}`), 1200);
       } else {
+        const { autorise, usage, limite } = await verifierQuotaRessources(
+          currentUser.uid,
+          currentUser.subscriptionPlan
+        );
+        if (!autorise && limite !== null) {
+          setError(
+            `Limite de ${limite} ressources atteinte (${usage}/${limite}). Passez à Premium Pro pour un accès illimité.`
+          );
+          setSaving(false);
+          return;
+        }
         const newId = await createSequence(currentUser.uid, dataFinale);
+        await incrementerUsage(currentUser.uid);
         setSuccessMsg('Séquence créée avec succès !');
         setTimeout(() => navigate(`/prof/sequences/${newId}`), 1200);
       }

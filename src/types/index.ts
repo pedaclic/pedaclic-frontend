@@ -44,6 +44,8 @@ export interface User {
   subscriptionPlan?: FormulePremium;
   /** IDs des cours choisis (formule à la carte uniquement) */
   coursChoisis?: string[];
+  /** Compteur des ressources consommées (générations + téléchargements + séquences) — pour limite 30 */
+  usageRessources?: number;
   photoURL?: string;              // URL de la photo de profil (optionnel)
   createdAt: Date;                // Date de création du compte
   lastLogin?: Date;               // Dernière connexion
