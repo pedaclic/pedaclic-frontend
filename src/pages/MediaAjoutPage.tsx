@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+import { CLASSES } from '../types/cahierTextes.types';
 import {
   createMedia,
   updateMedia,
@@ -299,8 +300,8 @@ export default function MediaAjoutPage() {
                 className="media-form__select"
               >
                 <option value="">Tous</option>
-                {niveauxOptions.map(n => (
-                  <option key={n.valeur} value={n.valeur}>{n.label}</option>
+                {CLASSES.map(c => (
+                  <option key={c} value={c}>{c}</option>
                 ))}
               </select>
             </div>

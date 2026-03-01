@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+import { CLASSES } from '../types/cahierTextes.types';
 import {
   getMediatheque,
   getMediasProf,
@@ -183,8 +184,8 @@ export default function MediathequePage() {
   const [deleting, setDeleting] = useState(false);
   const [actionMsg, setActionMsg] = useState<string | null>(null);
 
-  // Disciplines et niveaux depuis la même source que le Cahier de textes (Firestore)
-  const { matieres: matieresOptions, niveaux: niveauxOptions } = useDisciplinesOptions();
+  // Disciplines depuis Firestore ; niveaux depuis CLASSES (même source que Cahier de textes)
+  const { matieres: matieresOptions } = useDisciplinesOptions();
 
   const stats = useMemo(() => {
     const total   = medias.length;
@@ -375,8 +376,8 @@ export default function MediathequePage() {
             aria-label="Filtrer par niveau"
           >
             <option value="">Tous les niveaux</option>
-            {niveauxOptions.map(n => (
-              <option key={n.valeur} value={n.valeur}>{n.label}</option>
+            {CLASSES.map(c => (
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
 
