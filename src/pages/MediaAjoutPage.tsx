@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import {
   createMedia,
   updateMedia,
@@ -15,24 +16,8 @@ import {
 import type { MediaFormData, TypeMedia, StatutMedia } from '../types/mediatheque_types';
 import {
   CONFIG_TYPE_MEDIA,
-  DISCIPLINES_MEDIATHEQUE,
-  NIVEAUX_MEDIATHEQUE,
 } from '../types/mediatheque_types';
 import '../styles/Mediatheque.css';
-
-const DISCIPLINE_TO_ID: Record<string, string> = {
-  'Mathématiques': 'maths',
-  'Français': 'francais',
-  'Sciences de la Vie et de la Terre (SVT)': 'svt',
-  'Histoire-Géographie': 'histgeo',
-  'Physique-Chimie': 'pc',
-  'Anglais': 'anglais',
-  'Philosophie': 'philo',
-  'Sciences Économiques et Sociales': 'ses',
-  'Éducation Civique': 'civique',
-  'Informatique': 'info',
-  'Arabe': 'arabe',
-};
 
 const MIME_BY_TYPE: Record<TypeMedia, string> = {
   video: 'video/mp4',
@@ -44,6 +29,7 @@ const MIME_BY_TYPE: Record<TypeMedia, string> = {
 export default function MediaAjoutPage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { matieres: matieresOptions, niveaux: niveauxOptions } = useDisciplinesOptions();
 
   const [soumission, setSoumission] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -86,7 +72,7 @@ export default function MediaAjoutPage() {
     setErreur(null);
 
     try {
-      const disciplineId = form.discipline ? (DISCIPLINE_TO_ID[form.discipline] ?? form.discipline.toLowerCase().replace(/\s+/g, '_')) : 'general';
+      const disciplineId = form.discipline ? form.discipline.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_') : 'general';
       const tags = form.tags ? form.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
 
       const data: MediaFormData = {
@@ -296,8 +282,8 @@ export default function MediaAjoutPage() {
                 className="media-form__select"
               >
                 <option value="">Toutes</option>
-                {DISCIPLINES_MEDIATHEQUE.map(d => (
-                  <option key={d} value={d}>{d}</option>
+                {matieresOptions.map(m => (
+                  <option key={m.valeur} value={m.valeur}>{m.label}</option>
                 ))}
               </select>
             </div>
@@ -313,7 +299,7 @@ export default function MediaAjoutPage() {
                 className="media-form__select"
               >
                 <option value="">Tous</option>
-                {NIVEAUX_MEDIATHEQUE.map(n => (
+                {niveauxOptions.map(n => (
                   <option key={n.valeur} value={n.valeur}>{n.label}</option>
                 ))}
               </select>

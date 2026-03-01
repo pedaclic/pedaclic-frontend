@@ -6,6 +6,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import {
   getMediatheque,
   getMediasProf,
@@ -14,8 +15,6 @@ import {
 import type { MediaItem, FiltresMediatheque, TypeMedia } from '../types/mediatheque_types';
 import {
   CONFIG_TYPE_MEDIA,
-  DISCIPLINES_MEDIATHEQUE,
-  NIVEAUX_MEDIATHEQUE,
   formatDuree,
 } from '../types/mediatheque_types';
 import '../styles/Mediatheque.css';
@@ -120,6 +119,9 @@ export default function MediathequePage() {
     recherche: '',
     acces: 'all',
   });
+
+  // Disciplines et niveaux depuis la même source que le Cahier de textes (Firestore)
+  const { matieres: matieresOptions, niveaux: niveauxOptions } = useDisciplinesOptions();
 
   const stats = useMemo(() => {
     const total   = medias.length;
@@ -248,8 +250,8 @@ export default function MediathequePage() {
             aria-label="Filtrer par discipline"
           >
             <option value="">Toutes les matières</option>
-            {DISCIPLINES_MEDIATHEQUE.map(d => (
-              <option key={d} value={d}>{d}</option>
+            {matieresOptions.map(m => (
+              <option key={m.valeur} value={m.valeur}>{m.label}</option>
             ))}
           </select>
 
@@ -260,7 +262,7 @@ export default function MediathequePage() {
             aria-label="Filtrer par niveau"
           >
             <option value="">Tous les niveaux</option>
-            {NIVEAUX_MEDIATHEQUE.map(n => (
+            {niveauxOptions.map(n => (
               <option key={n.valeur} value={n.valeur}>{n.label}</option>
             ))}
           </select>
