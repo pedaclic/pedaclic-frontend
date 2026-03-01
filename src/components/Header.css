@@ -46,7 +46,7 @@
   padding: var(--spacing-sm) var(--spacing-md);
   height: 64px;
   min-width: 0; /* Permet aux enfants flex de rétrécir */
-  overflow: hidden; /* Évite le débordement du header */
+  /* Pas d'overflow: hidden pour ne pas masquer le dropdown utilisateur */
 }
 
 /* ==================== LOGO ==================== */
