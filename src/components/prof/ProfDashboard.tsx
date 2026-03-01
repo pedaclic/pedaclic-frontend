@@ -22,6 +22,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { Lock, Star } from 'lucide-react';
 import GroupeManager from './GroupeManager';
 import GroupeDetail from './GroupeDetail';
 import {
@@ -29,6 +30,7 @@ import {
   getStatsGroupe
 } from '../../services/profGroupeService';
 import type { GroupeProf, StatsGroupe } from '../../types/prof';
+import { estFormuleALaCarte } from '../../types/premiumPlans';
 import '../../styles/prof.css';
 
 
@@ -159,15 +161,29 @@ const ProfDashboard: React.FC = () => {
     <div className="prof-dashboard">
 
       {/* ===== EN-TÊTE DU DASHBOARD ===== */}
-      <header className="prof-dashboard-header">
+      <header className="prof-dashboard-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
         <div>
           <h1 className="prof-dashboard-titre">
             Tableau de bord Professeur
           </h1>
           <p className="prof-dashboard-subtitle">
             Bienvenue, {currentUser?.displayName || 'Professeur'} 👋
+            {currentUser?.isPremium && (
+              <span style={{ marginLeft: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Star size={14} style={{ color: '#f59e0b' }} /> Premium
+              </span>
+            )}
           </p>
         </div>
+        {currentUser?.isPremium && estFormuleALaCarte(currentUser.subscriptionPlan) && (
+          <button
+            className="prof-btn prof-btn-secondary"
+            onClick={() => navigate('/premium/mes-cours')}
+            style={{ fontSize: '0.875rem' }}
+          >
+            📚 Choisir mes cours
+          </button>
+        )}
       </header>
 
       {/* ===== NAVIGATION PRINCIPALE ===== */}
@@ -262,6 +278,58 @@ const ProfDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Aperçu Premium Pro — visible pour les profs non-premium */}
+          {!currentUser?.isPremium && (
+            <div className="prof-premium-apercu" style={{
+              marginBottom: '2rem', padding: '1.5rem', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
+              borderRadius: '16px', border: '1px solid #93c5fd',
+            }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1e40af', marginBottom: '0.5rem' }}>
+                ⭐ Premium Pro — Outils pédagogiques
+              </h2>
+              <p style={{ color: '#3b82f6', fontSize: '0.9375rem', marginBottom: '1.25rem' }}>
+                Cahier de textes, Générateur de contenus IA, Cours en ligne, Médiathèque…
+              </p>
+              <div style={{
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+                gap: '1rem', marginBottom: '1rem',
+              }}>
+                {[
+                  { icone: '📓', titre: 'Cahier de textes', path: '/prof/cahiers' },
+                  { icone: '🤖', titre: 'Générateur IA', path: '/generateur' },
+                  { icone: '📚', titre: 'Cours en ligne', path: '/prof/cours' },
+                  { icone: '🎬', titre: 'Médiathèque', path: '/mediatheque' },
+                  { icone: '📖', titre: 'Séquences', path: '/prof/sequences' },
+                ].map((item) => (
+                  <div
+                    key={item.path}
+                    onClick={() => navigate('/premium')}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={e => e.key === 'Enter' && navigate('/premium')}
+                    style={{
+                      padding: '1rem', background: 'rgba(255,255,255,0.8)', borderRadius: '12px',
+                      border: '2px dashed #93c5fd', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem',
+                    }}
+                  >
+                    <span style={{ fontSize: '1.5rem' }}>{item.icone}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1e40af', textAlign: 'center' }}>{item.titre}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', color: '#64748b' }}>
+                      <Lock size={12} /> Premium Pro
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button
+                className="prof-btn prof-btn-primary"
+                onClick={() => navigate('/premium')}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <Star size={18} /> Choisir une formule Premium
+              </button>
+            </div>
+          )}
 
           {/* Récapitulatif des groupes */}
           {groupesRecap.length === 0 ? (

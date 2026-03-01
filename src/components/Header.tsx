@@ -118,7 +118,7 @@ const Header: React.FC = () => {
       hideIfPremium: true,   // Masqué dès que l'utilisateur est Premium ou admin
     },
     {
-     path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : '/admin',
+     path: currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : currentUser?.role === 'parent' ? '/parent/dashboard' : '/admin',
       label: 'Tableau de bord',
       icon: <LayoutDashboard size={18} />,
       requireAuth: true
@@ -416,7 +416,7 @@ const Header: React.FC = () => {
                   
                   {/* Liens du dropdown */}
                   <nav className="header__dropdown-nav">
-		    <Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : '/admin'} className="header__dropdown-link">
+		    <Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : currentUser.role === 'parent' ? '/parent/dashboard' : '/admin'} className="header__dropdown-link">
                       <LayoutDashboard size={18} />
                       <span>Tableau de bord</span>
                     </Link>

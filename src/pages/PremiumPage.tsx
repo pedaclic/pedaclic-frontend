@@ -12,26 +12,38 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth }     from '../hooks/useAuth';
+import { useAuth } from '../hooks/useAuth';
 import {
   initierPaiementMoneroo,
   redirigerVersCheckout,
   PLANS_PREMIUM,
   type PlanPremium,
 } from '../services/monerooService';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+import { NIVEAUX_COURS } from '../cours_types';
+import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';
+import { estFormuleALaCarte } from '../types/premiumPlans';
 import '../styles/PremiumPage.css';
 
 // ─────────────────────────────────────────────────────────────
-// DONNÉES : Avantages Premium par rôle
+// DONNÉES : Avantages Premium
 // ─────────────────────────────────────────────────────────────
 
-const AVANTAGES_PREMIUM = [
-  { icone: '📚', titre: 'Cours complets',       description: 'Accès illimité à tous les cours du programme sénégalais 6ème → Terminale' },
+const AVANTAGES_ELEVE = [
+  { icone: '📚', titre: 'Cours complets',       description: 'Accès aux cours du programme sénégalais 6ème → Terminale' },
   { icone: '🎯', titre: 'Quiz illimités',        description: 'Tous les quiz par matière avec corrections détaillées et explications' },
-  { icone: '🤖', titre: 'Générateur IA',         description: 'Génération de cours, fiches de révision et évaluations par intelligence artificielle' },
   { icone: '📊', titre: 'Suivi de progression',  description: 'Tableaux de bord analytiques pour suivre les performances en temps réel' },
-  { icone: '📖', titre: 'Bibliothèque ebooks',   description: 'Accès à tous les manuels et ressources pédagogiques numériques' },
+  { icone: '📖', titre: 'Bibliothèque ebooks',   description: 'Accès aux manuels et ressources pédagogiques numériques' },
   { icone: '🔔', titre: 'Notifications',         description: 'Alertes personnalisées pour devoirs, évaluations et rappels scolaires' },
+];
+
+const AVANTAGES_PRO = [
+  { icone: '📓', titre: 'Cahier de textes',   description: 'Gérez vos cahiers de textes numériques et partagez avec vos élèves' },
+  { icone: '🤖', titre: 'Générateur de contenus', description: 'Génération de cours, fiches et évaluations par intelligence artificielle' },
+  { icone: '📚', titre: 'Cours en ligne',     description: 'Créez et publiez des cours pour vos élèves' },
+  { icone: '🎬', titre: 'Médiathèque',       description: 'Accédez à la médiathèque pédagogique et enrichissez vos séquences' },
+  { icone: '📖', titre: 'Créateur de séquences', description: 'Construisez des séquences pédagogiques complètes' },
+  { icone: '📊', titre: 'Suivi des groupes',  description: 'Suivez la progression de vos classes et élèves' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -51,17 +63,24 @@ const MOYENS_PAIEMENT = [
 // ============================================================
 
 export default function PremiumPage() {
-  const navigate              = useNavigate();
-  const { currentUser }       = useAuth();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { matieres } = useDisciplinesOptions();
 
   // ── État local ─────────────────────────────────────────────
   const [ongletPlans, setOngletPlans] = useState<'a_la_carte' | 'illimite'>('a_la_carte');
   const [planSelectionne, setPlanSelectionne] = useState<PlanPremium>('a_la_carte_3');
-  const [loading, setLoading]                 = useState(false);
-  const [erreur, setErreur]                   = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [erreur, setErreur] = useState<string | null>(null);
+  const [filtresSelection, setFiltresSelection] = useState({ matiere: '', niveau: '' });
 
   // ── Si l'utilisateur est déjà Premium ──────────────────────
   const estDejaAbonne = currentUser?.isPremium === true;
+
+  // ── Rôle pour adapter le contenu ───────────────────────────
+  const estProf = currentUser?.role === 'prof';
+  const avantagesPremium = estProf ? AVANTAGES_PRO : AVANTAGES_ELEVE;
+  const isALaCarte = estFormuleALaCarte(planSelectionne);
 
   // ──────────────────────────────────────────────────────────
   // HANDLER : Lancer le paiement Moneroo
@@ -70,7 +89,7 @@ export default function PremiumPage() {
   async function lancerPaiement() {
     // Rediriger vers la page de connexion si non connecté
     if (!currentUser) {
-      navigate('/login?redirect=/premium');
+      navigate('/connexion?redirect=/premium');
       return;
     }
 
@@ -83,8 +102,8 @@ export default function PremiumPage() {
         plan:          planSelectionne,
         userId:        currentUser.uid,
         userEmail:     currentUser.email || '',
-        userFirstName: currentUser.displayName?.split(' ')[0] || 'Élève',
-        userLastName:  currentUser.displayName?.split(' ')[1] || 'PedaClic',
+        userFirstName: currentUser.displayName?.split(' ')[0] || (estProf ? 'Professeur' : 'Élève'),
+        userLastName:  currentUser.displayName?.split(' ').slice(1).join(' ') || 'PedaClic',
       });
 
       // Redirection vers la page de paiement Moneroo
@@ -112,11 +131,12 @@ export default function PremiumPage() {
         <div className="premium-hero__content">
           <span className="premium-hero__badge">⭐ PREMIUM</span>
           <h1 className="premium-hero__titre">
-            Débloque tout PedaClic
+            {estProf ? 'Premium Pro — Outils pédagogiques' : 'Débloque tout PedaClic'}
           </h1>
           <p className="premium-hero__sous-titre">
-            Accède à tous les cours, quiz et ressources du programme sénégalais.<br />
-            Du 6ème au BAC — <strong>L'école en un clic !</strong>
+            {estProf
+              ? 'Cahier de textes, Générateur IA, Cours en ligne, Médiathèque… Accédez à tous les outils Premium Pro.'
+              : 'Accède à tous les cours, quiz et ressources du programme sénégalais. Du 6ème au BAC — L\'école en un clic !'}
           </p>
         </div>
       </header>
@@ -131,7 +151,10 @@ export default function PremiumPage() {
             <p>Ton abonnement est actif. Profite de tous les contenus exclusifs.</p>
             <button
               className="premium-btn premium-btn--secondaire"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => {
+              const dest = currentUser?.role === 'eleve' ? '/eleve/dashboard' : currentUser?.role === 'prof' ? '/prof/dashboard' : currentUser?.role === 'parent' ? '/parent/dashboard' : '/';
+              navigate(dest);
+            }}
             >
               Aller au tableau de bord
             </button>
@@ -230,6 +253,26 @@ export default function PremiumPage() {
 
             </div>
 
+            {/* ── SÉLECTEUR MATIÈRES / NIVEAUX (aperçu si formule à la carte) ── */}
+            {isALaCarte && (
+              <div className="premium-plans__selector" style={{ marginTop: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: '#475569' }}>
+                  Aperçu — Choisir matière et niveau
+                </h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', marginBottom: '1rem' }}>
+                  Après votre souscription, vous pourrez sélectionner vos cours par matière et niveau. La sélection du niveau affichera uniquement les contenus correspondants.
+                </p>
+                <MatieresNiveauxSelector
+                  matieres={matieres}
+                  niveaux={NIVEAUX_COURS}
+                  value={filtresSelection}
+                  onChange={setFiltresSelection}
+                  formule={planSelectionne}
+                  hint="Filtrez pour prévisualiser les contenus disponibles."
+                />
+              </div>
+            )}
+
             {/* ── MESSAGE D'ERREUR ──────────────────────────── */}
             {erreur && (
               <div className="premium-erreur" role="alert">
@@ -277,9 +320,11 @@ export default function PremiumPage() {
 
         {/* ── AVANTAGES PREMIUM ───────────────────────────── */}
         <section className="premium-avantages">
-          <h2 className="premium-section__titre">Ce qui est inclus</h2>
+          <h2 className="premium-section__titre">
+            {estProf ? 'Ce qui est inclus — Premium Pro' : 'Ce qui est inclus'}
+          </h2>
           <div className="premium-avantages__grille">
-            {AVANTAGES_PREMIUM.map(avantage => (
+            {avantagesPremium.map(avantage => (
               <div key={avantage.titre} className="premium-avantage-card">
                 <span className="premium-avantage-card__icone">{avantage.icone}</span>
                 <div className="premium-avantage-card__texte">

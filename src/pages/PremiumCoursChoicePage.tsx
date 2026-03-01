@@ -18,6 +18,7 @@ import {
 import type { CoursEnLigne } from '../cours_types';
 import { NIVEAUX_COURS } from '../cours_types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';
 import '../styles/CoursEnLigne.css';
 
 export default function PremiumCoursChoicePage() {
@@ -28,8 +29,7 @@ export default function PremiumCoursChoicePage() {
   const [cours, setCours] = useState<CoursEnLigne[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [filtreMatiere, setFiltreMatiere] = useState('');
-  const [filtreNiveau, setFiltreNiveau] = useState('');
+  const [filtres, setFiltres] = useState({ matiere: '', niveau: '' });
   const [selection, setSelection] = useState<string[]>(
     currentUser?.coursChoisis ?? []
   );
@@ -46,7 +46,11 @@ export default function PremiumCoursChoicePage() {
   async function chargerCours() {
     setLoading(true);
     try {
-      const data = await getCoursPublies();
+      let data = await getCoursPublies();
+      // Élèves : exclure les cours reservedPro (réservés aux profs)
+      if (currentUser?.role === 'eleve') {
+        data = data.filter(c => !c.reservedPro);
+      }
       setCours(data);
     } catch {
       setCours([]);
@@ -56,8 +60,8 @@ export default function PremiumCoursChoicePage() {
   }
 
   const coursFiltres = cours.filter(c => {
-    if (filtreMatiere && c.matiere !== filtreMatiere) return false;
-    if (filtreNiveau && c.niveau !== filtreNiveau) return false;
+    if (filtres.matiere && c.matiere !== filtres.matiere) return false;
+    if (filtres.niveau && c.niveau !== filtres.niveau) return false;
     return true;
   });
 
@@ -76,7 +80,8 @@ export default function PremiumCoursChoicePage() {
     setSaving(true);
     try {
       await mettreAJourCoursChoisis(currentUser.uid, selection);
-      navigate('/dashboard', { state: { message: 'Vos cours ont été mis à jour.' } });
+      const dest = currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : currentUser.role === 'parent' ? '/parent/dashboard' : '/';
+      navigate(dest, { state: { message: 'Vos cours ont été mis à jour.' } });
     } catch {
       setSaving(false);
     }
@@ -127,28 +132,14 @@ export default function PremiumCoursChoicePage() {
 
       <section className="cours-catalogue__filtres">
         <div className="cours-catalogue__filtres-inner">
-          <select
-            value={filtreMatiere}
-            onChange={e => setFiltreMatiere(e.target.value)}
-            className="cours-catalogue__select"
-            aria-label="Filtrer par matière"
-          >
-            <option value="">Toutes les matières</option>
-            {matieres.map(m => (
-              <option key={m.valeur} value={m.valeur}>{m.label}</option>
-            ))}
-          </select>
-          <select
-            value={filtreNiveau}
-            onChange={e => setFiltreNiveau(e.target.value)}
-            className="cours-catalogue__select"
-            aria-label="Filtrer par niveau"
-          >
-            <option value="">Tous les niveaux</option>
-            {NIVEAUX_COURS.map(n => (
-              <option key={n.valeur} value={n.valeur}>{n.label}</option>
-            ))}
-          </select>
+          <MatieresNiveauxSelector
+            matieres={matieres}
+            niveaux={NIVEAUX_COURS}
+            value={filtres}
+            onChange={setFiltres}
+            formule={formule}
+            hint="La sélection du niveau affiche uniquement les contenus correspondants."
+          />
         </div>
       </section>
 

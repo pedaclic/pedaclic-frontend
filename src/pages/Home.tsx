@@ -62,12 +62,13 @@ const Home: React.FC = () => {
           {/* Boutons CTA */}
           <div className="home-page__hero-cta">
             {currentUser ? (
-<Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : '/admin'} className="home-page__btn home-page__btn--primary">  Accéder à mon espace
+<Link to={currentUser.role === 'eleve' ? '/eleve/dashboard' : currentUser.role === 'prof' ? '/prof/dashboard' : currentUser.role === 'parent' ? '/parent/dashboard' : '/admin'} className="home-page__btn home-page__btn--primary">
+                Accéder à mon espace
                 <ArrowRight size={20} />
               </Link>
             ) : (
               <>
-                <Link to="/register" className="home-page__btn home-page__btn--primary">
+                <Link to="/inscription" className="home-page__btn home-page__btn--primary">
                   Commencer gratuitement
                   <ArrowRight size={20} />
                 </Link>
@@ -355,7 +356,7 @@ const Home: React.FC = () => {
           <h2>Prêt à réussir ?</h2>
           <p>Rejoignez les milliers d'élèves qui font confiance à PedaClic</p>
           {!currentUser && (
-            <Link to="/register" className="home-page__btn home-page__btn--large">
+            <Link to="/inscription" className="home-page__btn home-page__btn--large">
               Créer mon compte gratuit
               <ArrowRight size={24} />
             </Link>

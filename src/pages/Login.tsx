@@ -37,7 +37,7 @@ const Login: React.FC = () => {
     try {
       setIsSubmitting(true);
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       setLocalError(err.message);
     } finally {
@@ -124,7 +124,7 @@ const Login: React.FC = () => {
         {/* Lien inscription */}
         <p className="auth-page__footer">
           Pas encore de compte ?{' '}
-          <Link to="/register">S'inscrire</Link>
+          <Link to="/inscription">S'inscrire</Link>
         </p>
       </div>
     </div>

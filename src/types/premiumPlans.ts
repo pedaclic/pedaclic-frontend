@@ -148,3 +148,27 @@ export function aAccesIllimite(formule: FormulePremium | string | undefined): bo
   if (plan) return plan.accesIllimite;
   return ['mensuel', 'annuel', 'illimite_3m', 'illimite_6m', 'illimite_1an'].includes(formule);
 }
+
+/** Formules Premium Pro : accès illimité aux ressources (générations, téléchargements, séquences) */
+const FORMULES_PREMIUM_PRO: FormulePremium[] = ['illimite_1an', 'a_la_carte_tous'];
+
+/**
+ * Vérifie si la formule est Premium Pro (accès illimité aux ressources)
+ * Premium Pro = illimite_1an ou a_la_carte_tous
+ */
+export function estPremiumPro(formule: FormulePremium | string | undefined): boolean {
+  if (!formule) return false;
+  return (FORMULES_PREMIUM_PRO as string[]).includes(formule);
+}
+
+/** Limite de ressources pour les formules non-Pro (générations + téléchargements + séquences) */
+export const LIMITE_RESSOURCES_NON_PRO = 30;
+
+/**
+ * Retourne la limite de ressources pour une formule (null = illimité)
+ * Premium Pro → null | Autres formules Premium → 30
+ */
+export function getLimiteRessources(formule: FormulePremium | string | undefined): number | null {
+  if (!formule) return LIMITE_RESSOURCES_NON_PRO;
+  return estPremiumPro(formule) ? null : LIMITE_RESSOURCES_NON_PRO;
+}

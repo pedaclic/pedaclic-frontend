@@ -40,8 +40,9 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Récupérer l'URL de redirection si présente
-  const from = (location.state as LocationState)?.from || '/';
+  // Récupérer l'URL de redirection (état ou paramètre ?redirect=)
+  const redirectParam = new URLSearchParams(location.search).get('redirect');
+  const from = (location.state as LocationState)?.from || redirectParam || '/';
 
   // ==================== ÉTATS ====================
   
