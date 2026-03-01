@@ -16,6 +16,7 @@ export type TypeMedia =
 export type StatutMedia =
   | 'publie'
   | 'brouillon'
+  | 'planifiee'
   | 'archive';
 
 /** Qualité de streaming disponible */
@@ -93,9 +94,10 @@ export const CONFIG_STATUT_MEDIA: Record<
   StatutMedia,
   { label: string; couleur: string; bg: string }
 > = {
-  publie:    { label: 'Publié',    couleur: '#16a34a', bg: '#f0fdf4' },
-  brouillon: { label: 'Brouillon', couleur: '#6b7280', bg: '#f3f4f6' },
-  archive:   { label: 'Archivé',  couleur: '#9ca3af', bg: '#f9fafb' },
+  publie:    { label: 'Publié',     couleur: '#16a34a', bg: '#f0fdf4' },
+  brouillon: { label: 'Brouillon',  couleur: '#6b7280', bg: '#f3f4f6' },
+  planifiee: { label: 'Planifié',   couleur: '#2563eb', bg: '#eff6ff' },
+  archive:   { label: 'Archivé',    couleur: '#9ca3af', bg: '#f9fafb' },
 };
 
 export const DUREE_APERCU_GRATUIT = 30;

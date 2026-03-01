@@ -11,32 +11,42 @@ import {
   getMediatheque,
   getMediasProf,
   getAllMediasAdmin,
+  setStatutMedia,
+  togglePremiumMedia,
+  deleteMediaComplet,
 } from '../services/mediathequeService';
 import type { MediaItem, FiltresMediatheque, TypeMedia } from '../types/mediatheque_types';
 import {
   CONFIG_TYPE_MEDIA,
+  CONFIG_STATUT_MEDIA,
   formatDuree,
 } from '../types/mediatheque_types';
+import type { StatutMedia } from '../types/mediatheque_types';
 import '../styles/Mediatheque.css';
 
 interface MediaCardProps {
   media: MediaItem;
   isPremium: boolean;
   onClick: () => void;
+  isAdmin?: boolean;
+  onEdit?: (media: MediaItem) => void;
+  onDelete?: (media: MediaItem) => void;
+  onTogglePremium?: (media: MediaItem) => void;
+  onSetStatut?: (media: MediaItem, statut: StatutMedia) => void;
 }
 
-function MediaCard({ media, isPremium, onClick }: MediaCardProps) {
+function MediaCard({ media, isPremium, onClick, isAdmin, onEdit, onDelete, onTogglePremium, onSetStatut }: MediaCardProps) {
   const config = CONFIG_TYPE_MEDIA[media.type];
   const aAcces = !media.isPremium || isPremium;
 
   return (
     <article
-      className="media-card"
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => e.key === 'Enter' && onClick()}
-      aria-label={`Lire : ${media.titre}`}
+      className={`media-card ${isAdmin ? 'media-card--admin' : ''}`}
+      onClick={!isAdmin ? onClick : undefined}
+      role={isAdmin ? undefined : 'button'}
+      tabIndex={isAdmin ? undefined : 0}
+      onKeyDown={!isAdmin ? (e => e.key === 'Enter' && onClick()) : undefined}
+      aria-label={isAdmin ? undefined : `Lire : ${media.titre}`}
     >
       <div className="media-card__vignette">
         {media.thumbnailUrl ? (
@@ -73,7 +83,55 @@ function MediaCard({ media, isPremium, onClick }: MediaCardProps) {
         </div>
       </div>
 
-      <div className="media-card__corps">
+      {isAdmin && onEdit && onDelete && onTogglePremium && onSetStatut && (
+        <div className="media-card__admin-actions" onClick={e => e.stopPropagation()}>
+          <button
+            type="button"
+            className="media-card__admin-btn media-card__admin-btn--edit"
+            onClick={() => onEdit(media)}
+            title="Modifier"
+          >
+            ✏️
+          </button>
+          <button
+            type="button"
+            className={`media-card__admin-btn ${media.isPremium ? 'media-card__admin-btn--premium' : ''}`}
+            onClick={() => onTogglePremium(media)}
+            title={media.isPremium ? 'Passer en gratuit' : 'Passer en Premium'}
+          >
+            {media.isPremium ? '⭐' : '☆'}
+          </button>
+          <select
+            className="media-card__admin-select"
+            value={media.statut}
+            onChange={e => onSetStatut(media, e.target.value as StatutMedia)}
+            onClick={e => e.stopPropagation()}
+            title="Statut"
+          >
+            {(Object.entries(CONFIG_STATUT_MEDIA) as [StatutMedia, (typeof CONFIG_STATUT_MEDIA)[StatutMedia]][]).map(([v, config]) => (
+              <option key={v} value={v}>{config.label}</option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="media-card__admin-btn media-card__admin-btn--view"
+            onClick={() => onClick()}
+            title="Voir"
+          >
+            👁️
+          </button>
+          <button
+            type="button"
+            className="media-card__admin-btn media-card__admin-btn--delete"
+            onClick={() => onDelete(media)}
+            title="Supprimer"
+          >
+            🗑️
+          </button>
+        </div>
+      )}
+
+      <div className="media-card__corps" onClick={!isAdmin ? undefined : () => onClick()} style={isAdmin ? { cursor: 'pointer' } : undefined}>
         <span
           className="media-card__type"
           style={{
@@ -112,13 +170,18 @@ export default function MediathequePage() {
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  const [filtres, setFiltres] = useState<FiltresMediatheque>({
+  const [filtres, setFiltres] = useState<FiltresMediatheque & { statut?: string }>({
     type: 'all',
     discipline: '',
     niveau: '',
     recherche: '',
     acces: 'all',
+    statut: '',
   });
+
+  const [deleteConfirm, setDeleteConfirm] = useState<MediaItem | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [actionMsg, setActionMsg] = useState<string | null>(null);
 
   // Disciplines et niveaux depuis la même source que le Cahier de textes (Firestore)
   const { matieres: matieresOptions, niveaux: niveauxOptions } = useDisciplinesOptions();
@@ -138,6 +201,7 @@ export default function MediathequePage() {
       if (filtres.niveau && media.niveau !== filtres.niveau) return false;
       if (filtres.acces === 'gratuit' && media.isPremium) return false;
       if (filtres.acces === 'premium' && !media.isPremium) return false;
+      if (filtres.statut && media.statut !== filtres.statut) return false;
       if (filtres.recherche.trim()) {
         const terme = filtres.recherche.toLowerCase().trim();
         return (
@@ -193,11 +257,60 @@ export default function MediathequePage() {
   };
 
   const reinitialiserFiltres = () => {
-    setFiltres({ type: 'all', discipline: '', niveau: '', recherche: '', acces: 'all' });
+    setFiltres({ type: 'all', discipline: '', niveau: '', recherche: '', acces: 'all', statut: '' });
   };
 
   const ouvrirMedia = (mediaId: string) => {
     navigate(`/mediatheque/${mediaId}`);
+  };
+
+  const isAdmin = currentUser?.role === 'admin';
+
+  const handleEdit = (media: MediaItem) => {
+    navigate(`/mediatheque/${media.id}/modifier`);
+  };
+
+  const handleDeleteClick = (media: MediaItem) => {
+    setDeleteConfirm(media);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirm) return;
+    setDeleting(true);
+    try {
+      await deleteMediaComplet(deleteConfirm);
+      setMedias(prev => prev.filter(m => m.id !== deleteConfirm.id));
+      setActionMsg('Contenu supprimé.');
+      setTimeout(() => setActionMsg(null), 2000);
+    } catch (err) {
+      console.error('[Médiathèque] Erreur suppression:', err);
+      setActionMsg('Erreur lors de la suppression.');
+    } finally {
+      setDeleting(false);
+      setDeleteConfirm(null);
+    }
+  };
+
+  const handleTogglePremium = async (media: MediaItem) => {
+    try {
+      await togglePremiumMedia(media.id, !media.isPremium);
+      setMedias(prev => prev.map(m => m.id === media.id ? { ...m, isPremium: !m.isPremium } : m));
+      setActionMsg(media.isPremium ? 'Passé en gratuit' : 'Passé en Premium');
+      setTimeout(() => setActionMsg(null), 2000);
+    } catch (err) {
+      setActionMsg('Erreur');
+    }
+  };
+
+  const handleSetStatut = async (media: MediaItem, statut: StatutMedia) => {
+    try {
+      await setStatutMedia(media.id, statut);
+      setMedias(prev => prev.map(m => m.id === media.id ? { ...m, statut } : m));
+      setActionMsg(`Statut : ${CONFIG_STATUT_MEDIA[statut].label}`);
+      setTimeout(() => setActionMsg(null), 2000);
+    } catch (err) {
+      setActionMsg('Erreur');
+    }
   };
 
   return (
@@ -278,6 +391,20 @@ export default function MediathequePage() {
             <option value="premium">⭐ Premium</option>
           </select>
 
+          {isAdmin && (
+            <select
+              className="mediatheque-filtres__select"
+              value={filtres.statut || ''}
+              onChange={e => setFiltres(prev => ({ ...prev, statut: e.target.value }))}
+              aria-label="Filtrer par statut"
+            >
+              <option value="">Tous les statuts</option>
+              {(Object.entries(CONFIG_STATUT_MEDIA) as [StatutMedia, (typeof CONFIG_STATUT_MEDIA)[StatutMedia]][]).map(([v, config]) => (
+                <option key={v} value={v}>{config.label}</option>
+              ))}
+            </select>
+          )}
+
           {(currentUser?.role === 'admin' || currentUser?.role === 'prof') && (
             <button
               className="btn-principal"
@@ -357,7 +484,7 @@ export default function MediathequePage() {
                 : 'Aucun contenu ne correspond à vos critères de recherche.'}
             </p>
             {(filtres.type !== 'all' || filtres.discipline || filtres.niveau ||
-              filtres.recherche || filtres.acces !== 'all') && (
+              filtres.recherche || filtres.acces !== 'all' || filtres.statut) && (
               <button className="btn-secondaire" onClick={reinitialiserFiltres}>
                 Réinitialiser les filtres
               </button>
@@ -377,9 +504,43 @@ export default function MediathequePage() {
                   media={media}
                   isPremium={currentUser?.isPremium ?? false}
                   onClick={() => ouvrirMedia(media.id)}
+                  isAdmin={isAdmin}
+                  onEdit={isAdmin ? handleEdit : undefined}
+                  onDelete={isAdmin ? handleDeleteClick : undefined}
+                  onTogglePremium={isAdmin ? handleTogglePremium : undefined}
+                  onSetStatut={isAdmin ? handleSetStatut : undefined}
                 />
               </div>
             ))}
+          </div>
+        )}
+
+        {actionMsg && (
+          <div className="mediatheque-toast" role="status">
+            {actionMsg}
+          </div>
+        )}
+
+        {deleteConfirm && (
+          <div className="mediatheque-modal-overlay" onClick={() => setDeleteConfirm(null)}>
+            <div className="mediatheque-modal" onClick={e => e.stopPropagation()}>
+              <h3>Supprimer ce contenu ?</h3>
+              <p>« {deleteConfirm.titre} » sera définitivement supprimé.</p>
+              <div className="mediatheque-modal__actions">
+                <button type="button" className="btn-secondaire" onClick={() => setDeleteConfirm(null)}>
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  className="btn-principal"
+                  style={{ background: '#dc2626' }}
+                  onClick={handleConfirmDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Suppression…' : 'Supprimer'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>
