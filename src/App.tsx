@@ -89,6 +89,7 @@ import AdminEbooks from './pages/AdminEbooks';
 /* ==================== PHASE 27 — MÉDIATHÈQUE ==================== */
 import MediathequePage from './pages/MediathequePage';
 import MediaDetailPage from './pages/MediaDetailPage';
+import MediaAjoutPage from './pages/MediaAjoutPage';
 
 /* ==================== PHASE 26 — NOTIFICATIONS ==================== */
 import NotificationsPage    from './NotificationsPage';
@@ -131,6 +132,11 @@ const App: React.FC = () => {
         <Route path="/quiz-gratuits" element={<Layout><QuizGratuitsPage /></Layout>} />
         <Route path="/ebooks"        element={<Layout><EbooksPage /></Layout>} />
         <Route path="/mediatheque"   element={<Layout><MediathequePage /></Layout>} />
+        <Route path="/mediatheque/ajouter" element={
+          <ProtectedRoute allowedRoles={['admin', 'prof']}>
+            <Layout><MediaAjoutPage /></Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/mediatheque/:mediaId" element={<Layout><MediaDetailPage /></Layout>} />
 
         {/* ========== COURS EN LIGNE (public — lecture) ========== */}
