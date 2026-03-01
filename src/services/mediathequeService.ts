@@ -169,6 +169,13 @@ export async function setStatutMedia(
   });
 }
 
+export async function togglePremiumMedia(mediaId: string, isPremium: boolean): Promise<void> {
+  await updateDoc(doc(db, COL_MEDIA, mediaId), {
+    isPremium,
+    updatedAt: Timestamp.now(),
+  });
+}
+
 export async function deleteMedia(mediaId: string): Promise<void> {
   await deleteDoc(doc(db, COL_MEDIA, mediaId));
 }

@@ -90,6 +90,7 @@ import AdminEbooks from './pages/AdminEbooks';
 import MediathequePage from './pages/MediathequePage';
 import MediaDetailPage from './pages/MediaDetailPage';
 import MediaAjoutPage from './pages/MediaAjoutPage';
+import MediaEditPage from './pages/MediaEditPage';
 
 /* ==================== PHASE 26 — NOTIFICATIONS ==================== */
 import NotificationsPage    from './NotificationsPage';
@@ -135,6 +136,11 @@ const App: React.FC = () => {
         <Route path="/mediatheque/ajouter" element={
           <ProtectedRoute allowedRoles={['admin', 'prof']}>
             <Layout><MediaAjoutPage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/mediatheque/:mediaId/modifier" element={
+          <ProtectedRoute allowedRoles={['admin', 'prof']}>
+            <Layout><MediaEditPage /></Layout>
           </ProtectedRoute>
         } />
         <Route path="/mediatheque/:mediaId" element={<Layout><MediaDetailPage /></Layout>} />

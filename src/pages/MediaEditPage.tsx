@@ -1,21 +1,21 @@
 // ============================================================
-// PedaClic — Phase 27 : MediaAjoutPage
-// Formulaire d'ajout de contenu à la médiathèque (admin/prof)
+// PedaClic — MediaEditPage
+// Formulaire de modification d'un contenu médiathèque (admin/prof)
 // ============================================================
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import {
-  createMedia,
+  getMediaById,
   updateMedia,
-  uploadMediaFichier,
   uploadThumbnail,
 } from '../services/mediathequeService';
-import type { MediaFormData, TypeMedia, StatutMedia } from '../types/mediatheque_types';
+import type { MediaItem, TypeMedia, StatutMedia } from '../types/mediatheque_types';
 import {
   CONFIG_TYPE_MEDIA,
+  CONFIG_STATUT_MEDIA,
 } from '../types/mediatheque_types';
 import '../styles/Mediatheque.css';
 
@@ -26,11 +26,13 @@ const MIME_BY_TYPE: Record<TypeMedia, string> = {
   webinaire: 'video/mp4',
 };
 
-export default function MediaAjoutPage() {
+export default function MediaEditPage() {
+  const { mediaId } = useParams<{ mediaId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { matieres: matieresOptions, niveaux: niveauxOptions } = useDisciplinesOptions();
 
+  const [loading, setLoading] = useState(true);
   const [soumission, setSoumission] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
   const [progressUpload, setProgressUpload] = useState(0);
@@ -53,8 +55,44 @@ export default function MediaAjoutPage() {
     statut: 'brouillon' as StatutMedia,
   });
 
-  const [fichierMedia, setFichierMedia] = useState<File | null>(null);
   const [fichierThumb, setFichierThumb] = useState<File | null>(null);
+
+  useEffect(() => {
+    if (!mediaId) return;
+    let cancelled = false;
+    async function charger() {
+      try {
+        const media = await getMediaById(mediaId);
+        if (cancelled || !media) {
+          setErreur(media ? null : 'Contenu introuvable.');
+          return;
+        }
+        setForm({
+          titre: media.titre || '',
+          description: media.description || '',
+          type: media.type || 'video',
+          url: media.url || '',
+          urlBasse: media.urlBasse || '',
+          thumbnailUrl: media.thumbnailUrl || '',
+          duree: media.duree || 0,
+          taille: media.taille || 0,
+          mimeType: media.mimeType || MIME_BY_TYPE[media.type || 'video'],
+          discipline: media.discipline || '',
+          classe: media.classe || '',
+          niveau: media.niveau || '',
+          tags: (media.tags || []).join(', '),
+          isPremium: media.isPremium ?? false,
+          statut: media.statut || 'brouillon',
+        });
+      } catch (err) {
+        if (!cancelled) setErreur('Erreur lors du chargement.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    charger();
+    return () => { cancelled = true; };
+  }, [mediaId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -66,7 +104,7 @@ export default function MediaAjoutPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || !mediaId) return;
 
     setSoumission(true);
     setErreur(null);
@@ -75,13 +113,12 @@ export default function MediaAjoutPage() {
       const disciplineId = form.discipline ? form.discipline.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '_') : 'general';
       const tags = form.tags ? form.tags.split(/[,;]/).map(t => t.trim()).filter(Boolean) : [];
 
-      const data: MediaFormData = {
+      await updateMedia(mediaId, {
         titre: form.titre.trim(),
         description: form.description.trim(),
         type: form.type,
         url: form.url.trim(),
         urlBasse: form.urlBasse?.trim() || '',
-        thumbnailUrl: form.thumbnailUrl?.trim() || '',
         duree: Number(form.duree) || 0,
         taille: form.taille || 0,
         mimeType: form.mimeType || MIME_BY_TYPE[form.type],
@@ -92,37 +129,10 @@ export default function MediaAjoutPage() {
         tags,
         isPremium: form.isPremium,
         statut: form.statut,
-      };
-
-      if (!data.titre) {
-        throw new Error('Le titre est obligatoire.');
-      }
-      if (!form.url.trim() && !fichierMedia) {
-        throw new Error('Indiquez une URL ou sélectionnez un fichier.');
-      }
-
-      const urlInitiale = fichierMedia ? 'upload://pending' : form.url.trim();
-      const dataAvecUrl: MediaFormData = { ...data, url: urlInitiale };
-
-      let mediaId = await createMedia(dataAvecUrl, currentUser.uid, currentUser.displayName || currentUser.email || 'Auteur');
-
-      if (fichierMedia) {
-        setProgressUpload(10);
-        const url = await uploadMediaFichier(
-          fichierMedia,
-          mediaId,
-          form.type,
-          disciplineId,
-          (p) => setProgressUpload(10 + Math.round(p * 0.7))
-        );
-        await updateMedia(mediaId, { url, mimeType: fichierMedia.type });
-        if (data.taille === 0) {
-          await updateMedia(mediaId, { taille: fichierMedia.size });
-        }
-      }
+      });
 
       if (fichierThumb) {
-        setProgressUpload(85);
+        setProgressUpload(50);
         const thumbnailUrl = await uploadThumbnail(fichierThumb, mediaId);
         await updateMedia(mediaId, { thumbnailUrl });
       }
@@ -130,13 +140,24 @@ export default function MediaAjoutPage() {
       setProgressUpload(100);
       navigate(`/mediatheque/${mediaId}`);
     } catch (err: unknown) {
-      console.error('[MediaAjout] Erreur:', err);
+      console.error('[MediaEdit] Erreur:', err);
       setErreur(err instanceof Error ? err.message : 'Erreur lors de l\'enregistrement.');
     } finally {
       setSoumission(false);
       setProgressUpload(0);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="media-detail-page">
+        <div className="mediatheque-chargement" style={{ padding: '4rem 2rem' }}>
+          <div className="mediatheque-spinner" />
+          <p>Chargement…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="media-detail-page">
@@ -148,11 +169,11 @@ export default function MediaAjoutPage() {
         >
           ← Médiathèque
         </button>
-        <span style={{ fontSize: '1rem', fontWeight: 700 }}>➕ Ajouter un contenu</span>
+        <span style={{ fontSize: '1rem', fontWeight: 700 }}>✏️ Modifier le contenu</span>
       </header>
 
       <div className="media-form" style={{ maxWidth: 700, margin: '2rem auto' }}>
-        <h1 className="media-form__titre">Nouveau média</h1>
+        <h1 className="media-form__titre">Modifier le média</h1>
 
         <form onSubmit={handleSubmit}>
           {erreur && (
@@ -162,15 +183,9 @@ export default function MediaAjoutPage() {
           )}
 
           <div className="media-form__groupe">
-            <label className="media-form__label">Type <span>*</span></label>
-            <select
-              name="type"
-              value={form.type}
-              onChange={handleChange}
-              className="media-form__select"
-              required
-            >
-              {(Object.entries(CONFIG_TYPE_MEDIA) as [TypeMedia, typeof CONFIG_TYPE_MEDIA[TypeMedia]][]).map(([type, config]) => (
+            <label className="media-form__label">Type</label>
+            <select name="type" value={form.type} onChange={handleChange} className="media-form__select">
+              {(Object.entries(CONFIG_TYPE_MEDIA) as [TypeMedia, (typeof CONFIG_TYPE_MEDIA)[TypeMedia]][]).map(([type, config]) => (
                 <option key={type} value={type}>{config.emoji} {config.label}</option>
               ))}
             </select>
@@ -178,76 +193,27 @@ export default function MediaAjoutPage() {
 
           <div className="media-form__groupe">
             <label className="media-form__label">Titre <span>*</span></label>
-            <input
-              name="titre"
-              value={form.titre}
-              onChange={handleChange}
-              className="media-form__input"
-              placeholder="Ex: Introduction aux fonctions affines"
-              required
-            />
+            <input name="titre" value={form.titre} onChange={handleChange} className="media-form__input" required />
           </div>
 
           <div className="media-form__groupe">
             <label className="media-form__label">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              className="media-form__textarea"
-              placeholder="Description courte du contenu"
-              rows={3}
-            />
+            <textarea name="description" value={form.description} onChange={handleChange} className="media-form__textarea" rows={3} />
           </div>
 
           <div className="media-form__groupe">
             <label className="media-form__label">URL du fichier (vidéo/audio)</label>
-            <input
-              name="url"
-              type="url"
-              value={form.url}
-              onChange={handleChange}
-              className="media-form__input"
-              placeholder="https://exemple.com/video.mp4"
-              disabled={!!fichierMedia}
-            />
-            <p className="media-form__upload-texte" style={{ marginTop: '0.5rem' }}>
-              Ou utilisez l&apos;upload ci-dessous pour un fichier local.
-            </p>
+            <input name="url" type="url" value={form.url} onChange={handleChange} className="media-form__input" />
           </div>
 
           <div className="media-form__groupe">
-            <label className="media-form__label">Fichier média (optionnel)</label>
-            <div
-              className={`media-form__upload-zone ${fichierMedia ? 'media-form__upload-zone--active' : ''}`}
-              onClick={() => document.getElementById('fichier-media')?.click()}
-            >
-              <input
-                id="fichier-media"
-                type="file"
-                accept={CONFIG_TYPE_MEDIA[form.type].accept}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  setFichierMedia(f || null);
-                  if (f) setForm(prev => ({ ...prev, url: f.name }));
-                }}
-                style={{ display: 'none' }}
-              />
-              <span className="media-form__upload-icone">📁</span>
-              <p className="media-form__upload-texte">
-                {fichierMedia ? <strong>{fichierMedia.name}</strong> : 'Cliquez pour sélectionner un fichier'}
-              </p>
-            </div>
-          </div>
-
-          <div className="media-form__groupe">
-            <label className="media-form__label">Vignette (optionnel)</label>
+            <label className="media-form__label">Vignette</label>
             <div
               className={`media-form__upload-zone ${fichierThumb ? 'media-form__upload-zone--active' : ''}`}
-              onClick={() => document.getElementById('fichier-thumb')?.click()}
+              onClick={() => document.getElementById('fichier-thumb-edit')?.click()}
             >
               <input
-                id="fichier-thumb"
+                id="fichier-thumb-edit"
                 type="file"
                 accept="image/*"
                 onChange={(e) => setFichierThumb(e.target.files?.[0] || null)}
@@ -255,7 +221,7 @@ export default function MediaAjoutPage() {
               />
               <span className="media-form__upload-icone">🖼️</span>
               <p className="media-form__upload-texte">
-                {fichierThumb ? <strong>{fichierThumb.name}</strong> : 'Cliquez pour une vignette'}
+                {fichierThumb ? <strong>{fichierThumb.name}</strong> : (form.thumbnailUrl ? 'Remplacer la vignette' : 'Ajouter une vignette')}
               </p>
             </div>
           </div>
@@ -263,24 +229,11 @@ export default function MediaAjoutPage() {
           <div className="media-form__grille-2">
             <div className="media-form__groupe">
               <label className="media-form__label">Durée (secondes)</label>
-              <input
-                name="duree"
-                type="number"
-                value={form.duree || ''}
-                onChange={handleChange}
-                className="media-form__input"
-                placeholder="Ex: 600"
-                min={0}
-              />
+              <input name="duree" type="number" value={form.duree || ''} onChange={handleChange} className="media-form__input" min={0} />
             </div>
             <div className="media-form__groupe">
               <label className="media-form__label">Discipline</label>
-              <select
-                name="discipline"
-                value={form.discipline}
-                onChange={handleChange}
-                className="media-form__select"
-              >
+              <select name="discipline" value={form.discipline} onChange={handleChange} className="media-form__select">
                 <option value="">Toutes</option>
                 {matieresOptions.map(m => (
                   <option key={m.valeur} value={m.valeur}>{m.label}</option>
@@ -292,12 +245,7 @@ export default function MediaAjoutPage() {
           <div className="media-form__grille-2">
             <div className="media-form__groupe">
               <label className="media-form__label">Niveau</label>
-              <select
-                name="niveau"
-                value={form.niveau}
-                onChange={handleChange}
-                className="media-form__select"
-              >
+              <select name="niveau" value={form.niveau} onChange={handleChange} className="media-form__select">
                 <option value="">Tous</option>
                 {niveauxOptions.map(n => (
                   <option key={n.valeur} value={n.valeur}>{n.label}</option>
@@ -306,51 +254,28 @@ export default function MediaAjoutPage() {
             </div>
             <div className="media-form__groupe">
               <label className="media-form__label">Classe</label>
-              <input
-                name="classe"
-                value={form.classe}
-                onChange={handleChange}
-                className="media-form__input"
-                placeholder="Ex: 3ème / 2nde"
-              />
+              <input name="classe" value={form.classe} onChange={handleChange} className="media-form__input" placeholder="Ex: 3ème" />
             </div>
           </div>
 
           <div className="media-form__groupe">
             <label className="media-form__label">Tags (séparés par virgule)</label>
-            <input
-              name="tags"
-              value={form.tags}
-              onChange={handleChange}
-              className="media-form__input"
-              placeholder="fonctions affines, algèbre, BFEM"
-            />
+            <input name="tags" value={form.tags} onChange={handleChange} className="media-form__input" />
           </div>
 
           <div className="media-form__grille-2">
             <div className="media-form__groupe">
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-                <input
-                  name="isPremium"
-                  type="checkbox"
-                  checked={form.isPremium}
-                  onChange={handleChange}
-                />
+                <input name="isPremium" type="checkbox" checked={form.isPremium} onChange={handleChange} />
                 Contenu Premium (aperçu 30s)
               </label>
             </div>
             <div className="media-form__groupe">
               <label className="media-form__label">Statut</label>
-              <select
-                name="statut"
-                value={form.statut}
-                onChange={handleChange}
-                className="media-form__select"
-              >
-                <option value="publie">Publié</option>
-                <option value="brouillon">Brouillon</option>
-                <option value="planifiee">Planifié</option>
-                <option value="archive">Archivé</option>
+              <select name="statut" value={form.statut} onChange={handleChange} className="media-form__select">
+                {(Object.entries(CONFIG_STATUT_MEDIA) as [StatutMedia, (typeof CONFIG_STATUT_MEDIA)[StatutMedia]][]).map(([v, config]) => (
+                  <option key={v} value={v}>{config.label}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -360,23 +285,14 @@ export default function MediaAjoutPage() {
               <div className="media-form__progress">
                 <div className="media-form__progress-bar" style={{ width: `${progressUpload}%` }} />
               </div>
-              <p className="media-form__progress-texte">Upload en cours… {progressUpload}%</p>
             </div>
           )}
 
           <div className="media-form__actions">
-            <button
-              type="button"
-              className="btn-secondaire"
-              onClick={() => navigate('/mediatheque')}
-            >
+            <button type="button" className="btn-secondaire" onClick={() => navigate('/mediatheque')}>
               Annuler
             </button>
-            <button
-              type="submit"
-              className="btn-principal"
-              disabled={soumission || (!form.url.trim() && !fichierMedia)}
-            >
+            <button type="submit" className="btn-principal" disabled={soumission}>
               {soumission ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>
