@@ -540,6 +540,20 @@ const ResourceManager: React.FC = () => {
     }
   };
 
+  /**
+   * Bascule le statut actif d'une ressource
+   */
+  const handleToggleActive = async (resource: Resource) => {
+    try {
+      await ResourceService.toggleActive(resource.id, !(resource.actif !== false));
+      await loadResources();
+      setSuccess(resource.actif !== false ? 'Ressource désactivée' : 'Ressource activée');
+      setTimeout(() => setSuccess(null), 2000);
+    } catch (err) {
+      setError('Erreur lors de la mise à jour');
+    }
+  };
+
   // ==================== HELPERS ====================
 
   /**
@@ -796,6 +810,13 @@ const ResourceManager: React.FC = () => {
                     >
                       {resource.isPremium ? '⭐' : '☆'}
                     </button>
+                    <button
+                      onClick={() => handleToggleActive(resource)}
+                      className={`table-action-btn ${resource.actif !== false ? 'table-action-btn--view' : 'table-action-btn--warning'}`}
+                      title={resource.actif !== false ? 'Désactiver' : 'Activer'}
+                    >
+                      {resource.actif !== false ? '✓' : '○'}
+                    </button>
                     {(resource.fichierURL || resource.urlExterne) && (
                       <button
                         onClick={() => handlePreview(resource)}
@@ -908,9 +929,9 @@ const ResourceManager: React.FC = () => {
                   <div className="form-group">
                     <label className="form-label">Chapitre (optionnel)</label>
                     <select
-                      name="chapitreId"
+                      name="chapitre"
                       className="form-select"
-                      value={formData.chapitre || ''}
+                      value={formData.chapitre || formData.chapitreId || ''}
                       onChange={handleFormChange}
                       disabled={loadingChapitres}
                     >

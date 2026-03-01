@@ -100,30 +100,6 @@ export const CONFIG_STATUT_MEDIA: Record<
 
 export const DUREE_APERCU_GRATUIT = 30;
 
-export const DISCIPLINES_MEDIATHEQUE = [
-  'Mathématiques',
-  'Français',
-  'Sciences de la Vie et de la Terre (SVT)',
-  'Histoire-Géographie',
-  'Physique-Chimie',
-  'Anglais',
-  'Philosophie',
-  'Sciences Économiques et Sociales',
-  'Éducation Civique',
-  'Informatique',
-  'Arabe',
-] as const;
-
-export const NIVEAUX_MEDIATHEQUE = [
-  { valeur: '6eme',      label: '6ème' },
-  { valeur: '5eme',      label: '5ème' },
-  { valeur: '4eme',      label: '4ème' },
-  { valeur: '3eme',      label: '3ème (BFEM)' },
-  { valeur: '2nde',      label: '2nde' },
-  { valeur: '1ere',      label: '1ère' },
-  { valeur: 'terminale', label: 'Terminale (BAC)' },
-] as const;
-
 export function formatDuree(secondes: number): string {
   const h = Math.floor(secondes / 3600);
   const m = Math.floor((secondes % 3600) / 60);

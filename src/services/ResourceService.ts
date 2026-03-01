@@ -73,8 +73,13 @@ const formatResource = (docSnapshot: any): Resource => {
     ordre: data.ordre || 0,
     chapitre: data.chapitre,
     fichierURL: data.fichierURL,
+    fichierNom: data.fichierNom,
     dureeEstimee: data.dureeEstimee,
+    duree: data.duree,
     tags: data.tags || [],
+    actif: data.actif !== false,
+    urlExterne: data.urlExterne,
+    chapitreId: data.chapitreId,
     auteurId: data.auteurId,
     createdAt: data.createdAt?.toDate() || new Date(),
     updatedAt: data.updatedAt?.toDate()
@@ -208,12 +213,18 @@ export const ResourceService = {
    */
   async create(data: ResourceFormData, auteurId: string): Promise<string> {
     try {
-      const docRef = await addDoc(collection(db, COLLECTION_NAME), {
+      // Firestore n'accepte pas les valeurs undefined — on les exclut
+      const cleanData: Record<string, unknown> = {
         ...data,
         auteurId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
+      };
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined) delete cleanData[key];
       });
+
+      const docRef = await addDoc(collection(db, COLLECTION_NAME), cleanData);
 
       return docRef.id;
     } catch (error) {
@@ -229,11 +240,16 @@ export const ResourceService = {
    */
   async update(id: string, data: Partial<ResourceFormData>): Promise<void> {
     try {
-      const docRef = doc(db, COLLECTION_NAME, id);
-      await updateDoc(docRef, {
+      const cleanData: Record<string, unknown> = {
         ...data,
         updatedAt: serverTimestamp()
+      };
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined) delete cleanData[key];
       });
+
+      const docRef = doc(db, COLLECTION_NAME, id);
+      await updateDoc(docRef, cleanData);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la ressource:', error);
       throw new Error('Impossible de mettre à jour la ressource');
@@ -358,6 +374,15 @@ export const ResourceService = {
    */
   async togglePremium(id: string, isPremium: boolean): Promise<void> {
     await this.update(id, { isPremium });
+  },
+
+  /**
+   * Bascule le statut actif d'une ressource
+   * @param id - ID de la ressource
+   * @param actif - Nouvel état
+   */
+  async toggleActive(id: string, actif: boolean): Promise<void> {
+    await this.update(id, { actif });
   },
 
   /**
