@@ -492,6 +492,41 @@ export const getEntreesMarqueesEvaluation = async (
 };
 
 /**
+ * Abonnement temps réel aux entrées marquées évaluation.
+ * Les signets se mettent à jour automatiquement (ajout/retrait/modification).
+ */
+export function subscribeToEntreesMarqueesEvaluation(
+  profId: string,
+  cahierId: string | undefined,
+  onData: (entrees: EntreeCahier[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const constraints: Parameters<typeof query>[1][] = [
+    where('profId', '==', profId),
+    where('isMarqueEvaluation', '==', true),
+    orderBy('date', 'desc'),
+  ];
+  if (cahierId) {
+    constraints.unshift(where('cahierId', '==', cahierId));
+  }
+  const q = query(collection(db, COL_ENTREES), ...constraints);
+
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const entrees = snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+      onData(entrees);
+    },
+    (err) => {
+      console.error('Erreur abonnement signets:', err);
+      onError?.(err);
+    }
+  );
+
+  return () => unsub();
+}
+
+/**
  * Statistiques d'un cahier — Phase 21 (CahierStats)
  */
 export const getStatsCahier = async (cahierId: string): Promise<StatsCahier> => {
@@ -567,7 +602,7 @@ export async function createEntree(
       motifAnnulation:      f.motifAnnulation || '',
       dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
       notesPrivees:         f.notesPrivees || '',
-      isMarqueEvaluation:   f.isMarqueEvaluation,
+      isMarqueEvaluation:   Boolean(f.isMarqueEvaluation),
       typeEvaluation:       f.typeEvaluation || null,
       dateEvaluationPrevue: f.dateEvaluationPrevue
         ? Timestamp.fromDate(new Date(f.dateEvaluationPrevue))
@@ -621,7 +656,7 @@ export async function updateEntree(
       motifAnnulation:      f.motifAnnulation || '',
       dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
       notesPrivees:         f.notesPrivees || '',
-      isMarqueEvaluation:   f.isMarqueEvaluation,
+      isMarqueEvaluation:   Boolean(f.isMarqueEvaluation),
       typeEvaluation:       f.typeEvaluation || null,
       dateEvaluationPrevue: f.dateEvaluationPrevue
         ? Timestamp.fromDate(new Date(f.dateEvaluationPrevue))

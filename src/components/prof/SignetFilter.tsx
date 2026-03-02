@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getEntreesMarqueesEvaluation, updateEntree } from '../../services/cahierTextesService';
+import { subscribeToEntreesMarqueesEvaluation, updateEntree } from '../../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG, TYPE_EVAL_LABELS,
   STATUT_CONFIG,
@@ -27,18 +27,17 @@ const SignetFilter: React.FC<SignetFilterProps> = ({ profId, cahierId }) => {
   const [filtreStatut, setFiltreStatut] = useState<StatutEvaluation | 'tous'>('tous');
 
   useEffect(() => {
-    const fetch = async () => {
-      setLoading(true);
-      try {
-        const data = await getEntreesMarqueesEvaluation(profId, cahierId);
+    setLoading(true);
+    const unsub = subscribeToEntreesMarqueesEvaluation(
+      profId,
+      cahierId,
+      (data) => {
         setEntrees(data);
-      } catch (err) {
-        console.error('Erreur signets:', err);
-      } finally {
         setLoading(false);
-      }
-    };
-    fetch();
+      },
+      () => setLoading(false)
+    );
+    return () => unsub();
   }, [profId, cahierId]);
 
   // Mettre à jour le statut d'évaluation
