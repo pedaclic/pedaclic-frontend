@@ -16,7 +16,7 @@ import {
   PLANS_A_LA_CARTE,
 } from '../types/premiumPlans';
 import type { CoursEnLigne } from '../cours_types';
-import { CLASSES_OPTIONS } from '../types/cahierTextes.types';
+import { CLASSES_OPTIONS, normaliserClassePourComparaison } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';
 import '../styles/CoursEnLigne.css';
@@ -59,9 +59,9 @@ export default function PremiumCoursChoicePage() {
     }
   }
 
-  const coursFiltres = cours.filter(c => {
+  const coursFiltres = cours.filter((c) => {
     if (filtres.matiere && c.matiere !== filtres.matiere) return false;
-    if (filtres.niveau && c.niveau !== filtres.niveau) return false;
+    if (filtres.niveau && normaliserClassePourComparaison(c.niveau) !== normaliserClassePourComparaison(filtres.niveau)) return false;
     return true;
   });
 
@@ -173,7 +173,7 @@ export default function PremiumCoursChoicePage() {
               {coursFiltres.map(c => {
                 const estSelectionne = selection.includes(c.id);
                 const peutAjouter = selection.length < (maxCours || 0) || estSelectionne;
-                const niveauLabel = CLASSES_OPTIONS.find(n => n.valeur === c.niveau)?.label ?? c.niveau;
+                const niveauLabel = normaliserClassePourComparaison(c.niveau) || c.niveau;
 
                 return (
                   <article
