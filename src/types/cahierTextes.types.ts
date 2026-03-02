@@ -18,11 +18,11 @@ export const CLASSES: Classe[] = [
 
 /**
  * Options pour sélecteurs (valeur + label) — source unique Cahier, Médiathèque, Premium, Cours.
- * Labels enrichis pour 3ème (BFEM) et Terminale (BAC).
+ * Labels simples : 6ème, 5ème, 4ème, 3ème, 2nde, 1ère, Terminale (sans BFEM/BAC).
  */
 export const CLASSES_OPTIONS: Array<{ valeur: Classe; label: string }> = CLASSES.map((c) => ({
   valeur: c,
-  label: c === '3ème' ? '3ème (BFEM)' : c === 'Terminale' ? 'Terminale (BAC)' : c,
+  label: c,
 }));
 
 /**

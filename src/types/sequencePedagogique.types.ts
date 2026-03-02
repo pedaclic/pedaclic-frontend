@@ -345,15 +345,15 @@ export const CONFIG_STATUT: Record<StatutSequence, { label: string; couleur: str
   archivee:  { label: 'Archivée',     couleur: '#9ca3af' }, // gris clair
 };
 
-/** Niveaux scolaires avec labels lisibles */
+/** Niveaux scolaires avec labels lisibles — alignés sur cahierTextes (sans BFEM/BAC) */
 export const NIVEAUX_SCOLAIRES: Array<{ valeur: NiveauScolaire; label: string }> = [
   { valeur: '6eme',      label: '6ème' },
   { valeur: '5eme',      label: '5ème' },
   { valeur: '4eme',      label: '4ème' },
-  { valeur: '3eme',      label: '3ème (BFEM)' },
+  { valeur: '3eme',      label: '3ème' },
   { valeur: '2nde',      label: '2nde' },
   { valeur: '1ere',      label: '1ère' },
-  { valeur: 'terminale', label: 'Terminale (BAC)' },
+  { valeur: 'terminale', label: 'Terminale' },
 ];
 
 /** Durées standard des séances au Sénégal */

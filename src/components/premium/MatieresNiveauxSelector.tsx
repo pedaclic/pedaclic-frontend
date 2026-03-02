@@ -5,10 +5,12 @@
 // Composant réutilisable pour filtrer les contenus par matière et niveau.
 // Utilisé sur PremiumPage (aperçu), PremiumCoursChoicePage, etc.
 // La sélection du niveau restreint la palette affichée.
+// ★ Source unique des niveaux : CLASSES_OPTIONS (cahierTextes.types)
 // ============================================================
 
 import React from 'react';
 import type { SelectOption } from '../../hooks/useDisciplinesOptions';
+import { CLASSES_OPTIONS } from '../../types/cahierTextes.types';
 import './MatieresNiveauxSelector.css';
 import { getNombreCoursMax, type FormulePremium } from '../../types/premiumPlans';
 
@@ -19,7 +21,8 @@ export interface MatieresNiveauxValue {
 
 export interface MatieresNiveauxSelectorProps {
   matieres: SelectOption[];
-  niveaux: SelectOption[];
+  /** Non utilisé : les niveaux viennent toujours de CLASSES_OPTIONS (cahierTextes) */
+  niveaux?: SelectOption[];
   value: MatieresNiveauxValue;
   onChange: (value: MatieresNiveauxValue) => void;
   formule?: FormulePremium | string;
@@ -34,7 +37,6 @@ export interface MatieresNiveauxSelectorProps {
  */
 const MatieresNiveauxSelector: React.FC<MatieresNiveauxSelectorProps> = ({
   matieres,
-  niveaux,
   value,
   onChange,
   formule,
@@ -42,6 +44,8 @@ const MatieresNiveauxSelector: React.FC<MatieresNiveauxSelectorProps> = ({
   compact = false,
 }) => {
   const maxCours = formule ? getNombreCoursMax(formule) : null;
+  /** Source unique : CLASSES_OPTIONS (cahierTextes) — 6ème, 5ème, 4ème, 3ème, 2nde, 1ère, Terminale */
+  const niveauxOptions = CLASSES_OPTIONS;
 
   return (
     <div className={`matieres-niveaux-selector ${compact ? 'matieres-niveaux-selector--compact' : ''}`}>
@@ -77,7 +81,7 @@ const MatieresNiveauxSelector: React.FC<MatieresNiveauxSelectorProps> = ({
             aria-label="Filtrer par niveau"
           >
             <option value="">Tous les niveaux</option>
-            {niveaux.map((n) => (
+            {niveauxOptions.map((n) => (
               <option key={n.valeur} value={n.valeur}>
                 {n.label}
               </option>
