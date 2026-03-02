@@ -134,7 +134,7 @@ export default function PremiumCoursChoicePage() {
         <div className="cours-catalogue__filtres-inner">
           <MatieresNiveauxSelector
             matieres={matieres}
-            niveaux={NIVEAUX_COURS}
+            niveaux={CLASSES_OPTIONS}
             value={filtres}
             onChange={setFiltres}
             formule={formule}
