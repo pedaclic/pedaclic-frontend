@@ -126,7 +126,8 @@ export const TOUS_LES_PLANS: PlanPremium[] = [
 /**
  * Vérifie si une formule est "à la carte" (choix limité de cours)
  */
-export function estFormuleALaCarte(formule: FormulePremium): boolean {
+export function estFormuleALaCarte(formule: FormulePremium | string | undefined): boolean {
+  if (!formule || typeof formule !== 'string') return false;
   return formule.startsWith('a_la_carte_');
 }
 
