@@ -302,6 +302,13 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
     } catch (err: any) { setError(err.message); }
   };
 
+  const handleRestaurer = async (groupeId: string) => {
+    try {
+      await restaurerGroupe(groupeId);
+      await chargerGroupes();
+    } catch (err: any) { setError(err.message); }
+  };
+
   const handleRegenerCode = async (groupeId: string) => {
     try {
       await regenererCode(groupeId);
