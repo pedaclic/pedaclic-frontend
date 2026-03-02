@@ -331,6 +331,40 @@ service cloud.firestore {
                        (isProf() && resource.data.profId == request.auth.uid) ||
                        isAdmin()
                      );
+
+      // Sous-collection: observations (notes sur les élèves)
+      match /observations/{eleveId} {
+        allow read, write: if isSignedIn() && (
+          (isProf() && get(/databases/$(database)/documents/groupes_prof/$(groupeId)).data.profId == request.auth.uid) ||
+          isAdmin()
+        );
+      }
+    }
+
+    // ============================================================
+    // COLLECTION: absences_groupe (Appel / Présences)
+    // ============================================================
+    match /absences_groupe/{absenceId} {
+      allow read, update, delete: if isSignedIn() && (
+        (isProf() && resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        (isProf() && request.resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+
+    // ============================================================
+    // COLLECTION: travaux_a_faire (Échéances — élèves/parents)
+    // ============================================================
+    match /travaux_a_faire/{travailId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isProf() && request.resource.data.profId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (
+        (isProf() && resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
     }
 
     // ============================================================

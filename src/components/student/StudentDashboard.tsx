@@ -74,6 +74,8 @@ import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ P
 import { getQuizzes, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
+import { getGroupesEleve } from '../../services/profGroupeService';
+import { getTravauxForEleve } from '../../services/travauxAFaireService';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import RejoindreGroupe from './RejoindreGroupe';
 import ProgressBar from '../shared/ProgressBar';                        // ★ Phase 14
@@ -112,6 +114,9 @@ const StudentDashboard: React.FC = () => {
   const [codeParent, setCodeParent] = useState<string | null>(null);
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+
+  /* ── États Travaux à faire ── */
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string }>>([]);
 
   /** Génère ou récupère le code d'invitation parent */
   const handleGenererCode = async () => {
@@ -174,6 +179,18 @@ const StudentDashboard: React.FC = () => {
         /* ── Calculer les badges (Phase 14 enrichi) ── */
         const badgesList = calculateBadges(progressData, discProgress, progGlobale);
         setBadges(badgesList);
+
+        /* ── Travaux à faire (groupes de l'élève) ── */
+        const mesGroupes = await getGroupesEleve(currentUser.uid);
+        const groupeIds = mesGroupes.map(g => g.id);
+        const travauxData = await getTravauxForEleve(groupeIds);
+        setTravaux(travauxData.map(t => ({
+          id: t.id,
+          titre: t.titre,
+          description: t.description,
+          dateEcheance: t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance),
+          groupeNom: t.groupeNom,
+        })));
       } catch (error) {
         console.error('Erreur chargement dashboard :', error);
       } finally {
@@ -368,6 +385,36 @@ const StudentDashboard: React.FC = () => {
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <RejoindreGroupe />
       </div>
+
+      {/* ══════════════════════════════════════════════
+          TRAVAUX À FAIRE
+          ══════════════════════════════════════════════ */}
+      {travaux.length > 0 && (
+        <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+          <h3 className="sd-section-title">
+            <Calendar size={18} /> Travaux à faire
+          </h3>
+          <ul className="sd-travaux-liste" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {travaux.map((t) => (
+              <li key={t.id} className="sd-travaux-item" style={{
+                padding: '0.75rem 1rem',
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                marginBottom: '0.5rem',
+              }}>
+                <strong>{t.titre}</strong>
+                {t.description && (
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0' }}>{t.description}</p>
+                )}
+                <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
+                  📅 {t.dateEcheance.toLocaleDateString('fr-FR')} • {t.groupeNom}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════
           COURS EN LIGNE (Phase 24) — Non-premium : accès + CTA formules

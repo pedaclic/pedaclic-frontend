@@ -389,20 +389,14 @@ export function formatFileSize(bytes: number): string {
 }
 
 /**
- * Liste des matières disponibles pour le filtrage
+ * Liste de repli (fallback) quand Firestore disciplines est indisponible.
+ * La source canonique est /admin/Disciplines (collection disciplines).
  */
-export const MATIERES_DISPONIBLES = [
-  'Mathématiques',
-  'Physique-Chimie',
-  'SVT',
-  'Français',
-  'Anglais',
-  'Histoire-Géographie',
-  'Philosophie',
-  'Économie',
-  'Comptabilité',
-  'Éducation civique',
-  'Arabe',
-  'Espagnol',
-  'Informatique'
+export const MATIERES_DISPONIBLES_FALLBACK = [
+  'Mathématiques', 'Physique-Chimie', 'SVT', 'Français', 'Anglais',
+  'Histoire-Géographie', 'Philosophie', 'Économie', 'Comptabilité',
+  'Éducation civique', 'Arabe', 'Espagnol', 'Informatique',
 ];
+
+/** @deprecated Utiliser useDisciplinesOptions ou MATIERES_DISPONIBLES_FALLBACK */
+export const MATIERES_DISPONIBLES = MATIERES_DISPONIBLES_FALLBACK;

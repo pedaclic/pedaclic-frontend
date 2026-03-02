@@ -15,6 +15,7 @@ import {
   createCahier,
   updateCahier,
   deleteCahier,
+  toggleArchiveCahier,
   getGroupesProf,
 } from '../services/cahierTextesService';
 
@@ -58,6 +59,7 @@ const CahierTextesPage: React.FC = () => {
   const [cahiers, setCahiers]       = useState<CahierTextes[]>([]);
   const [loading, setLoading]       = useState(true);
   const [filtreAnnee, setFiltreAnnee] = useState<string>('2025-2026');
+  const [filtreArchive, setFiltreArchive] = useState<'actif' | 'archive' | 'tous'>('actif');
   const [showModal, setShowModal]   = useState(false);
   const [editCahier, setEditCahier] = useState<CahierTextes | null>(null);
   const [form, setForm]             = useState<CahierFormData>(emptyForm());
@@ -221,6 +223,27 @@ const CahierTextesPage: React.FC = () => {
     }
   };
 
+  const handleToggleArchive = async (cahier: CahierTextes, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nouvelEtat = !(cahier.isArchived ?? false);
+    try {
+      await toggleArchiveCahier(cahier.id, nouvelEtat);
+      setCahiers(prev => prev.map(c =>
+        c.id === cahier.id ? { ...c, isArchived: nouvelEtat } : c
+      ));
+    } catch {
+      alert('Erreur lors de l\'opération.');
+    }
+  };
+
+  // ── Filtrage par statut archive ───────────────────────────
+  const cahiersFiltres = cahiers.filter(c => {
+    const archived = c.isArchived ?? false;
+    if (filtreArchive === 'actif') return !archived;
+    if (filtreArchive === 'archive') return archived;
+    return true;
+  });
+
   // ── Progression ───────────────────────────────────────────
   const progressionPct = (cahier: CahierTextes) =>
     cahier.nombreSeancesPrevu > 0
@@ -252,28 +275,54 @@ const CahierTextesPage: React.FC = () => {
           <option value="">Toutes les années</option>
           {ANNEES_SCOLAIRES.map(a => <option key={a} value={a}>{a}</option>)}
         </select>
+        <div className="cahier-filtres-archive" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: '1.5rem' }}>
+          <button
+            type="button"
+            className={`filtre-btn ${filtreArchive === 'actif' ? 'active' : ''}`}
+            onClick={() => setFiltreArchive('actif')}
+          >
+            Actifs ({cahiers.filter(c => !(c.isArchived ?? false)).length})
+          </button>
+          <button
+            type="button"
+            className={`filtre-btn ${filtreArchive === 'archive' ? 'active' : ''}`}
+            onClick={() => setFiltreArchive('archive')}
+          >
+            Archivés ({cahiers.filter(c => c.isArchived ?? false).length})
+          </button>
+          <button
+            type="button"
+            className={`filtre-btn ${filtreArchive === 'tous' ? 'active' : ''}`}
+            onClick={() => setFiltreArchive('tous')}
+          >
+            Tous ({cahiers.length})
+          </button>
+        </div>
       </div>
 
       {/* ── Contenu ── */}
       {loading ? (
         <div className="loading-spinner"><div className="spinner-circle" /></div>
-      ) : cahiers.length === 0 ? (
+      ) : cahiersFiltres.length === 0 ? (
         <div className="empty-state">
           <div style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '0.75rem' }}>📒</div>
-          <h3>Aucun cahier pour {filtreAnnee || 'cette période'}</h3>
-          <p>Créez votre premier cahier de textes pour commencer à planifier votre enseignement.</p>
+          <h3>{filtreArchive === 'archive' ? 'Aucun cahier archivé' : 'Aucun cahier pour ' + (filtreAnnee || 'cette période')}</h3>
+          <p>{filtreArchive === 'archive'
+            ? 'Vos cahiers archivés apparaîtront ici.'
+            : 'Créez votre premier cahier de textes pour commencer à planifier votre enseignement.'}</p>
           <button className="btn-primary" onClick={handleNouveauCahier} style={{ marginTop: '1rem' }}>
             + Créer mon premier cahier
           </button>
         </div>
       ) : (
         <div className="cahiers-grid">
-          {cahiers.map(cahier => {
+          {cahiersFiltres.map(cahier => {
             const pct = progressionPct(cahier);
+            const isArchived = cahier.isArchived ?? false;
             return (
               <div
                 key={cahier.id}
-                className="cahier-card"
+                className={`cahier-card ${isArchived ? 'cahier-card-archived' : ''}`}
                 onClick={() => navigate(`/prof/cahiers/${cahier.id}`)}
               >
                 {/* Bande couleur */}
@@ -283,9 +332,10 @@ const CahierTextesPage: React.FC = () => {
                   <div style={{ flex: 1 }}>
                     <h3 className="cahier-card-titre">{cahier.titre}</h3>
                     <div className="cahier-card-meta">
-                      <span className="badge-classe">{cahier.classe}</span>
+                      <span className="badge-classe" title="Classe liée">{cahier.classe}</span>
                       <span className="badge-matiere">{cahier.matiere}</span>
                       <span className="badge-annee">{cahier.anneeScolaire}</span>
+                      {isArchived && <span className="badge-archive">📦 Archivé</span>}
                     </div>
 
                     {/* ── Phase 22 : badge groupes liés ── */}
@@ -329,6 +379,13 @@ const CahierTextesPage: React.FC = () => {
                     Mis à jour le {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR') || '—'}
                   </span>
                   <div className="cahier-actions">
+                    <button
+                      className="btn-icon"
+                      onClick={e => handleToggleArchive(cahier, e)}
+                      title={isArchived ? 'Restaurer' : 'Archiver'}
+                    >
+                      {isArchived ? '↩️' : '📦'}
+                    </button>
                     <button className="btn-icon" onClick={e => handleEditCahier(cahier, e)} title="Modifier">
                       ✏️
                     </button>

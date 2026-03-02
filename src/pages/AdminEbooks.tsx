@@ -4,7 +4,7 @@
 // Statistiques et gestion de la bibliothèque
 // ==============================================================
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Ebook,
   EbookFormData,
@@ -21,12 +21,14 @@ import {
   toggleEbookActive,
   calculateEbookStats,
   formatFileSize,
-  MATIERES_DISPONIBLES
+  MATIERES_DISPONIBLES_FALLBACK
 } from '../services/ebookService';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import { CLASSES } from '../types/cahierTextes.types';
 import '../styles/AdminEbooks.css';
 
 export const AdminEbooks: React.FC = () => {
+  const { matieres: matieresDisciplines } = useDisciplinesOptions();
   // ==================== STATES ====================
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -391,7 +393,7 @@ export const AdminEbooks: React.FC = () => {
                   onChange={handleInputChange}
                 >
                   <option value="">-- Sélectionner --</option>
-                  {MATIERES_DISPONIBLES.map(m => (
+                  {matieresOptions.map(m => (
                     <option key={m} value={m}>{m}</option>
                   ))}
                 </select>

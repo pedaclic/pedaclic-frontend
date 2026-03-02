@@ -199,6 +199,20 @@
 }
 .filtre-select:focus { border-color: var(--ct-blue); }
 
+.filtre-btn {
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--ct-radius-sm);
+  border: 1.5px solid var(--ct-gray-200);
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: white;
+  color: var(--ct-gray-600);
+  cursor: pointer;
+  transition: var(--ct-transition);
+}
+.filtre-btn:hover { border-color: var(--ct-blue); color: var(--ct-blue); }
+.filtre-btn.active { background: var(--ct-blue); border-color: var(--ct-blue); color: white; }
+
 /* ─── Grille cahiers ─────────────────────────────────────────── */
 .cahier-filtres {
   display: flex;
@@ -228,6 +242,10 @@
 .cahier-card:hover {
   box-shadow: var(--ct-shadow-md);
   transform: translateY(-2px);
+}
+.cahier-card-archived {
+  opacity: 0.85;
+  border-style: dashed;
 }
 .cahier-card-header {
   padding: 1rem 1.25rem 0.75rem;
@@ -270,6 +288,7 @@
 .badge-matiere  { background: var(--ct-gray-100);   color: var(--ct-gray-600); }
 .badge-annee    { background: #f3f4ff;               color: #4f46e5; }
 .badge-partage  { background: #f0fdf4;               color: #059669; }
+.badge-archive  { background: var(--ct-amber-light); color: var(--ct-amber); }
 .badge-pj {
   background: #f0f9ff;
   color: #0369a1;

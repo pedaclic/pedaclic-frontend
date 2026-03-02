@@ -31,6 +31,8 @@ import {
   getLabelUrgence,
   getEmojiFendance
 } from '../../services/suiviService';
+import { getGroupesEleve } from '../../services/profGroupeService';
+import { getTravauxForParent } from '../../services/travauxAFaireService';
 import '../../styles/parent.css';
 
 // ==================== IMPORTS TYPES ====================
@@ -80,7 +82,10 @@ const ParentDashboard: React.FC = () => {
   // ===== STATES ONGLETS =====
 
   /** Onglet actif dans le dashboard détaillé */
-  const [ongletActif, setOngletActif] = useState<'apercu' | 'lacunes' | 'alertes' | 'resume'>('apercu');
+  const [ongletActif, setOngletActif] = useState<'apercu' | 'lacunes' | 'alertes' | 'travaux' | 'resume'>('apercu');
+
+  /** Travaux à faire de l'enfant sélectionné */
+  const [travauxEnfant, setTravauxEnfant] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string }>>([]);
 
   // ===== EFFECTS =====
 
@@ -131,11 +136,25 @@ const ParentDashboard: React.FC = () => {
     try {
       setLoadingDashboard(true);
       setError(null);
-      const data = await getDashboardParent(parentId, enfantId);
+      const [data, groupes] = await Promise.all([
+        getDashboardParent(parentId, enfantId),
+        getGroupesEleve(enfantId),
+      ]);
       setDashboardData(data);
+
+      const groupeIds = groupes.map(g => g.id);
+      const travaux = await getTravauxForParent(groupeIds);
+      setTravauxEnfant(travaux.map(t => ({
+        id: t.id,
+        titre: t.titre,
+        description: t.description,
+        dateEcheance: t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance),
+        groupeNom: t.groupeNom,
+      })));
     } catch (err: any) {
       setError(err.message || 'Erreur lors du chargement du suivi.');
       setDashboardData(null);
+      setTravauxEnfant([]);
     } finally {
       setLoadingDashboard(false);
     }
@@ -483,10 +502,16 @@ const ParentDashboard: React.FC = () => {
                     🔔 Alertes ({dashboardData.alertes.length})
                   </button>
                   <button
+                    className={`parent-onglet ${ongletActif === 'travaux' ? 'parent-onglet-actif' : ''}`}
+                    onClick={() => setOngletActif('travaux')}
+                  >
+                    📋 Travaux ({travauxEnfant.length})
+                  </button>
+                  <button
                     className={`parent-onglet ${ongletActif === 'resume' ? 'parent-onglet-actif' : ''}`}
                     onClick={() => setOngletActif('resume')}
                   >
-                    📋 Résumé
+                    📝 Résumé
                   </button>
                 </div>
 
@@ -658,6 +683,32 @@ const ParentDashboard: React.FC = () => {
                               {/* Date */}
                               <span className="parent-alerte-date">
                                 {formaterDateRelative(alerte.dateCreation)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ---- ONGLET : TRAVAUX À FAIRE ---- */}
+                  {ongletActif === 'travaux' && (
+                    <div className="parent-tab-travaux">
+                      {travauxEnfant.length === 0 ? (
+                        <div className="parent-vide-section">
+                          <span className="parent-vide-icon">📋</span>
+                          <p>Aucun travail à faire pour le moment.</p>
+                        </div>
+                      ) : (
+                        <div className="parent-travaux-liste">
+                          {travauxEnfant.map((t) => (
+                            <div key={t.id} className="parent-travaux-item">
+                              <strong>{t.titre}</strong>
+                              {t.description && (
+                                <p className="parent-travaux-desc">{t.description}</p>
+                              )}
+                              <span className="parent-travaux-echeance">
+                                📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')} • {t.groupeNom}
                               </span>
                             </div>
                           ))}

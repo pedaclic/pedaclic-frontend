@@ -1023,6 +1023,36 @@
   opacity: 0.7;
 }
 
+/* ==================== ONGLET TRAVAUX À FAIRE ==================== */
+
+.parent-travaux-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.parent-travaux-item {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--parent-border);
+  background-color: var(--parent-card-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.parent-travaux-desc {
+  font-size: 0.85rem;
+  color: var(--parent-text-light);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.parent-travaux-echeance {
+  font-size: 0.8rem;
+  color: var(--parent-secondary);
+}
+
 /* ==================== ONGLET RÉSUMÉ ==================== */
 
 .parent-resume-header {

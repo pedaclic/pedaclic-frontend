@@ -16,8 +16,9 @@ import {
   getAllEbooks,
   filterEbooks,
   formatFileSize,
-  MATIERES_DISPONIBLES
+  MATIERES_DISPONIBLES_FALLBACK
 } from '../services/ebookService';
+import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import { CLASSES } from '../types/cahierTextes.types';
 import '../styles/EbookLibrary.css';
 
@@ -30,6 +31,7 @@ interface EbookLibraryProps {
 }
 
 export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbook }) => {
+  const { matieres: matieresDisciplines } = useDisciplinesOptions();
   // ==================== STATES ====================
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,14 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
     });
     return counts;
   }, [ebooks]);
+
+  // --- Matières : source canonique (disciplines) + valeurs existantes dans ebooks (rétrocompat) ---
+  const matieresOptions = useMemo(() => {
+    const fromDisciplines = matieresDisciplines.map(m => m.valeur);
+    const fromEbooks = [...new Set(ebooks.map(e => e.matiere).filter(Boolean) as string[])];
+    const merged = [...new Set([...fromDisciplines, ...fromEbooks])].sort((a, b) => a.localeCompare(b, 'fr'));
+    return merged.length ? merged : MATIERES_DISPONIBLES_FALLBACK;
+  }, [matieresDisciplines, ebooks]);
 
   // ==================== HANDLERS ====================
   const handleFilterChange = (key: keyof EbookFilters, value: string) => {
@@ -205,7 +215,7 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
           className="filter-select"
         >
           <option value="">Toutes les matières</option>
-          {MATIERES_DISPONIBLES.map(m => (
+          {matieresOptions.map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
         </select>

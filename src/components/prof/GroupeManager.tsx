@@ -28,6 +28,7 @@ import {
   modifierGroupe,
   supprimerGroupe,
   archiverGroupe,
+  restaurerGroupe,
   regenererCode,
   getStatsGroupe
 } from '../../services/profGroupeService';
@@ -619,6 +620,10 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
                       <button className="prof-btn prof-btn-secondary prof-btn-sm"
                         onClick={() => handleArchiver(groupe.id)}>📦 Archiver</button>
                     </>
+                  )}
+                  {groupe.statut === 'archive' && (
+                    <button className="prof-btn prof-btn-primary prof-btn-sm"
+                      onClick={() => handleRestaurer(groupe.id)}>↩️ Restaurer</button>
                   )}
 
                   {confirmSuppression === groupe.id ? (
