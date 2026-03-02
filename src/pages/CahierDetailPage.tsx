@@ -17,6 +17,7 @@ import {
   deleteEntree,
   updateEntree,
   updateCahier,
+  toggleArchiveCahier,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -277,11 +278,14 @@ const CahierDetailPage: React.FC = () => {
         <div className="cahier-detail-info">
           <h1 className="cahier-detail-titre">{cahier.titre}</h1>
           <div className="cahier-detail-badges">
-            <span className="badge-classe">{cahier.classe}</span>
+            <span className="badge-classe" title="Classe liée">📋 {cahier.classe}</span>
             <span className="badge-matiere">{cahier.matiere}</span>
             <span className="badge-annee">{cahier.anneeScolaire}</span>
             {cahier.isPartage && (
               <span className="badge-partage">👥 Partagé</span>
+            )}
+            {(cahier.isArchived ?? false) && (
+              <span className="badge-archive">📦 Archivé</span>
             )}
           </div>
           {cahier.description && (
@@ -306,6 +310,19 @@ const CahierDetailPage: React.FC = () => {
 
         {/* Actions en-tête */}
         <div className="cahier-detail-actions no-print">
+          <button
+            className="btn-secondary"
+            onClick={async () => {
+              const nouvelEtat = !(cahier.isArchived ?? false);
+              try {
+                await toggleArchiveCahier(cahier.id, nouvelEtat);
+                setCahier(prev => prev ? { ...prev, isArchived: nouvelEtat } : null);
+              } catch { alert('Erreur lors de l\'opération.'); }
+            }}
+            title={(cahier.isArchived ?? false) ? 'Restaurer le cahier' : 'Archiver le cahier'}
+          >
+            {(cahier.isArchived ?? false) ? '↩️ Restaurer' : '📦 Archiver'}
+          </button>
           {pdfEnabled && (
             <button
               className="btn-pdf"

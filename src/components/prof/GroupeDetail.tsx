@@ -27,6 +27,19 @@ import {
   retirerEleve,
   getElevesGroupe
 } from '../../services/profGroupeService';
+import {
+  marquerAbsences,
+  getAbsencesByDate,
+  getAbsencesByPeriod,
+  sauvegarderObservation,
+  getObservationEleve,
+} from '../../services/groupeAbsencesService';
+import {
+  creerTravailAFaire,
+  getTravauxByGroupe,
+  supprimerTravailAFaire,
+} from '../../services/travauxAFaireService';
+import { useAuth } from '../../hooks/useAuth';
 import type {
   GroupeProf,
   StatsGroupe,
@@ -34,16 +47,92 @@ import type {
   StatsQuizGroupe,
   AlerteProf
 } from '../../types/prof';
+import type { TravailAFaire } from '../../types/groupeAbsences.types';
 import '../../styles/prof.css';
 
 
 // ==================== TYPES LOCAUX ====================
 
 /** Onglets disponibles dans le détail du groupe */
-type OngletActif = 'apercu' | 'eleves' | 'quiz' | 'alertes';
+type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'quiz' | 'alertes';
 
 /** Options de tri pour la liste des élèves */
 type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count';
+
+
+// ==================== SOUS-COMPOSANT : SUIVI ABSENCES ====================
+
+interface AppelSuiviTableProps {
+  groupeId: string;
+  statsEleves: EleveGroupeStats[];
+  periode: 'jour' | 'semaine' | 'mois';
+}
+
+function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProps) {
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const today = new Date();
+    let debut: string, fin: string;
+    if (periode === 'jour') {
+      debut = fin = today.toISOString().slice(0, 10);
+    } else if (periode === 'semaine') {
+      const d = new Date(today);
+      d.setDate(d.getDate() - 7);
+      debut = d.toISOString().slice(0, 10);
+      fin = today.toISOString().slice(0, 10);
+    } else {
+      const d = new Date(today);
+      d.setMonth(d.getMonth() - 1);
+      debut = d.toISOString().slice(0, 10);
+      fin = today.toISOString().slice(0, 10);
+    }
+
+    (async () => {
+      try {
+        const absences = await getAbsencesByPeriod(groupeId, debut, fin);
+        const c: Record<string, number> = {};
+        statsEleves.forEach(e => { c[e.eleveId] = 0; });
+        absences.forEach(a => {
+          (a.eleveIdsAbsents || []).forEach((id: string) => {
+            if (c[id] !== undefined) c[id]++;
+          });
+        });
+        if (!cancelled) setCounts(c);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [groupeId, statsEleves, periode]);
+
+  if (loading) return <p className="text-muted">Chargement...</p>;
+
+  const sorted = [...statsEleves].sort((a, b) => (counts[b.eleveId] || 0) - (counts[a.eleveId] || 0));
+
+  return (
+    <table className="groupe-eleves-table groupe-appel-suivi-table">
+      <thead>
+        <tr>
+          <th>Élève</th>
+          <th>Absences ({periode})</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map(e => (
+          <tr key={e.eleveId}>
+            <td>{e.eleveNom}</td>
+            <td className={counts[e.eleveId] > 0 ? 'prof-note-critique' : ''}>
+              {counts[e.eleveId] || 0}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 
 // ==================== INTERFACE PROPS ====================
@@ -59,6 +148,7 @@ interface GroupeDetailProps {
 // ==================== COMPOSANT PRINCIPAL ====================
 
 const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
+  const { currentUser } = useAuth();
 
   // ===== États : données =====
   const [statsGroupe, setStatsGroupe] = useState<StatsGroupe | null>(null);
@@ -66,6 +156,20 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [alertes, setAlertes] = useState<AlerteProf[]>([]);
   const [quizDisponibles, setQuizDisponibles] = useState<{ id: string; titre: string }[]>([]);
   const [statsQuiz, setStatsQuiz] = useState<StatsQuizGroupe | null>(null);
+  const [travaux, setTravaux] = useState<TravailAFaire[]>([]);
+  const [observations, setObservations] = useState<Record<string, string>>({});
+
+  // ===== États : Appel / Absences =====
+  const [dateAppel, setDateAppel] = useState<string>(() => new Date().toISOString().slice(0, 10));
+  const [absentsIds, setAbsentsIds] = useState<string[]>([]);
+  const [loadingAppel, setLoadingAppel] = useState(false);
+  const [periodeSuivi, setPeriodeSuivi] = useState<'jour' | 'semaine' | 'mois'>('semaine');
+
+  // ===== États : Travaux à faire =====
+  const [nouveauTravailTitre, setNouveauTravailTitre] = useState('');
+  const [nouveauTravailDesc, setNouveauTravailDesc] = useState('');
+  const [nouveauTravailEcheance, setNouveauTravailEcheance] = useState('');
+  const [savingTravail, setSavingTravail] = useState(false);
 
   // ===== États : UI =====
   const [loading, setLoading] = useState<boolean>(true);
@@ -73,6 +177,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [ongletActif, setOngletActif] = useState<OngletActif>('apercu');
   const [triEleves, setTriEleves] = useState<TriEleves>('moyenne_desc');
   const [eleveSelectionne, setEleveSelectionne] = useState<string | null>(null);
+  const [observationEdit, setObservationEdit] = useState('');
+  const [savingObservation, setSavingObservation] = useState<string | null>(null);
   const [quizSelectionne, setQuizSelectionne] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState<boolean>(false);
   const [loadingRetrait, setLoadingRetrait] = useState<string | null>(null);
@@ -116,6 +222,30 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     chargerDonneesGroupe();
   }, [chargerDonneesGroupe]);
 
+  /** Charge les absences du jour pour l'appel */
+  useEffect(() => {
+    if (ongletActif !== 'appel') return;
+    getAbsencesByDate(groupe.id, dateAppel).then(setAbsentsIds).catch(() => setAbsentsIds([]));
+  }, [ongletActif, groupe.id, dateAppel]);
+
+  /** Charge les travaux à faire */
+  useEffect(() => {
+    if (ongletActif !== 'travaux') return;
+    getTravauxByGroupe(groupe.id).then(setTravaux).catch(() => setTravaux([]));
+  }, [ongletActif, groupe.id]);
+
+  /** Charge l'observation de l'élève sélectionné */
+  useEffect(() => {
+    if (!eleveSelectionne) {
+      setObservationEdit('');
+      return;
+    }
+    getObservationEleve(groupe.id, eleveSelectionne).then((t) => {
+      setObservationEdit(t);
+      setObservations(prev => ({ ...prev, [eleveSelectionne]: t }));
+    }).catch(() => setObservationEdit(''));
+  }, [groupe.id, eleveSelectionne]);
+
 
   // ==================== HANDLERS ====================
 
@@ -150,7 +280,6 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const handleRetirerEleve = async (eleveId: string) => {
     try {
       setLoadingRetrait(eleveId);
-      // Trouver l'inscription
       const inscriptions = await getElevesGroupe(groupe.id);
       const inscription = inscriptions.find(i => i.eleveId === eleveId);
       if (inscription) {
@@ -161,6 +290,72 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
       setError(err.message);
     } finally {
       setLoadingRetrait(null);
+    }
+  };
+
+  /** Marque les absences pour la date d'appel */
+  const handleMarquerAbsences = async () => {
+    if (!currentUser?.uid) return;
+    try {
+      setLoadingAppel(true);
+      await marquerAbsences(groupe.id, dateAppel, absentsIds, currentUser.uid);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingAppel(false);
+    }
+  };
+
+  /** Sauvegarde une observation sur l'élève sélectionné */
+  const handleSaveObservation = async () => {
+    if (!eleveSelectionne || !currentUser?.uid) return;
+    const eleve = statsEleves.find(e => e.eleveId === eleveSelectionne);
+    if (!eleve) return;
+    try {
+      setSavingObservation(eleveSelectionne);
+      await sauvegarderObservation(groupe.id, eleveSelectionne, eleve.eleveNom, observationEdit, currentUser.uid);
+      setObservations(prev => ({ ...prev, [eleveSelectionne]: observationEdit }));
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingObservation(null);
+    }
+  };
+
+  /** Ajoute un travail à faire */
+  const handleAjouterTravail = async () => {
+    if (!currentUser?.uid || !nouveauTravailTitre.trim()) return;
+    const echeance = nouveauTravailEcheance ? new Date(nouveauTravailEcheance) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    try {
+      setSavingTravail(true);
+      await creerTravailAFaire({
+        groupeId: groupe.id,
+        groupeNom: groupe.nom,
+        titre: nouveauTravailTitre.trim(),
+        description: nouveauTravailDesc.trim() || undefined,
+        dateEcheance: echeance,
+        matiere: groupe.matiereNom,
+        profId: currentUser.uid,
+      });
+      setNouveauTravailTitre('');
+      setNouveauTravailDesc('');
+      setNouveauTravailEcheance('');
+      const liste = await getTravauxByGroupe(groupe.id);
+      setTravaux(liste);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSavingTravail(false);
+    }
+  };
+
+  /** Supprime un travail à faire */
+  const handleSupprimerTravail = async (id: string) => {
+    try {
+      await supprimerTravailAFaire(id);
+      setTravaux(prev => prev.filter(t => t.id !== id));
+    } catch (err: any) {
+      setError(err?.message);
     }
   };
 
@@ -257,6 +452,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
         {[
           { id: 'apercu' as OngletActif, label: '📊 Aperçu', count: null },
           { id: 'eleves' as OngletActif, label: '👥 Élèves', count: statsEleves.length },
+          { id: 'appel' as OngletActif, label: '✅ Appel', count: null },
+          { id: 'travaux' as OngletActif, label: '📋 Travaux', count: travaux.length },
           { id: 'quiz' as OngletActif, label: '📝 Quiz', count: quizDisponibles.length },
           { id: 'alertes' as OngletActif, label: '🔔 Alertes', count: alertes.length }
         ].map(onglet => (
@@ -566,12 +763,174 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                           </ul>
                         )}
                       </div>
+
+                      {/* Observations */}
+                      <div className="groupe-eleve-detail-card groupe-eleve-detail-card-wide">
+                        <h4>📝 Observations</h4>
+                        <textarea
+                          className="prof-textarea"
+                          rows={3}
+                          placeholder="Notes sur cet élève..."
+                          value={observationEdit}
+                          onChange={(e) => setObservationEdit(e.target.value)}
+                        />
+                        <button
+                          className="prof-btn prof-btn-primary prof-btn-sm"
+                          onClick={handleSaveObservation}
+                          disabled={savingObservation === eleve.eleveId}
+                        >
+                          {savingObservation === eleve.eleveId ? 'Enregistrement...' : '💾 Enregistrer'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
             </>
           )}
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* ONGLET APPEL : PRÉSENCES / ABSENCES                          */}
+      {/* ============================================================ */}
+      {ongletActif === 'appel' && (
+        <div className="groupe-appel">
+          <div className="groupe-appel-header">
+            <label htmlFor="date-appel">Date de l'appel :</label>
+            <input
+              id="date-appel"
+              type="date"
+              value={dateAppel}
+              onChange={(e) => setDateAppel(e.target.value)}
+              className="prof-input prof-input-sm"
+            />
+          </div>
+
+          {statsEleves.length === 0 ? (
+            <div className="prof-empty-state">
+              <p>Aucun élève inscrit. Partagez le code pour inviter des élèves.</p>
+            </div>
+          ) : (
+            <>
+              <div className="groupe-appel-liste">
+                <h4>☑️ Marquer les absents</h4>
+                {statsEleves.map((eleve) => (
+                  <label key={eleve.eleveId} className="groupe-appel-item">
+                    <input
+                      type="checkbox"
+                      checked={absentsIds.includes(eleve.eleveId)}
+                      onChange={(e) => {
+                        if (e.target.checked) setAbsentsIds(prev => [...prev, eleve.eleveId]);
+                        else setAbsentsIds(prev => prev.filter(id => id !== eleve.eleveId));
+                      }}
+                    />
+                    <span className={absentsIds.includes(eleve.eleveId) ? 'groupe-appel-absent' : ''}>
+                      {eleve.eleveNom}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="groupe-appel-actions">
+                <button
+                  className="prof-btn prof-btn-primary"
+                  onClick={handleMarquerAbsences}
+                  disabled={loadingAppel}
+                >
+                  {loadingAppel ? 'Enregistrement...' : '✅ Enregistrer les absences'}
+                </button>
+              </div>
+
+              {/* Suivi des absences sur une période */}
+              <div className="groupe-appel-suivi">
+                <h4>📊 Suivi des absences</h4>
+                <div className="groupe-appel-suivi-btns">
+                  {(['jour', 'semaine', 'mois'] as const).map((p) => (
+                    <button
+                      key={p}
+                      className={`prof-btn prof-btn-sm prof-btn-secondary ${periodeSuivi === p ? 'active' : ''}`}
+                      onClick={() => setPeriodeSuivi(p)}
+                    >
+                      {p === 'jour' ? 'Jour' : p === 'semaine' ? 'Semaine' : 'Mois'}
+                    </button>
+                  ))}
+                </div>
+                <AppelSuiviTable groupeId={groupe.id} statsEleves={statsEleves} periode={periodeSuivi} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* ONGLET TRAVAUX À FAIRE                                       */}
+      {/* ============================================================ */}
+      {ongletActif === 'travaux' && (
+        <div className="groupe-travaux">
+          <div className="groupe-travaux-form">
+            <h4>➕ Nouveau travail</h4>
+            <input
+              type="text"
+              className="prof-input"
+              placeholder="Titre du travail"
+              value={nouveauTravailTitre}
+              onChange={(e) => setNouveauTravailTitre(e.target.value)}
+            />
+            <textarea
+              className="prof-textarea"
+              rows={2}
+              placeholder="Description (optionnel)"
+              value={nouveauTravailDesc}
+              onChange={(e) => setNouveauTravailDesc(e.target.value)}
+            />
+            <div className="groupe-travaux-echeance">
+              <label>Échéance :</label>
+              <input
+                type="date"
+                className="prof-input prof-input-sm"
+                value={nouveauTravailEcheance}
+                onChange={(e) => setNouveauTravailEcheance(e.target.value)}
+              />
+            </div>
+            <button
+              className="prof-btn prof-btn-primary"
+              onClick={handleAjouterTravail}
+              disabled={savingTravail || !nouveauTravailTitre.trim()}
+            >
+              {savingTravail ? 'Ajout...' : 'Ajouter le travail'}
+            </button>
+          </div>
+
+          <div className="groupe-travaux-liste">
+            <h4>📋 Travaux en cours</h4>
+            {travaux.length === 0 ? (
+              <p className="text-muted">Aucun travail à faire pour l'instant.</p>
+            ) : (
+              <ul className="groupe-travaux-items">
+                {travaux.map((t) => (
+                  <li key={t.id} className="groupe-travaux-item">
+                    <div>
+                      <strong>{t.titre}</strong>
+                      {t.description && <p className="groupe-travaux-desc">{t.description}</p>}
+                      <span className="groupe-travaux-date">
+                        📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
+                      </span>
+                    </div>
+                    <button
+                      className="prof-btn-icon prof-btn-icon-danger"
+                      onClick={() => handleSupprimerTravail(t.id)}
+                      title="Supprimer"
+                    >
+                      🗑️
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       )}
 

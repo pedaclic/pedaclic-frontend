@@ -241,6 +241,13 @@ export async function archiverGroupe(groupeId: string): Promise<void> {
   await modifierGroupe(groupeId, { statut: 'archive' });
 }
 
+/**
+ * Restaure un groupe archivé (statut → actif)
+ */
+export async function restaurerGroupe(groupeId: string): Promise<void> {
+  await modifierGroupe(groupeId, { statut: 'actif' });
+}
+
 export async function regenererCode(groupeId: string): Promise<string> {
   try {
     const nouveauCode = await genererCodeProf();
