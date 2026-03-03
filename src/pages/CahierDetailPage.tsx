@@ -23,6 +23,11 @@ import {
   TYPE_CONTENU_CONFIG,
   STATUT_CONFIG,
 } from '../types/cahierTextes.types';
+import {
+  filtrerEntreesParPeriode,
+  exportCahierPDF,
+  type PeriodeExport,
+} from '../utils/cahierExportPDF';
 import type {
   CahierTextes, EntreeCahier, StatutSeance,
 } from '../types/cahierTextes.types';
@@ -87,6 +92,7 @@ const CahierDetailPage: React.FC = () => {
   // ── Export PDF (contrôlé par l'admin) ────────────────────
   const [pdfEnabled, setPdfEnabled] = useState(true);
   const [pdfExporting, setPdfExporting] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   // ── Charger le paramètre PDF depuis les settings admin ───
   useEffect(() => {
@@ -162,15 +168,39 @@ const CahierDetailPage: React.FC = () => {
     }
   };
 
-  // ── Export PDF ────────────────────────────────────────────
+  // ── Export PDF (modale choix période) ──────────────────────
   const handleExportPDF = useCallback(() => {
-    setPdfExporting(true);
-    // Légère temporisation pour que le state se mette à jour
-    setTimeout(() => {
-      window.print();
-      setPdfExporting(false);
-    }, 100);
+    setShowPdfModal(true);
   }, []);
+
+  const handleConfirmExportPDF = useCallback(async (periode: PeriodeExport, moisKey?: string) => {
+    if (!cahier) return;
+    setPdfExporting(true);
+    setShowPdfModal(false);
+    try {
+      const entreesFiltrees = filtrerEntreesParPeriode(entrees, periode, moisKey);
+      const now = new Date();
+      let periodeLabel = '';
+      if (periode === 'tout') periodeLabel = 'Tout le cahier';
+      else if (periode === 'mois' && moisKey) {
+        const [annee, mois] = moisKey.split('-').map(Number);
+        periodeLabel = new Date(annee, mois - 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+      } else if (periode === 'trimestre') {
+        const t = Math.floor(now.getMonth() / 3) + 1;
+        periodeLabel = `Trimestre ${t} ${now.getFullYear()}`;
+      } else if (periode === 'semestre') {
+        const s = now.getMonth() < 6 ? 1 : 2;
+        periodeLabel = `Semestre ${s} ${now.getFullYear()}`;
+      }
+      const filename = `Cahier_${cahier.titre.replace(/[^a-zA-Z0-9]/g, '_')}_${now.toISOString().slice(0, 10)}`;
+      await exportCahierPDF(cahier, entreesFiltrees, filename, periodeLabel);
+    } catch (err) {
+      console.error(err);
+      alert('Erreur lors de l\'export PDF.');
+    } finally {
+      setPdfExporting(false);
+    }
+  }, [cahier, entrees]);
 
   // ── Calcul des mois disponibles ───────────────────────────
   const moisDisponibles = useMemo(() => {
@@ -332,6 +362,39 @@ const CahierDetailPage: React.FC = () => {
             >
               {pdfExporting ? '⏳' : '📄'} PDF
             </button>
+          )}
+          {showPdfModal && cahier && (
+            <div className="cahier-pdf-modal-overlay" onClick={() => setShowPdfModal(false)}>
+              <div className="cahier-pdf-modal" onClick={e => e.stopPropagation()}>
+                <h3>📄 Télécharger le cahier en PDF</h3>
+                <p className="cahier-pdf-modal-desc">Choisissez la période à exporter :</p>
+                <div className="cahier-pdf-modal-options">
+                  <button className="cahier-pdf-option" onClick={() => handleConfirmExportPDF('tout')}>
+                    <span className="cahier-pdf-option-icon">📚</span>
+                    <span className="cahier-pdf-option-label">Tout le cahier</span>
+                    <span className="cahier-pdf-option-count">{entrees.length} séance{entrees.length !== 1 ? 's' : ''}</span>
+                  </button>
+                  {moisDisponibles.length > 0 && moisDisponibles.map(mois => (
+                    <button key={mois} className="cahier-pdf-option" onClick={() => handleConfirmExportPDF('mois', mois)}>
+                      <span className="cahier-pdf-option-icon">📅</span>
+                      <span className="cahier-pdf-option-label">{formatMoisLabel(mois)}</span>
+                      <span className="cahier-pdf-option-count">{countParMois.get(mois) || 0} séance{(countParMois.get(mois) || 0) !== 1 ? 's' : ''}</span>
+                    </button>
+                  ))}
+                  <button className="cahier-pdf-option" onClick={() => handleConfirmExportPDF('trimestre')}>
+                    <span className="cahier-pdf-option-icon">📆</span>
+                    <span className="cahier-pdf-option-label">Trimestre en cours</span>
+                  </button>
+                  <button className="cahier-pdf-option" onClick={() => handleConfirmExportPDF('semestre')}>
+                    <span className="cahier-pdf-option-icon">📆</span>
+                    <span className="cahier-pdf-option-label">Semestre en cours</span>
+                  </button>
+                </div>
+                <div className="cahier-pdf-modal-footer">
+                  <button className="btn-secondary" onClick={() => setShowPdfModal(false)}>Annuler</button>
+                </div>
+              </div>
+            </div>
           )}
           <button
             className="btn-primary"
@@ -600,6 +663,9 @@ const CahierDetailPage: React.FC = () => {
                               >
                                 {statutCfg.label}
                               </span>
+                              {entree.rubrique && (
+                                <span className="entree-rubrique-badge">{entree.rubrique}</span>
+                              )}
                               {entree.isMarqueEvaluation && (
                                 <span className="signet-badge">📌 Évaluation</span>
                               )}

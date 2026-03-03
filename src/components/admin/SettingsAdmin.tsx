@@ -51,6 +51,7 @@ interface PlatformSettings {
 
   /* Cahier de textes */
   cahierPdfExport: boolean;   /* Autoriser l'export PDF du cahier */
+  cahierRubriques: string[]; /* Rubriques configurables (entre Type de séance et Statut) */
 
   /* Métadonnées */
   updatedAt?: any;
@@ -72,6 +73,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   maintenanceMode: false,
   maintenanceMessage: 'PedaClic est en maintenance. Nous revenons bientôt !',
   cahierPdfExport: true,
+  cahierRubriques: [],
 };
 
 // ==================== COMPOSANT PRINCIPAL ====================
@@ -103,7 +105,11 @@ const SettingsAdmin: React.FC = () => {
 
       if (docSnap.exists()) {
         const data = docSnap.data() as Record<string, unknown>;
-        const merged = { ...DEFAULT_SETTINGS, ...data } as PlatformSettings;
+        const merged = {
+          ...DEFAULT_SETTINGS,
+          ...data,
+          cahierRubriques: Array.isArray(data.cahierRubriques) ? data.cahierRubriques : [],
+        } as PlatformSettings;
         setSettings(merged);
         setOriginalSettings(merged);
       } else {
@@ -400,7 +406,7 @@ const SettingsAdmin: React.FC = () => {
         <div className="settings-section__header">
           <h2 className="settings-section__title">📓 Cahier de Textes</h2>
           <p className="settings-section__description">
-            Options des fonctionnalités du cahier de textes pour les professeurs
+            Configuration et gestion du cahier de textes pour les professeurs
           </p>
         </div>
 
@@ -419,8 +425,50 @@ const SettingsAdmin: React.FC = () => {
               </span>
             </div>
             <span className="settings-hint">
-              Affiche le bouton "📄 PDF" dans les cahiers de textes des professeurs
+              Affiche le bouton "📄 PDF" avec choix de période (mois, trimestre, semestre, tout)
             </span>
+          </div>
+
+          <div className="settings-field settings-field--full">
+            <label className="settings-label">Rubriques du cahier</label>
+            <p className="settings-hint" style={{ marginBottom: '0.5rem' }}>
+              Liste des rubriques proposées entre "Type de séance" et "Statut" dans le formulaire de séance
+            </p>
+            <div className="cahier-rubriques-editor">
+              {(settings.cahierRubriques || []).map((r, idx) => (
+                <div key={idx} className="cahier-rubrique-row">
+                  <input
+                    type="text"
+                    className="admin-input"
+                    value={r}
+                    onChange={(e) => {
+                      const arr = [...(settings.cahierRubriques || [])];
+                      arr[idx] = e.target.value;
+                      handleChange('cahierRubriques', arr);
+                    }}
+                    placeholder="Ex: Activité pratique, Projet..."
+                  />
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn-ghost admin-btn-sm"
+                    onClick={() => {
+                      const arr = (settings.cahierRubriques || []).filter((_, i) => i !== idx);
+                      handleChange('cahierRubriques', arr);
+                    }}
+                    title="Supprimer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                className="admin-btn admin-btn-ghost"
+                onClick={() => handleChange('cahierRubriques', [...(settings.cahierRubriques || []), ''])}
+              >
+                + Ajouter une rubrique
+              </button>
+            </div>
           </div>
         </div>
       </div>

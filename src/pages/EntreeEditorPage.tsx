@@ -8,6 +8,8 @@
 // ============================================================
 
 import React, { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
@@ -52,6 +54,7 @@ const emptyForm = (): EntreeFormData => ({
   contenu: '',
   objectifs: '',
   competences: [],
+  rubrique: '',
   statut: 'realise',
   motifAnnulation: '',
   dateReport: '',
@@ -84,8 +87,22 @@ const EntreeEditorPage: React.FC = () => {
   const [ebooksLies, setEbooksLies] = useState<LienEbook[]>([]);
   // État Phase 23 — contenus IA
   const [contenuIA, setContenuIA]   = useState<LienContenuIA[]>([]);
+  const [cahierRubriques, setCahierRubriques] = useState<string[]>([]);
 
   const isEdit = !!entreeId;
+
+  // Charger les rubriques configurables (admin)
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'platform'))
+      .then(snap => {
+        if (snap.exists()) {
+          const data = snap.data() as Record<string, unknown>;
+          const rubs = data.cahierRubriques as string[] | undefined;
+          setCahierRubriques(Array.isArray(rubs) ? rubs : []);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Chargement initial ────────────────────────────────────
   useEffect(() => {
@@ -116,6 +133,7 @@ const EntreeEditorPage: React.FC = () => {
               contenu: entreeData.contenu,
               objectifs: entreeData.objectifs || '',
               competences: entreeData.competences || [],
+              rubrique: entreeData.rubrique || '',
               statut: entreeData.statut,
               motifAnnulation: entreeData.motifAnnulation || '',
               dateReport: entreeData.dateReport
@@ -279,7 +297,7 @@ const EntreeEditorPage: React.FC = () => {
               onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
           </div>
 
-          <div className="form-row">
+          <div className="form-row" style={cahierRubriques.length > 0 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
             <div className="form-group">
               <label className="form-label">Type de séance</label>
               <select className="form-select" value={form.typeContenu}
@@ -289,6 +307,18 @@ const EntreeEditorPage: React.FC = () => {
                 ))}
               </select>
             </div>
+            {cahierRubriques.length > 0 && (
+              <div className="form-group">
+                <label className="form-label">Rubrique</label>
+                <select className="form-select" value={form.rubrique}
+                  onChange={e => setForm(f => ({ ...f, rubrique: e.target.value }))}>
+                  <option value="">— Aucune —</option>
+                  {cahierRubriques.map(r => (
+                    <option key={r} value={r}>{r}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">Statut</label>
               <select className="form-select" value={form.statut}
