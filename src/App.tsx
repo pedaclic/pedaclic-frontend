@@ -67,6 +67,7 @@ import ProfDashboard from './components/prof/ProfDashboard';
 import CahierTextesPage from './pages/CahierTextesPage';
 import CahierDetailPage from './pages/CahierDetailPage';
 import EntreeEditorPage from './pages/EntreeEditorPage';
+import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 
 /* ==================== PHASE 22 — VUE ÉLÈVE CAHIER ==================== */
 import ElveCahierPage from './pages/ElveCahierPage';
@@ -207,6 +208,11 @@ const App: React.FC = () => {
         } />
         <Route path="/prof/cahiers/:cahierId/modifier/:entreeId" element={
           <ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>
+        } />
+
+        {/* ========== FEUILLES DE NOTES (Prof) ========== */}
+        <Route path="/prof/feuilles/:feuilleId" element={
+          <ProfRoute><Layout><FeuilleNotesEditorPage /></Layout></ProfRoute>
         } />
 
         {/* ========== SÉQUENCES PÉDAGOGIQUES (Prof Premium) ========== */}
