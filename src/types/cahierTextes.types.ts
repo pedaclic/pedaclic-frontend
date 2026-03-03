@@ -85,7 +85,8 @@ export const COULEURS_CAHIER = [
 export type TypeContenu =
   | 'cours' | 'exercices' | 'correction'
   | 'devoir_surveille' | 'devoir_maison'
-  | 'travaux_pratiques' | 'evaluation' | 'revision';
+  | 'travaux_pratiques' | 'evaluation' | 'revision'
+  | 'compte_rendu' | 'expose' | 'debats_discussions';
 
 export const TYPE_CONTENU_CONFIG: Record<TypeContenu, { label: string; emoji: string; color: string }> = {
   cours:             { label: 'Cours',              emoji: '📘', color: '#3b82f6' },
@@ -96,6 +97,9 @@ export const TYPE_CONTENU_CONFIG: Record<TypeContenu, { label: string; emoji: st
   travaux_pratiques: { label: 'Travaux pratiques',  emoji: '🔬', color: '#14b8a6' },
   evaluation:        { label: 'Évaluation',          emoji: '📊', color: '#ef4444' },
   revision:          { label: 'Révision',            emoji: '🔄', color: '#f97316' },
+  compte_rendu:     { label: 'Compte rendu',        emoji: '📝', color: '#0ea5e9' },
+  expose:            { label: 'Exposé',              emoji: '🎤', color: '#a855f7' },
+  debats_discussions:{ label: 'Débats/Discussions', emoji: '💬', color: '#ec4899' },
 };
 
 // ─────────────────────────────────────────────────────────────
@@ -243,6 +247,7 @@ export interface EntreeCahier {
   contenu: string;
   objectifs?: string;
   competences?: string[];
+  rubrique?: string;
   statut: StatutSeance;
   motifAnnulation?: string;
   dateReport?: Timestamp;
@@ -272,6 +277,7 @@ export interface EntreeFormData {
   contenu: string;
   objectifs: string;
   competences: string[];
+  rubrique: string;
   statut: StatutSeance;
   motifAnnulation: string;
   dateReport: string;

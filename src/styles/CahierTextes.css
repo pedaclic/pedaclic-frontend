@@ -840,6 +840,13 @@
   font-size: 0.73rem;
   font-weight: 600;
 }
+.entree-rubrique-badge {
+  padding: 0.2rem 0.6rem;
+  border-radius: 20px;
+  font-size: 0.73rem;
+  background: var(--ct-gray-100);
+  color: var(--ct-gray-700);
+}
 .signet-badge {
   background: #fef3c7;
   color: #92400e;
@@ -1288,6 +1295,85 @@
   .cahier-detail-titre { font-size: 16pt; }
   .cahier-detail-badges { margin-bottom: 0.25rem; }
   .cahier-detail-progression { display: none; }
+}
+
+/* ─── Modale Export PDF ───────────────────────────────────────── */
+.cahier-pdf-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.cahier-pdf-modal {
+  background: white;
+  border-radius: var(--ct-radius);
+  box-shadow: var(--ct-shadow-lg);
+  max-width: 420px;
+  width: 100%;
+  padding: 1.5rem;
+}
+
+.cahier-pdf-modal h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: var(--ct-gray-800);
+}
+
+.cahier-pdf-modal-desc {
+  font-size: 0.9rem;
+  color: var(--ct-gray-500);
+  margin: 0 0 1rem;
+}
+
+.cahier-pdf-modal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cahier-pdf-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--ct-gray-200);
+  border-radius: var(--ct-radius-sm);
+  background: white;
+  cursor: pointer;
+  text-align: left;
+  transition: var(--ct-transition);
+}
+
+.cahier-pdf-option:hover {
+  border-color: var(--ct-blue);
+  background: var(--ct-blue-xlight);
+}
+
+.cahier-pdf-option-icon {
+  font-size: 1.25rem;
+}
+
+.cahier-pdf-option-label {
+  flex: 1;
+  font-weight: 500;
+  color: var(--ct-gray-800);
+}
+
+.cahier-pdf-option-count {
+  font-size: 0.8rem;
+  color: var(--ct-gray-500);
+}
+
+.cahier-pdf-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 /* ─── Responsive mobile ──────────────────────────────────────── */

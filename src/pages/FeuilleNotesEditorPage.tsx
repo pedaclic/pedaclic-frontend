@@ -8,11 +8,11 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, FileSpreadsheet, FileText, File } from 'lucide-react';
 import {
   getFeuilleById,
-  getElevesGroupe,
   updateNoteBulk,
   updateEvaluationsFeuille,
   buildLignesNotes,
 } from '../services/feuillesNotesService';
+import { getElevesGroupe } from '../services/profGroupeService';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
 import type { FeuilleDeNotes, LigneNotes } from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';

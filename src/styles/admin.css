@@ -4271,6 +4271,22 @@
   margin-top: 2px;
 }
 
+.cahier-rubriques-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cahier-rubrique-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.cahier-rubrique-row .admin-input {
+  flex: 1;
+}
+
 /* Textarea */
 .admin-textarea {
   resize: vertical;
