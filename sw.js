@@ -85,7 +85,7 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "revision": "9e820a797a6c7f5cd34a106890bd0752"
   }, {
     "url": "index.html",
-    "revision": "1714c64255b25a9e5cf4da7429a0f1ce"
+    "revision": "992a31e6d30297c5eeef51c1b44a95ec"
   }, {
     "url": "404.html",
     "revision": "d0e9f9bdb9145562f5d9f35dca8b2840"
@@ -180,19 +180,37 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "url": "icons/apple-touch-icon 2.png",
     "revision": "55983e67645a8f9a7ae8edc6fcf801f0"
   }, {
-    "url": "assets/vendor-react-BMsfgiGx.js",
+    "url": "assets/xlsx-CNerDvZX.js",
     "revision": null
   }, {
-    "url": "assets/vendor-icons-B5C-ccqU.js",
+    "url": "assets/vendor-react-BnWrEfDG.js",
+    "revision": null
+  }, {
+    "url": "assets/vendor-icons-DgNVmVc-.js",
     "revision": null
   }, {
     "url": "assets/vendor-firebase-LntcAirY.js",
     "revision": null
   }, {
-    "url": "assets/index-DUbUWc-V.js",
+    "url": "assets/purify.es-Bzr520pe.js",
     "revision": null
   }, {
-    "url": "assets/index-CZdMlT2o.css",
+    "url": "assets/jspdf.plugin.autotable-CBbcTuFj.js",
+    "revision": null
+  }, {
+    "url": "assets/jspdf.es.min-heuwnocI.js",
+    "revision": null
+  }, {
+    "url": "assets/index.es-800GKyTE.js",
+    "revision": null
+  }, {
+    "url": "assets/index-D1-ZYQ4R.js",
+    "revision": null
+  }, {
+    "url": "assets/index-BXLZkLB3.css",
+    "revision": null
+  }, {
+    "url": "assets/html2canvas.esm-DXEQVQnt.js",
     "revision": null
   }, {
     "url": "manifest.json",
