@@ -1,0 +1,319 @@
+/**
+ * Styles feuilles de notes — PedaClic
+ * Charte : --color-primary #2563eb, --color-secondary #10b981
+ */
+
+/* Manager (liste) */
+.feuilles-notes-manager {
+  padding: var(--spacing-lg);
+}
+
+.feuilles-notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-lg);
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+}
+
+.feuilles-notes-titre {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: var(--text-xl);
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.feuilles-notes-create-card {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.feuilles-notes-create-card h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text);
+}
+
+.feuilles-notes-create-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  align-items: flex-end;
+}
+
+.feuilles-notes-create-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.feuilles-notes-create-form label {
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-light);
+}
+
+.feuilles-notes-create-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.feuilles-notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.feuilles-notes-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  transition: box-shadow 0.2s;
+}
+
+.feuilles-notes-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.feuilles-notes-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.feuilles-notes-meta {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+}
+
+.feuilles-notes-card-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Éditeur */
+.feuille-editor-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--spacing-lg);
+  min-height: calc(100vh - 80px);
+}
+
+.feuille-editor-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 2px solid var(--color-border);
+}
+
+.feuille-editor-titre {
+  flex: 1;
+  min-width: 200px;
+}
+
+.feuille-editor-titre h1 {
+  font-size: var(--text-2xl);
+  color: var(--color-primary);
+  margin: 0 0 var(--spacing-xs);
+}
+
+.feuille-editor-titre p {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  margin: 0;
+}
+
+.feuille-editor-export {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.feuille-editor-export .prof-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.feuille-editor-toolbar {
+  margin-bottom: var(--spacing-md);
+}
+
+.feuille-editor-table-wrapper {
+  overflow-x: auto;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.feuille-editor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.feuille-editor-table th,
+.feuille-editor-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  text-align: center;
+}
+
+.feuille-editor-table th {
+  background: var(--color-primary);
+  color: white;
+  font-weight: var(--font-semibold);
+}
+
+.feuille-editor-table .col-eleve {
+  text-align: left;
+  min-width: 180px;
+  position: sticky;
+  left: 0;
+  background: inherit;
+}
+
+.feuille-editor-table thead .col-eleve {
+  background: var(--color-primary);
+}
+
+.feuille-editor-table .col-note {
+  min-width: 80px;
+}
+
+.feuille-editor-table .col-moyenne {
+  min-width: 70px;
+  font-weight: var(--font-semibold);
+  background: var(--color-bg-secondary);
+}
+
+.feuille-editor-table tbody tr:nth-child(even) {
+  background: var(--color-bg-secondary);
+}
+
+.feuille-editor-table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-primary) 5%, white);
+}
+
+.feuille-editor-table .note-cell {
+  display: block;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  min-height: 24px;
+}
+
+.feuille-editor-table .note-cell:hover {
+  background: color-mix(in srgb, var(--color-primary) 15%, white);
+}
+
+.feuille-editor-table .note-input {
+  width: 100%;
+  max-width: 60px;
+  padding: 4px 8px;
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  font-size: inherit;
+  text-align: center;
+}
+
+.feuille-editor-table .coef {
+  font-size: var(--text-xs);
+  opacity: 0.9;
+}
+
+.feuille-moyenne-classe {
+  background: color-mix(in srgb, var(--color-primary) 10%, white) !important;
+  font-weight: var(--font-semibold);
+}
+
+.feuille-moyenne-classe .col-eleve {
+  background: color-mix(in srgb, var(--color-primary) 10%, white) !important;
+}
+
+/* Vue lecture seule (élève / parent) */
+.feuilles-notes-view {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: var(--spacing-lg);
+  min-height: 300px;
+}
+
+@media (max-width: 768px) {
+  .feuilles-notes-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feuilles-notes-view-list h4,
+.feuilles-notes-view-detail h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--color-primary);
+  font-size: var(--text-base);
+}
+
+.feuille-select-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-xs);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  transition: all 0.15s;
+}
+
+.feuille-select-btn:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, white);
+}
+
+.feuille-select-btn.active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 12%, white);
+  font-weight: var(--font-semibold);
+}
+
+.feuille-select-btn .feuille-meta {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+  margin-top: 2px;
+}
+
+.feuilles-notes-view-detail {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.feuille-readonly-table-wrapper {
+  overflow-x: auto;
+}
+
+.feuilles-notes-empty {
+  text-align: center;
+  padding: var(--spacing-2xl);
+  color: var(--color-text-light);
+}
+
+.feuilles-notes-empty p {
+  margin-top: var(--spacing-md);
+}

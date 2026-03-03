@@ -306,8 +306,9 @@ service cloud.firestore {
       // Lecture:
       // - Professeurs authentifiés (pour gérer leurs groupes)
       // - Élèves authentifiés (pour chercher un groupe par code d'invitation)
+      // - Parents (pour consulter les groupes de leurs enfants)
       // - Admin (supervision globale)
-      allow read: if isSignedIn() && (isProf() || isEleve() || isAdmin());
+      allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
 
       // Création: uniquement professeurs et admin
       // Le profId dans le document DOIT correspondre à l'utilisateur connecté
@@ -368,6 +369,21 @@ service cloud.firestore {
     }
 
     // ============================================================
+    // COLLECTION: feuilles_notes (Notes par groupe — élèves/parents)
+    // ============================================================
+    match /feuilles_notes/{feuilleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        (isProf() && request.resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        (isProf() && resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+
+    // ============================================================
     // COLLECTION: inscriptions_groupe (Phase 11 — Inscriptions élèves)
     // ============================================================
     // Stocke les inscriptions des élèves aux groupes-classes.
@@ -378,8 +394,9 @@ service cloud.firestore {
       // Lecture:
       // - Le professeur (via requête where groupeId pour ses groupes)
       // - L'élève inscrit (peut voir ses propres inscriptions)
+      // - Le parent (pour récupérer les groupes de ses enfants liés)
       // - Admin (supervision globale)
-      allow read: if isSignedIn() && (isProf() || isEleve() || isAdmin());
+      allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
 
       // Création: uniquement l'élève qui s'inscrit
       // Le eleveId DOIT correspondre à l'utilisateur connecté

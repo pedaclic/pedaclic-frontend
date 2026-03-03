@@ -201,6 +201,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "feuilles_notes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "groupeId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dateDebut",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

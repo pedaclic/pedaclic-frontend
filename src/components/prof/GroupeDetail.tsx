@@ -40,6 +40,7 @@ import {
   supprimerTravailAFaire,
 } from '../../services/travauxAFaireService';
 import { useAuth } from '../../hooks/useAuth';
+import FeuillesNotesManager from './FeuillesNotesManager';
 import type {
   GroupeProf,
   StatsGroupe,
@@ -49,12 +50,13 @@ import type {
 } from '../../types/prof';
 import type { TravailAFaire } from '../../types/groupeAbsences.types';
 import '../../styles/prof.css';
+import '../../styles/feuillesNotes.css';
 
 
 // ==================== TYPES LOCAUX ====================
 
 /** Onglets disponibles dans le détail du groupe */
-type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'quiz' | 'alertes';
+type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' | 'alertes';
 
 /** Options de tri pour la liste des élèves */
 type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count';
@@ -454,6 +456,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
           { id: 'eleves' as OngletActif, label: '👥 Élèves', count: statsEleves.length },
           { id: 'appel' as OngletActif, label: '✅ Appel', count: null },
           { id: 'travaux' as OngletActif, label: '📋 Travaux', count: travaux.length },
+          { id: 'notes' as OngletActif, label: '📝 Notes', count: null },
           { id: 'quiz' as OngletActif, label: '📝 Quiz', count: quizDisponibles.length },
           { id: 'alertes' as OngletActif, label: '🔔 Alertes', count: alertes.length }
         ].map(onglet => (
@@ -931,6 +934,16 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
               </ul>
             )}
           </div>
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* ONGLET FEUILLES DE NOTES                                     */}
+      {/* ============================================================ */}
+      {ongletActif === 'notes' && currentUser && (
+        <div className="groupe-notes">
+          <FeuillesNotesManager groupe={groupe} currentUser={currentUser} />
         </div>
       )}
 

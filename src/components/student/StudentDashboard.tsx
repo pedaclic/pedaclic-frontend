@@ -51,6 +51,7 @@ import {
   Flame,
   Eye,
   Filter,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 /* ── Imports services ── */
@@ -78,6 +79,7 @@ import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForEleve } from '../../services/travauxAFaireService';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import RejoindreGroupe from './RejoindreGroupe';
+import FeuillesNotesView from '../shared/FeuillesNotesView';
 import ProgressBar from '../shared/ProgressBar';                        // ★ Phase 14
 
 /* ══════════════════════════════════════════════
@@ -385,6 +387,18 @@ const StudentDashboard: React.FC = () => {
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <RejoindreGroupe />
       </div>
+
+      {/* ══════════════════════════════════════════════
+          MES NOTES
+          ══════════════════════════════════════════════ */}
+      {currentUser?.uid && (
+        <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+          <h3 className="sd-section-title">
+            <FileSpreadsheet size={18} /> Mes notes
+          </h3>
+          <FeuillesNotesView eleveIds={[currentUser.uid]} showGroupeNom={true} filterForEleves={true} />
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════
           TRAVAUX À FAIRE

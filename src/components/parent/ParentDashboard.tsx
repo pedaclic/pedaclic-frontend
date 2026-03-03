@@ -31,9 +31,11 @@ import {
   getLabelUrgence,
   getEmojiFendance
 } from '../../services/suiviService';
+import FeuillesNotesView from '../shared/FeuillesNotesView';
 import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForParent } from '../../services/travauxAFaireService';
 import '../../styles/parent.css';
+import '../../styles/feuillesNotes.css';
 
 // ==================== IMPORTS TYPES ====================
 
@@ -82,7 +84,7 @@ const ParentDashboard: React.FC = () => {
   // ===== STATES ONGLETS =====
 
   /** Onglet actif dans le dashboard détaillé */
-  const [ongletActif, setOngletActif] = useState<'apercu' | 'lacunes' | 'alertes' | 'travaux' | 'resume'>('apercu');
+  const [ongletActif, setOngletActif] = useState<'apercu' | 'lacunes' | 'alertes' | 'travaux' | 'notes' | 'resume'>('apercu');
 
   /** Travaux à faire de l'enfant sélectionné */
   const [travauxEnfant, setTravauxEnfant] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string }>>([]);
@@ -508,10 +510,16 @@ const ParentDashboard: React.FC = () => {
                     📋 Travaux ({travauxEnfant.length})
                   </button>
                   <button
+                    className={`parent-onglet ${ongletActif === 'notes' ? 'parent-onglet-actif' : ''}`}
+                    onClick={() => setOngletActif('notes')}
+                  >
+                    📝 Notes
+                  </button>
+                  <button
                     className={`parent-onglet ${ongletActif === 'resume' ? 'parent-onglet-actif' : ''}`}
                     onClick={() => setOngletActif('resume')}
                   >
-                    📝 Résumé
+                    📄 Résumé
                   </button>
                 </div>
 
@@ -714,6 +722,17 @@ const ParentDashboard: React.FC = () => {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* ---- ONGLET : NOTES ---- */}
+                  {ongletActif === 'notes' && enfantSelectionne && (
+                    <div className="parent-tab-notes">
+                      <FeuillesNotesView
+                        eleveIds={[enfantSelectionne]}
+                        showGroupeNom={true}
+                        filterForEleves={true}
+                      />
                     </div>
                   )}
 
