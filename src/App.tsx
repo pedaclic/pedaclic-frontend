@@ -28,9 +28,10 @@ import DisciplinesPage    from './pages/DisciplinesPage';
 import DisciplineDetail   from './pages/DisciplineDetail';
 
 /* ==================== AUTH (sans Header/Footer) ==================== */
-import LoginPage          from './pages/Auth/LoginPage';
-import RegisterPage       from './pages/Auth/RegisterPage';
-import ForgotPasswordPage from './pages/Auth/ForgotPasswordPage';
+import LoginPage             from './pages/Auth/LoginPage';
+import RegisterPage          from './pages/Auth/RegisterPage';
+import ForgotPasswordPage    from './pages/Auth/ForgotPasswordPage';
+import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
 
 /* ==================== PREMIUM — MONEROO ==================== */
 import PremiumPage             from './pages/PremiumPage';
@@ -153,6 +154,7 @@ const App: React.FC = () => {
         {/* ========== AUTH (sans Header/Footer) ========== */}
         <Route path="/connexion"           element={<LoginPage />} />
         <Route path="/inscription"         element={<RegisterPage />} />
+        <Route path="/verification-email"   element={<EmailVerificationPage />} />
         <Route path="/mot-de-passe-oublie" element={<ForgotPasswordPage />} />
 
         {/* ========== PREMIUM — MONEROO ========== */}

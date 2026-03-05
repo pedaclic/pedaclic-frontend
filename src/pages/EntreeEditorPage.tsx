@@ -91,14 +91,15 @@ const EntreeEditorPage: React.FC = () => {
 
   const isEdit = !!entreeId;
 
-  // Charger les rubriques configurables (admin)
+  // Charger les rubriques configurables (admin) — lisible par tout utilisateur authentifié
   useEffect(() => {
     getDoc(doc(db, 'settings', 'platform'))
       .then(snap => {
         if (snap.exists()) {
           const data = snap.data() as Record<string, unknown>;
           const rubs = data.cahierRubriques as string[] | undefined;
-          setCahierRubriques(Array.isArray(rubs) ? rubs : []);
+          const arr = Array.isArray(rubs) ? rubs : [];
+          setCahierRubriques(arr.filter((r): r is string => typeof r === 'string' && r.trim().length > 0));
         }
       })
       .catch(() => {});

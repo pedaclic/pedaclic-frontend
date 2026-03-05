@@ -18,6 +18,7 @@ import {
   updateProfile as updateAuthProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  sendEmailVerification,
   User as FirebaseUser
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -107,18 +108,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   /**
    * Crée ou met à jour le document utilisateur dans Firestore
    * @param user - Utilisateur Firebase
-   * @param additionalData - Données supplémentaires optionnelles
+   * @param additionalData - Données supplémentaires optionnelles (displayName, role, emailVerificationRequired)
    */
   const createOrUpdateUserDoc = async (
     user: FirebaseUser,
-    additionalData?: Partial<User>
+    additionalData?: Partial<User> & { emailVerificationRequired?: boolean }
   ): Promise<void> => {
     const userRef = doc(db, 'users', user.uid);
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
       // Création du document utilisateur
-      await setDoc(userRef, {
+      const baseData: Record<string, unknown> = {
         email: user.email,
         displayName: user.displayName || additionalData?.displayName || '',
         role: additionalData?.role || 'eleve',
@@ -126,7 +127,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         photoURL: user.photoURL,
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp()
-      });
+      };
+      if (additionalData?.emailVerificationRequired === true) {
+        baseData.emailVerificationRequired = true;
+      }
+      await setDoc(userRef, baseData);
     } else {
       // Mise à jour de la dernière connexion
       await updateDoc(userRef, {
@@ -153,9 +158,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   /**
    * Inscription d'un nouvel utilisateur
+   * Envoie un email de vérification et exige sa validation avant la première connexion.
    * @param data - Données du formulaire d'inscription
+   * @returns { needsVerification: true } si l'utilisateur doit vérifier son email
    */
-  const register = async (data: RegisterFormData): Promise<void> => {
+  const register = async (data: RegisterFormData): Promise<{ needsVerification: true } | void> => {
     try {
       // Vérification des mots de passe
       if (data.password !== data.confirmPassword) {
@@ -169,16 +176,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         data.password
       );
 
+      const { user } = userCredential;
+
       // Mise à jour du profil Firebase Auth
-      await updateAuthProfile(userCredential.user, {
+      await updateAuthProfile(user, {
         displayName: data.displayName
       });
 
-      // Création du document utilisateur Firestore
-      await createOrUpdateUserDoc(userCredential.user, {
+      // Envoi de l'email de vérification
+      await sendEmailVerification(user);
+
+      // Création du document utilisateur Firestore avec flag de vérification requise
+      await createOrUpdateUserDoc(user, {
         displayName: data.displayName,
-        role: data.role
+        role: data.role,
+        emailVerificationRequired: true
       });
+
+      // Déconnexion immédiate : l'utilisateur ne peut accéder à l'app qu'après vérification
+      await signOut(auth);
+
+      return { needsVerification: true };
     } catch (error: any) {
       if (error.message) {
         throw error;

@@ -175,6 +175,18 @@
   margin-top: 1px;
 }
 
+/* Message vérification email (style informatif) */
+.auth-error--verification {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.auth-error--verification .auth-forgot-link {
+  color: #2563eb;
+  font-weight: 500;
+}
+
 /* ==================== FORMULAIRE ==================== */
 
 .auth-form {

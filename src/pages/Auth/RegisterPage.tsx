@@ -131,9 +131,12 @@ const RegisterPage: React.FC = () => {
     setError('');
 
     try {
-      await register(formData);
-      // Rediriger vers la page d'accueil ou le tableau de bord
-      navigate('/disciplines', { replace: true });
+      const result = await register(formData);
+      if (result?.needsVerification) {
+        navigate('/verification-email', { replace: true, state: { email: formData.email } });
+      } else {
+        navigate('/disciplines', { replace: true });
+      }
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
