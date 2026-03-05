@@ -12,11 +12,23 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate }         from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import {
   verifierPaiementMoneroo,
   lireParamsRetourMoneroo,
 } from '../services/monerooService';
 import '../styles/PremiumPage.css';
+
+/** Route du tableau de bord selon le rôle utilisateur */
+function getDashboardPath(role?: string): string {
+  switch (role) {
+    case 'eleve':  return '/eleve/dashboard';
+    case 'prof':   return '/prof/dashboard';
+    case 'parent': return '/parent/dashboard';
+    case 'admin':  return '/admin';
+    default:       return '/eleve/dashboard';
+  }
+}
 
 // ============================================================
 // COMPOSANT : PremiumConfirmationPage
@@ -24,6 +36,8 @@ import '../styles/PremiumPage.css';
 
 export default function PremiumConfirmationPage() {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const dashboardPath = getDashboardPath(currentUser?.role);
 
   // ── États ──────────────────────────────────────────────────
   const [statut, setStatut] = useState<'chargement' | 'succes' | 'echec' | 'attente'>('chargement');
@@ -114,7 +128,7 @@ export default function PremiumConfirmationPage() {
           <div className="premium-confirmation__actions">
             <button
               className="premium-btn premium-btn--principal"
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate(dashboardPath)}
             >
               🚀 Accéder au tableau de bord
             </button>
@@ -155,7 +169,7 @@ export default function PremiumConfirmationPage() {
 
           <button
             className="premium-btn premium-btn--secondaire"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(dashboardPath)}
           >
             Aller au tableau de bord
           </button>
@@ -191,7 +205,7 @@ export default function PremiumConfirmationPage() {
           </button>
           <button
             className="premium-btn premium-btn--secondaire"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(dashboardPath)}
           >
             Retour au tableau de bord
           </button>

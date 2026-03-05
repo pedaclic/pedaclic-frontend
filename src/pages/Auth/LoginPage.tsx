@@ -174,12 +174,23 @@ const LoginPage: React.FC = () => {
 
           {/* <!-- Message d'erreur --> */}
           {error && (
-            <div className="auth-error">
+            <div className={`auth-error ${error.includes('Vérifiez votre adresse email') ? 'auth-error--verification' : ''}`}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="M12 8v4M12 16h.01"/>
               </svg>
-              <span>{error}</span>
+              <div>
+                <span>{error}</span>
+                {error.includes('Vérifiez votre adresse email') && (
+                  <Link
+                    to={`/verification-email${formData.email ? `?email=${encodeURIComponent(formData.email)}` : ''}`}
+                    className="auth-forgot-link"
+                    style={{ display: 'block', marginTop: '0.5rem' }}
+                  >
+                    Consulter les instructions de vérification →
+                  </Link>
+                )}
+              </div>
             </div>
           )}
 

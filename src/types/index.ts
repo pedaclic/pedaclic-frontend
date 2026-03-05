@@ -393,7 +393,7 @@ export interface AuthContextType {
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (role?: UserRole) => Promise<void>;
-  register: (data: RegisterFormData) => Promise<void>;
+  register: (data: RegisterFormData) => Promise<{ needsVerification: true } | void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<void>;
 }

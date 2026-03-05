@@ -440,10 +440,13 @@ match /cahiers_textes/{cahierId} {
   allow read: if request.auth != null && (
     resource.data.profId == request.auth.uid || isAdmin()
   );
-  allow create: if request.auth != null
-    && request.resource.data.profId == request.auth.uid
-    && getUserData().role == 'prof'
-    && getUserData().isPremium == true;
+  // Création : admin (pour créer au nom d'un prof) OU prof premium (pour son propre cahier)
+  allow create: if request.auth != null && (
+    isAdmin() ||
+    (request.resource.data.profId == request.auth.uid
+     && getUserData().role == 'prof'
+     && getUserData().isPremium == true)
+  );
   allow update, delete: if request.auth != null && (
     resource.data.profId == request.auth.uid || isAdmin()
   );
@@ -549,8 +552,10 @@ match /rappels_prof/{rappelId} {
 
       // ==================== COLLECTION: settings ====================
       // Utilisée par SettingsAdmin.tsx : doc(db, 'settings', 'platform')
+      // Lecture : tout utilisateur authentifié (config plateforme : rubriques cahier, export PDF, etc.)
+      // Écriture : admin uniquement
    match /settings/{docId} {
-    allow read: if isAdmin();
+    allow read: if isSignedIn();
     allow write: if isAdmin();
    }
     // ==================== PHASE 24 — COURS EN LIGNE ====================
