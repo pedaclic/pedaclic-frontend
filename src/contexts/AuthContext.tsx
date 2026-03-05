@@ -410,4 +410,14 @@ export const ProfRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
   </ProtectedRoute>
 );
 
+/**
+ * Composant de protection Élève
+ * Raccourci pour les routes réservées aux élèves et admins
+ */
+export const EleveRoute: React.FC<{ children: ReactNode }> = ({ children }) => (
+  <ProtectedRoute allowedRoles={['eleve', 'admin']}>
+    {children}
+  </ProtectedRoute>
+);
+
 export default AuthContext;

@@ -17,7 +17,7 @@
 
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, AdminRoute, ProfRoute, ProtectedRoute } from './contexts/AuthContext';
+import { AuthProvider, AdminRoute, ProfRoute, EleveRoute, ProtectedRoute } from './contexts/AuthContext';
 
 /* ==================== LAYOUT (Header + Footer) ==================== */
 import Layout from './components/Layout';
@@ -71,6 +71,7 @@ import EntreeEditorPage from './pages/EntreeEditorPage';
 import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 
 /* ==================== PHASE 22 — VUE ÉLÈVE CAHIER ==================== */
+import ElveCahiersListePage from './pages/ElveCahiersListePage';
 import ElveCahierPage from './pages/ElveCahierPage';
 
 /* ==================== PHASE 23 — SÉQUENCES PÉDAGOGIQUES ==================== */
@@ -180,10 +181,11 @@ const App: React.FC = () => {
         <Route path="/eleve/suivi"     element={<Layout><StudentSuivi /></Layout>} />
 
         {/* ========== CAHIER ÉLÈVE (lecture seule) ========== */}
+        <Route path="/eleve/cahiers" element={
+          <EleveRoute><Layout><ElveCahiersListePage /></Layout></EleveRoute>
+        } />
         <Route path="/eleve/cahiers/:cahierId" element={
-          <ProtectedRoute allowedRoles={['eleve', 'admin']}>
-            <Layout><ElveCahierPage /></Layout>
-          </ProtectedRoute>
+          <EleveRoute><Layout><ElveCahierPage /></Layout></EleveRoute>
         } />
 
         {/* ========== ESPACE PARENT ========== */}

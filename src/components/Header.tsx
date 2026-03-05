@@ -131,6 +131,13 @@ const Header: React.FC = () => {
       requirePremium: true
     },
     {
+      path: '/eleve/cahiers',
+      label: 'Cahier de textes',
+      icon: <BookOpen size={18} />,
+      requireAuth: true,
+      requireRole: ['eleve']
+    },
+    {
       path: '/parent/dashboard',
       label: 'Espace Parent',
       icon: <BarChart3 size={18} />,
@@ -427,7 +434,14 @@ const Header: React.FC = () => {
     			<BarChart3 size={18} />
     			<span>Mes points à améliorer</span>
   		    </Link>
-)}
+			)}
+		    {/* Lien Cahier de textes (élèves uniquement) */}
+		    {currentUser.role === 'eleve' && (
+		      <Link to="/eleve/cahiers" className="header__dropdown-link">
+		        <BookOpen size={18} />
+		        <span>Cahier de textes</span>
+		      </Link>
+		    )}
 
 		    {/* Lien Espace Parent (parents uniquement) */}
 		    {currentUser.role === 'parent' && (
