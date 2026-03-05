@@ -1,0 +1,311 @@
+/* ============================================================
+   PedaClic — Styles : Liste Cahiers Élève
+   Page /eleve/cahiers
+   Thème : bleu #2563eb, blanc, gris clair
+   NE JAMAIS MODIFIER les couleurs de base de PedaClic
+   ============================================================ */
+
+/* ─────────────────────────────────────────────────────────────
+   PAGE CONTENEUR
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-liste-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 16px 60px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EN-TÊTE HERO
+   ───────────────────────────────────────────────────────────── */
+
+/* Bandeau dégradé bleu PedaClic */
+.eleve-cahiers-liste-hero {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  color: #fff;
+  padding: 28px 24px;
+  border-radius: 14px;
+  margin-bottom: 24px;
+}
+
+.eleve-cahiers-liste-hero h1 {
+  margin: 0 0 6px;
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.eleve-cahiers-liste-hero p {
+  margin: 0;
+  opacity: 0.85;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   COMPTEUR
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-compteur {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin-bottom: 16px;
+  padding-left: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   GRILLE DES CARTES
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-liste-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+/* Deux colonnes à partir de 640px */
+@media (min-width: 640px) {
+  .eleve-cahiers-liste-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CARTE D'UN CAHIER
+   ───────────────────────────────────────────────────────────── */
+
+/* Carte cliquable avec effet hover */
+.eleve-cahier-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.eleve-cahier-card:hover {
+  box-shadow: 0 6px 24px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
+}
+
+.eleve-cahier-card:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Bande de couleur en haut (4px) */
+.eleve-cahier-card-bande {
+  height: 4px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Corps de la carte */
+.eleve-cahier-card-body {
+  padding: 16px 18px 14px;
+  flex: 1;
+}
+
+/* Badge matière */
+.eleve-cahier-card-matiere {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 8px;
+}
+
+/* Titre du cahier */
+.eleve-cahier-card-titre {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.35;
+}
+
+/* Méta (classe + année) */
+.eleve-cahier-card-meta {
+  display: flex;
+  gap: 14px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+/* Description tronquée */
+.eleve-cahier-card-desc {
+  font-size: 0.82rem;
+  color: #4b5563;
+  line-height: 1.45;
+  margin: 0 0 10px;
+}
+
+/* Badges de groupes */
+.eleve-cahier-card-groupes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge-groupe-eleve {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: #f0fdf4;
+  color: #16a34a;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+/* Flèche d'accès (coin bas droite) */
+.eleve-cahier-card-arrow {
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
+  font-size: 1.2rem;
+  color: #2563eb;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.eleve-cahier-card:hover .eleve-cahier-card-arrow {
+  opacity: 1;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ÉTAT VIDE
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-vide {
+  text-align: center;
+  padding: 50px 20px;
+  background: #f9fafb;
+  border: 2px dashed #d1d5db;
+  border-radius: 14px;
+}
+
+.eleve-cahiers-vide .emoji {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.eleve-cahiers-vide h3 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  color: #374151;
+}
+
+.eleve-cahiers-vide p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   ÉTAT ERREUR
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-liste-erreur {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.eleve-cahiers-liste-erreur .emoji {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.eleve-cahiers-liste-erreur p {
+  color: #dc2626;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SQUELETTES DE CHARGEMENT
+   ───────────────────────────────────────────────────────────── */
+
+.eleve-cahiers-liste-chargement {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 16px;
+}
+
+.eleve-cahiers-liste-header-skeleton {
+  height: 90px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 14px;
+  margin-bottom: 24px;
+}
+
+.eleve-cahier-card-skeleton {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-line {
+  height: 14px;
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+.skeleton-line.w60 { width: 60%; }
+.skeleton-line.w40 { width: 40%; }
+.skeleton-line.w80 { width: 80%; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE — Mobile
+   ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .eleve-cahiers-liste-hero {
+    padding: 20px 16px;
+    border-radius: 10px;
+  }
+
+  .eleve-cahiers-liste-hero h1 {
+    font-size: 1.2rem;
+  }
+
+  .eleve-cahier-card-body {
+    padding: 12px 14px 12px;
+  }
+
+  .eleve-cahier-card-titre {
+    font-size: 0.95rem;
+  }
+
+  .eleve-cahier-card-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
