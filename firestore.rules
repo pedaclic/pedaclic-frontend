@@ -435,22 +435,29 @@ service cloud.firestore {
     }    
 	
      // ==================== PHASE 21 — CAHIER DE TEXTES ====================
-     // Lecture : prof propriétaire, admin, ou élève si cahier partagé (isPartage)
-     // Les élèves accèdent aux cahiers via getCahiersPartagesForEleve (filtré par groupeIds)
 
 match /cahiers_textes/{cahierId} {
+  // ── LECTURE (CORRIGÉ) ──
   allow read: if request.auth != null && (
-    resource.data.profId == request.auth.uid ||
-    isAdmin() ||
-    (isEleve() && resource.data.isPartage == true)
+    // Cas 1 : le prof propriétaire
+    resource.data.profId == request.auth.uid
+    // Cas 2 : admin
+    || isAdmin()
+    // Cas 3 : élève — cahier partagé (filtrage groupe côté requête)
+    || (resource.data.isPartage == true && isEleve())
+    // Cas 4 : parent — cahier partagé
+    || (resource.data.isPartage == true && isParent())
   );
-  // Création : admin (pour créer au nom d'un prof) OU prof premium (pour son propre cahier)
+
+  // ── CRÉATION : inchangé ──
   allow create: if request.auth != null && (
     isAdmin() ||
     (request.resource.data.profId == request.auth.uid
      && getUserData().role == 'prof'
      && getUserData().isPremium == true)
   );
+
+  // ── MISE À JOUR / SUPPRESSION : inchangé ──
   allow update, delete: if request.auth != null && (
     resource.data.profId == request.auth.uid || isAdmin()
   );
