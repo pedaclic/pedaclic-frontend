@@ -232,6 +232,15 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "cahiers_textes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPartage", "order": "ASCENDING" },
+        { "fieldPath": "groupeIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
