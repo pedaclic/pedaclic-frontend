@@ -167,7 +167,9 @@ const StudentDashboard: React.FC = () => {
           getDisciplineProgress(currentUser.uid),
           getProgressionTemporelle(currentUser.uid, 20),
           getQuizHistory(currentUser.uid, 10),
-          getQuizzes().catch(() => []),
+          getQuizzes({
+            freeOnly: !currentUser?.isPremium,
+          }).catch(() => []),
           getProgressionGlobale(currentUser.uid),  // ★ Phase 14
         ]);
 

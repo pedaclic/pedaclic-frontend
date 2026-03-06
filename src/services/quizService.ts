@@ -61,6 +61,8 @@ const quizzesRef = collection(db, 'quizzes');
 export interface QuizFilters {
   disciplineId?: string;
   isPremium?: boolean;
+  /** Si true, restreint la requête aux quiz gratuits (évite permission-denied pour élèves) */
+  freeOnly?: boolean;
   difficulte?: string;
 }
 
@@ -70,12 +72,17 @@ export interface QuizFilters {
 
 export const getQuizzes = async (filters?: QuizFilters): Promise<Quiz[]> => {
   try {
-    let q = query(quizzesRef, orderBy('titre', 'asc'));
+    const constraints: Parameters<typeof query>[1][] = [];
 
     if (filters?.disciplineId) {
-      q = query(quizzesRef, where('disciplineId', '==', filters.disciplineId), orderBy('titre', 'asc'));
+      constraints.push(where('disciplineId', '==', filters.disciplineId));
     }
+    if (filters?.freeOnly || filters?.isPremium === false) {
+      constraints.push(where('isPremium', '==', false));
+    }
+    constraints.push(orderBy('titre', 'asc'));
 
+    const q = query(quizzesRef, ...constraints);
     const snapshot = await getDocs(q);
     let quizzes: Quiz[] = snapshot.docs.map((docSnap) => ({
       id: docSnap.id,
