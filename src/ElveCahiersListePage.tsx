@@ -9,10 +9,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from './firebase';         // ← adapter selon votre config
-import { useAuth } from './AuthContext'; // ← adapter selon votre contexte
-import { getCahiersPartagesForEleve } from './cahierTextesService';
-import type { CahierTextes } from './cahierTextes_types';
+import { db } from './firebase';
+import { useAuth } from './contexts/AuthContext';
+import { getCahiersPartagesForEleve } from './services/cahierTextesService';
+import type { CahierTextes } from './types/cahierTextes.types';
 import './CahierEnrichi.css';
 import './ElveCahiersListe.css';
 
