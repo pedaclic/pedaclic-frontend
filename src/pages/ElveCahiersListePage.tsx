@@ -5,15 +5,19 @@
 // ============================================================
 
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getGroupesEleve } from '../services/profGroupeService';
 import { getCahiersPartagesForEleve } from '../services/cahierTextesService';
 import type { CahierTextes } from '../types/cahierTextes.types';
 import '../styles/CahierEnrichi.css';
+import '../ElveCahiersListe.css';
 
 const ElveCahiersListePage: React.FC = () => {
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [cahiers, setCahiers] = useState<CahierTextes[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
@@ -25,11 +29,28 @@ const ElveCahiersListePage: React.FC = () => {
       setErreur('');
 
       try {
-        const groupes = await getGroupesEleve(currentUser.uid);
-        const groupeIds = groupes.map((g) => g.id);
+        // 1. Récupérer les groupes via inscriptions (RejoindreGroupe)
+        let groupes = await getGroupesEleve(currentUser.uid);
+        let groupeIds = groupes.map((g) => g.id);
+
+        // 2. Fallback : si aucun groupe, vérifier groupeIds dans le profil utilisateur
+        if (groupeIds.length === 0) {
+          const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            groupeIds = userData.groupeIds ?? [];
+          }
+        }
+
+        if (groupeIds.length === 0) {
+          setCahiers([]);
+          return;
+        }
+
         const liste = await getCahiersPartagesForEleve(groupeIds);
         setCahiers(liste);
-      } catch {
+      } catch (err) {
+        console.error('[ElveCahiersListePage] Erreur chargement:', err);
         setErreur('Une erreur est survenue lors du chargement des cahiers.');
       } finally {
         setChargement(false);
@@ -59,42 +80,67 @@ const ElveCahiersListePage: React.FC = () => {
   }
 
   return (
-    <div className="eleve-cahier-page">
-      <header className="eleve-cahier-header">
-        <h1>Mes cahiers de textes</h1>
-        <p>
-          Cahiers partagés par vos professeurs
-        </p>
+    <main className="eleve-cahiers-liste-page">
+      <header className="eleve-cahiers-liste-hero">
+        <h1>📖 Cahiers de textes</h1>
+        <p>Retrouvez ici les séances réalisées par vos professeurs.</p>
       </header>
 
       {cahiers.length === 0 ? (
-        <div className="eleve-vide">
-          <p>Aucun cahier de textes partagé pour le moment.</p>
-          <p>Rejoignez un groupe via un code d'invitation pour accéder aux cahiers.</p>
+        <div className="eleve-cahiers-vide">
+          <span className="emoji">📭</span>
+          <h3>Aucun cahier de textes disponible</h3>
+          <p>
+            Vos professeurs n'ont pas encore partagé de cahier avec votre classe.
+            <br />
+            Assurez-vous d'avoir rejoint un groupe-classe avec le code d'invitation de votre professeur.
+          </p>
         </div>
       ) : (
-        <div className="eleve-cahiers-liste">
+        <>
+          <p className="eleve-cahiers-compteur">
+            {cahiers.length} cahier{cahiers.length > 1 ? 's' : ''} disponible{cahiers.length > 1 ? 's' : ''}
+          </p>
+        <div className="eleve-cahiers-liste-grid">
           {cahiers.map((c) => (
-            <Link
+            <article
               key={c.id}
-              to={`/eleve/cahiers/${c.id}`}
-              className="seance-card-eleve eleve-cahier-card"
-              style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+              className="eleve-cahier-card"
+              onClick={() => navigate(`/eleve/cahiers/${c.id}`)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') navigate(`/eleve/cahiers/${c.id}`);
+              }}
             >
-              <h3 className="seance-card-eleve-titre">{c.titre || 'Cahier sans titre'}</h3>
-              {c.groupeNoms && c.groupeNoms.length > 0 && (
-                <div className="seance-card-eleve-date">
-                  {c.groupeNoms.join(', ')}
+              <div className="eleve-cahier-card-bande" style={{ backgroundColor: '#2563eb' }} />
+              <div className="eleve-cahier-card-body">
+                <span className="eleve-cahier-card-matiere">{c.matiere}</span>
+                <h3 className="eleve-cahier-card-titre">{c.titre || 'Cahier sans titre'}</h3>
+                <div className="eleve-cahier-card-meta">
+                  <span>🎓 {c.classe}</span>
+                  <span>📅 {c.anneeScolaire}</span>
                 </div>
-              )}
-              {c.anneeScolaire && (
-                <div className="seance-card-eleve-date">{c.anneeScolaire}</div>
-              )}
-            </Link>
+                {c.description && (
+                  <p className="eleve-cahier-card-desc">
+                    {c.description.length > 100 ? c.description.slice(0, 100) + '…' : c.description}
+                  </p>
+                )}
+                {c.groupeNoms && c.groupeNoms.length > 0 && (
+                  <div className="eleve-cahier-card-groupes">
+                    {c.groupeNoms.map((nom, i) => (
+                      <span key={i} className="badge-groupe-eleve">👥 {nom}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="eleve-cahier-card-arrow">→</div>
+            </article>
           ))}
         </div>
+        </>
       )}
-    </div>
+    </main>
   );
 };
 

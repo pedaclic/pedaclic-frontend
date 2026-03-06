@@ -376,7 +376,7 @@ export async function getGroupesEleve(eleveId: string): Promise<GroupeProf[]> {
     for (const inscDoc of inscSnap.docs) {
       const groupeId = inscDoc.data().groupeId;
       const groupe = await getGroupeById(groupeId);
-      if (groupe && groupe.statut === 'actif') {
+      if (groupe && (!groupe.statut || groupe.statut === 'actif')) {
         groupes.push(groupe);
       }
     }
