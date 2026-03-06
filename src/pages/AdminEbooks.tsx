@@ -29,6 +29,10 @@ import '../styles/AdminEbooks.css';
 
 export const AdminEbooks: React.FC = () => {
   const { matieres: matieresDisciplines } = useDisciplinesOptions();
+  const matieresOptions = useMemo(
+    () => (matieresDisciplines?.length ? matieresDisciplines : MATIERES_DISPONIBLES_FALLBACK),
+    [matieresDisciplines]
+  );
   // ==================== STATES ====================
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);

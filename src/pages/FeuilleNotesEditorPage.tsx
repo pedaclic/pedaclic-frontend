@@ -207,7 +207,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
                             setDraftNote(val != null ? String(val) : '');
                           }}
                         >
-                          {val != null && val !== '' ? val : '—'}
+                          {val != null ? val : '—'}
                         </span>
                       )}
                     </td>

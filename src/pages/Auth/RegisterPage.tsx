@@ -132,7 +132,7 @@ const RegisterPage: React.FC = () => {
 
     try {
       const result = await register(formData);
-      if (result?.needsVerification) {
+      if (result && 'needsVerification' in result && result.needsVerification) {
         navigate('/verification-email', { replace: true, state: { email: formData.email } });
       } else {
         navigate('/disciplines', { replace: true });
