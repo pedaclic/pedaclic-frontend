@@ -5,7 +5,7 @@
 // ============================================================
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -17,7 +17,6 @@ import '../ElveCahiersListe.css';
 
 const ElveCahiersListePage: React.FC = () => {
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
   const [cahiers, setCahiers] = useState<CahierTextes[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
@@ -103,15 +102,11 @@ const ElveCahiersListePage: React.FC = () => {
           </p>
         <div className="eleve-cahiers-liste-grid">
           {cahiers.map((c) => (
-            <article
+            <Link
               key={c.id}
+              to={`/eleve/cahiers/${c.id}`}
               className="eleve-cahier-card"
-              onClick={() => navigate(`/eleve/cahiers/${c.id}`)}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') navigate(`/eleve/cahiers/${c.id}`);
-              }}
+              style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
             >
               <div className="eleve-cahier-card-bande" style={{ backgroundColor: '#2563eb' }} />
               <div className="eleve-cahier-card-body">
@@ -135,7 +130,7 @@ const ElveCahiersListePage: React.FC = () => {
                 )}
               </div>
               <div className="eleve-cahier-card-arrow">→</div>
-            </article>
+            </Link>
           ))}
         </div>
         </>
