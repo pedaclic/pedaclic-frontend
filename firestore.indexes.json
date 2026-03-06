@@ -1,6 +1,23 @@
 {
   "indexes": [
     {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPremium", "order": "ASCENDING" },
+        { "fieldPath": "titre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "disciplineId", "order": "ASCENDING" },
+        { "fieldPath": "isPremium", "order": "ASCENDING" },
+        { "fieldPath": "titre", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "generated_content",
       "queryScope": "COLLECTION",
       "fields": [
