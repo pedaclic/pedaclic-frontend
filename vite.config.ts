@@ -32,11 +32,14 @@ export default defineConfig({
 
         // Types de fichiers à précacher
         skipWaiting: true,
-	clientsClaim: true,
-  cleanupOutdatedCaches: true,
-	globPatterns: [
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+        globPatterns: [
           '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
         ],
+        // Ne jamais précacher index.html : toujours le récupérer du réseau
+        // pour que chaque déploiement serve immédiatement la nouvelle version
+        globIgnores: ['**/node_modules/**/*', 'index.html', '**/index.html'],
 
         // --- Page de secours hors-ligne ---
         // Si une page n'est pas en cache ET pas de réseau → offline.html
