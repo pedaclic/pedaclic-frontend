@@ -623,7 +623,27 @@
   font-size: 0.875rem;
   color: #374151;
   line-height: 1.6;
-  white-space: pre-wrap;
+}
+
+/* Contenu HTML riche (titres, liens, paragraphes) */
+.seance-card-eleve-contenu h3,
+.seance-card-eleve-contenu h4,
+.seance-card-eleve-contenu p,
+.seance-card-eleve-contenu div {
+  margin: 0.5em 0;
+}
+.seance-card-eleve-contenu h3:first-child,
+.seance-card-eleve-contenu h4:first-child,
+.seance-card-eleve-contenu p:first-child,
+.seance-card-eleve-contenu div:first-child {
+  margin-top: 0;
+}
+.seance-card-eleve-contenu a {
+  color: #2563eb;
+  text-decoration: underline;
+}
+.seance-card-eleve-contenu a:hover {
+  text-decoration: none;
 }
 
 /* Message vide vue élève */
