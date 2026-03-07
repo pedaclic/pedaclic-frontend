@@ -207,7 +207,13 @@ const EntreeEditorPage: React.FC = () => {
     e.preventDefault();
     if (!form.chapitre.trim()) { setError('Le chapitre est obligatoire.'); return; }
     if (!form.date) { setError('La date est obligatoire.'); return; }
-    if (!currentUser?.uid || !cahierId) return;
+    if (!currentUser?.uid || !cahierId || !cahier) return;
+
+    // Vérifier que le prof est bien propriétaire du cahier (évite erreurs Firestore)
+    if (cahier.profId !== currentUser.uid) {
+      setError('Vous n\'êtes pas le propriétaire de ce cahier. Enregistrement impossible.');
+      return;
+    }
 
     setSaving(true);
     setError('');
@@ -215,7 +221,7 @@ const EntreeEditorPage: React.FC = () => {
       if (isEdit && entreeId) {
         // Phase 21 — mise à jour base + Phase 22 — médias enrichis
         await updateEntree(entreeId, cahierId, form);
-        // Mise à jour séparée des champs Phase 22
+        // Mise à jour séparée des champs Phase 22 (liens, ebooks, contenus IA)
         await updateEntree(entreeId, { liens, ebooksLies, contenuIA });
       } else {
         const newId = await createEntree(cahierId, currentUser.uid, form);

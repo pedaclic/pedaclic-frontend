@@ -28,6 +28,14 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    /* ==================== PHASE 21 — CAHIER DE TEXTES (pièces jointes) ==================== */
+    match /cahiers/{profId}/{cahierId}/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == profId
+        && request.resource.size < 10 * 1024 * 1024;
+      allow delete: if request.auth != null && request.auth.uid == profId;
+    }
+
     match /cours-images/{coursId}/{allSubPaths=**} {
       allow read: if true;
       allow write: if request.auth != null
