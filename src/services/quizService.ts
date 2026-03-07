@@ -23,6 +23,7 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getGroupesEleve } from './profGroupeService';
 
 /* ──────────────────────────────────────────────
    Types locaux (définis ici pour éviter
@@ -46,6 +47,10 @@ export interface Quiz {
   duree: number;
   isPremium: boolean;
   noteMinimale: number;
+  /** ID du professeur créateur (quiz de classe) — null = quiz plateforme */
+  profId?: string | null;
+  /** ID du groupe-classe cible — null = quiz global */
+  groupeId?: string | null;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -190,4 +195,54 @@ export const getQuizStats = (quiz: Quiz) => {
     parDifficulte,
     duree: quiz.duree || 0,
   };
+};
+
+/* ══════════════════════════════════════════════
+   QUIZ PAR PROF / ÉLÈVE (quiz de classe)
+   ══════════════════════════════════════════════ */
+
+/**
+ * Récupère les quiz créés par un professeur (quiz de classe + éventuels globaux)
+ */
+export const getQuizzesByProf = async (profId: string): Promise<Quiz[]> => {
+  try {
+    const q = query(
+      quizzesRef,
+      where('profId', '==', profId),
+      orderBy('titre', 'asc')
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnap) => ({
+      id: docSnap.id,
+      ...docSnap.data(),
+    })) as Quiz[];
+  } catch (error) {
+    console.error('Erreur getQuizzesByProf:', error);
+    return [];
+  }
+};
+
+/**
+ * Récupère les quiz accessibles par un élève (globaux + ceux de ses groupes)
+ */
+export const getQuizzesForEleve = async (
+  eleveId: string,
+  isPremium: boolean
+): Promise<Quiz[]> => {
+  try {
+    const [groupes, allQuizzes] = await Promise.all([
+      getGroupesEleve(eleveId),
+      getQuizzes({ freeOnly: !isPremium }),
+    ]);
+    const groupeIds = groupes.map((g) => g.id);
+    return allQuizzes.filter(
+      (q) =>
+        !q.groupeId ||
+        q.groupeId === null ||
+        (groupeIds.length > 0 && groupeIds.includes(q.groupeId))
+    );
+  } catch (error) {
+    console.error('Erreur getQuizzesForEleve:', error);
+    return [];
+  }
 };

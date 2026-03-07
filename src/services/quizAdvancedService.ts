@@ -172,6 +172,62 @@ export async function getAllQuizzes(): Promise<QuizAvance[]> {
   }
 }
 
+/**
+ * Récupérer les quiz avancés créés par un professeur
+ */
+export async function getQuizzesAvanceByProf(profId: string): Promise<QuizAvance[]> {
+  try {
+    const q = query(
+      collection(db, QUIZZES_COLLECTION),
+      where('auteurId', '==', profId),
+      orderBy('createdAt', 'desc')
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((docSnap) => {
+      const data = docSnap.data() as Record<string, any>;
+      return {
+        id: docSnap.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || undefined,
+      } as QuizAvance;
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération quiz prof :', error);
+    return [];
+  }
+}
+
+/**
+ * Récupérer les quiz avancés accessibles par un élève (globaux + ceux de ses groupes)
+ */
+export async function getQuizzesAvanceForEleve(
+  eleveId: string,
+  isPremium: boolean
+): Promise<QuizAvance[]> {
+  try {
+    const { getGroupesEleve } = await import('./profGroupeService');
+    const [groupes, allQuizzes] = await Promise.all([
+      getGroupesEleve(eleveId),
+      getAllQuizzes(),
+    ]);
+    const groupeIds = groupes.map((g) => g.id);
+
+    return allQuizzes.filter((q) => {
+      if (q.isPremium && !isPremium) return false;
+      return (
+        !q.groupeId ||
+        q.groupeId === null ||
+        (groupeIds.length > 0 && groupeIds.includes(q.groupeId))
+      );
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération quiz élève :', error);
+    return [];
+  }
+}
+
 // ==================== SOUMISSION & CORRECTION ====================
 
 /**

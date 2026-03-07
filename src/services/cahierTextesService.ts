@@ -451,6 +451,30 @@ export async function getEntreesCahier(cahierId: string): Promise<EntreeCahier[]
 }
 
 /**
+ * Abonnement temps réel aux entrées d'un cahier.
+ * Évite les incohérences de cache (IndexedDB) entre la liste des cahiers
+ * et la page détail — garantit que les séances s'affichent correctement.
+ */
+export function subscribeToEntreesCahier(
+  cahierId: string,
+  onData: (entrees: EntreeCahier[]) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const q = query(
+    collection(db, COL_ENTREES),
+    where('cahierId', '==', cahierId),
+    orderBy('ordre', 'asc')
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier)));
+    },
+    onError
+  );
+}
+
+/**
  * Entrées d'un mois donné — Phase 21 (CahierCalendar)
  */
 export const getEntreesByMois = async (

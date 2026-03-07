@@ -153,6 +153,8 @@ export interface QuizAvance {
   afficherCorrection: boolean;        // Montrer la correction après soumission ?
   tentativesMax: number;              // Nombre max de tentatives (0 = illimité)
   auteurId: string;                   // ID du créateur (admin/prof)
+  /** ID du groupe-classe cible — null = quiz global plateforme */
+  groupeId?: string | null;
   createdAt: Date;
   updatedAt?: Date;
 }
@@ -172,6 +174,8 @@ export interface QuizAvanceFormData {
   melangerOptions: boolean;
   afficherCorrection: boolean;
   tentativesMax: number;
+  /** ID du groupe-classe cible — null = quiz global */
+  groupeId?: string | null;
 }
 
 // ==================== RÉPONSES ÉLÈVE ====================

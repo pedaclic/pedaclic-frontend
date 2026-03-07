@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getAllQuizzes } from '../services/quizAdvancedService';
+import { getAllQuizzes, getQuizzesAvanceForEleve } from '../services/quizAdvancedService';
 import type { QuizAvance } from '../types/quiz-advanced';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -40,7 +40,10 @@ const QuizListPage: React.FC = () => {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const data = await getAllQuizzes();
+        const isEleve = currentUser?.role === 'eleve';
+        const data = isEleve && currentUser?.uid
+          ? await getQuizzesAvanceForEleve(currentUser.uid, currentUser?.isPremium ?? false)
+          : await getAllQuizzes();
         setQuizzes(data);
       } catch {
         setError('Impossible de charger les quiz.');
@@ -49,7 +52,7 @@ const QuizListPage: React.FC = () => {
       }
     };
     fetch();
-  }, []);
+  }, [currentUser?.uid, currentUser?.role, currentUser?.isPremium]);
 
   const quizzesFiltres = quizzes.filter(q =>
     q.titre.toLowerCase().includes(recherche.toLowerCase()) ||

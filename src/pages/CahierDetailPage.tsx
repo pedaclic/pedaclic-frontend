@@ -13,7 +13,7 @@ import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
 import {
   getCahierById,
-  getEntreesByCahier,
+  subscribeToEntreesCahier,
   deleteEntree,
   updateEntree,
   updateCahier,
@@ -123,19 +123,26 @@ const CahierDetailPage: React.FC = () => {
     fetch();
   }, [cahierId, navigate]);
 
-  // ── Charger les entrées ───────────────────────────────────
-  const chargerEntrees = useCallback(async () => {
+  // ── Abonnement temps réel aux entrées ──────────────────────
+  // Utilise onSnapshot pour éviter les incohérences de cache (IndexedDB)
+  // entre la carte (subscribeToCahiers) et la page détail.
+  useEffect(() => {
     if (!cahierId) return;
     setLoadingEntrees(true);
-    try {
-      const data = await getEntreesByCahier(cahierId);
-      setEntrees(data);
-    } finally {
-      setLoadingEntrees(false);
-    }
+    const unsub = subscribeToEntreesCahier(
+      cahierId,
+      (data) => {
+        setEntrees(data);
+        setLoadingEntrees(false);
+      },
+      (err) => {
+        console.error('Erreur chargement entrées cahier:', err);
+        setEntrees([]);
+        setLoadingEntrees(false);
+      }
+    );
+    return () => unsub();
   }, [cahierId]);
-
-  useEffect(() => { chargerEntrees(); }, [chargerEntrees]);
 
   // ── Supprimer une entrée ──────────────────────────────────
   const handleDeleteEntree = async (entree: EntreeCahier) => {

@@ -72,7 +72,7 @@ import {
   QuizResult,
 } from '../../services/progressionService';
 import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ Phase 14
-import { getQuizzes, Quiz } from '../../services/quizService';
+import { getQuizzesForEleve, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
@@ -167,9 +167,7 @@ const StudentDashboard: React.FC = () => {
           getDisciplineProgress(currentUser.uid),
           getProgressionTemporelle(currentUser.uid, 20),
           getQuizHistory(currentUser.uid, 10),
-          getQuizzes({
-            freeOnly: !currentUser?.isPremium,
-          }).catch(() => []),
+          getQuizzesForEleve(currentUser.uid, currentUser?.isPremium ?? false).catch(() => []),
           getProgressionGlobale(currentUser.uid),  // ★ Phase 14
         ]);
 

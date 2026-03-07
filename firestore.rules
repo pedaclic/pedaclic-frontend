@@ -151,25 +151,24 @@ service cloud.firestore {
     // ==================== COLLECTION: quizzes ====================
     
     match /quizzes/{quizId} {
-      // Lecture: 
+      // Lecture:
       // - Quiz gratuits: tout le monde
       // - Quiz premium: uniquement utilisateurs premium
       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
-      
+
       // Création: admin et professeurs
       allow create: if isAdmin() || isProf();
-      
-      // Mise à jour: admin uniquement
-      allow update: if isAdmin();
-      
-      // Suppression: admin uniquement
-      allow delete: if isAdmin();
+
+      // Mise à jour / suppression: admin ou prof propriétaire (profId)
+      allow update: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
+      allow delete: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
     }
    match /quizzes_v2/{quizId} {
        allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
        allow create: if isAdmin() || isProf();
-       allow update: if isAdmin();
-       allow delete: if isAdmin();
+       // Mise à jour / suppression: admin ou prof auteur
+       allow update: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
+       allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
 }
     
     // ==================== COLLECTION: quiz_results ====================
@@ -564,10 +563,10 @@ service cloud.firestore {
 
       // ==================== COLLECTION: settings ====================
       // Utilisée par SettingsAdmin.tsx : doc(db, 'settings', 'platform')
-      // Lecture : tout utilisateur authentifié (config plateforme : rubriques cahier, export PDF, etc.)
+      // Lecture : public (mode maintenance doit être lisible par les visiteurs)
       // Écriture : admin uniquement
    match /settings/{docId} {
-    allow read: if isSignedIn();
+    allow read: if true;
     allow write: if isAdmin();
    }
     // ==================== PHASE 24 — COURS EN LIGNE ====================
