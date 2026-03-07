@@ -777,9 +777,13 @@ export async function getStatsQuizGroupe(
 /**
  * ★ Récupère les quiz disponibles pour une discipline.
  * Cherche dans les 2 collections : quizzes (Phase 6) ET quizzes_v2 (Phase 12).
+ * @param matiereId - ID de la discipline
+ * @param groupeId - Optionnel : si fourni, filtre les quiz avancés pour n'inclure que
+ *   les quiz globaux (sans groupeId) ou liés à ce groupe (affichage dans GroupeDetail)
  */
 export async function getQuizParMatiere(
-  matiereId: string
+  matiereId: string,
+  groupeId?: string
 ): Promise<{ id: string; titre: string; source?: string }[]> {
   try {
     const resultats: { id: string; titre: string; source?: string }[] = [];
@@ -793,9 +797,14 @@ export async function getQuizParMatiere(
       );
       const snap1 = await getDocs(q1);
       snap1.docs.forEach(d => {
+        const data = d.data();
+        // Filtre groupe : quiz sans groupeId ou lié à ce groupe
+        if (groupeId && (data.groupeId != null && data.groupeId !== '')) {
+          if (data.groupeId !== groupeId) return;
+        }
         resultats.push({
           id: d.id,
-          titre: d.data().titre || 'Quiz sans titre',
+          titre: data.titre || 'Quiz sans titre',
           source: 'quizzes'
         });
       });
@@ -812,9 +821,14 @@ export async function getQuizParMatiere(
       );
       const snap2 = await getDocs(q2);
       snap2.docs.forEach(d => {
+        const data = d.data();
+        // Filtre groupe : quiz sans groupeId ou lié à ce groupe
+        if (groupeId && (data.groupeId != null && data.groupeId !== '')) {
+          if (data.groupeId !== groupeId) return;
+        }
         resultats.push({
           id: d.id,
-          titre: d.data().titre || 'Quiz avancé sans titre',
+          titre: data.titre || 'Quiz avancé sans titre',
           source: 'quizzes_v2'
         });
       });
@@ -822,7 +836,7 @@ export async function getQuizParMatiere(
       console.warn('⚠️ Recherche quizzes_v2 échouée (index manquant ?):', err);
     }
 
-    console.log(`✅ ${resultats.length} quiz trouvé(s) pour discipline ${matiereId}`);
+    console.log(`✅ ${resultats.length} quiz trouvé(s) pour discipline ${matiereId}${groupeId ? ` (groupe ${groupeId})` : ''}`);
     return resultats;
   } catch (error) {
     console.error('❌ Erreur récupération quiz par matière:', error);

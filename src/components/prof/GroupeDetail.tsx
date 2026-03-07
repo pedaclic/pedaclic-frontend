@@ -156,7 +156,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [statsGroupe, setStatsGroupe] = useState<StatsGroupe | null>(null);
   const [statsEleves, setStatsEleves] = useState<EleveGroupeStats[]>([]);
   const [alertes, setAlertes] = useState<AlerteProf[]>([]);
-  const [quizDisponibles, setQuizDisponibles] = useState<{ id: string; titre: string }[]>([]);
+  const [quizDisponibles, setQuizDisponibles] = useState<{ id: string; titre: string; source?: string }[]>([]);
   const [statsQuiz, setStatsQuiz] = useState<StatsQuizGroupe | null>(null);
   const [travaux, setTravaux] = useState<TravailAFaire[]>([]);
   const [observations, setObservations] = useState<Record<string, string>>({});
@@ -201,7 +201,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
       const [stats, elevesStats, quiz] = await Promise.all([
         getStatsGroupe(groupe.id),
         getStatsElevesGroupe(groupe.id),
-        getQuizParMatiere(groupe.matiereId)
+        getQuizParMatiere(groupe.matiereId, groupe.id)
       ]);
 
       setStatsGroupe(stats);
@@ -254,11 +254,11 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   /**
    * Analyse un quiz spécifique
    */
-  const handleAnalyserQuiz = async (quizId: string) => {
+  const handleAnalyserQuiz = async (quizId: string, quizSource?: string) => {
     try {
       setLoadingQuiz(true);
       setQuizSelectionne(quizId);
-      const stats = await getStatsQuizGroupe(groupe.id, quizId);
+      const stats = await getStatsQuizGroupe(groupe.id, quizId, quizSource);
       setStatsQuiz(stats);
     } catch (err) {
       console.error('Erreur analyse quiz:', err);
@@ -961,13 +961,19 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
               id="select-quiz"
               value={quizSelectionne || ''}
               onChange={(e) => {
-                if (e.target.value) handleAnalyserQuiz(e.target.value);
+                const val = e.target.value;
+                if (val) {
+                  const q = quizDisponibles.find(x => x.id === val);
+                  handleAnalyserQuiz(val, q?.source);
+                }
               }}
               className="prof-select"
             >
               <option value="">— Choisir un quiz —</option>
               {quizDisponibles.map(q => (
-                <option key={q.id} value={q.id}>{q.titre}</option>
+                <option key={q.id} value={q.id}>
+                  {q.source === 'quizzes_v2' ? '🧠 ' : ''}{q.titre}
+                </option>
               ))}
             </select>
           </div>
