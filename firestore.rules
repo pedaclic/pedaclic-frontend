@@ -438,35 +438,29 @@ service cloud.firestore {
     // Le filtrage par groupe (élève dans le bon groupe) se fait côté client.
 
     match /cahiers_textes/{cahierId} {
-      // Professeur propriétaire : lecture et écriture complètes
-      allow read, write: if isProf() && resource.data.profId == request.auth.uid;
-
-      // Admin : accès complet
+      // Prof propriétaire : accès complet (sans getUserData)
+      allow read, write: if isSignedIn() &&
+                        resource.data.profId == request.auth.uid;
+      // Création
+      allow create: if isSignedIn() &&
+                   request.resource.data.profId == request.auth.uid;
+      // Admin
       allow read, write: if isAdmin();
-
-      // Élève : lecture uniquement si le cahier est partagé
-      // (la vérification que l'élève est dans le bon groupe se fait côté client)
+      // Élève/parent : lecture si partagé
       allow read: if isSignedIn() && resource.data.isPartage == true;
-
-      // Création par un prof
-      allow create: if isProf() && request.resource.data.profId == request.auth.uid;
     }
 
-    // ==================== COLLECTION: entrees_cahier ====================
-
     match /entrees_cahier/{entreeId} {
-      // Professeur propriétaire : accès complet
-      allow read, write: if isProf() && resource.data.profId == request.auth.uid;
-
-      // Admin : accès complet
+      // Lecture : tout utilisateur connecté (restriction par cahier côté query)
+      allow read: if isSignedIn();
+      // Prof propriétaire : écriture complète (sans getUserData)
+      allow write: if isSignedIn() &&
+                  resource.data.profId == request.auth.uid;
+      // Création
+      allow create: if isSignedIn() &&
+                   request.resource.data.profId == request.auth.uid;
+      // Admin
       allow read, write: if isAdmin();
-
-      // Élève : lecture si la séance est "réalisée"
-      // (le cahier parent doit être partagé — vérifié côté client)
-      allow read: if isSignedIn() && resource.data.statut == 'realise';
-
-      // Création par un prof
-      allow create: if isProf() && request.resource.data.profId == request.auth.uid;
     }
 
     // ==================== COLLECTION: rappels_prof ====================
