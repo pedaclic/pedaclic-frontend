@@ -74,6 +74,13 @@ import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 import ElveCahiersListePage from './pages/ElveCahiersListePage';
 import ElveCahierPage from './pages/ElveCahierPage';
 
+/* ==================== QUIZ PROF (Premium) ==================== */
+import ProfQuizPage             from './pages/ProfQuizPage';
+import ProfQuizClassicCreatePage from './pages/ProfQuizClassicCreatePage';
+import ProfQuizClassicEditPage   from './pages/ProfQuizClassicEditPage';
+import ProfQuizAvanceCreatePage  from './pages/ProfQuizAvanceCreatePage';
+import ProfQuizAvanceEditPage    from './pages/ProfQuizAvanceEditPage';
+
 /* ==================== PHASE 23 — SÉQUENCES PÉDAGOGIQUES ==================== */
 import SequencesPage      from './pages/SequencesPage';
 import SequenceEditorPage from './pages/SequenceEditorPage';
@@ -109,6 +116,9 @@ import AIGenerator from './components/generator/AIGenerator';
 import InstallPrompt    from './components/InstallPrompt';
 import NetworkIndicator from './components/NetworkIndicator';
 
+/* ==================== MODE MAINTENANCE ==================== */
+import MaintenanceGate from './components/MaintenanceGate';
+
 /* ==================== GÉNÉRATEUR IA — KEEP-ALIVE ==================== */
 import { pingServeurIA } from './services/aiGeneratorService';
 
@@ -125,9 +135,10 @@ const App: React.FC = () => {
 
   return (
     <AuthProvider>
-      <InstallPrompt />
-      <NetworkIndicator />
-      <Routes>
+      <MaintenanceGate>
+        <InstallPrompt />
+        <NetworkIndicator />
+        <Routes>
 
         {/* ========== PAGES PUBLIQUES (avec Header + Footer) ========== */}
         <Route path="/"              element={<Layout><Home /></Layout>} />
@@ -217,6 +228,23 @@ const App: React.FC = () => {
         {/* ========== FEUILLES DE NOTES (Prof) ========== */}
         <Route path="/prof/feuilles/:feuilleId" element={
           <ProfRoute><Layout><FeuilleNotesEditorPage /></Layout></ProfRoute>
+        } />
+
+        {/* ========== QUIZ PROF (Prof Premium) ========== */}
+        <Route path="/prof/quiz" element={
+          <ProfRoute><Layout><ProfQuizPage /></Layout></ProfRoute>
+        } />
+        <Route path="/prof/quiz/classique/nouveau" element={
+          <ProfRoute><Layout><ProfQuizClassicCreatePage /></Layout></ProfRoute>
+        } />
+        <Route path="/prof/quiz/classique/:quizId/modifier" element={
+          <ProfRoute><Layout><ProfQuizClassicEditPage /></Layout></ProfRoute>
+        } />
+        <Route path="/prof/quiz/avance/nouveau" element={
+          <ProfRoute><Layout><ProfQuizAvanceCreatePage /></Layout></ProfRoute>
+        } />
+        <Route path="/prof/quiz/avance/:quizId/modifier" element={
+          <ProfRoute><Layout><ProfQuizAvanceEditPage /></Layout></ProfRoute>
         } />
 
         {/* ========== SÉQUENCES PÉDAGOGIQUES (Prof Premium) ========== */}
@@ -309,6 +337,7 @@ const App: React.FC = () => {
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
+      </MaintenanceGate>
     </AuthProvider>
   );
 };

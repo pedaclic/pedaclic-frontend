@@ -1,0 +1,101 @@
+/* ============================================
+   MAINTENANCE PAGE — Mode maintenance PedaClic
+   Affichée quand le site est en maintenance
+   ============================================ */
+
+.maintenance-gate-loading {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background-color: #f8fafc;
+  color: #64748b;
+}
+
+.maintenance-gate-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: maintenanceSpin 0.8s linear infinite;
+}
+
+@keyframes maintenanceSpin {
+  to { transform: rotate(360deg); }
+}
+
+.maintenance-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.maintenance-page__container {
+  max-width: 520px;
+  width: 100%;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  padding: 48px 40px;
+  text-align: center;
+}
+
+.maintenance-page__icon {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 28px;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #d97706;
+  animation: maintenancePulse 2s ease-in-out infinite;
+}
+
+@keyframes maintenancePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.maintenance-page__title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 16px;
+}
+
+.maintenance-page__message {
+  font-size: 16px;
+  color: #475569;
+  line-height: 1.7;
+  margin: 0 0 16px;
+  white-space: pre-wrap;
+}
+
+.maintenance-page__subtext {
+  font-size: 14px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 480px) {
+  .maintenance-page__container {
+    padding: 32px 24px;
+  }
+
+  .maintenance-page__title {
+    font-size: 20px;
+  }
+
+  .maintenance-page__message {
+    font-size: 15px;
+  }
+}

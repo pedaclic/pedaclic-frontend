@@ -12,6 +12,14 @@
       "collectionGroup": "quizzes",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "profId", "order": "ASCENDING" },
+        { "fieldPath": "titre", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
         { "fieldPath": "isPremium", "order": "ASCENDING" },
         { "fieldPath": "titre", "order": "ASCENDING" }
@@ -188,6 +196,20 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "ordre",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entrees_cahier",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cahierId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "profId",
           "order": "ASCENDING"
         },
@@ -240,6 +262,14 @@
         { "fieldPath": "isPartage", "order": "ASCENDING" },
         { "fieldPath": "groupeIds", "arrayConfig": "CONTAINS" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes_v2",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "auteurId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

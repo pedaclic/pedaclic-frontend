@@ -42,6 +42,8 @@ interface QuizEditorProps {
   disciplines: { id: string; nom: string; classe: string }[];
   /** ID de l'auteur (admin ou prof) */
   auteurId: string;
+  /** Groupes du prof (pour quiz de classe) — si fourni, affiche sélecteur */
+  groupes?: { id: string; nom: string }[];
   /** Callback après sauvegarde réussie */
   onSave?: (quizId: string) => void;
   /** Callback pour annuler */
@@ -54,6 +56,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   existingQuiz,
   disciplines,
   auteurId,
+  groupes,
   onSave,
   onCancel,
 }) => {
@@ -61,6 +64,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   const [titre, setTitre] = useState(existingQuiz?.titre || '');
   const [description, setDescription] = useState(existingQuiz?.description || '');
   const [disciplineId, setDisciplineId] = useState(existingQuiz?.disciplineId || '');
+  const [groupeId, setGroupeId] = useState<string>(existingQuiz?.groupeId ?? '');
   const [duree, setDuree] = useState(existingQuiz?.duree || 30);
   const [isPremium, setIsPremium] = useState(existingQuiz?.isPremium ?? true);
   const [noteMinimale, setNoteMinimale] = useState(existingQuiz?.noteMinimale || 10);
@@ -167,6 +171,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
         melangerOptions,
         afficherCorrection,
         tentativesMax,
+        groupeId: groupes && groupes.length > 0 ? (groupeId || null) : undefined,
       };
 
       let quizId: string;
@@ -247,6 +252,25 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
               ))}
             </select>
           </div>
+
+          {/* Classe (quiz de prof) */}
+          {groupes && groupes.length > 0 && (
+            <div className="quiz-editor__field">
+              <label>Classe cible</label>
+              <select
+                value={groupeId}
+                onChange={(e) => setGroupeId(e.target.value)}
+                className="quiz-editor__select"
+              >
+                <option value="">— Toutes mes classes —</option>
+                {groupes.map((g) => (
+                  <option key={g.id} value={g.id}>
+                    {g.nom}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Durée */}
           <div className="quiz-editor__field">
