@@ -41,6 +41,7 @@ import {
 } from '../../services/travauxAFaireService';
 import { useAuth } from '../../hooks/useAuth';
 import FeuillesNotesManager from './FeuillesNotesManager';
+import CahierGroupeWidget from './CahierGroupeWidget';
 import type {
   GroupeProf,
   StatsGroupe,
@@ -56,7 +57,7 @@ import '../../styles/feuillesNotes.css';
 // ==================== TYPES LOCAUX ====================
 
 /** Onglets disponibles dans le détail du groupe */
-type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' | 'alertes';
+type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' | 'cahier' | 'alertes';
 
 /** Options de tri pour la liste des élèves */
 type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count';
@@ -458,6 +459,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
           { id: 'travaux' as OngletActif, label: '📋 Travaux', count: travaux.length },
           { id: 'notes' as OngletActif, label: '📝 Notes', count: null },
           { id: 'quiz' as OngletActif, label: '📝 Quiz', count: quizDisponibles.length },
+          { id: 'cahier' as OngletActif, label: '📓 Cahier de textes', count: null },
           { id: 'alertes' as OngletActif, label: '🔔 Alertes', count: alertes.length }
         ].map(onglet => (
           <button
@@ -1070,7 +1072,27 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
 
 
       {/* ============================================================ */}
-      {/* ONGLET 4 : ALERTES                                           */}
+      {/* ONGLET : CAHIER DE TEXTES (lié à ce groupe)                   */}
+      {/* ============================================================ */}
+      {ongletActif === 'cahier' && (
+        <div className="groupe-cahier-onglet">
+          <CahierGroupeWidget
+            groupe={{
+              id: groupe.id,
+              profId: groupe.profId,
+              nom: groupe.nom,
+              classe: groupe.classeNiveau,
+              codeInvitation: groupe.codeInvitation,
+              nombreInscrits: groupe.nombreInscrits,
+              anneeScolaire: groupe.anneeScolaire,
+            }}
+          />
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* ONGLET ALERTES                                                */}
       {/* ============================================================ */}
       {ongletActif === 'alertes' && (
         <div className="groupe-alertes">
