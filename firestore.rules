@@ -434,33 +434,32 @@ service cloud.firestore {
     }    
 	
     // ==================== PHASE 21 — CAHIER DE TEXTES ====================
-    // Permet aux élèves d'accéder aux cahiers de textes de leurs classes respectives.
-    // Le filtrage par groupe (élève dans le bon groupe) se fait côté client.
-
     match /cahiers_textes/{cahierId} {
-      // Prof propriétaire : accès complet (sans getUserData)
-      allow read, write: if isSignedIn() &&
-                        resource.data.profId == request.auth.uid;
-      // Création
+      // Lecture : tout utilisateur connecté
+      // La restriction profId/groupe se fait côté service (query layer)
+      // ⚠️ Ne pas vérifier profId ici : incompatible avec array-contains (query Firestore)
+      allow read: if isSignedIn();
+
+      // Création : prof propriétaire uniquement
       allow create: if isSignedIn() &&
                    request.resource.data.profId == request.auth.uid;
-      // Admin
-      allow read, write: if isAdmin();
-      // Élève/parent : lecture si partagé
-      allow read: if isSignedIn() && resource.data.isPartage == true;
+
+      // Modification/suppression : prof propriétaire ou admin
+      allow update, delete: if isAdmin() ||
+                        (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
     match /entrees_cahier/{entreeId} {
-      // Lecture : tout utilisateur connecté (restriction par cahier côté query)
+      // Lecture : tout utilisateur connecté (filtrage par cahierId côté service)
       allow read: if isSignedIn();
-      // Prof propriétaire : écriture complète (sans getUserData)
-      allow write: if isSignedIn() &&
-                  resource.data.profId == request.auth.uid;
-      // Création
+
+      // Création : prof propriétaire uniquement
       allow create: if isSignedIn() &&
                    request.resource.data.profId == request.auth.uid;
-      // Admin
-      allow read, write: if isAdmin();
+
+      // Modification/suppression : prof propriétaire ou admin
+      allow update, delete: if isAdmin() ||
+                        (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
     // ==================== COLLECTION: rappels_prof ====================
