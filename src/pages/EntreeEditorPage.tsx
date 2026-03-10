@@ -180,8 +180,12 @@ const EntreeEditorPage: React.FC = () => {
       if (isEdit && entreeId && entreeOriginale) {
         await addPiecesJointes(entreeId, piecesJointes, [piece]);
       }
-    } catch {
-      alert('Erreur upload fichier.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isNetworkErr = /réseau|network|timeout|quic|failed|err_/i.test(msg);
+      alert(isNetworkErr
+        ? 'Impossible d\'importer le fichier. Vérifiez votre connexion et réessayez.'
+        : 'Erreur lors de l\'import du fichier. Réessayez.');
     } finally {
       setUploadingFile(false);
       e.target.value = '';
