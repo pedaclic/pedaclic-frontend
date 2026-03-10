@@ -53,23 +53,35 @@ service cloud.firestore {
     }
     
     // ==================== COLLECTION: users ====================
+    // Profils utilisateurs (élèves, profs, parents, admin).
+    // Lecture granulaire : get = document unique, list = requêtes sur la collection.
     
     match /users/{userId} {
-      // Lecture: 
-      // - Utilisateur peut lire son propre profil
-      // - Admin peut tout lire
-      // - Parent peut lire les profils (pour rechercher un enfant par codeParent)
-      allow read: if isOwner(userId) || isAdmin() || isParent() || isProf();
-      
-      // Création: uniquement lors de l'inscription (via Authentication)
-      allow create: if isSignedIn() && 
+      // get : lecture d'un document unique (ex: profil d'un élève)
+      // - Propriétaire du document (son propre profil)
+      // - Admin (supervision)
+      // - Parent (recherche enfant par codeParent, consultation profils liés)
+      // - Prof (consultation profil élève, ex: inscription directe dans sa classe)
+      allow get: if isOwner(userId) || isAdmin() || isParent() || isProf();
+
+      // list : requêtes sur la collection (ex: recherche élèves par email/nom)
+      // - Admin et Prof uniquement (inscription directe : rechercher des élèves PedaClic)
+      // - Parent non autorisé à lister tous les users (évite énumération)
+      allow list: if isAdmin() || isProf();
+
+      // create : création du document profil (lors de l'inscription Auth)
+      // - L'utilisateur crée son propre document (request.auth.uid == userId)
+      // - Champs obligatoires : email, role, isPremium (structure minimale)
+      allow create: if isSignedIn() &&
                        request.auth.uid == userId &&
                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']);
-      
-      // Mise à jour: utilisateur peut modifier son profil, admin peut tout modifier
+
+      // update : modification du profil
+      // - Propriétaire (modifier son profil) ou admin
       allow update: if isOwner(userId) || isAdmin();
-      
-      // Suppression: uniquement admin
+
+      // delete : suppression du compte
+      // - Uniquement admin (droit régalien)
       allow delete: if isAdmin();
     }
     
@@ -407,8 +419,12 @@ service cloud.firestore {
       // Mise à jour: prof du groupe ou admin
       allow update: if isSignedIn() && (isProf() || isAdmin());
 
-      // Suppression: prof du groupe ou admin (désinscription par le prof)
-      allow delete: if isSignedIn() && (isProf() || isAdmin());
+      // Suppression: admin ou prof propriétaire du groupe (désinscription)
+      // Vérifie que le groupe appartient au prof connecté (évite désinscription dans un groupe d'un autre prof)
+      allow delete: if isAdmin() ||
+              (isSignedIn() && isProf() &&
+               get(/databases/$(database)/documents/groupes_prof/$(resource.data.groupeId))
+                 .data.profId == request.auth.uid);
     }
       // ==================== COLLECTION: progressions (Phase 14) ====================
     
