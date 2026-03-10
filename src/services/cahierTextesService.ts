@@ -175,13 +175,46 @@ export async function getEntreeById(entreeId: string): Promise<EntreeCahier | nu
 // PIÈCES JOINTES — Phase 21 (EntreeEditorPage)
 // ─────────────────────────────────────────────────────────────
 
-import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '../firebase';
 import type { PieceJointe } from '../types/cahierTextes.types';
+
+/** Sanitise le nom de fichier pour éviter les erreurs (espaces, caractères spéciaux dans l'URL) */
+function sanitizeFilename(name: string): string {
+  return name
+    .replace(/\s+/g, '_')
+    .replace(/[#?&%]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .replace(/^_|_$/g, '') || 'fichier';
+}
+
+/** Déduit le Content-Type à partir de l'extension si file.type est vide */
+function inferContentType(file: File): string {
+  if (file.type && file.type.length > 0) return file.type;
+  const ext = (file.name.split('.').pop() || '').toLowerCase();
+  const map: Record<string, string> = {
+    pdf: 'application/pdf',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  };
+  return map[ext] || 'application/octet-stream';
+}
+
+/** Seuil (1 Mo) en dessous duquel on utilise uploadBytes (plus fiable pour petits fichiers) */
+const SEUIL_UPLOAD_SIMPLE = 1024 * 1024;
 
 /**
  * Upload un fichier — Phase 21 : uploadPieceJointe(profId, cahierId, file)
  * Chemin : cahiers/{profId}/{cahierId}/{timestamp}_{filename}
+ * - Sanitisation du nom (espaces → underscores) pour éviter ERR_FAILED
+ * - Metadata explicite (contentType) pour compatibilité Storage
+ * - uploadBytes pour fichiers < 1 Mo (plus stable que resumable)
+ * - Retry automatique en cas d'erreur réseau transitoire
  */
 export async function uploadPieceJointe(
   profId: string,
@@ -189,34 +222,78 @@ export async function uploadPieceJointe(
   fichier: File,
   onProgress?: (pct: number) => void
 ): Promise<PieceJointe> {
-  const nom    = `${Date.now()}_${fichier.name}`;
+  const nomSanitize = sanitizeFilename(fichier.name);
+  const nom = `${Date.now()}_${nomSanitize}`;
   const chemin = `cahiers/${profId}/${cahierId}/${nom}`;
-  const ref    = storageRef(storage, chemin);
-  const task   = uploadBytesResumable(ref, fichier);
+  const refStorage = storageRef(storage, chemin);
+  const contentType = inferContentType(fichier);
+  const metadata = {
+    contentType,
+    customMetadata: {
+      originalName: fichier.name,
+      uploadedAt: new Date().toISOString(),
+    },
+  };
 
-  return new Promise((resolve, reject) => {
-    task.on(
-      'state_changed',
-      snap => {
-        if (onProgress) {
-          onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
+  const doUpload = async (): Promise<PieceJointe> => {
+    if (fichier.size < SEUIL_UPLOAD_SIMPLE) {
+      // Fichiers < 1 Mo : uploadBytes plus fiable (évite QUIC/resumable)
+      if (onProgress) onProgress(50);
+      await uploadBytes(refStorage, fichier, metadata);
+      if (onProgress) onProgress(100);
+      const url = await getDownloadURL(refStorage);
+      return {
+        id: nom,
+        nom: fichier.name,
+        url,
+        type: fichier.type,
+        taille: fichier.size,
+        mimeType: fichier.type,
+        uploadedAt: new Date().toISOString(),
+      };
+    }
+
+    const task = uploadBytesResumable(refStorage, fichier, metadata);
+    return new Promise((resolve, reject) => {
+      task.on(
+        'state_changed',
+        snap => {
+          if (onProgress) {
+            onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
+          }
+        },
+        reject,
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref);
+          resolve({
+            id: nom,
+            nom: fichier.name,
+            url,
+            type: fichier.type,
+            taille: fichier.size,
+            mimeType: fichier.type,
+            uploadedAt: new Date().toISOString(),
+          });
         }
-      },
-      reject,
-      async () => {
-        const url = await getDownloadURL(task.snapshot.ref);
-        resolve({
-          id:         nom,
-          nom:        fichier.name,
-          url,
-          type:       fichier.type,
-          taille:     fichier.size,
-          mimeType:   fichier.type,
-          uploadedAt: new Date().toISOString(),
-        });
-      }
-    );
-  });
+      );
+    });
+  };
+
+  const maxRetries = 3;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await doUpload();
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRetryable =
+        /ERR_FAILED|ERR_QUIC|network|timeout|quic/i.test(msg) && attempt < maxRetries;
+      if (!isRetryable) throw err;
+      await new Promise(r => setTimeout(r, 800 * attempt)); // Délai croissant
+    }
+  }
+  throw lastErr;
 }
 
 /**
