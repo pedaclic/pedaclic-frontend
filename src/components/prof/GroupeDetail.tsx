@@ -42,6 +42,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import FeuillesNotesManager from './FeuillesNotesManager';
 import CahierGroupeWidget from './CahierGroupeWidget';
+import InscriptionDirecteModal from './InscriptionDirecteModal';
 import type {
   GroupeProf,
   StatsGroupe,
@@ -185,6 +186,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [quizSelectionne, setQuizSelectionne] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState<boolean>(false);
   const [loadingRetrait, setLoadingRetrait] = useState<string | null>(null);
+  const [modalInscriptionOuvert, setModalInscriptionOuvert] = useState(false);
 
 
   // ==================== CHARGEMENT DES DONNÉES ====================
@@ -614,7 +616,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
       {ongletActif === 'eleves' && (
         <div className="groupe-eleves">
 
-          {/* Barre de tri */}
+          {/* Barre de tri + Inscription directe */}
           <div className="groupe-eleves-toolbar">
             <label htmlFor="tri-eleves">Trier par :</label>
             <select
@@ -632,6 +634,14 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
             <span className="groupe-eleves-count">
               {statsEleves.length} élève{statsEleves.length !== 1 ? 's' : ''}
             </span>
+            <button
+              type="button"
+              className="prof-btn prof-btn-primary"
+              onClick={() => setModalInscriptionOuvert(true)}
+              style={{ marginLeft: 'auto' }}
+            >
+              👥 Inscrire un élève
+            </button>
           </div>
 
           {/* État vide */}
@@ -639,7 +649,15 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
             <div className="prof-empty-state">
               <div className="prof-empty-icon">👥</div>
               <h3>Aucun élève inscrit</h3>
-              <p>Partagez le code <strong>{groupe.codeInvitation}</strong> à vos élèves.</p>
+              <p>Partagez le code <strong>{groupe.codeInvitation}</strong> à vos élèves, ou inscrivez directement un élève membre de PedaClic.</p>
+              <button
+                type="button"
+                className="prof-btn prof-btn-primary"
+                onClick={() => setModalInscriptionOuvert(true)}
+                style={{ marginTop: '1rem' }}
+              >
+                👥 Inscrire un élève
+              </button>
             </div>
           ) : (
             <>
@@ -1134,6 +1152,17 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Modal inscription directe (élèves membres PedaClic) */}
+      {modalInscriptionOuvert && currentUser && (
+        <InscriptionDirecteModal
+          groupeId={groupe.id}
+          groupeNom={groupe.nom}
+          profId={currentUser.uid}
+          onClose={() => setModalInscriptionOuvert(false)}
+          onSuccess={chargerDonneesGroupe}
+        />
       )}
     </div>
   );
