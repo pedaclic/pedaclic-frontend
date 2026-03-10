@@ -1215,6 +1215,17 @@
 }
 
 
+/* ==================== CAHIER DE TEXTES (ONGLET) ==================== */
+
+.groupe-cahier-onglet {
+  padding: var(--spacing-lg) 0;
+}
+
+.groupe-cahier-onglet .cahier-groupe-widget {
+  max-width: 720px;
+}
+
+
 /* ==================== ALERTES (ONGLET 4) ==================== */
 
 .groupe-alertes-liste {
