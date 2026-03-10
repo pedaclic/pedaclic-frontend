@@ -279,6 +279,39 @@
         { "fieldPath": "disciplineId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "inscriptions_groupe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "dateInscription", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inscriptions_groupe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "statut", "order": "ASCENDING" },
+        { "fieldPath": "dateInscription", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inscriptions_groupe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eleveId", "order": "ASCENDING" },
+        { "fieldPath": "groupeId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "role", "order": "ASCENDING" },
+        { "fieldPath": "displayName", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

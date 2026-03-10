@@ -390,27 +390,25 @@ service cloud.firestore {
     // Le professeur du groupe peut voir et gérer les inscriptions.
 
     match /inscriptions_groupe/{inscriptionId} {
-      // Lecture:
-      // - Le professeur (via requête where groupeId pour ses groupes)
-      // - L'élève inscrit (peut voir ses propres inscriptions)
-      // - Le parent (pour récupérer les groupes de ses enfants liés)
-      // - Admin (supervision globale)
+      // Lecture: prof, élève, parent, admin
       allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
 
-      // Création: uniquement l'élève qui s'inscrit
-      // Le eleveId DOIT correspondre à l'utilisateur connecté
+      // Création:
+      // - Élève qui s'auto-inscrit via code (comportement existant)
+      // - Admin (comportement existant)
+      // - Prof qui inscrit directement dans son propre groupe (inscription directe)
       allow create: if isSignedIn() && (
-                       (isEleve() && request.resource.data.eleveId == request.auth.uid) ||
-                       isAdmin()
-                     );
+        (isEleve() && request.resource.data.eleveId == request.auth.uid) ||
+        isAdmin() ||
+        (isProf() &&
+         get(/databases/$(database)/documents/groupes_prof/$(request.resource.data.groupeId)).data.profId == request.auth.uid)
+      );
 
-      // Mise à jour:
-      // - Le professeur du groupe (pour retirer un élève, changer statut)
-      // - Admin
+      // Mise à jour: prof du groupe ou admin
       allow update: if isSignedIn() && (isProf() || isAdmin());
 
-      // Suppression: uniquement admin
-      allow delete: if isAdmin();
+      // Suppression: prof du groupe ou admin (désinscription par le prof)
+      allow delete: if isSignedIn() && (isProf() || isAdmin());
     }
       // ==================== COLLECTION: progressions (Phase 14) ====================
     

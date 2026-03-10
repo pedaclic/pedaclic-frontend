@@ -481,13 +481,19 @@ export async function getCahierPartageById(
 // ─────────────────────────────────────────────────────────────
 
 export async function getCahiersForGroupe(groupeId: string): Promise<CahierTextes[]> {
+  // Pas d'orderBy ici : évite l'index composite (array-contains + orderBy)
+  // et fonctionne sans déploiement firestore.indexes.json
   const q = query(
     collection(db, COL_CAHIERS),
-    where('groupeIds', 'array-contains', groupeId),
-    orderBy('updatedAt', 'desc')
+    where('groupeIds', 'array-contains', groupeId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
+  const cahiers = snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
+  return cahiers.sort((a, b) => {
+    const ta = (a.updatedAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
+    const tb = (b.updatedAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
+    return tb - ta; // plus récent en premier
+  });
 }
 
 // ─────────────────────────────────────────────────────────────
