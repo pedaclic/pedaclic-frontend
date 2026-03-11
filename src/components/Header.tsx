@@ -32,6 +32,7 @@ import {
   Download,
   Star,
   Film,
+  Radio,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
@@ -95,6 +96,12 @@ const Header: React.FC = () => {
       path: '/mediatheque',
       label: 'Médiathèque',
       icon: <Film size={18} />
+    },
+    {
+      path: '/live',
+      label: 'Sessions Live',
+      icon: <Radio size={18} />,
+      requireAuth: true,
     },
     // APRÈS — Quiz gratuits pour tous
    {
