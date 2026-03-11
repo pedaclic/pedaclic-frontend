@@ -96,6 +96,10 @@ import ProfCoursPage   from './pages/ProfCoursPage';
 import EbooksPage  from './pages/EbooksPage';
 import AdminEbooks from './pages/AdminEbooks';
 
+/* ==================== PHASE 28 — SESSIONS LIVE ==================== */
+import LivePage from './pages/LivePage';
+import ProfLivePage from './pages/ProfLivePage';
+
 /* ==================== PHASE 27 — MÉDIATHÈQUE ==================== */
 import MediathequePage from './pages/MediathequePage';
 import MediaDetailPage from './pages/MediaDetailPage';
@@ -147,6 +151,16 @@ const App: React.FC = () => {
         <Route path="/quiz-gratuits" element={<Layout><QuizGratuitsPage /></Layout>} />
         <Route path="/ebooks"        element={<Layout><EbooksPage /></Layout>} />
         <Route path="/mediatheque"   element={<Layout><MediathequePage /></Layout>} />
+        <Route path="/live"         element={
+          <ProtectedRoute allowedRoles={['eleve', 'prof', 'admin', 'parent']}>
+            <Layout><LivePage /></Layout>
+          </ProtectedRoute>
+        } />
+        <Route path="/live/:sessionId" element={
+          <ProtectedRoute allowedRoles={['eleve', 'prof', 'admin', 'parent']}>
+            <Layout><LivePage /></Layout>
+          </ProtectedRoute>
+        } />
         <Route path="/mediatheque/ajouter" element={
           <ProtectedRoute allowedRoles={['admin', 'prof']}>
             <Layout><MediaAjoutPage /></Layout>
@@ -259,6 +273,11 @@ const App: React.FC = () => {
         } />
         <Route path="/prof/sequences/:id/modifier" element={
           <ProfRoute><Layout><SequenceEditorPage /></Layout></ProfRoute>
+        } />
+
+        {/* ========== SESSIONS LIVE (Phase 28) ========== */}
+        <Route path="/prof/live" element={
+          <ProfRoute><Layout><ProfLivePage /></Layout></ProfRoute>
         } />
 
         {/* ========== COURS EN LIGNE — GESTION ========== */}

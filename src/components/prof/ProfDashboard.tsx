@@ -225,6 +225,12 @@ const ProfDashboard: React.FC = () => {
           >
             📝 Mes quiz
           </button>
+          <button
+            className="prof-nav-btn"
+            onClick={() => navigate('/prof/live')}
+          >
+            📺 Sessions Live
+          </button>
         </nav>
       )}
 

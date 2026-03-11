@@ -676,6 +676,22 @@ service cloud.firestore {
       }
     }
 
+    // ==================== PHASE 28 — SESSIONS LIVE ====================
+    match /live_sessions/{sessionId} {
+      // Lecture — toute personne connectée peut voir les sessions
+      allow read: if isSignedIn();
+
+      // Création — prof Premium uniquement
+      allow create: if isSignedIn()
+        && request.resource.data.profId == request.auth.uid
+        && isProf();
+
+      // Modification / suppression — prof propriétaire ou admin
+      allow update, delete: if isSignedIn() && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+    }
+
     // ==================== PAR DÉFAUT: DENY ALL ====================
     
     match /{document=**} {
