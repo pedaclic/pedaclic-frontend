@@ -786,13 +786,15 @@
   overflow: visible;
 }
 
-/* Chaque rangée de la barre d'outils — évite chevauchements */
+/* Chaque rangée de la barre d'outils — répartie sur toute la largeur */
 .rte-toolbar__row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 6px 10px;
   min-height: 30px;
+  width: 100%;
 }
 
 .rte-toolbar__group {
