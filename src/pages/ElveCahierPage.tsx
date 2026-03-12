@@ -314,7 +314,7 @@ const ElveCahierPage: React.FC = () => {
                 {/* Contenu de la séance (HTML enrichi depuis l'éditeur) */}
                 {entree.contenu && (
                   <div
-                    className="seance-card-eleve-contenu"
+                    className="seance-card-eleve-contenu rte-content rte-content--lecture"
                     dangerouslySetInnerHTML={{ __html: entree.contenu }}
                   />
                 )}

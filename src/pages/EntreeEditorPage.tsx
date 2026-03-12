@@ -40,7 +40,7 @@ import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
 // Phase 23 — contenus IA
 import ContenuIASelector from '../components/prof/ContenuIASelector';
-import RichTextEditor from '../components/quiz/RichTextEditor';
+import RichTextEditor from '../RichTextEditor';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -368,9 +368,8 @@ const EntreeEditorPage: React.FC = () => {
             <RichTextEditor
               value={form.contenu}
               onChange={html => setForm(f => ({ ...f, contenu: html }))}
-              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues..."
-              minHeight={220}
-              maxHeight={600}
+              placeholder="Décrivez le contenu enseigné, les exemples traités, les formules vues (titres, listes, tableaux…)"
+              minHeight={250}
             />
           </div>
 
