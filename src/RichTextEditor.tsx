@@ -300,86 +300,38 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         role="toolbar"
         aria-label="Barre d'outils de mise en forme"
       >
-
-        {/* ── Groupe : Historique ── */}
-        <div className="rte-toolbar__group" aria-label="Historique">
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('undo')}
-            title="Annuler (Ctrl+Z)"
-            aria-label="Annuler"
-          >↩</button>
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('redo')}
-            title="Rétablir (Ctrl+Y)"
-            aria-label="Rétablir"
-          >↪</button>
-        </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Formatage des caractères ── */}
-        <div className="rte-toolbar__group" aria-label="Formatage">
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('bold')}
-            title="Gras (Ctrl+B)"
-            aria-label="Gras"
-          ><strong>G</strong></button>
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('italic')}
-            title="Italique (Ctrl+I)"
-            aria-label="Italique"
-          ><em>I</em></button>
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('underline')}
-            title="Souligné (Ctrl+U)"
-            aria-label="Souligné"
-          ><span style={{ textDecoration: 'underline' }}>S</span></button>
-          <button
-            type="button" className="rte-btn"
-            onClick={() => formater('strikeThrough')}
-            title="Barré"
-            aria-label="Barré"
-          ><span style={{ textDecoration: 'line-through' }}>B</span></button>
-        </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Style de paragraphe ── */}
-        <div className="rte-toolbar__group" aria-label="Style de paragraphe">
-          <select
-            className="rte-select"
-            onChange={changerStyleParagraphe}
-            value=""
-            title="Style de paragraphe"
-            aria-label="Style de paragraphe"
-          >
-            <option value="" disabled>Style…</option>
-            <option value="p">Paragraphe</option>
-            <option value="h1">Titre 1</option>
-            <option value="h2">Titre 2</option>
-            <option value="h3">Titre 3</option>
-            <option value="blockquote">Citation</option>
-          </select>
-        </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Alignement ── */}
-        <div className="rte-toolbar__group" aria-label="Alignement">
-          <button type="button" className="rte-btn" onClick={() => formater('justifyLeft')}   title="Aligner à gauche"  aria-label="Aligner à gauche">⬤ ≡</button>
-          <button type="button" className="rte-btn" onClick={() => formater('justifyCenter')} title="Centrer"            aria-label="Centrer">≡</button>
-          <button type="button" className="rte-btn" onClick={() => formater('justifyRight')}  title="Aligner à droite"  aria-label="Aligner à droite">≡ ⬤</button>
-          <button type="button" className="rte-btn" onClick={() => formater('justifyFull')}   title="Justifier"         aria-label="Justifier">⊟</button>
-        </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Listes ── */}
+        {/* ── Rangée 1 : Historique, Formatage, Style, Listes ── */}
+        <div className="rte-toolbar__row">
+          <div className="rte-toolbar__group" aria-label="Historique">
+            <button type="button" className="rte-btn" onClick={() => formater('undo')} title="Annuler (Ctrl+Z)" aria-label="Annuler">↩</button>
+            <button type="button" className="rte-btn" onClick={() => formater('redo')} title="Rétablir (Ctrl+Y)" aria-label="Rétablir">↪</button>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          <div className="rte-toolbar__group" aria-label="Formatage">
+            <button type="button" className="rte-btn" onClick={() => formater('bold')} title="Gras (Ctrl+B)" aria-label="Gras"><strong>G</strong></button>
+            <button type="button" className="rte-btn" onClick={() => formater('italic')} title="Italique (Ctrl+I)" aria-label="Italique"><em>I</em></button>
+            <button type="button" className="rte-btn" onClick={() => formater('underline')} title="Souligné (Ctrl+U)" aria-label="Souligné"><span style={{ textDecoration: 'underline' }}>S</span></button>
+            <button type="button" className="rte-btn" onClick={() => formater('strikeThrough')} title="Barré" aria-label="Barré"><span style={{ textDecoration: 'line-through' }}>B</span></button>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          <div className="rte-toolbar__group" aria-label="Style de paragraphe">
+            <select
+              className="rte-select"
+              onChange={changerStyleParagraphe}
+              value=""
+              title="Style de paragraphe"
+              aria-label="Style de paragraphe"
+            >
+              <option value="" disabled>Style…</option>
+              <option value="p">Paragraphe</option>
+              <option value="h1">Titre 1</option>
+              <option value="h2">Titre 2</option>
+              <option value="h3">Titre 3</option>
+              <option value="blockquote">Citation</option>
+            </select>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          {/* ── Groupe : Listes ── */}
         <div className="rte-toolbar__group rte-toolbar__group--listes" aria-label="Listes">
 
           {/* Liste à puces */}
@@ -448,68 +400,65 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             )}
           </div>
         </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Retrait ── */}
-        <div className="rte-toolbar__group" aria-label="Retrait">
-          <button
-            type="button"
-            className="rte-btn rte-btn--retrait"
-            onClick={() => formater('outdent')}
-            title="Diminuer le retrait (Shift+Tab)"
-            aria-label="Diminuer le retrait"
-          >
-            <span aria-hidden="true">⇤</span>
-            <span className="rte-btn__label">Retrait−</span>
-          </button>
-          <button
-            type="button"
-            className="rte-btn rte-btn--retrait"
-            onClick={() => formater('indent')}
-            title="Augmenter le retrait (Tab)"
-            aria-label="Augmenter le retrait"
-          >
-            <span className="rte-btn__label">Retrait+</span>
-            <span aria-hidden="true">⇥</span>
-          </button>
         </div>
+        {/* fin rangée 1 */}
 
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Couleur du texte ── */}
-        <div className="rte-toolbar__group" aria-label="Couleur">
-          <label className="rte-btn rte-btn--couleur" title="Couleur du texte" aria-label="Couleur du texte">
-            <span aria-hidden="true">A</span>
-            <input
-              type="color"
-              className="rte-color-input"
-              defaultValue="#111827"
-              onChange={e => formater('foreColor', e.target.value)}
-              aria-label="Choisir la couleur du texte"
-            />
-          </label>
+        {/* ── Rangée 2 : Alignement, Retrait, Couleur, Tableau ── */}
+        <div className="rte-toolbar__row">
+          <div className="rte-toolbar__group" aria-label="Alignement">
+            <button type="button" className="rte-btn" onClick={() => formater('justifyLeft')} title="Aligner à gauche" aria-label="Aligner à gauche">≡</button>
+            <button type="button" className="rte-btn" onClick={() => formater('justifyCenter')} title="Centrer" aria-label="Centrer">☰</button>
+            <button type="button" className="rte-btn" onClick={() => formater('justifyRight')} title="Aligner à droite" aria-label="Aligner à droite">≡</button>
+            <button type="button" className="rte-btn" onClick={() => formater('justifyFull')} title="Justifier" aria-label="Justifier">⊟</button>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          <div className="rte-toolbar__group" aria-label="Retrait">
+            <button
+              type="button"
+              className="rte-btn"
+              onClick={() => formater('outdent')}
+              title="Diminuer le retrait (Shift+Tab)"
+              aria-label="Diminuer le retrait"
+            >⇤</button>
+            <button
+              type="button"
+              className="rte-btn"
+              onClick={() => formater('indent')}
+              title="Augmenter le retrait (Tab)"
+              aria-label="Augmenter le retrait"
+            >⇥</button>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          <div className="rte-toolbar__group" aria-label="Couleur">
+            <label className="rte-btn rte-btn--couleur" title="Couleur du texte" aria-label="Couleur du texte">
+              <span aria-hidden="true">A</span>
+              <input
+                type="color"
+                className="rte-color-input"
+                defaultValue="#111827"
+                onChange={e => formater('foreColor', e.target.value)}
+                aria-label="Choisir la couleur du texte"
+              />
+            </label>
+          </div>
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+          <div className="rte-toolbar__group" aria-label="Insertion">
+            <button
+              type="button"
+              className="rte-btn"
+              onClick={() => {
+                sauvegarderSelection();
+                setModaleTableauOuverte(true);
+              }}
+              title="Insérer un tableau"
+              aria-label="Insérer un tableau"
+              aria-haspopup="dialog"
+            >
+              <span className="rte-icone-tableau">⊞</span>
+            </button>
+          </div>
         </div>
-
-        <div className="rte-toolbar__sep" aria-hidden="true" />
-
-        {/* ── Groupe : Insertion de tableau ── */}
-        <div className="rte-toolbar__group" aria-label="Insertion">
-          <button
-            type="button"
-            className="rte-btn rte-btn--tableau"
-            onClick={() => {
-              sauvegarderSelection();
-              setModaleTableauOuverte(true);
-            }}
-            title="Insérer un tableau"
-            aria-label="Insérer un tableau"
-            aria-haspopup="dialog"
-          >
-            <span className="rte-icone-tableau" aria-hidden="true">⊞</span>
-            <span>Tableau</span>
-          </button>
-        </div>
+        {/* fin rangée 2 */}
 
       </div>
 
