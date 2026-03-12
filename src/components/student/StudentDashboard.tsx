@@ -33,6 +33,7 @@ import {
 import {
   Award,
   BookOpen,
+  BookMarked,
   Clock,
   TrendingUp,
   TrendingDown,
@@ -77,6 +78,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForEleve } from '../../services/travauxAFaireService';
+import { getCahiersPartagesForEleve } from '../../services/cahierTextesService';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import RejoindreGroupe from './RejoindreGroupe';
 import FeuillesNotesView from '../shared/FeuillesNotesView';
@@ -119,6 +121,9 @@ const StudentDashboard: React.FC = () => {
 
   /* ── États Travaux à faire ── */
   const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string }>>([]);
+
+  /* ── États Cahier de textes ── */
+  const [cahiersCount, setCahiersCount] = useState(0);
 
   /** Génère ou récupère le code d'invitation parent */
   const handleGenererCode = async () => {
@@ -182,10 +187,14 @@ const StudentDashboard: React.FC = () => {
         const badgesList = calculateBadges(progressData, discProgress, progGlobale);
         setBadges(badgesList);
 
-        /* ── Travaux à faire (groupes de l'élève) ── */
+        /* ── Travaux à faire + Cahiers (groupes de l'élève) ── */
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
-        const travauxData = await getTravauxForEleve(groupeIds);
+        const [travauxData, cahiersListe] = await Promise.all([
+          getTravauxForEleve(groupeIds),
+          getCahiersPartagesForEleve(groupeIds).catch(() => []),
+        ]);
+        setCahiersCount(cahiersListe.length);
         setTravaux(travauxData.map(t => ({
           id: t.id,
           titre: t.titre,
@@ -386,6 +395,34 @@ const StudentDashboard: React.FC = () => {
           ══════════════════════════════════════════════ */}
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <RejoindreGroupe />
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          CAHIER DE TEXTES (Phase 22 — accès élève)
+          ══════════════════════════════════════════════ */}
+      <div className="sd-chart-card sd-cahier-card" style={{ marginBottom: '1.5rem' }}>
+        <h3 className="sd-section-title">
+          <BookMarked size={18} /> Cahier de textes
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Consultez les cahiers de textes partagés par vos professeurs.
+        </p>
+        {cahiersCount > 0 ? (
+          <p style={{ color: '#059669', fontSize: '0.9rem', marginBottom: '1rem', fontWeight: 500 }}>
+            Vous avez {cahiersCount} cahier{cahiersCount > 1 ? 's' : ''} disponible{cahiersCount > 1 ? 's' : ''}.
+          </p>
+        ) : (
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            Aucun cahier partagé pour le moment. Vos professeurs pourront en partager avec vos groupes.
+          </p>
+        )}
+        <button
+          className="sd-btn sd-btn-primary"
+          onClick={() => navigate('/eleve/cahiers')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <BookMarked size={16} /> Accéder au cahier de textes
+        </button>
       </div>
 
       {/* ══════════════════════════════════════════════

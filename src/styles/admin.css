@@ -3415,6 +3415,11 @@
   color: #3b82f6;
 }
 
+/* Carte Cahier de textes — accent visuel distinct */
+.sd-cahier-card {
+  border-left: 4px solid #8b5cf6;
+}
+
 .sd-chart-container {
   margin-bottom: 1rem;
 }
