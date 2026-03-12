@@ -20,6 +20,7 @@ const ElveCahiersListePage: React.FC = () => {
   const [cahiers, setCahiers] = useState<CahierTextes[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
+  const [groupeIds, setGroupeIds] = useState<string[]>([]);
 
   useEffect(() => {
     async function charger() {
@@ -40,6 +41,8 @@ const ElveCahiersListePage: React.FC = () => {
             groupeIds = userData.groupeIds ?? [];
           }
         }
+
+        setGroupeIds(groupeIds);
 
         if (groupeIds.length === 0) {
           setCahiers([]);
@@ -78,6 +81,30 @@ const ElveCahiersListePage: React.FC = () => {
     );
   }
 
+  // Élève sans groupe → invitation à rejoindre
+  if (groupeIds.length === 0) {
+    return (
+      <main className="eleve-cahiers-liste-page">
+        <header className="eleve-cahiers-liste-hero">
+          <h1>📓 Cahiers de textes</h1>
+          <p>Retrouvez ici les séances réalisées par vos professeurs.</p>
+        </header>
+        <div className="eleve-cahiers-vide">
+          <span className="emoji">🏫</span>
+          <h3>Aucun groupe rejoint</h3>
+          <p>
+            Vous ne faites partie d'aucun groupe classe.
+            Demandez le <strong>code d'invitation</strong> à votre professeur
+            et rejoignez votre classe pour accéder aux cahiers de textes.
+          </p>
+          <Link to="/eleve/dashboard" className="btn-pedaclic" style={{ marginTop: 16, display: 'inline-block' }}>
+            Rejoindre un groupe
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="eleve-cahiers-liste-page">
       <header className="eleve-cahiers-liste-hero">
@@ -88,11 +115,10 @@ const ElveCahiersListePage: React.FC = () => {
       {cahiers.length === 0 ? (
         <div className="eleve-cahiers-vide">
           <span className="emoji">📭</span>
-          <h3>Aucun cahier de textes disponible</h3>
+          <h3>Aucun cahier partagé pour l'instant</h3>
           <p>
-            Vos professeurs n'ont pas encore partagé de cahier avec votre classe.
-            <br />
-            Assurez-vous d'avoir rejoint un groupe-classe avec le code d'invitation de votre professeur.
+            Votre professeur n'a pas encore partagé de cahier de textes
+            avec votre classe. Revenez plus tard !
           </p>
         </div>
       ) : (

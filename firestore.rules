@@ -314,12 +314,9 @@ service cloud.firestore {
     // Les élèves peuvent lire les groupes (pour rejoindre via code).
 
     match /groupes_prof/{groupeId} {
-      // Lecture:
-      // - Professeurs authentifiés (pour gérer leurs groupes)
-      // - Élèves authentifiés (pour chercher un groupe par code d'invitation)
-      // - Parents (pour consulter les groupes de leurs enfants)
-      // - Admin (supervision globale)
-      allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
+      // Lecture: tout utilisateur connecté (évite getUserData() → timeouts)
+      // Élèves: recherche par code d'invitation ; Profs: gestion groupes ; Parents: consultation
+      allow read: if isSignedIn();
 
       // Création: uniquement professeurs et admin
       // Le profId dans le document DOIT correspondre à l'utilisateur connecté
@@ -447,33 +444,42 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }    
 	
-    // ==================== PHASE 21 — CAHIER DE TEXTES ====================
+    // ==================== PHASE 21-22 — CAHIER DE TEXTES (correctif élève) ====================
+    // Règles explicites : prof voit ses cahiers ; élève voit uniquement isPartage=true
     match /cahiers_textes/{cahierId} {
-      // Lecture : tout utilisateur connecté
-      // La restriction profId/groupe se fait côté service (query layer)
-      // ⚠️ Ne pas vérifier profId ici : incompatible avec array-contains (query Firestore)
-      allow read: if isSignedIn();
+      allow read: if isAdmin() ||
+                     (isSignedIn() && resource.data.profId == request.auth.uid) ||
+                     (isSignedIn() && resource.data.isPartage == true);
 
-      // Création : prof propriétaire uniquement
       allow create: if isSignedIn() &&
-                   request.resource.data.profId == request.auth.uid;
+                       request.resource.data.profId == request.auth.uid;
 
-      // Modification/suppression : prof propriétaire ou admin
       allow update, delete: if isAdmin() ||
-                        (isSignedIn() && resource.data.profId == request.auth.uid);
+                               (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
+    // Entrées : élève voit uniquement statut=realise dans un cahier partagé
     match /entrees_cahier/{entreeId} {
-      // Lecture : tout utilisateur connecté (filtrage par cahierId côté service)
-      allow read: if isSignedIn();
+      allow read: if isAdmin() ||
+                     (isSignedIn() && resource.data.profId == request.auth.uid) ||
+                     (isSignedIn() &&
+                      resource.data.statut == 'realise' &&
+                      get(/databases/$(database)/documents/cahiers_textes/$(resource.data.cahierId)).data.isPartage == true);
 
-      // Création : prof propriétaire uniquement
       allow create: if isSignedIn() &&
-                   request.resource.data.profId == request.auth.uid;
+                       request.resource.data.profId == request.auth.uid;
 
-      // Modification/suppression : prof propriétaire ou admin
       allow update, delete: if isAdmin() ||
-                        (isSignedIn() && resource.data.profId == request.auth.uid);
+                               (isSignedIn() && resource.data.profId == request.auth.uid);
+    }
+
+    match /rappels_cahier/{rappelId} {
+      allow read: if isAdmin() ||
+                     (isSignedIn() && resource.data.profId == request.auth.uid);
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid;
+      allow update, delete: if isAdmin() ||
+                               (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
     // ==================== COLLECTION: rappels_prof ====================
