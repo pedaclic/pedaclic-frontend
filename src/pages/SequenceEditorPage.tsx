@@ -39,6 +39,9 @@ import {
   DUREES_SEANCE,
 }                                                   from '../types/sequencePedagogique.types';
 import '../styles/SequencesPedagogiques.css';
+import '../styles/CahierEnrichi.css';
+import '../styles/CahierEnrichi.css';
+import RichTextEditor from '../RichTextEditor';
 
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES
@@ -215,12 +218,11 @@ const SeanceCardEdit: React.FC<SeanceCardEditProps> = ({
           {/* ── Contenu / déroulement ── */}
           <div className="form-group">
             <label>Contenu / Déroulement</label>
-            <textarea
-              className="form-control form-control--textarea"
-              placeholder="Décrivez le déroulement de la séance : activités, étapes, méthodes..."
+            <RichTextEditor
               value={seance.contenu}
-              onChange={(e) => update({ contenu: e.target.value })}
-              rows={4}
+              onChange={(html) => update({ contenu: html })}
+              placeholder="Décrivez le déroulement de la séance : activités, étapes, méthodes (titres, listes, tableaux…)"
+              minHeight={180}
             />
           </div>
 
