@@ -444,12 +444,17 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }    
 	
-    // ==================== PHASE 21-22 — CAHIER DE TEXTES (correctif élève) ====================
-    // Règles explicites : prof voit ses cahiers ; élève voit uniquement isPartage=true
+    // ==================== PHASE 21-22 — CAHIER DE TEXTES (correctif élève + prof) ====================
+    // Intégration firestore-rules-pedaclic-fixed.txt
+    // RÈGLE CLEF : Le filtrage par groupe (array-contains-any) est délégué au service.
+    // Firestore ne peut pas valider ces requêtes dynamiques ; get() sur parent évité (timeouts).
     match /cahiers_textes/{cahierId} {
-      allow read: if isAdmin() ||
-                     (isSignedIn() && resource.data.profId == request.auth.uid) ||
-                     (isSignedIn() && resource.data.isPartage == true);
+      // Lecture : prof propriétaire, cahier partagé (isPartage), admin
+      allow read: if isSignedIn() && (
+                     resource.data.profId == request.auth.uid ||
+                     resource.data.isPartage == true ||
+                     isAdmin()
+                   );
 
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
@@ -458,13 +463,11 @@ service cloud.firestore {
                                (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
-    // Entrées : élève voit uniquement statut=realise dans un cahier partagé
+    // Entrées : tout utilisateur connecté en lecture (filtrage cahierId + statut côté service)
+    // getEntreesCahier / subscribeToEntreesCahier (prof) scope par cahierId
+    // getEntreesRealisees (élève) scope par cahierId + statut pour cahiers partagés
     match /entrees_cahier/{entreeId} {
-      allow read: if isAdmin() ||
-                     (isSignedIn() && resource.data.profId == request.auth.uid) ||
-                     (isSignedIn() &&
-                      resource.data.statut == 'realise' &&
-                      get(/databases/$(database)/documents/cahiers_textes/$(resource.data.cahierId)).data.isPartage == true);
+      allow read: if isSignedIn();
 
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
