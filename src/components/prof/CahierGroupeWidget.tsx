@@ -48,8 +48,9 @@ const CahierGroupeWidget: React.FC<CahierGroupeWidgetProps> = ({ groupe }) => {
   useEffect(() => {
     async function charger() {
       setChargement(true);
+      setErreur('');
       try {
-        const liste = await getCahiersForGroupe(groupe.id);
+        const liste = await getCahiersForGroupe(groupe.id, groupe.profId);
         setCahiers(liste);
       } catch {
         setErreur('Impossible de charger les cahiers.');
@@ -58,7 +59,7 @@ const CahierGroupeWidget: React.FC<CahierGroupeWidgetProps> = ({ groupe }) => {
       }
     }
     charger();
-  }, [groupe.id]);
+  }, [groupe.id, groupe.profId]);
 
   /**
    * Navigue vers la page de création d'un cahier,

@@ -103,8 +103,8 @@ const Footer: React.FC = () => {
               <a href="mailto:contact@pedaclic.sn" className="footer__contact-item">
                 <Mail size={16} className="footer__contact-icon" /><span>contact@pedaclic.sn</span>
               </a>
-              <a href="tel:+221770000000" className="footer__contact-item">
-                <Phone size={16} className="footer__contact-icon" /><span>+221 77 000 00 00</span>
+              <a href="tel:+221788732222" className="footer__contact-item">
+                <Phone size={16} className="footer__contact-icon" /><span>78 873 22 22</span>
               </a>
               <div className="footer__contact-item">
                 <MapPin size={16} className="footer__contact-icon" /><span>Dakar, Sénégal</span>

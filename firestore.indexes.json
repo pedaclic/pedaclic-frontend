@@ -265,6 +265,15 @@
       ]
     },
     {
+      "collectionGroup": "cahiers_textes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profId", "order": "ASCENDING" },
+        { "fieldPath": "groupeIds", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "quizzes_v2",
       "queryScope": "COLLECTION",
       "fields": [
