@@ -136,7 +136,7 @@ export default function PremiumPage() {
           <p className="premium-hero__sous-titre">
             {estProf
               ? 'Cahier de textes, Générateur IA, Cours en ligne, Médiathèque… Accédez à tous les outils Premium Pro.'
-              : 'Accède à tous les cours, quiz et ressources du programme sénégalais. Du 6ème au BAC — L\'école en un clic !'}
+              : 'Accède à tous les cours, quiz et ressources du programme sénégalais. De la 6ème au BAC — L\'école en un clic !'}
           </p>
         </div>
       </header>
