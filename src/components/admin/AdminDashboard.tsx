@@ -35,6 +35,7 @@ interface DashboardStats {
   totalCours: number;       // Cours en ligne (collection cours_en_ligne)
   totalQuiz: number;         // Quiz classiques (collection quizzes)
   totalQuizAvances: number;  // Quiz avancés (collection quizzes_v2)
+  totalLiveSessions: number;  // Sessions Live (collection live_sessions)
   ressourcesParType: {
     cours: number;
     exercice: number;
@@ -60,6 +61,7 @@ const AdminDashboard: React.FC = () => {
     totalCours: 0,
     totalQuiz: 0,
     totalQuizAvances: 0,
+    totalLiveSessions: 0,
     ressourcesParType: {
       cours: 0,
       exercice: 0,
@@ -81,13 +83,14 @@ const AdminDashboard: React.FC = () => {
 
         // Chargement parallèle : disciplines, chapitres, ressources,
         // + comptage des quiz depuis leurs collections Firestore dédiées
-        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap] = await Promise.all([
+        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap, liveSnap] = await Promise.all([
           DisciplineService.getAll(),
           ChapitreService.getAll(),
           ResourceService.getStats(),
           getDocs(collection(db, 'quizzes')),
           getDocs(collection(db, 'quizzes_v2')),
-          getDocs(collection(db, 'cours_en_ligne'))
+          getDocs(collection(db, 'cours_en_ligne')),
+          getDocs(collection(db, 'live_sessions'))
         ]);
 
         setStats({
@@ -99,6 +102,7 @@ const AdminDashboard: React.FC = () => {
           totalCours: coursSnap.size,
           totalQuiz: quizzesSnap.size,
           totalQuizAvances: quizzesV2Snap.size,
+          totalLiveSessions: liveSnap.size,
           ressourcesParType: resourceStats.parType
         });
       } catch (err) {
@@ -266,6 +270,23 @@ const AdminDashboard: React.FC = () => {
               <div className="stat-card__content">
                 <div className="stat-card__value">{stats.totalQuizAvances}</div>
                 <div className="stat-card__label">Quiz Avancés</div>
+              </div>
+            </div>
+
+            {/* Carte: Sessions Live → /prof/live */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/prof/live')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/prof/live')}
+            >
+              <div className="stat-card__icon stat-card__icon--live">
+                📺
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.totalLiveSessions}</div>
+                <div className="stat-card__label">Sessions Live</div>
               </div>
             </div>
           </section>
@@ -467,6 +488,15 @@ const AdminDashboard: React.FC = () => {
                     <p>Vidéos, podcasts et webinaires pédagogiques</p>
                   </div>
                 </a>
+
+                {/* Sessions Live */}
+                <a href="/prof/live" className="quick-action-card">
+                  <div className="quick-action-icon">📺</div>
+                  <div className="quick-action-content">
+                    <h3>Sessions Live</h3>
+                    <p>Créer et gérer les sessions YouTube Live. Catalogue public et replays.</p>
+                  </div>
+                </a>
               </div>
             </div>
           </section>
@@ -499,6 +529,11 @@ const AdminDashboard: React.FC = () => {
         .stat-card__icon--advanced {
           background: #fce7f3;
           color: #db2777;
+        }
+        /* Icône Sessions Live (rouge/direct) */
+        .stat-card__icon--live {
+          background: #fee2e2;
+          color: #dc2626;
         }
 
         /* ====== Grille des types de ressources ====== */

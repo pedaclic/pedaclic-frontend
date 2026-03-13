@@ -48,6 +48,7 @@ const navigationSections: NavSection[] = [
       { id: 'cours', label: 'Cours en ligne', icon: '📘', href: '/prof/cours' },
       { id: 'ebooks', label: 'Bibliothèque Ebooks', icon: '📚', href: '/admin/ebooks' },
       { id: 'mediatheque', label: 'Médiathèque', icon: '🎬', href: '/mediatheque' },
+      { id: 'live', label: 'Sessions Live', icon: '📺', href: '/prof/live' },
     ]
   },
  
