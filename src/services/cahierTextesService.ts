@@ -480,20 +480,24 @@ export async function getCahierPartageById(
 // PHASE 22 — CAHIERS PAR GROUPE
 // ─────────────────────────────────────────────────────────────
 
-export async function getCahiersForGroupe(groupeId: string): Promise<CahierTextes[]> {
-  // Pas d'orderBy ici : évite l'index composite (array-contains + orderBy)
-  // et fonctionne sans déploiement firestore.indexes.json
+/**
+ * Retourne tous les cahiers liés à un groupe classe.
+ * La query combine profId + groupeIds pour que Firestore puisse garantir
+ * que chaque document satisfait la règle resource.data.profId == request.auth.uid.
+ * Index composite requis : profId ASC, groupeIds ARRAY, updatedAt DESC
+ */
+export async function getCahiersForGroupe(
+  groupeId: string,
+  profId: string
+): Promise<CahierTextes[]> {
   const q = query(
     collection(db, COL_CAHIERS),
-    where('groupeIds', 'array-contains', groupeId)
+    where('profId', '==', profId),
+    where('groupeIds', 'array-contains', groupeId),
+    orderBy('updatedAt', 'desc')
   );
   const snap = await getDocs(q);
-  const cahiers = snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
-  return cahiers.sort((a, b) => {
-    const ta = (a.updatedAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
-    const tb = (b.updatedAt as { toDate?: () => Date })?.toDate?.()?.getTime() ?? 0;
-    return tb - ta; // plus récent en premier
-  });
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as CahierTextes));
 }
 
 // ─────────────────────────────────────────────────────────────
