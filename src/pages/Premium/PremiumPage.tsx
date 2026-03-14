@@ -2,13 +2,16 @@
  * PAGE PREMIUM - PedaClic
  * Présentation des avantages Premium et intégration paiement PayTech
  * Formules : Cours à la carte (1, 3, 7, tous) + Mensuel/Annuel illimité
+ *
+ * SÉCURITÉ : Les clés PayTech restent exclusivement côté backend Railway.
+ * Le frontend délègue l'initiation du paiement via POST /api/payment/initiate
+ * avec le token Firebase dans le header Authorization.
  */
 
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { doc, updateDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { auth } from '../../firebase';
 import {
   PLANS_A_LA_CARTE,
   PLANS_CLASSIQUES,
@@ -36,7 +39,7 @@ const AVANTAGES = [
   {
     icone: '✏️',
     titre: 'Exercices corrigés',
-    description: 'Des milliers d\'exercices avec corrections détaillées.',
+    description: "Des milliers d'exercices avec corrections détaillées.",
   },
   {
     icone: '📊',
@@ -70,31 +73,51 @@ const AVANTAGES = [
  */
 const FAQ = [
   {
-    question: 'Comment fonctionne l\'abonnement Premium ?',
-    reponse: 'Une fois votre paiement effectué via Wave, Orange Money ou carte bancaire, votre compte est instantanément mis à niveau. Vous avez accès à tous les contenus Premium pendant la durée de votre abonnement.',
+    question: "Comment fonctionne l'abonnement Premium ?",
+    reponse:
+      "Une fois votre paiement effectué via Wave, Orange Money ou carte bancaire, votre compte est instantanément mis à niveau. Vous avez accès à tous les contenus Premium pendant la durée de votre abonnement.",
   },
   {
     question: 'Puis-je annuler mon abonnement ?',
-    reponse: 'Oui, vous pouvez annuler à tout moment depuis votre espace personnel. Vous conservez l\'accès Premium jusqu\'à la fin de la période payée.',
+    reponse:
+      "Oui, vous pouvez annuler à tout moment depuis votre espace personnel. Vous conservez l'accès Premium jusqu'à la fin de la période payée.",
   },
   {
-    question: 'L\'abonnement se renouvelle-t-il automatiquement ?',
-    reponse: 'Non, chez PedaClic, il n\'y a pas de renouvellement automatique. Vous décidez quand renouveler votre abonnement.',
+    question: "L'abonnement se renouvelle-t-il automatiquement ?",
+    reponse:
+      "Non, chez PedaClic, il n'y a pas de renouvellement automatique. Vous décidez quand renouveler votre abonnement.",
   },
   {
     question: 'Quels moyens de paiement acceptez-vous ?',
-    reponse: 'Nous acceptons Wave, Orange Money, Free Money et les cartes bancaires (Visa, Mastercard) via notre partenaire PayTech.',
+    reponse:
+      'Nous acceptons Wave, Orange Money, Free Money et les cartes bancaires (Visa, Mastercard) via notre partenaire PayTech.',
   },
   {
     question: 'Puis-je partager mon compte Premium ?',
-    reponse: 'Chaque compte Premium est personnel et lié à une adresse email. Le partage de compte est interdit pour garantir un suivi de progression personnalisé.',
+    reponse:
+      "Chaque compte Premium est personnel et lié à une adresse email. Le partage de compte est interdit pour garantir un suivi de progression personnalisé.",
   },
 ];
+
+/**
+ * Chemin du tableau de bord selon le rôle
+ */
+function getDashboardPath(role?: string): string {
+  switch (role) {
+    case 'prof':
+      return '/prof/dashboard';
+    case 'parent':
+      return '/parent/dashboard';
+    case 'admin':
+      return '/admin';
+    default:
+      return '/eleve/dashboard';
+  }
+}
 
 const PremiumPage: React.FC = () => {
   // ==================== HOOKS ====================
   const { currentUser } = useAuth();
-  const location = useLocation();
   const navigate = useNavigate();
 
   // ==================== ÉTATS ====================
@@ -104,26 +127,24 @@ const PremiumPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
-  // Page de retour après connexion
-  const returnTo = (location.state as { from?: string })?.from || '/';
-
   // ==================== VÉRIFICATION PREMIUM ====================
-  
+
   /**
    * Vérifier si l'utilisateur est déjà Premium
    */
   const isAlreadyPremium = (): boolean => {
     if (!currentUser) return false;
     if (!currentUser.isPremium) return false;
-    
+
     // Vérifier si l'abonnement n'est pas expiré
     if (currentUser.subscriptionEnd) {
-      const endDate = currentUser.subscriptionEnd instanceof Date 
-        ? currentUser.subscriptionEnd 
-        : new Date(currentUser.subscriptionEnd);
+      const endDate =
+        currentUser.subscriptionEnd instanceof Date
+          ? currentUser.subscriptionEnd
+          : new Date(currentUser.subscriptionEnd);
       return endDate > new Date();
     }
-    
+
     return true;
   };
 
@@ -131,15 +152,17 @@ const PremiumPage: React.FC = () => {
 
   /**
    * Initialiser le paiement PayTech
+   *
+   * SÉCURITÉ : Les clés PayTech (API_KEY, API_SECRET) restent côté backend.
+   * Le token Firebase est envoyé dans le header Authorization
+   * pour que le backend vérifie l'identité de l'utilisateur.
    */
   const handlePayment = async () => {
-    // Vérifier l'authentification
     if (!currentUser) {
       navigate('/connexion', { state: { from: '/premium' } });
       return;
     }
 
-    // Vérifier si déjà Premium
     if (isAlreadyPremium()) {
       setError('Vous êtes déjà abonné Premium !');
       return;
@@ -149,128 +172,47 @@ const PremiumPage: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const plan = TOUS_LES_PLANS.find(p => p.id === selectedPlan);
-      if (!plan) {
-        throw new Error('Plan invalide');
-      }
+      const plan = TOUS_LES_PLANS.find((p) => p.id === selectedPlan);
+      if (!plan) throw new Error('Plan invalide');
 
-      // Créer une transaction en attente dans Firestore
-      const transactionRef = await addDoc(collection(db, 'transactions'), {
-        userId: currentUser.uid,
-        userEmail: currentUser.email,
-        planType: selectedPlan,
-        montant: plan?.prix || 0,
-        devise: 'XOF',
-        statut: 'pending',
-        dateTransaction: serverTimestamp(),
-        createdAt: serverTimestamp(),
-      });
+      // Récupérer le token Firebase (vérification côté serveur)
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error('Session expirée, veuillez vous reconnecter.');
 
-      // Configuration PayTech
-      const paytechConfig = {
-        // Clé API PayTech (à remplacer par votre clé)
-        apiKey: import.meta.env.VITE_PAYTECH_API_KEY || 'demo_api_key',
-        apiSecret: import.meta.env.VITE_PAYTECH_API_SECRET || 'demo_api_secret',
-        
-        // Informations transaction
-        item_name: `PedaClic Premium ${plan?.nom || selectedPlan}`,
-        item_price: plan?.prix || 0,
-        currency: 'XOF',
-        ref_command: transactionRef.id,
-        
-        // URLs de callback
-        success_url: `${window.location.origin}/premium/success?ref=${transactionRef.id}`,
-        cancel_url: `${window.location.origin}/premium/cancel?ref=${transactionRef.id}`,
-        ipn_url: `${import.meta.env.VITE_API_URL || ''}/api/paytech/ipn`,
-        
-        // Informations client
-        custom_field: JSON.stringify({
-          userId: currentUser.uid,
-          planType: selectedPlan,
-          transactionId: transactionRef.id,
-        }),
-        
-        // Mode (test ou live)
-        env: import.meta.env.VITE_PAYTECH_ENV || 'test',
-      };
-
-      // Appel à l'API PayTech pour obtenir l'URL de paiement
-      // Note: En production, cet appel devrait être fait côté serveur
-      const response = await fetch('https://paytech.sn/api/payment/request-payment', {
+      // Appel sécurisé vers le backend Railway — clés PayTech côté serveur uniquement
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://api.pedaclic.sn';
+      const response = await fetch(`${apiUrl}/api/payment/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'API_KEY': paytechConfig.apiKey,
-          'API_SECRET': paytechConfig.apiSecret,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          item_name: paytechConfig.item_name,
-          item_price: paytechConfig.item_price,
-          currency: paytechConfig.currency,
-          ref_command: paytechConfig.ref_command,
-          command_name: `Abonnement Premium ${plan?.nom || selectedPlan} - ${currentUser.email}`,
-          env: paytechConfig.env,
-          ipn_url: paytechConfig.ipn_url,
-          success_url: paytechConfig.success_url,
-          cancel_url: paytechConfig.cancel_url,
-          custom_field: paytechConfig.custom_field,
+          plan: selectedPlan,
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
+          userName: currentUser.displayName || currentUser.email,
         }),
       });
 
       const data = await response.json();
 
-      if (data.success === 1 && data.redirect_url) {
-        // Rediriger vers la page de paiement PayTech
-        window.location.href = data.redirect_url;
-      } else {
-        // Mode démo - simuler le succès
-        console.log('Mode démo PayTech - Simulation de paiement');
-        
-        // Calculer la date d'expiration
-        const now = new Date();
-        const expirationDate = new Date(now);
-        const plan = TOUS_LES_PLANS.find(p => p.id === selectedPlan);
-        if (plan?.duree.includes('3 mois')) {
-          expirationDate.setMonth(expirationDate.getMonth() + 3);
-        } else if (plan?.duree.includes('6 mois')) {
-          expirationDate.setMonth(expirationDate.getMonth() + 6);
-        } else if (plan?.duree.includes('9 mois')) {
-          expirationDate.setMonth(expirationDate.getMonth() + 9);
-        } else if (plan?.duree.includes('12') || plan?.duree.includes('an')) {
-          expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-        } else {
-          expirationDate.setMonth(expirationDate.getMonth() + 1);
-        }
-
-        // Mettre à jour le statut Premium de l'utilisateur
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          isPremium: true,
-          subscriptionEnd: expirationDate,
-          subscriptionPlan: selectedPlan as string,
-          updatedAt: serverTimestamp(),
-        });
-
-        // Mettre à jour la transaction
-        await updateDoc(doc(db, 'transactions', transactionRef.id), {
-          statut: 'success',
-          paytechTransactionId: 'DEMO_' + Date.now(),
-          dateExpiration: expirationDate,
-          updatedAt: serverTimestamp(),
-        });
-
-        // Rediriger vers la page de succès
-        navigate('/premium/success', { 
-          state: { 
-            plan: plan?.nom || selectedPlan, 
-            montant: plan?.prix || 0,
-            expiration: expirationDate.toLocaleDateString('fr-FR'),
-          } 
-        });
+      if (!response.ok) {
+        throw new Error(data.error || "Erreur lors de l'initialisation du paiement");
       }
 
+      if (data.success && data.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      } else {
+        throw new Error('URL de paiement non reçue. Veuillez réessayer.');
+      }
     } catch (err) {
       console.error('Erreur paiement:', err);
-      setError('Une erreur est survenue lors du paiement. Veuillez réessayer.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Une erreur est survenue lors du paiement. Veuillez réessayer.'
+      );
     } finally {
       setLoading(false);
     }
@@ -292,9 +234,10 @@ const PremiumPage: React.FC = () => {
 
   // ==================== RENDU SI DÉJÀ PREMIUM ====================
   if (isAlreadyPremium()) {
-    const endDate = currentUser?.subscriptionEnd instanceof Date 
-      ? currentUser.subscriptionEnd 
-      : new Date(currentUser?.subscriptionEnd || Date.now());
+    const endDate =
+      currentUser?.subscriptionEnd instanceof Date
+        ? currentUser.subscriptionEnd
+        : new Date(currentUser?.subscriptionEnd || Date.now());
 
     return (
       <div className="premium-page">
@@ -310,7 +253,7 @@ const PremiumPage: React.FC = () => {
               <Link to="/disciplines" className="btn btn--primary">
                 Accéder aux cours
               </Link>
-              <Link to="/dashboard" className="btn btn--outline">
+              <Link to={getDashboardPath(currentUser?.role)} className="btn btn--outline">
                 Mon tableau de bord
               </Link>
             </div>
@@ -331,8 +274,8 @@ const PremiumPage: React.FC = () => {
             Débloquez tout le potentiel de <span>PedaClic</span>
           </h1>
           <p className="premium-hero__subtitle">
-            Accédez à tous les cours, exercices corrigés, vidéos et quiz 
-            de la 6ème à la Terminale. Réussissez vos examens !
+            Accédez à tous les cours, exercices corrigés, vidéos et quiz de la 6ème à la
+            Terminale. Réussissez vos examens !
           </p>
         </div>
       </section>
@@ -341,69 +284,75 @@ const PremiumPage: React.FC = () => {
       <section className="premium-pricing">
         <div className="container">
           <h2 className="section-title">Choisissez votre formule</h2>
-          
+
           {/* Onglets : Cours à la carte ou Illimité */}
           <div className="premium-pricing__tabs">
             <button
               type="button"
               className={`premium-pricing__tab ${ongletPlans === 'a_la_carte' ? 'premium-pricing__tab--active' : ''}`}
-              onClick={() => { setOngletPlans('a_la_carte'); setSelectedPlan('a_la_carte_3'); }}
+              onClick={() => {
+                setOngletPlans('a_la_carte');
+                setSelectedPlan('a_la_carte_3');
+              }}
             >
               📚 Cours à la carte
             </button>
             <button
               type="button"
               className={`premium-pricing__tab ${ongletPlans === 'illimite' ? 'premium-pricing__tab--active' : ''}`}
-              onClick={() => { setOngletPlans('illimite'); setSelectedPlan('illimite_6m'); }}
+              onClick={() => {
+                setOngletPlans('illimite');
+                setSelectedPlan('illimite_6m');
+              }}
             >
               ⭐ Accès illimité
             </button>
           </div>
-          
+
           <div className="pricing-cards">
-            {(ongletPlans === 'a_la_carte' ? PLANS_A_LA_CARTE : PLANS_CLASSIQUES).map((plan) => (
-              <div 
-                key={plan.id}
-                className={`pricing-card ${selectedPlan === plan.id ? 'pricing-card--selected' : ''} ${plan.popular ? 'pricing-card--popular' : ''}`}
-                onClick={() => setSelectedPlan(plan.id)}
-              >
-                {/* Badge populaire */}
-                {plan.popular && (
-                  <span className="pricing-card__badge">Le plus populaire</span>
-                )}
-
-                {/* En-tête */}
-                <div className="pricing-card__header">
-                  <h3 className="pricing-card__name">{plan.nom}</h3>
-                  <p className="pricing-card__duration">{plan.duree}</p>
-                </div>
-
-                {/* Prix */}
-                <div className="pricing-card__price">
-                  {plan.prixOriginal && (
-                    <span className="pricing-card__original">
-                      {formatPrice(plan.prixOriginal)}
-                    </span>
+            {(ongletPlans === 'a_la_carte' ? PLANS_A_LA_CARTE : PLANS_CLASSIQUES).map(
+              (plan) => (
+                <div
+                  key={plan.id}
+                  className={`pricing-card ${selectedPlan === plan.id ? 'pricing-card--selected' : ''} ${plan.popular ? 'pricing-card--popular' : ''}`}
+                  onClick={() => setSelectedPlan(plan.id)}
+                >
+                  {/* Badge populaire */}
+                  {plan.popular && (
+                    <span className="pricing-card__badge">Le plus populaire</span>
                   )}
-                  <span className="pricing-card__amount">
-                    {formatPrice(plan.prix)}
-                  </span>
-                  <span className="pricing-card__period">/{plan.duree}</span>
-                </div>
 
-                {/* Économie */}
-                {plan.economie && (
-                  <p className="pricing-card__savings">
-                    Économisez {plan.economie}
-                  </p>
-                )}
+                  {/* En-tête */}
+                  <div className="pricing-card__header">
+                    <h3 className="pricing-card__name">{plan.nom}</h3>
+                    <p className="pricing-card__duration">{plan.duree}</p>
+                  </div>
 
-                {/* Radio button */}
-                <div className="pricing-card__radio">
-                  <span className={`radio-dot ${selectedPlan === plan.id ? 'radio-dot--active' : ''}`}></span>
+                  {/* Prix */}
+                  <div className="pricing-card__price">
+                    {plan.prixOriginal && (
+                      <span className="pricing-card__original">
+                        {formatPrice(plan.prixOriginal)}
+                      </span>
+                    )}
+                    <span className="pricing-card__amount">{formatPrice(plan.prix)}</span>
+                    <span className="pricing-card__period">/{plan.duree}</span>
+                  </div>
+
+                  {/* Économie */}
+                  {plan.economie && (
+                    <p className="pricing-card__savings">Économisez {plan.economie}</p>
+                  )}
+
+                  {/* Radio button */}
+                  <div className="pricing-card__radio">
+                    <span
+                      className={`radio-dot ${selectedPlan === plan.id ? 'radio-dot--active' : ''}`}
+                    ></span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              )
+            )}
           </div>
 
           {/* Bouton paiement */}
@@ -413,12 +362,12 @@ const PremiumPage: React.FC = () => {
                 <span>⚠️</span> {error}
               </div>
             )}
-            
+
             {!currentUser ? (
               <div className="pricing-login">
                 <p>Connectez-vous pour souscrire à Premium</p>
-                <Link 
-                  to="/connexion" 
+                <Link
+                  to="/connexion"
                   state={{ from: '/premium' }}
                   className="btn btn--primary btn--lg"
                 >
@@ -432,7 +381,7 @@ const PremiumPage: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <button 
+              <button
                 className="btn btn--premium btn--lg"
                 onClick={handlePayment}
                 disabled={loading}
@@ -444,7 +393,8 @@ const PremiumPage: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    Payer {formatPrice(TOUS_LES_PLANS.find(p => p.id === selectedPlan)?.prix || 0)}
+                    Payer{' '}
+                    {formatPrice(TOUS_LES_PLANS.find((p) => p.id === selectedPlan)?.prix || 0)}
                   </>
                 )}
               </button>
@@ -501,26 +451,116 @@ const PremiumPage: React.FC = () => {
             </div>
 
             {[
-              { feature: 'Cours de base', free: true, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Choix par discipline et niveau', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Exercices avec corrections', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Vidéos explicatives', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Quiz interactifs (QCM, glisser-déposer…)', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Suivi de progression', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Téléchargement de documents', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Support prioritaire', free: false, a1: true, a3: true, a7: true, tous: true, illimite: true },
-              { feature: 'Accès mobile optimisé', free: true, a1: true, a3: true, a7: true, tous: true, illimite: true },
+              {
+                feature: 'Cours de base',
+                free: true,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Choix par discipline et niveau',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Exercices avec corrections',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Vidéos explicatives',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Quiz interactifs (QCM, glisser-déposer…)',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Suivi de progression',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Téléchargement de documents',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Support prioritaire',
+                free: false,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
+              {
+                feature: 'Accès mobile optimisé',
+                free: true,
+                a1: true,
+                a3: true,
+                a7: true,
+                tous: true,
+                illimite: true,
+              },
             ].map((row, index) => (
               <div key={index} className="comparison-row">
                 <div className="comparison-feature">{row.feature}</div>
                 <div className="comparison-free">
-                  {row.free ? <span className="check">✓</span> : <span className="cross">✗</span>}
+                  {row.free ? (
+                    <span className="check">✓</span>
+                  ) : (
+                    <span className="cross">✗</span>
+                  )}
                 </div>
-                <div className="comparison-col">{row.a1 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
-                <div className="comparison-col">{row.a3 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
-                <div className="comparison-col">{row.a7 ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
-                <div className="comparison-col">{row.tous ? <span className="check">✓</span> : <span className="cross">✗</span>}</div>
-                <div className="comparison-premium">{row.illimite ? <span className="check check--premium">✓</span> : <span className="cross">✗</span>}</div>
+                <div className="comparison-col">
+                  {row.a1 ? <span className="check">✓</span> : <span className="cross">✗</span>}
+                </div>
+                <div className="comparison-col">
+                  {row.a3 ? <span className="check">✓</span> : <span className="cross">✗</span>}
+                </div>
+                <div className="comparison-col">
+                  {row.a7 ? <span className="check">✓</span> : <span className="cross">✗</span>}
+                </div>
+                <div className="comparison-col">
+                  {row.tous ? <span className="check">✓</span> : <span className="cross">✗</span>}
+                </div>
+                <div className="comparison-premium">
+                  {row.illimite ? (
+                    <span className="check check--premium">✓</span>
+                  ) : (
+                    <span className="cross">✗</span>
+                  )}
+                </div>
               </div>
             ))}
             <div className="comparison-row comparison-row--prices">
@@ -543,11 +583,10 @@ const PremiumPage: React.FC = () => {
 
           <div className="testimonials-grid">
             <div className="testimonial-card">
-              <div className="testimonial-card__stars">
-                {'★'.repeat(5)}
-              </div>
+              <div className="testimonial-card__stars">{'★'.repeat(5)}</div>
               <p className="testimonial-card__text">
-                "Grâce à PedaClic Premium, j'ai eu 16/20 au BFEM. Les exercices corrigés m'ont beaucoup aidé !"
+                "Grâce à PedaClic Premium, j'ai eu 16/20 au BFEM. Les exercices corrigés m'ont
+                beaucoup aidé !"
               </p>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">AN</div>
@@ -559,11 +598,10 @@ const PremiumPage: React.FC = () => {
             </div>
 
             <div className="testimonial-card">
-              <div className="testimonial-card__stars">
-                {'★'.repeat(5)}
-              </div>
+              <div className="testimonial-card__stars">{'★'.repeat(5)}</div>
               <p className="testimonial-card__text">
-                "Les vidéos sont très bien expliquées. Je comprends mieux les maths maintenant. Merci PedaClic !"
+                "Les vidéos sont très bien expliquées. Je comprends mieux les maths maintenant.
+                Merci PedaClic !"
               </p>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">IF</div>
@@ -575,11 +613,10 @@ const PremiumPage: React.FC = () => {
             </div>
 
             <div className="testimonial-card">
-              <div className="testimonial-card__stars">
-                {'★'.repeat(5)}
-              </div>
+              <div className="testimonial-card__stars">{'★'.repeat(5)}</div>
               <p className="testimonial-card__text">
-                "20 000 FCFA pour 6 mois, c'est vraiment abordable. Mon fils a accès à tout ce dont il a besoin."
+                "20 000 FCFA pour 6 mois, c'est vraiment abordable. Mon fils a accès à tout ce
+                dont il a besoin."
               </p>
               <div className="testimonial-card__author">
                 <div className="testimonial-card__avatar">FD</div>
@@ -600,19 +637,17 @@ const PremiumPage: React.FC = () => {
 
           <div className="faq-list">
             {FAQ.map((item, index) => (
-              <div 
+              <div
                 key={index}
                 className={`faq-item ${openFaq === index ? 'faq-item--open' : ''}`}
               >
-                <button 
+                <button
                   className="faq-item__question"
                   onClick={() => toggleFaq(index)}
                   aria-expanded={openFaq === index}
                 >
                   <span>{item.question}</span>
-                  <span className="faq-item__icon">
-                    {openFaq === index ? '−' : '+'}
-                  </span>
+                  <span className="faq-item__icon">{openFaq === index ? '−' : '+'}</span>
                 </button>
                 {openFaq === index && (
                   <div className="faq-item__answer">
@@ -629,8 +664,10 @@ const PremiumPage: React.FC = () => {
       <section className="premium-cta-final">
         <div className="container">
           <h2>Prêt à réussir vos examens ?</h2>
-          <p>Rejoignez des milliers d'élèves sénégalais qui ont choisi PedaClic Premium</p>
-          <button 
+          <p>
+            Rejoignez des milliers d'élèves sénégalais qui ont choisi PedaClic Premium
+          </p>
+          <button
             className="btn btn--white btn--lg"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
