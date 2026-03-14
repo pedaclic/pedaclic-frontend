@@ -33,8 +33,8 @@ import RegisterPage          from './pages/Auth/RegisterPage';
 import ForgotPasswordPage    from './pages/Auth/ForgotPasswordPage';
 import EmailVerificationPage from './pages/Auth/EmailVerificationPage';
 
-/* ==================== PREMIUM — MONEROO ==================== */
-import PremiumPage             from './pages/PremiumPage';
+/* ==================== PREMIUM — PayTech (backend sécurisé) ==================== */
+import PremiumPage             from './pages/Premium/PremiumPage';
 import PremiumCoursChoicePage   from './pages/PremiumCoursChoicePage';
 import PremiumConfirmationPage from './pages/PremiumConfirmationPage';
 
@@ -95,6 +95,9 @@ import ProfCoursPage   from './pages/ProfCoursPage';
 /* ==================== BIBLIOTHÈQUE EBOOKS ==================== */
 import EbooksPage  from './pages/EbooksPage';
 import AdminEbooks from './pages/AdminEbooks';
+
+/* ==================== PAGES LÉGALES ==================== */
+import MentionsLegalesPage from './pages/MentionsLegalesPage';
 
 /* ==================== PHASE 28 — SESSIONS LIVE ==================== */
 import LivePage from './pages/LivePage';
@@ -346,6 +349,9 @@ const App: React.FC = () => {
         <Route path="/admin/notifications/nouvelle" element={
           <AdminRoute><AdminLayout><NotificationComposer /></AdminLayout></AdminRoute>
         } />
+
+        {/* ========== PAGES LÉGALES (publiques) ========== */}
+        <Route path="/mentions-legales" element={<Layout><MentionsLegalesPage /></Layout>} />
 
         {/* ========== ALIAS DE COMMODITÉ ========== */}
         {/* /cahiers → /prof/cahiers (évite la redirection vers l'accueil) */}
