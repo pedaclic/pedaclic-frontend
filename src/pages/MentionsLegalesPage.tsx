@@ -131,6 +131,14 @@ const MentionsLegalesPage: React.FC = () => {
             </p>
           </section>
 
+          <section className="mentions-legales__section mentions-legales__section--links">
+            <p>
+              Consultez également nos{' '}
+              <Link to="/cgu">Conditions générales d'utilisation</Link> et notre{' '}
+              <Link to="/confidentialite">Politique de confidentialité</Link>.
+            </p>
+          </section>
+
           <section className="mentions-legales__section mentions-legales__section--update">
             <p>
               <em>Dernière mise à jour : mars 2025</em>

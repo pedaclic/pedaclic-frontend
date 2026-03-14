@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Heart, BookOpen, Users, FileText, Shield, HelpCircle, PlayCircle } from 'lucide-react';
+import { GraduationCap, Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube, Heart, BookOpen, Users, FileText, Scale, Shield, HelpCircle, PlayCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Footer.css';
 
@@ -130,6 +130,7 @@ const Footer: React.FC = () => {
           <p className="footer__made-with">Fait avec <Heart size={14} className="footer__heart" /> au Sénégal 🇸🇳</p>
           <nav className="footer__legal">
             <Link to="/mentions-legales" className="footer__legal-link"><FileText size={14} /> Mentions légales</Link>
+            <Link to="/cgu" className="footer__legal-link"><Scale size={14} /> CGU</Link>
             <Link to="/confidentialite" className="footer__legal-link"><Shield size={14} /> Confidentialité</Link>
             <Link to="/aide" className="footer__legal-link"><HelpCircle size={14} /> Aide</Link>
           </nav>
