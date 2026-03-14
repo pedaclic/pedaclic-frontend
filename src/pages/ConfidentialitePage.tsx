@@ -108,6 +108,14 @@ const ConfidentialitePage: React.FC = () => {
             </p>
           </section>
 
+          <section className="confidentialite__section confidentialite__section--links">
+            <p>
+              Consultez également nos{' '}
+              <Link to="/mentions-legales">Mentions légales</Link> et nos{' '}
+              <Link to="/cgu">Conditions générales d'utilisation</Link>.
+            </p>
+          </section>
+
           <section className="confidentialite__section confidentialite__section--update">
             <p>
               <em>Dernière mise à jour : Mars 2026</em>

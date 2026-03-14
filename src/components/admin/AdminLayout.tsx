@@ -79,6 +79,7 @@ const navigationSections: NavSection[] = [
     items: [
       { id: 'settings', label: 'Configuration', icon: '⚙️', href: '/admin/settings' },
       { id: 'mentions-legales', label: 'Mentions légales', icon: '📄', href: '/mentions-legales' },
+      { id: 'cgu', label: 'CGU', icon: '📋', href: '/cgu' },
       { id: 'confidentialite', label: 'Confidentialité', icon: '🔒', href: '/confidentialite' },
     ]
   }

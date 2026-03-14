@@ -133,8 +133,12 @@
   margin: 0;
 }
 
+.mentions-legales__section--links {
+  margin-top: 2rem;
+}
+
 .mentions-legales__section--update {
-  margin-top: 2.5rem;
+  margin-top: 1rem;
   padding-top: 1.5rem;
   border-top: 1px solid var(--mentions-border);
 }

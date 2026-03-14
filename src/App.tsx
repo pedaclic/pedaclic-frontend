@@ -99,6 +99,7 @@ import AdminEbooks from './pages/AdminEbooks';
 /* ==================== PAGES LÉGALES ==================== */
 import MentionsLegalesPage from './pages/MentionsLegalesPage';
 import ConfidentialitePage from './pages/ConfidentialitePage';
+import CGUPage from './pages/CGUPage';
 
 /* ==================== BANDEAU COOKIES ==================== */
 import CookieBanner from './components/CookieBanner';
@@ -358,6 +359,7 @@ const App: React.FC = () => {
         {/* ========== PAGES LÉGALES (publiques) ========== */}
         <Route path="/mentions-legales" element={<Layout><MentionsLegalesPage /></Layout>} />
         <Route path="/confidentialite" element={<Layout><ConfidentialitePage /></Layout>} />
+        <Route path="/cgu" element={<Layout><CGUPage /></Layout>} />
 
         {/* ========== ALIAS DE COMMODITÉ ========== */}
         {/* /cahiers → /prof/cahiers (évite la redirection vers l'accueil) */}
