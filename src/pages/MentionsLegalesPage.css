@@ -1,0 +1,186 @@
+/**
+ * ============================================================================
+ * STYLES PAGE MENTIONS LÉGALES - PedaClic
+ * ============================================================================
+ * Charte graphique : bleu #2563eb, vert #10b981, gris #1f2937
+ * Design cohérent avec le reste de l'application.
+ *
+ * @author PedaClic Team
+ */
+
+/* ==================== VARIABLES ==================== */
+.mentions-legales-page {
+  --mentions-primary: #2563eb;
+  --mentions-primary-dark: #1d4ed8;
+  --mentions-accent: #10b981;
+  --mentions-text: #374151;
+  --mentions-text-light: #6b7280;
+  --mentions-bg: #f9fafb;
+  --mentions-card: #ffffff;
+  --mentions-border: #e5e7eb;
+}
+
+/* ==================== STRUCTURE ==================== */
+.mentions-legales-page {
+  min-height: 100vh;
+  background-color: var(--mentions-bg);
+  padding: 2rem 1rem 4rem;
+}
+
+.mentions-legales__container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--mentions-card);
+  padding: 2.5rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+/* ==================== HEADER ==================== */
+.mentions-legales__header {
+  margin-bottom: 2.5rem;
+}
+
+.mentions-legales__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--mentions-primary);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  margin-bottom: 1.5rem;
+  transition: color 0.2s;
+}
+
+.mentions-legales__back:hover {
+  color: var(--mentions-primary-dark);
+}
+
+.mentions-legales__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.mentions-legales__logo {
+  color: var(--mentions-primary);
+  margin-bottom: 0.75rem;
+}
+
+.mentions-legales__title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.25rem;
+  border-bottom: 3px solid var(--mentions-primary);
+  padding-bottom: 0.5rem;
+  display: inline-block;
+}
+
+.mentions-legales__subtitle {
+  font-size: 0.9375rem;
+  color: var(--mentions-text-light);
+  margin: 0;
+}
+
+/* ==================== CONTENU ==================== */
+.mentions-legales__content {
+  line-height: 1.7;
+}
+
+.mentions-legales__section {
+  margin-bottom: 2rem;
+}
+
+.mentions-legales__section h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--mentions-primary);
+  margin: 0 0 0.75rem;
+}
+
+.mentions-legales__section p {
+  font-size: 0.9375rem;
+  color: var(--mentions-text);
+  margin: 0 0 0.75rem;
+}
+
+.mentions-legales__section p:last-child {
+  margin-bottom: 0;
+}
+
+.mentions-legales__section a {
+  color: var(--mentions-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.mentions-legales__section a:hover {
+  text-decoration: underline;
+}
+
+.mentions-legales__block {
+  background: var(--mentions-bg);
+  border-left: 4px solid var(--mentions-primary);
+  padding: 1rem 1.25rem;
+  border-radius: 0 8px 8px 0;
+  margin-top: 0.75rem;
+}
+
+.mentions-legales__block p {
+  margin: 0;
+}
+
+.mentions-legales__section--update {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--mentions-border);
+}
+
+.mentions-legales__section--update p {
+  font-size: 0.875rem;
+  color: var(--mentions-text-light);
+}
+
+/* ==================== FOOTER ==================== */
+.mentions-legales__footer {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--mentions-border);
+  text-align: center;
+}
+
+.mentions-legales__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--mentions-primary);
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.mentions-legales__cta:hover {
+  background: var(--mentions-primary-dark);
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 640px) {
+  .mentions-legales-page {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .mentions-legales__container {
+    padding: 1.5rem;
+  }
+
+  .mentions-legales__title {
+    font-size: 1.5rem;
+  }
+}

@@ -78,6 +78,7 @@ const navigationSections: NavSection[] = [
     title: 'Paramètres',
     items: [
       { id: 'settings', label: 'Configuration', icon: '⚙️', href: '/admin/settings' },
+      { id: 'mentions-legales', label: 'Mentions légales', icon: '📄', href: '/mentions-legales' },
     ]
   }
 ];
