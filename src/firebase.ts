@@ -1,6 +1,7 @@
 // ============================================
 // CONFIGURATION FIREBASE — PedaClic
 // Phase 17 : Persistance hors-ligne activée
+// Phase 28 : Firebase App Check (reCAPTCHA v3)
 // ============================================
 
 import { initializeApp } from 'firebase/app';
@@ -11,19 +12,39 @@ import {
   persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // --- Configuration Firebase (variables d'environnement) ---
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 // --- Initialisation de l'app Firebase ---
 const app = initializeApp(firebaseConfig);
+
+// ============================================
+// PHASE 28 — Firebase App Check (reCAPTCHA v3)
+// ============================================
+// En développement : token de debug automatique
+// (permet de tester sans déclencher reCAPTCHA)
+// En production : reCAPTCHA v3 invisible pour l'utilisateur
+if (import.meta.env.DEV) {
+  // @ts-ignore — propriété globale Firebase App Check debug
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider(
+    import.meta.env.VITE_RECAPTCHA_SITE_KEY
+  ),
+  // Renouvelle automatiquement le token avant expiration
+  isTokenAutoRefreshEnabled: true,
+});
 
 // --- Auth (inchangé) ---
 export const auth = getAuth(app);
