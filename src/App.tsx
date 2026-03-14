@@ -98,6 +98,10 @@ import AdminEbooks from './pages/AdminEbooks';
 
 /* ==================== PAGES LÉGALES ==================== */
 import MentionsLegalesPage from './pages/MentionsLegalesPage';
+import ConfidentialitePage from './pages/ConfidentialitePage';
+
+/* ==================== BANDEAU COOKIES ==================== */
+import CookieBanner from './components/CookieBanner';
 
 /* ==================== PHASE 28 — SESSIONS LIVE ==================== */
 import LivePage from './pages/LivePage';
@@ -145,6 +149,7 @@ const App: React.FC = () => {
       <MaintenanceGate>
         <InstallPrompt />
         <NetworkIndicator />
+        <CookieBanner />
         <Routes>
 
         {/* ========== PAGES PUBLIQUES (avec Header + Footer) ========== */}
@@ -352,6 +357,7 @@ const App: React.FC = () => {
 
         {/* ========== PAGES LÉGALES (publiques) ========== */}
         <Route path="/mentions-legales" element={<Layout><MentionsLegalesPage /></Layout>} />
+        <Route path="/confidentialite" element={<Layout><ConfidentialitePage /></Layout>} />
 
         {/* ========== ALIAS DE COMMODITÉ ========== */}
         {/* /cahiers → /prof/cahiers (évite la redirection vers l'accueil) */}

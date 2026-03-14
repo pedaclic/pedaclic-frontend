@@ -1,0 +1,77 @@
+/**
+ * ============================================================================
+ * STYLES BANDEAU COOKIES - PedaClic
+ * ============================================================================
+ * Charte : bleu #2563eb, gris #1f2937
+ *
+ * @author PedaClic Team
+ */
+
+.cookie-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #1f2937;
+  color: #e5e7eb;
+  padding: 1rem 1.25rem;
+  z-index: 9999;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.cookie-banner__inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cookie-banner__text {
+  flex: 1;
+  min-width: 200px;
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.cookie-banner__link {
+  color: #60a5fa;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.cookie-banner__link:hover {
+  color: #93c5fd;
+}
+
+.cookie-banner__btn {
+  flex-shrink: 0;
+  background: #2563eb;
+  border: none;
+  color: white;
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cookie-banner__btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 640px) {
+  .cookie-banner__inner {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .cookie-banner__btn {
+    align-self: center;
+  }
+}
