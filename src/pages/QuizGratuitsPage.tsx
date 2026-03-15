@@ -323,48 +323,49 @@ const QuizGratuitsPage: React.FC = () => {
         )}
       </div>
 
-      {/* ===== FILTRES ===== */}
-      <div className="qg-filtres">
-        {/* Recherche */}
-        <div className="qg-filtres__recherche">
-          <input
-            type="text"
-            placeholder="🔍 Rechercher un quiz..."
-            value={recherche}
-            onChange={e => setRecherche(e.target.value)}
-            className="qg-filtres__input"
-          />
+      {/* ===== FILTRES + ONGLETS (sticky) ===== */}
+      <div className="qg-sticky-bar">
+        <div className="qg-filtres">
+          {/* Recherche */}
+          <div className="qg-filtres__recherche">
+            <input
+              type="text"
+              placeholder="🔍 Rechercher un quiz..."
+              value={recherche}
+              onChange={e => setRecherche(e.target.value)}
+              className="qg-filtres__input"
+            />
+          </div>
+
+          {/* Filtre matière */}
+          <select
+            value={filtreMatiere}
+            onChange={e => setFiltreMatiere(e.target.value)}
+            className="qg-filtres__select"
+          >
+            <option value="">Toutes les matières</option>
+            {matieresDispos.map(m => (
+              <option key={m.valeur} value={m.valeur}>{m.label}</option>
+            ))}
+          </select>
+
+          {/* Bouton réinitialiser */}
+          {(filtreMatiere || filtreNiveau || recherche) && (
+            <button
+              className="qg-filtres__reset"
+              onClick={() => {
+                setFiltreMatiere('');
+                setFiltreNiveau('');
+                setRecherche('');
+              }}
+            >
+              ✕ Réinitialiser
+            </button>
+          )}
         </div>
 
-        {/* Filtre matière */}
-        <select
-          value={filtreMatiere}
-          onChange={e => setFiltreMatiere(e.target.value)}
-          className="qg-filtres__select"
-        >
-          <option value="">Toutes les matières</option>
-          {matieresDispos.map(m => (
-            <option key={m.valeur} value={m.valeur}>{m.label}</option>
-          ))}
-        </select>
-
-        {/* Bouton réinitialiser */}
-        {(filtreMatiere || filtreNiveau || recherche) && (
-          <button
-            className="qg-filtres__reset"
-            onClick={() => {
-              setFiltreMatiere('');
-              setFiltreNiveau('');
-              setRecherche('');
-            }}
-          >
-            ✕ Réinitialiser
-          </button>
-        )}
-      </div>
-
-      {/* ===== ONGLETS Quiz classique | Quiz avancé ===== */}
-      <div className="qg-onglets">
+        {/* ===== ONGLETS Quiz classique | Quiz avancé ===== */}
+        <div className="qg-onglets">
         <button
           className={`qg-onglet ${tabActif === 'classique' ? 'active' : ''}`}
           onClick={() => setTabActif('classique')}
@@ -377,21 +378,22 @@ const QuizGratuitsPage: React.FC = () => {
         >
           ⭐ Quiz avancé
         </button>
+        </div>
       </div>
 
       {/* ===== CONTENU PRINCIPAL ===== */}
       <div className="qg-contenu">
 
-        {/* État de chargement */}
-        {loading && (
+        {/* État de chargement (onglet classique uniquement) */}
+        {loading && tabActif === 'classique' && (
           <div className="qg-loading">
             <div className="spinner"></div>
             <p>Chargement des quiz...</p>
           </div>
         )}
 
-        {/* Erreur */}
-        {!loading && error && (
+        {/* Erreur (onglet classique uniquement) */}
+        {!loading && error && tabActif === 'classique' && (
           <div className="qg-erreur">
             <p>⚠️ {error}</p>
             <button onClick={() => window.location.reload()} className="btn btn-secondary">
@@ -400,7 +402,7 @@ const QuizGratuitsPage: React.FC = () => {
           </div>
         )}
 
-        {/* Liste des quiz */}
+        {/* Liste des quiz classiques */}
         {!loading && !error && tabActif === 'classique' && (
           <>
             <p className="qg-compteur">
@@ -438,7 +440,7 @@ const QuizGratuitsPage: React.FC = () => {
         )}
 
         {/* Onglet Quiz avancé — liés à la classe de l'élève */}
-        {!loading && !error && tabActif === 'avance' && (
+        {tabActif === 'avance' && (
           <>
             {loadingAvance ? (
               <div className="qg-loading">

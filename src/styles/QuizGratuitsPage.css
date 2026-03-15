@@ -76,19 +76,23 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* ===== BARRE STICKY (filtres + onglets) ===== */
+.qg-sticky-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
 /* ===== FILTRES ===== */
 .qg-filtres {
-  background: white;
   padding: 1rem 2rem;
   display: flex;
   gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
   border-bottom: 1px solid #e5e7eb;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 /* Barre de recherche */
@@ -153,9 +157,11 @@
 .qg-onglets {
   display: flex;
   gap: 0;
-  background: white;
   padding: 0 2rem;
   border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .qg-onglet {
@@ -184,6 +190,7 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 1.5rem 2rem 3rem;
+  min-height: 280px;
 }
 
 /* Compteur résultats */
@@ -462,6 +469,11 @@
     font-size: 1.5rem;
   }
 
+  /* Sticky bar */
+  .qg-sticky-bar {
+    margin: 0 -1rem;
+  }
+
   /* Filtres */
   .qg-filtres {
     padding: 0.75rem 1rem;
@@ -473,6 +485,17 @@
 
   .qg-filtres__select {
     min-width: 100%;
+  }
+
+  /* Onglets */
+  .qg-onglets {
+    padding: 0 1rem;
+  }
+
+  .qg-onglet {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
   }
 
   /* Grille */
