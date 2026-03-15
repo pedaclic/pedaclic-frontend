@@ -149,6 +149,36 @@
   border-color: #fca5a5;
 }
 
+/* ===== ONGLETS Quiz classique | Quiz avancé ===== */
+.qg-onglets {
+  display: flex;
+  gap: 0;
+  background: white;
+  padding: 0 2rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.qg-onglet {
+  padding: 0.9rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: transparent;
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.qg-onglet:hover {
+  color: #2563eb;
+}
+
+.qg-onglet.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
 /* ===== CONTENU PRINCIPAL ===== */
 .qg-contenu {
   max-width: 1200px;

@@ -53,6 +53,7 @@ import {
   Eye,
   Filter,
   FileSpreadsheet,
+  PenLine,
 } from 'lucide-react';
 
 /* ── Imports services ── */
@@ -79,7 +80,11 @@ import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForEleve } from '../../services/travauxAFaireService';
 import { getCahiersPartagesForEleve } from '../../services/cahierTextesService';
+import { ResourceService } from '../../services/ResourceService';
+import { DisciplineService } from '../../services/disciplineService';
+import { normaliserClassePourComparaison } from '../../types/cahierTextes.types';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
+import type { Resource } from '../../types';
 import RejoindreGroupe from './RejoindreGroupe';
 import FeuillesNotesView from '../shared/FeuillesNotesView';
 import ProgressBar from '../shared/ProgressBar';                        // ★ Phase 14
@@ -124,6 +129,9 @@ const StudentDashboard: React.FC = () => {
 
   /* ── États Cahier de textes ── */
   const [cahiersCount, setCahiersCount] = useState(0);
+
+  /* ── États Exercices de ma classe ── */
+  const [exercicesClasse, setExercicesClasse] = useState<Resource[]>([]);
 
   /** Génère ou récupère le code d'invitation parent */
   const handleGenererCode = async () => {
@@ -187,14 +195,31 @@ const StudentDashboard: React.FC = () => {
         const badgesList = calculateBadges(progressData, discProgress, progGlobale);
         setBadges(badgesList);
 
-        /* ── Travaux à faire + Cahiers (groupes de l'élève) ── */
+        /* ── Travaux à faire + Cahiers + Exercices (groupes de l'élève) ── */
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
-        const [travauxData, cahiersListe] = await Promise.all([
+        const [travauxData, cahiersListe, exercicesData] = await Promise.all([
           getTravauxForEleve(groupeIds),
           getCahiersPartagesForEleve(groupeIds).catch(() => []),
+          (async () => {
+            if (mesGroupes.length === 0) return [];
+            const classesEleve = [...new Set(mesGroupes.map(g => normaliserClassePourComparaison(g.classeNiveau)).filter(Boolean))];
+            if (classesEleve.length === 0) return [];
+            const disciplines = await DisciplineService.getAll();
+            const discIds = disciplines
+              .filter(d => classesEleve.some(c => normaliserClassePourComparaison(d.classe) === c))
+              .map(d => d.id);
+            if (discIds.length === 0) return [];
+            const all: Resource[] = [];
+            for (const did of discIds) {
+              const res = await ResourceService.getAll({ disciplineId: did, type: 'exercice' }, 20);
+              all.push(...res);
+            }
+            return [...new Map(all.map(r => [r.id, r])).values()].slice(0, 12);
+          })(),
         ]);
         setCahiersCount(cahiersListe.length);
+        setExercicesClasse(exercicesData);
         setTravaux(travauxData.map(t => ({
           id: t.id,
           titre: t.titre,
@@ -422,6 +447,62 @@ const StudentDashboard: React.FC = () => {
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
           <BookMarked size={16} /> Accéder au cahier de textes
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════
+          EXERCICES DE MA CLASSE
+          ══════════════════════════════════════════════ */}
+      <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
+        <h3 className="sd-section-title">
+          <PenLine size={18} /> Exercices de ma classe
+        </h3>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+          Exercices corrigés adaptés au niveau de votre classe.
+        </p>
+        {exercicesClasse.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+            {exercicesClasse.slice(0, 6).map((ex) => (
+              <div
+                key={ex.id}
+                onClick={() => navigate(`/ressources/${ex.id}`)}
+                style={{
+                  padding: '0.75rem 1rem',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background 0.2s, border-color 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = '#eff6ff';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#93c5fd';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = '#f8fafc';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
+                }}
+              >
+                <strong style={{ fontSize: '0.95rem' }}>✏️ {ex.titre}</strong>
+                {ex.description && (
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
+                    {ex.description.slice(0, 80)}{ex.description.length > 80 ? '…' : ''}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+            Aucun exercice disponible pour votre classe. Rejoignez un groupe-classe pour en voir.
+          </p>
+        )}
+        <button
+          className="sd-btn sd-btn-primary"
+          onClick={() => navigate('/disciplines')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+        >
+          <BookOpen size={16} /> Voir toutes les disciplines
         </button>
       </div>
 

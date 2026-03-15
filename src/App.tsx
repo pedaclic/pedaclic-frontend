@@ -26,6 +26,7 @@ import Layout from './components/Layout';
 import Home               from './pages/Home';
 import DisciplinesPage    from './pages/DisciplinesPage';
 import DisciplineDetail   from './pages/DisciplineDetail';
+import ResourceView       from './pages/ResourceView';
 
 /* ==================== AUTH (sans Header/Footer) ==================== */
 import LoginPage             from './pages/Auth/LoginPage';
@@ -157,6 +158,7 @@ const App: React.FC = () => {
         <Route path="/"              element={<Layout><Home /></Layout>} />
         <Route path="/disciplines"   element={<Layout><DisciplinesPage /></Layout>} />
         <Route path="/disciplines/:id" element={<Layout><DisciplineDetail /></Layout>} />
+        <Route path="/ressources/:id" element={<Layout><ResourceView /></Layout>} />
         <Route path="/quiz-gratuits" element={<Layout><QuizGratuitsPage /></Layout>} />
         <Route path="/ebooks"        element={<Layout><EbooksPage /></Layout>} />
         <Route path="/mediatheque"   element={<Layout><MediathequePage /></Layout>} />
