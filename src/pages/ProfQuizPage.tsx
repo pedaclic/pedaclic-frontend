@@ -157,19 +157,24 @@ const ProfQuizPage: React.FC = () => {
                     }}
                   >
                     <div
-                      onClick={() => navigate(`/quiz/${q.id}`)}
+                      onClick={() => navigate(q.status === 'draft' ? `/prof/quiz/classique/${q.id}/modifier` : `/quiz/${q.id}`)}
                       style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}
                     >
                       <span style={{ fontWeight: 500 }}>{q.titre}</span>
+                      {q.status === 'draft' && (
+                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.4rem', borderRadius: 4, marginLeft: '0.5rem' }}>
+                          Brouillon
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                         {q.questions?.length ?? 0} questions • {q.duree} min
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => navigate(`/quiz/${q.id}`)}
-                        title="Tester"
-                        style={{ padding: '0.4rem', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer' }}
+                        onClick={() => navigate(q.status === 'draft' ? `/prof/quiz/classique/${q.id}/modifier` : `/quiz/${q.id}`)}
+                        title={q.status === 'draft' ? 'Continuer le brouillon' : 'Tester'}
+                        style={{ padding: '0.4rem', background: q.status === 'draft' ? '#fef3c7' : '#f0fdf4', color: q.status === 'draft' ? '#92400e' : '#166534', border: q.status === 'draft' ? '1px solid #fde68a' : '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer' }}
                       >
                         <Play size={16} />
                       </button>
@@ -217,19 +222,24 @@ const ProfQuizPage: React.FC = () => {
                     }}
                   >
                     <div
-                      onClick={() => navigate(`/quiz-avance/${q.id}`)}
+                      onClick={() => navigate(q.status === 'draft' ? `/prof/quiz/avance/${q.id}/modifier` : `/quiz-avance/${q.id}`)}
                       style={{ flex: 1, cursor: 'pointer', minWidth: 0 }}
                     >
                       <span style={{ fontWeight: 500 }}>{q.titre}</span>
+                      {q.status === 'draft' && (
+                        <span style={{ fontSize: '0.7rem', background: '#fef3c7', color: '#92400e', padding: '0.15rem 0.4rem', borderRadius: 4, marginLeft: '0.5rem' }}>
+                          Brouillon
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                         {q.questions?.length ?? 0} questions • {q.duree} min
                       </span>
                     </div>
                     <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
                       <button
-                        onClick={() => navigate(`/quiz-avance/${q.id}`)}
-                        title="Tester"
-                        style={{ padding: '0.4rem', background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer' }}
+                        onClick={() => navigate(q.status === 'draft' ? `/prof/quiz/avance/${q.id}/modifier` : `/quiz-avance/${q.id}`)}
+                        title={q.status === 'draft' ? 'Continuer le brouillon' : 'Tester'}
+                        style={{ padding: '0.4rem', background: q.status === 'draft' ? '#fef3c7' : '#f0fdf4', color: q.status === 'draft' ? '#92400e' : '#166534', border: q.status === 'draft' ? '1px solid #fde68a' : '1px solid #bbf7d0', borderRadius: 6, cursor: 'pointer' }}
                       >
                         <Play size={16} />
                       </button>

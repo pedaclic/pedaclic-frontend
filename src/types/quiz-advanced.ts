@@ -136,11 +136,16 @@ export interface QuestionAvancee {
 
 // ==================== QUIZ AVANCÉ ====================
 
+/** Statut de publication du quiz */
+export type QuizStatus = 'draft' | 'published';
+
 /**
  * Interface pour un quiz avancé complet
  */
 export interface QuizAvance {
   id: string;                         // ID Firestore
+  /** Brouillon (non visible aux élèves) ou publié */
+  status?: QuizStatus;
   disciplineId: string;               // ID de la discipline
   titre: string;                      // Titre du quiz
   description?: string;               // Description (HTML autorisé)
@@ -163,6 +168,8 @@ export interface QuizAvance {
  * Données du formulaire de création de quiz
  */
 export interface QuizAvanceFormData {
+  /** Brouillon ou publié — défaut: published */
+  status?: QuizStatus;
   disciplineId: string;
   titre: string;
   description?: string;

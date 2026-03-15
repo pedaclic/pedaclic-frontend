@@ -59,8 +59,12 @@ const ProfQuizAvanceCreatePage: React.FC = () => {
       disciplines={disciplines}
       groupes={groupes}
       auteurId={currentUser?.uid || ''}
-      onSave={() => {
-        navigate('/prof/quiz');
+      onSave={() => navigate('/prof/quiz')}
+      onSaveDraft={(savedId, isNew) => {
+        if (isNew) {
+          navigate(`/prof/quiz/avance/${savedId}/modifier`);
+        }
+        alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
       }}
       onCancel={() => navigate('/prof/quiz')}
     />

@@ -87,6 +87,12 @@ const QuizEditorPage: React.FC = () => {
         alert('✅ Quiz sauvegardé avec succès !');
         navigate('/admin/quiz');
       }}
+      onSaveDraft={(savedId, isNew) => {
+        if (isNew) {
+          navigate(`/admin/quiz/modifier/${savedId}`);
+        }
+        alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+      }}
       onCancel={() => navigate(-1)}
     />
   );

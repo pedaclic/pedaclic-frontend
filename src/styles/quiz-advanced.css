@@ -886,6 +886,21 @@
   background: #e5e7eb;
 }
 
+.quiz-editor__btn--outline {
+  background: #fff;
+  color: #2563eb;
+  border: 2px solid #2563eb;
+}
+
+.quiz-editor__btn--outline:hover:not(:disabled) {
+  background: #eff6ff;
+}
+
+.quiz-editor__btn--outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* ==================== QUIZ PLAYER (ÉLÈVE) ==================== */
 
 .quiz-player {
