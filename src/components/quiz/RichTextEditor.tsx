@@ -504,11 +504,30 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
+  // Grouper la toolbar par séparateurs pour afficher sur 2 lignes horizontales
+  const toolbarRows: ToolbarOption[][] = [];
+  let currentRow: ToolbarOption[] = [];
+  for (const opt of toolbar) {
+    if (opt === 'separator') {
+      if (currentRow.length) {
+        toolbarRows.push(currentRow);
+        currentRow = [];
+      }
+    } else {
+      currentRow.push(opt);
+    }
+  }
+  if (currentRow.length) toolbarRows.push(currentRow);
+
   return (
     <div className={`rte-container ${disabled ? 'rte-disabled' : ''} ${className}`}>
       {!disabled && (
-        <div className="rte-toolbar">
-          {toolbar.map((opt, i) => renderItem(opt, i))}
+        <div className="rte-toolbar" role="toolbar">
+          {toolbarRows.map((row, rowIdx) => (
+            <div key={rowIdx} className="rte-toolbar__row">
+              {row.map((opt, i) => renderItem(opt, rowIdx * 100 + i))}
+            </div>
+          ))}
         </div>
       )}
       <div
