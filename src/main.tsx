@@ -10,31 +10,50 @@ import './Notifications.css';
 import './Live.css';
 
 // ============================================
-// PHASE 28 — Forcer la mise à jour du SW
-// Désinstalle l'ancien service worker si son
-// script a changé (nouveau build App Check).
-// Ce code peut être retiré après 1 semaine.
+// PHASE 28 — Désinstallation forcée du SW
+// Le service worker précédent mettait en cache
+// l'index.html source au lieu du bundle compilé.
+// On désinstalle tous les SW enregistrés et on
+// vide tous les caches avant de rendre l'appli.
 // ============================================
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    for (const registration of registrations) {
-      registration.update();
+async function clearServiceWorkers() {
+  if ('serviceWorker' in navigator) {
+    // Désinscrire tous les service workers
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map(r => r.unregister()));
+
+    // Vider tous les caches Workbox
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
     }
-  });
+
+    // Recharger uniquement si des SW ont été supprimés
+    if (registrations.length > 0) {
+      window.location.reload();
+      return true; // indique qu'on va recharger
+    }
+  }
+  return false;
 }
 
-const rootElement = document.getElementById('root');
+async function main() {
+  const willReload = await clearServiceWorkers();
+  if (willReload) return; // on attend le rechargement
 
-if (!rootElement) {
-  throw new Error("L'élément #root n'existe pas");
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error("L'élément #root n'existe pas");
+  }
+
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </React.StrictMode>
+  );
 }
 
-const root = ReactDOM.createRoot(rootElement);
-
-root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </React.StrictMode>
-);
+main();
