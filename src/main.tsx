@@ -9,6 +9,20 @@ import './styles/admin.css';
 import './Notifications.css';
 import './Live.css';
 
+// ============================================
+// PHASE 28 — Forcer la mise à jour du SW
+// Désinstalle l'ancien service worker si son
+// script a changé (nouveau build App Check).
+// Ce code peut être retiré après 1 semaine.
+// ============================================
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    for (const registration of registrations) {
+      registration.update();
+    }
+  });
+}
+
 const rootElement = document.getElementById('root');
 
 if (!rootElement) {
