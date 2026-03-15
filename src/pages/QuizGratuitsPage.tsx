@@ -1,8 +1,9 @@
 // ============================================================
 // PAGE : QuizGratuitsPage
 // Liste des quiz gratuits accessibles à tous
+// - Onglets : Quiz classique | Quiz avancé (liés à la classe)
 // - Visiteurs non connectés : aperçu 3 quiz + CTA inscription
-// - Connectés non-premium  : tous les quiz gratuits + CTA premium
+// - Connectés non-premium  : quiz classiques + quiz avancés de leur classe
 // - Premium / Prof / Admin : tous les quiz + lien quiz avancés
 // Route : /quiz-gratuits
 // PedaClic — www.pedaclic.sn
@@ -16,8 +17,12 @@ import {
   getQuizGratuitsApercu,
   type QuizGratuit,
 } from '../services/quizGratuitService';
+import { getQuizzesAvanceForEleve } from '../services/quizAdvancedService';
+import type { QuizAvance } from '../types/quiz-advanced';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import '../styles/QuizGratuitsPage.css';
+
+type TabQuiz = 'classique' | 'avance';
 // ─── Constantes ───────────────────────────────────────────────
 
 const DIFFICULTE_CONFIG = {
@@ -27,6 +32,49 @@ const DIFFICULTE_CONFIG = {
 };
 
 // ─── Composants locaux ────────────────────────────────────────
+
+/** Carte d'un quiz avancé (onglet Quiz avancé) */
+const CarteQuizAvance: React.FC<{
+  quiz: QuizAvance;
+  onJouer: (quiz: QuizAvance) => void;
+}> = ({ quiz, onJouer }) => {
+  const nbQ = quiz.questions?.length ?? 0;
+  const diff = quiz.questions?.length
+    ? (() => {
+        const niveaux = quiz.questions.map(q => q.difficulte);
+        const score = niveaux.reduce((s, n) =>
+          s + (n === 'facile' ? 1 : n === 'moyen' ? 2 : 3), 0) / niveaux.length;
+        if (score < 1.5) return { label: 'Facile', color: '#059669', bg: '#d1fae5' };
+        if (score < 2.5) return { label: 'Moyen', color: '#d97706', bg: '#fef3c7' };
+        return { label: 'Difficile', color: '#dc2626', bg: '#fee2e2' };
+      })()
+    : { label: 'Moyen', color: '#d97706', bg: '#fef3c7' };
+
+  return (
+    <div className="qg-card" onClick={() => onJouer(quiz)}>
+      <div className="qg-card__header">
+        <span className="qg-card__source qg-card__source--quizzes_v2">⭐ Quiz avancé</span>
+        <span className="qg-card__difficulte" style={{ color: diff.color, background: diff.bg }}>
+          {diff.label}
+        </span>
+      </div>
+      <h3 className="qg-card__titre">{quiz.titre}</h3>
+      {quiz.description && (
+        <p className="qg-card__description" dangerouslySetInnerHTML={{ __html: quiz.description }} />
+      )}
+      <div className="qg-card__meta">
+        {((quiz as Record<string, unknown>).disciplineNom ?? (quiz as Record<string, unknown>).matiere) && (
+          <span className="qg-card__meta-item">
+            📚 {String((quiz as Record<string, unknown>).disciplineNom ?? (quiz as Record<string, unknown>).matiere)}
+          </span>
+        )}
+        <span className="qg-card__meta-item">❓ {nbQ} question{nbQ > 1 ? 's' : ''}</span>
+        <span className="qg-card__meta-item">⏱ {quiz.duree} min</span>
+      </div>
+      <button className="qg-card__btn">🚀 Commencer</button>
+    </div>
+  );
+};
 
 /** Carte d'un quiz gratuit */
 const CarteQuizGratuit: React.FC<{
@@ -137,8 +185,11 @@ const QuizGratuitsPage: React.FC = () => {
   const { currentUser } = useAuth();
 
   // ── État ────────────────────────────────────────────────────
+  const [tabActif, setTabActif]         = useState<TabQuiz>('classique');
   const [quizzes, setQuizzes]           = useState<QuizGratuit[]>([]);
+  const [quizzesAvances, setQuizzesAvances] = useState<QuizAvance[]>([]);
   const [loading, setLoading]           = useState(true);
+  const [loadingAvance, setLoadingAvance] = useState(false);
   const [error, setError]               = useState('');
   const [filtreMatiere, setFiltreMatiere] = useState('');
   const [filtreNiveau, setFiltreNiveau]   = useState('');
@@ -151,13 +202,12 @@ const QuizGratuitsPage: React.FC = () => {
   const estPremium  = currentUser?.isPremium ?? false;
   const estProf     = currentUser?.role === 'prof' || currentUser?.role === 'admin';
 
-  // ── Chargement des quiz ─────────────────────────────────────
+  // ── Chargement des quiz classiques ───────────────────────────
   useEffect(() => {
     const charger = async () => {
       setLoading(true);
       setError('');
       try {
-        // Visiteur non connecté → aperçu 3 quiz seulement
         const data = estConnecte
           ? await getQuizGratuits()
           : await getQuizGratuitsApercu();
@@ -172,8 +222,29 @@ const QuizGratuitsPage: React.FC = () => {
     charger();
   }, [estConnecte]);
 
-  // ── Filtrage côté client ────────────────────────────────────
-  const quizzesFiltres = quizzes.filter(q => {
+  // ── Chargement des quiz avancés (élève connecté, liés à sa classe) ──
+  useEffect(() => {
+    if (!estConnecte || !currentUser?.uid) return;
+    const charger = async () => {
+      setLoadingAvance(true);
+      try {
+        const data = await getQuizzesAvanceForEleve(
+          currentUser.uid,
+          currentUser?.isPremium ?? false
+        );
+        setQuizzesAvances(data);
+      } catch (err) {
+        console.error('Erreur chargement quiz avancés:', err);
+      } finally {
+        setLoadingAvance(false);
+      }
+    };
+    charger();
+  }, [estConnecte, currentUser?.uid, currentUser?.isPremium]);
+
+  // ── Filtrage côté client (quiz classiques) ───────────────────
+  const quizzesClassiques = quizzes.filter(q => q.source === 'quizzes');
+  const quizzesFiltres = quizzesClassiques.filter(q => {
     const matchRecherche = !recherche ||
       q.titre.toLowerCase().includes(recherche.toLowerCase()) ||
       q.matiere.toLowerCase().includes(recherche.toLowerCase());
@@ -185,18 +256,34 @@ const QuizGratuitsPage: React.FC = () => {
     return matchRecherche && matchMatiere && matchNiveau;
   });
 
+  // ── Filtrage quiz avancés ───────────────────────────────────
+  const getMatiereQuiz = (q: QuizAvance) =>
+    String((q as Record<string, unknown>).disciplineNom ?? (q as Record<string, unknown>).matiere ?? '');
+  const quizzesAvancesFiltres = quizzesAvances.filter(q => {
+    const matiere = getMatiereQuiz(q);
+    const matchRecherche = !recherche ||
+      q.titre.toLowerCase().includes(recherche.toLowerCase()) ||
+      (q.description ?? '').toLowerCase().includes(recherche.toLowerCase()) ||
+      matiere.toLowerCase().includes(recherche.toLowerCase());
+    const matchMatiere = !filtreMatiere || matiere.toLowerCase().includes(filtreMatiere.toLowerCase());
+    return matchRecherche && matchMatiere;
+  });
+
   // ── Navigation vers le quiz ─────────────────────────────────
   const handleJouer = (quiz: QuizGratuit) => {
     if (!estConnecte) {
       navigate('/connexion');
       return;
     }
-    // Quiz avancé → QuizPlayerPage, quiz simple → QuizPlayer
-    if (quiz.source === 'quizzes_v2') {
-      navigate(`/quiz-avance/${quiz.id}`);
-    } else {
-      navigate(`/quiz/${quiz.id}`);
+    navigate(`/quiz/${quiz.id}`);
+  };
+
+  const handleJouerAvance = (quiz: QuizAvance) => {
+    if (!estConnecte) {
+      navigate('/connexion');
+      return;
     }
+    navigate(`/quiz-avance/${quiz.id}`);
   };
 
   // ─── Rendu ──────────────────────────────────────────────────
@@ -216,7 +303,7 @@ const QuizGratuitsPage: React.FC = () => {
           {/* Stats rapides */}
           <div className="qg-hero__stats">
             <span className="qg-hero__stat">
-              <strong>{quizzes.length}</strong>
+              <strong>{quizzesClassiques.length + (estConnecte ? quizzesAvances.length : 0)}</strong>
               {!estConnecte ? '+ quiz' : ' quiz disponibles'}
             </span>
             <span className="qg-hero__stat">
@@ -276,6 +363,22 @@ const QuizGratuitsPage: React.FC = () => {
         )}
       </div>
 
+      {/* ===== ONGLETS Quiz classique | Quiz avancé ===== */}
+      <div className="qg-onglets">
+        <button
+          className={`qg-onglet ${tabActif === 'classique' ? 'active' : ''}`}
+          onClick={() => setTabActif('classique')}
+        >
+          📝 Quiz classique
+        </button>
+        <button
+          className={`qg-onglet ${tabActif === 'avance' ? 'active' : ''}`}
+          onClick={() => setTabActif('avance')}
+        >
+          ⭐ Quiz avancé
+        </button>
+      </div>
+
       {/* ===== CONTENU PRINCIPAL ===== */}
       <div className="qg-contenu">
 
@@ -298,16 +401,14 @@ const QuizGratuitsPage: React.FC = () => {
         )}
 
         {/* Liste des quiz */}
-        {!loading && !error && (
+        {!loading && !error && tabActif === 'classique' && (
           <>
-            {/* Compteur résultats */}
             <p className="qg-compteur">
               {quizzesFiltres.length} quiz{quizzesFiltres.length > 1 ? 's' : ''}
               {filtreMatiere ? ` en ${filtreMatiere}` : ''}
               {!estConnecte ? ' (aperçu — connectez-vous pour tout voir)' : ''}
             </p>
 
-            {/* Grille de cartes */}
             {quizzesFiltres.length > 0 ? (
               <div className="qg-grille">
                 {quizzesFiltres.map(quiz => (
@@ -321,7 +422,7 @@ const QuizGratuitsPage: React.FC = () => {
               </div>
             ) : (
               <div className="qg-vide">
-                <p>😕 Aucun quiz trouvé pour ces critères.</p>
+                <p>😕 Aucun quiz classique trouvé pour ces critères.</p>
                 <button
                   onClick={() => { setFiltreMatiere(''); setRecherche(''); }}
                   className="btn btn-secondary"
@@ -331,11 +432,51 @@ const QuizGratuitsPage: React.FC = () => {
               </div>
             )}
 
-            {/* Bannière inscription pour visiteurs */}
             {!estConnecte && <BanniereInscription />}
-
-            {/* Bannière premium pour connectés non-premium */}
             {estConnecte && !estPremium && !estProf && <BannierePremium />}
+          </>
+        )}
+
+        {/* Onglet Quiz avancé — liés à la classe de l'élève */}
+        {!loading && !error && tabActif === 'avance' && (
+          <>
+            {loadingAvance ? (
+              <div className="qg-loading">
+                <div className="spinner"></div>
+                <p>Chargement des quiz avancés...</p>
+              </div>
+            ) : !estConnecte ? (
+              <div className="qg-vide">
+                <p>🔐 Connectez-vous pour accéder aux quiz avancés de votre classe.</p>
+                <Link to="/connexion" className="btn btn-primary">Se connecter</Link>
+              </div>
+            ) : (
+              <>
+                <p className="qg-compteur">
+                  {quizzesAvancesFiltres.length} quiz avancé{quizzesAvancesFiltres.length > 1 ? 's' : ''}
+                  {filtreMatiere ? ` en ${filtreMatiere}` : ''}
+                </p>
+
+                {quizzesAvancesFiltres.length > 0 ? (
+                  <div className="qg-grille">
+                    {quizzesAvancesFiltres.map(quiz => (
+                      <CarteQuizAvance
+                        key={quiz.id}
+                        quiz={quiz}
+                        onJouer={handleJouerAvance}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="qg-vide">
+                    <p>📚 Aucun quiz avancé disponible pour votre classe pour le moment.</p>
+                    <p>
+                      Votre professeur peut créer des quiz avancés et les partager avec votre classe.
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
       </div>
