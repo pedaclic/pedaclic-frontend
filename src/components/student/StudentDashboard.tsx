@@ -74,16 +74,12 @@ import {
   QuizResult,
 } from '../../services/progressionService';
 import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ Phase 14
-import type { EntreeCahier } from '../../types/cahierTextes.types';
 import { getQuizzesForEleve, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForEleve } from '../../services/travauxAFaireService';
-import {
-  getCahiersPartagesForEleve,
-  getEntreesRealisees,
-} from '../../services/cahierTextesService';
+import { getCahiersPartagesForEleve } from '../../services/cahierTextesService';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import type { Resource } from '../../types';
 import RejoindreGroupe from './RejoindreGroupe';
@@ -125,14 +121,11 @@ const StudentDashboard: React.FC = () => {
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
 
-  /* ── États Travaux à faire ── */
-  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string }>>([]);
+  /* ── États Travaux de ma classe (onglet Travaux) ── */
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string; matiere?: string }>>([]);
 
   /* ── États Cahier de textes ── */
   const [cahiersCount, setCahiersCount] = useState(0);
-
-  /* ── États Exercices de ma classe (cahier du prof) ── */
-  const [exercicesClasse, setExercicesClasse] = useState<Array<EntreeCahier & { cahierId: string; cahierTitre?: string }>>([]);
 
   /** Génère ou récupère le code d'invitation parent */
   const handleGenererCode = async () => {
@@ -196,33 +189,21 @@ const StudentDashboard: React.FC = () => {
         const badgesList = calculateBadges(progressData, discProgress, progGlobale);
         setBadges(badgesList);
 
-        /* ── Travaux à faire + Cahiers + Exercices (groupes de l'élève) ── */
+        /* ── Travaux à faire + Cahiers (groupes de l'élève) ── */
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
         const [travauxData, cahiersListe] = await Promise.all([
           getTravauxForEleve(groupeIds),
           getCahiersPartagesForEleve(groupeIds).catch(() => []),
         ]);
-        let exercicesData: Array<EntreeCahier & { cahierId: string; cahierTitre?: string }> = [];
-        if (cahiersListe.length > 0) {
-          for (const cahier of cahiersListe) {
-            const entrees = await getEntreesRealisees(cahier.id).catch(() => []);
-            const exercices = entrees
-              .filter((e: EntreeCahier) => e.typeContenu === 'exercices')
-              .slice(0, 4)
-              .map((e: EntreeCahier) => ({ ...e, cahierId: cahier.id, cahierTitre: cahier.titre }));
-            exercicesData.push(...exercices);
-          }
-          exercicesData = exercicesData.slice(0, 12);
-        }
         setCahiersCount(cahiersListe.length);
-        setExercicesClasse(exercicesData);
         setTravaux(travauxData.map(t => ({
           id: t.id,
           titre: t.titre,
           description: t.description,
           dateEcheance: t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance),
           groupeNom: t.groupeNom,
+          matiere: t.matiere,
         })));
       } catch (error) {
         console.error('Erreur chargement dashboard :', error);
@@ -448,62 +429,48 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* ══════════════════════════════════════════════
-          EXERCICES DE MA CLASSE (cahier du professeur)
+          TRAVAUX DE MA CLASSE (onglet Travaux de la classe)
           ══════════════════════════════════════════════ */}
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <h3 className="sd-section-title">
-          <PenLine size={18} /> Exercices de ma classe
+          <PenLine size={18} /> Travaux de ma classe
         </h3>
         <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          Exercices conçus par votre professeur et partagés via le cahier de textes.
+          Travaux assignés par votre professeur dans l&apos;onglet « Travaux » de votre classe.
         </p>
-        {exercicesClasse.length > 0 ? (
+        {travaux.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-            {exercicesClasse.slice(0, 6).map((ex) => (
+            {travaux.slice(0, 8).map((t) => (
               <div
-                key={`${ex.cahierId}-${ex.id}`}
-                onClick={() => navigate(`/eleve/cahiers/${ex.cahierId}`)}
+                key={t.id}
+                className="sd-travaux-item"
                 style={{
                   padding: '0.75rem 1rem',
                   background: '#f8fafc',
                   border: '1px solid #e2e8f0',
                   borderRadius: '8px',
-                  cursor: 'pointer',
                   transition: 'background 0.2s, border-color 0.2s',
                 }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = '#eff6ff';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#93c5fd';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = '#f8fafc';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
-                }}
               >
-                <strong style={{ fontSize: '0.95rem' }}>
-                  ✏️ {ex.chapitre || ex.objectifs?.slice(0, 50) || 'Exercice'}
-                  {(ex.chapitre || ex.objectifs) && (ex.chapitre?.length > 40 || (ex.objectifs?.length ?? 0) > 50) ? '…' : ''}
-                </strong>
-                {ex.cahierTitre && (
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
-                    📓 {ex.cahierTitre}
+                <strong style={{ fontSize: '0.95rem' }}>📋 {t.titre}</strong>
+                {t.description && (
+                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
+                    {t.description}
                   </p>
                 )}
+                <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
+                  📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}
+                  {t.matiere && ` • 📚 ${t.matiere}`}
+                  {` • 👥 ${t.groupeNom}`}
+                </span>
               </div>
             ))}
           </div>
         ) : (
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            Aucun exercice partagé pour le moment. Votre professeur peut en ajouter dans le cahier de textes.
+            Aucun travail assigné pour le moment. Votre professeur peut en ajouter dans l&apos;onglet « Travaux » de la classe.
           </p>
         )}
-        <button
-          className="sd-btn sd-btn-primary"
-          onClick={() => navigate('/eleve/cahiers')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <BookMarked size={16} /> Accéder au cahier de textes
-        </button>
       </div>
 
       {/* ══════════════════════════════════════════════
@@ -515,36 +482,6 @@ const StudentDashboard: React.FC = () => {
             <FileSpreadsheet size={18} /> Mes notes
           </h3>
           <FeuillesNotesView eleveIds={[currentUser.uid]} showGroupeNom={true} filterForEleves={true} />
-        </div>
-      )}
-
-      {/* ══════════════════════════════════════════════
-          TRAVAUX À FAIRE
-          ══════════════════════════════════════════════ */}
-      {travaux.length > 0 && (
-        <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
-          <h3 className="sd-section-title">
-            <Calendar size={18} /> Travaux à faire
-          </h3>
-          <ul className="sd-travaux-liste" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {travaux.map((t) => (
-              <li key={t.id} className="sd-travaux-item" style={{
-                padding: '0.75rem 1rem',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                marginBottom: '0.5rem',
-              }}>
-                <strong>{t.titre}</strong>
-                {t.description && (
-                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0' }}>{t.description}</p>
-                )}
-                <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
-                  📅 {t.dateEcheance.toLocaleDateString('fr-FR')} • {t.groupeNom}
-                </span>
-              </li>
-            ))}
-          </ul>
         </div>
       )}
 
