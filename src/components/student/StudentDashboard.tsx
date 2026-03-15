@@ -74,15 +74,16 @@ import {
   QuizResult,
 } from '../../services/progressionService';
 import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ Phase 14
+import type { EntreeCahier } from '../../types/cahierTextes.types';
 import { getQuizzesForEleve, Quiz } from '../../services/quizService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
 import { getTravauxForEleve } from '../../services/travauxAFaireService';
-import { getCahiersPartagesForEleve } from '../../services/cahierTextesService';
-import { ResourceService } from '../../services/ResourceService';
-import { DisciplineService } from '../../services/disciplineService';
-import { normaliserClassePourComparaison } from '../../types/cahierTextes.types';
+import {
+  getCahiersPartagesForEleve,
+  getEntreesRealisees,
+} from '../../services/cahierTextesService';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import type { Resource } from '../../types';
 import RejoindreGroupe from './RejoindreGroupe';
@@ -130,8 +131,8 @@ const StudentDashboard: React.FC = () => {
   /* ── États Cahier de textes ── */
   const [cahiersCount, setCahiersCount] = useState(0);
 
-  /* ── États Exercices de ma classe ── */
-  const [exercicesClasse, setExercicesClasse] = useState<Resource[]>([]);
+  /* ── États Exercices de ma classe (cahier du prof) ── */
+  const [exercicesClasse, setExercicesClasse] = useState<Array<EntreeCahier & { cahierId: string; cahierTitre?: string }>>([]);
 
   /** Génère ou récupère le code d'invitation parent */
   const handleGenererCode = async () => {
@@ -198,26 +199,22 @@ const StudentDashboard: React.FC = () => {
         /* ── Travaux à faire + Cahiers + Exercices (groupes de l'élève) ── */
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
-        const [travauxData, cahiersListe, exercicesData] = await Promise.all([
+        const [travauxData, cahiersListe] = await Promise.all([
           getTravauxForEleve(groupeIds),
           getCahiersPartagesForEleve(groupeIds).catch(() => []),
-          (async () => {
-            if (mesGroupes.length === 0) return [];
-            const classesEleve = [...new Set(mesGroupes.map(g => normaliserClassePourComparaison(g.classeNiveau)).filter(Boolean))];
-            if (classesEleve.length === 0) return [];
-            const disciplines = await DisciplineService.getAll();
-            const discIds = disciplines
-              .filter(d => classesEleve.some(c => normaliserClassePourComparaison(d.classe) === c))
-              .map(d => d.id);
-            if (discIds.length === 0) return [];
-            const all: Resource[] = [];
-            for (const did of discIds) {
-              const res = await ResourceService.getAll({ disciplineId: did, type: 'exercice' }, 20);
-              all.push(...res);
-            }
-            return [...new Map(all.map(r => [r.id, r])).values()].slice(0, 12);
-          })(),
         ]);
+        let exercicesData: Array<EntreeCahier & { cahierId: string; cahierTitre?: string }> = [];
+        if (cahiersListe.length > 0) {
+          for (const cahier of cahiersListe) {
+            const entrees = await getEntreesRealisees(cahier.id).catch(() => []);
+            const exercices = entrees
+              .filter((e: EntreeCahier) => e.typeContenu === 'exercices')
+              .slice(0, 4)
+              .map((e: EntreeCahier) => ({ ...e, cahierId: cahier.id, cahierTitre: cahier.titre }));
+            exercicesData.push(...exercices);
+          }
+          exercicesData = exercicesData.slice(0, 12);
+        }
         setCahiersCount(cahiersListe.length);
         setExercicesClasse(exercicesData);
         setTravaux(travauxData.map(t => ({
@@ -451,21 +448,21 @@ const StudentDashboard: React.FC = () => {
       </div>
 
       {/* ══════════════════════════════════════════════
-          EXERCICES DE MA CLASSE
+          EXERCICES DE MA CLASSE (cahier du professeur)
           ══════════════════════════════════════════════ */}
       <div className="sd-chart-card" style={{ marginBottom: '1.5rem' }}>
         <h3 className="sd-section-title">
           <PenLine size={18} /> Exercices de ma classe
         </h3>
         <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          Exercices corrigés adaptés au niveau de votre classe.
+          Exercices conçus par votre professeur et partagés via le cahier de textes.
         </p>
         {exercicesClasse.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
             {exercicesClasse.slice(0, 6).map((ex) => (
               <div
-                key={ex.id}
-                onClick={() => navigate(`/ressources/${ex.id}`)}
+                key={`${ex.cahierId}-${ex.id}`}
+                onClick={() => navigate(`/eleve/cahiers/${ex.cahierId}`)}
                 style={{
                   padding: '0.75rem 1rem',
                   background: '#f8fafc',
@@ -483,10 +480,13 @@ const StudentDashboard: React.FC = () => {
                   (e.currentTarget as HTMLElement).style.borderColor = '#e2e8f0';
                 }}
               >
-                <strong style={{ fontSize: '0.95rem' }}>✏️ {ex.titre}</strong>
-                {ex.description && (
+                <strong style={{ fontSize: '0.95rem' }}>
+                  ✏️ {ex.chapitre || ex.objectifs?.slice(0, 50) || 'Exercice'}
+                  {(ex.chapitre || ex.objectifs) && (ex.chapitre?.length > 40 || (ex.objectifs?.length ?? 0) > 50) ? '…' : ''}
+                </strong>
+                {ex.cahierTitre && (
                   <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
-                    {ex.description.slice(0, 80)}{ex.description.length > 80 ? '…' : ''}
+                    📓 {ex.cahierTitre}
                   </p>
                 )}
               </div>
@@ -494,15 +494,15 @@ const StudentDashboard: React.FC = () => {
           </div>
         ) : (
           <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            Aucun exercice disponible pour votre classe. Rejoignez un groupe-classe pour en voir.
+            Aucun exercice partagé pour le moment. Votre professeur peut en ajouter dans le cahier de textes.
           </p>
         )}
         <button
           className="sd-btn sd-btn-primary"
-          onClick={() => navigate('/disciplines')}
+          onClick={() => navigate('/eleve/cahiers')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <BookOpen size={16} /> Voir toutes les disciplines
+          <BookMarked size={16} /> Accéder au cahier de textes
         </button>
       </div>
 
