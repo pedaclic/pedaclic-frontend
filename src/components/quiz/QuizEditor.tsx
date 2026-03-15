@@ -19,6 +19,11 @@ import {
   QCMMultipleData,
   DragDropData,
   MiseEnRelationData,
+  TexteACompleterData,
+  VraiFauxData,
+  ReponseCourteData,
+  OrdreChronologiqueData,
+  TexteTrousMenuData,
   EssaiData,
   QCMOption,
   DragDropItem,
@@ -642,6 +647,36 @@ const QuestionEditorItem: React.FC<QuestionEditorItemProps> = ({
                 onChange={(typeData) => onUpdate({ typeData })}
               />
             )}
+            {question.type === 'texte_a_completer' && (
+              <TexteACompleterEditor
+                data={question.typeData as TexteACompleterData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
+            {question.type === 'vrai_faux' && (
+              <VraiFauxEditor
+                data={question.typeData as VraiFauxData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
+            {question.type === 'reponse_courte' && (
+              <ReponseCourteEditor
+                data={question.typeData as ReponseCourteData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
+            {question.type === 'ordre_chronologique' && (
+              <OrdreChronologiqueEditor
+                data={question.typeData as OrdreChronologiqueData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
+            {question.type === 'texte_trous_menu' && (
+              <TexteTrousMenuEditor
+                data={question.typeData as TexteTrousMenuData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
             {question.type === 'essai' && (
               <EssaiEditor
                 data={question.typeData as EssaiData}
@@ -1002,7 +1037,348 @@ const MiseEnRelationEditor: React.FC<MiseEnRelationEditorProps> = ({ data, onCha
   );
 };
 
-// ---- 5. ESSAI / RÉDACTION ----
+// ---- 5. TEXTE À COMPLÉTER ----
+
+const BLANK_PLACEHOLDER = '_____';
+
+/** Compte le nombre de trous (_____) dans la phrase */
+function countBlanks(phrase: string): number {
+  const matches = phrase.match(/_{2,}/g);
+  return matches ? matches.length : 0;
+}
+
+interface TexteACompleterEditorProps {
+  data: TexteACompleterData;
+  onChange: (data: TexteACompleterData) => void;
+}
+
+const TexteACompleterEditor: React.FC<TexteACompleterEditorProps> = ({ data, onChange }) => {
+  const syncBlanksFromPhrase = (phrase: string) => {
+    const nbBlanks = countBlanks(phrase);
+    const currentBlanks = [...data.blanks];
+
+    if (nbBlanks > currentBlanks.length) {
+      // Ajouter des trous
+      const newBlanks = [...currentBlanks];
+      while (newBlanks.length < nbBlanks) {
+        newBlanks.push({ reponsesAcceptees: [''] });
+      }
+      onChange({ phrase, blanks: newBlanks });
+    } else if (nbBlanks < currentBlanks.length) {
+      // Retirer des trous
+      onChange({ phrase, blanks: currentBlanks.slice(0, nbBlanks) });
+    } else {
+      onChange({ phrase, blanks: currentBlanks });
+    }
+  };
+
+  const updatePhrase = (phrase: string) => syncBlanksFromPhrase(phrase);
+
+  const updateBlank = (blankIndex: number, reponses: string[]) => {
+    const newBlanks = data.blanks.map((b, i) =>
+      i === blankIndex ? { reponsesAcceptees: reponses } : b
+    );
+    onChange({ ...data, blanks: newBlanks });
+  };
+
+  const addReponseAcceptee = (blankIndex: number) => {
+    const blank = data.blanks[blankIndex];
+    updateBlank(blankIndex, [...blank.reponsesAcceptees, '']);
+  };
+
+  const updateReponseAcceptee = (blankIndex: number, repIndex: number, value: string) => {
+    const blank = data.blanks[blankIndex];
+    const newReponses = [...blank.reponsesAcceptees];
+    newReponses[repIndex] = value;
+    updateBlank(blankIndex, newReponses);
+  };
+
+  const supprimerReponseAcceptee = (blankIndex: number, repIndex: number) => {
+    const blank = data.blanks[blankIndex];
+    if (blank.reponsesAcceptees.length <= 1) return;
+    updateBlank(
+      blankIndex,
+      blank.reponsesAcceptees.filter((_, i) => i !== repIndex)
+    );
+  };
+
+  const nbBlanks = countBlanks(data.phrase);
+
+  return (
+    <div className="type-editor">
+      <label className="type-editor__label">✏️ Phrase à compléter</label>
+      <p className="type-editor__hint">
+        Utilisez <code>{BLANK_PLACEHOLDER}</code> pour chaque trou. Exemple : « La _____ du Sénégal est _____. »
+      </p>
+
+      <div className="type-editor__field-block">
+        <label>Phrase avec trous</label>
+        <input
+          type="text"
+          value={data.phrase}
+          onChange={(e) => updatePhrase(e.target.value)}
+          placeholder="La _____ du Sénégal est _____."
+          className="type-editor__input-full"
+        />
+      </div>
+
+      {nbBlanks > 0 && (
+        <div className="type-editor__blanks">
+          <label className="type-editor__sub-label">Réponses acceptées par trou (dans l&apos;ordre)</label>
+          {data.blanks.slice(0, nbBlanks).map((blank, i) => (
+            <div key={i} className="type-editor__blank-group">
+              <span className="type-editor__blank-label">Trou {i + 1} :</span>
+              <div className="type-editor__blank-reponses">
+                {blank.reponsesAcceptees.map((rep, j) => (
+                  <div key={j} className="type-editor__blank-rep-row">
+                    <input
+                      type="text"
+                      value={rep}
+                      onChange={(e) => updateReponseAcceptee(i, j, e.target.value)}
+                      placeholder="Réponse acceptée..."
+                      className="type-editor__blank-input"
+                    />
+                    <button
+                      type="button"
+                      className="type-editor__remove-btn"
+                      onClick={() => supprimerReponseAcceptee(i, j)}
+                      disabled={blank.reponsesAcceptees.length <= 1}
+                      title="Supprimer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="type-editor__add-inline-btn"
+                  onClick={() => addReponseAcceptee(i)}
+                  title="Ajouter une variante acceptée"
+                >
+                  + Variante
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- 6. VRAI / FAUX ----
+
+interface VraiFauxEditorProps {
+  data: VraiFauxData;
+  onChange: (data: VraiFauxData) => void;
+}
+
+const VraiFauxEditor: React.FC<VraiFauxEditorProps> = ({ data, onChange }) => (
+  <div className="type-editor">
+    <label className="type-editor__label">✓✗ Affirmation</label>
+    <p className="type-editor__hint">L&apos;élève devra indiquer si l&apos;affirmation est Vraie ou Fausse.</p>
+    <div className="type-editor__field-block">
+      <label>Affirmation</label>
+      <RichTextEditor
+        value={data.affirmation}
+        onChange={(html) => onChange({ ...data, affirmation: html })}
+        placeholder="Ex: Le Sénégal est situé en Afrique de l'Ouest."
+        minHeight={60}
+        toolbar={['bold', 'italic', 'color']}
+      />
+    </div>
+    <div className="type-editor__field-inline">
+      <label>Bonne réponse :</label>
+      <select
+        value={data.bonneReponse ? 'true' : 'false'}
+        onChange={(e) => onChange({ ...data, bonneReponse: e.target.value === 'true' })}
+      >
+        <option value="true">Vrai</option>
+        <option value="false">Faux</option>
+      </select>
+    </div>
+  </div>
+);
+
+// ---- 7. RÉPONSE COURTE ----
+
+interface ReponseCourteEditorProps {
+  data: ReponseCourteData;
+  onChange: (data: ReponseCourteData) => void;
+}
+
+const ReponseCourteEditor: React.FC<ReponseCourteEditorProps> = ({ data, onChange }) => {
+  const addReponse = () => onChange({ ...data, reponsesAcceptees: [...data.reponsesAcceptees, ''] });
+  const updateReponse = (i: number, v: string) => {
+    const newR = [...data.reponsesAcceptees];
+    newR[i] = v;
+    onChange({ ...data, reponsesAcceptees: newR });
+  };
+  const supprimerReponse = (i: number) => {
+    if (data.reponsesAcceptees.length <= 1) return;
+    onChange({ ...data, reponsesAcceptees: data.reponsesAcceptees.filter((_, j) => j !== i) });
+  };
+
+  return (
+    <div className="type-editor">
+      <label className="type-editor__label">📝 Réponse courte</label>
+      <p className="type-editor__hint">Une ou plusieurs réponses acceptées (variantes, synonymes).</p>
+      <div className="type-editor__field-block">
+        <label>Question</label>
+        <RichTextEditor
+          value={data.question}
+          onChange={(html) => onChange({ ...data, question: html })}
+          placeholder="Ex: Quelle est la capitale du Sénégal ?"
+          minHeight={60}
+          toolbar={['bold', 'italic', 'color']}
+        />
+      </div>
+      <div className="type-editor__blanks">
+        <label className="type-editor__sub-label">Réponses acceptées</label>
+        {data.reponsesAcceptees.map((rep, i) => (
+          <div key={i} className="type-editor__blank-rep-row">
+            <input
+              type="text"
+              value={rep}
+              onChange={(e) => updateReponse(i, e.target.value)}
+              placeholder="Réponse acceptée..."
+              className="type-editor__blank-input"
+            />
+            <button
+              type="button"
+              className="type-editor__remove-btn"
+              onClick={() => supprimerReponse(i)}
+              disabled={data.reponsesAcceptees.length <= 1}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button type="button" className="type-editor__add-inline-btn" onClick={addReponse}>
+          + Ajouter une variante
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ---- 8. ORDRE CHRONOLOGIQUE ----
+
+const OrdreChronologiqueEditor: React.FC<{
+  data: OrdreChronologiqueData;
+  onChange: (data: OrdreChronologiqueData) => void;
+}> = ({ data, onChange }) => (
+  <DragDropEditor
+    data={data}
+    onChange={onChange}
+  />
+);
+
+// ---- 9. TEXTE À TROUS AVEC MENU ----
+
+function countBlanksTrousMenu(phrase: string): number {
+  const m = phrase.match(/_{2,}/g);
+  return m ? m.length : 0;
+}
+
+interface TexteTrousMenuEditorProps {
+  data: TexteTrousMenuData;
+  onChange: (data: TexteTrousMenuData) => void;
+}
+
+const TexteTrousMenuEditor: React.FC<TexteTrousMenuEditorProps> = ({ data, onChange }) => {
+  const syncBlanks = (phrase: string) => {
+    const nb = countBlanksTrousMenu(phrase);
+    let blanks = [...data.blanks];
+    if (nb > blanks.length) {
+      while (blanks.length < nb) blanks.push({ reponsesAcceptees: [''], distracteurs: [] });
+      onChange({ phrase, blanks });
+    } else if (nb < blanks.length) {
+      onChange({ phrase, blanks: blanks.slice(0, nb) });
+    } else {
+      onChange({ phrase, blanks });
+    }
+  };
+
+  const updateBlank = (i: number, updates: Partial<{ reponsesAcceptees: string[]; distracteurs: string[] }>) => {
+    const newBlanks = data.blanks.map((b, j) => (j === i ? { ...b, ...updates } : b));
+    onChange({ ...data, blanks: newBlanks });
+  };
+
+  const addDistracteur = (i: number) => {
+    const b = data.blanks[i];
+    updateBlank(i, { distracteurs: [...b.distracteurs, ''] });
+  };
+
+  const nbBlanks = countBlanksTrousMenu(data.phrase);
+
+  return (
+    <div className="type-editor">
+      <label className="type-editor__label">📋 Texte à trous avec menu</label>
+      <p className="type-editor__hint">
+        Utilisez <code>_____</code> pour chaque trou. L&apos;élève choisira dans une liste déroulante.
+      </p>
+      <div className="type-editor__field-block">
+        <label>Phrase avec trous</label>
+        <input
+          type="text"
+          value={data.phrase}
+          onChange={(e) => syncBlanks(e.target.value)}
+          placeholder="La _____ du Sénégal est _____."
+          className="type-editor__input-full"
+        />
+      </div>
+      {nbBlanks > 0 && (
+        <div className="type-editor__blanks">
+          <label className="type-editor__sub-label">Par trou : réponses correctes + distracteurs</label>
+          {data.blanks.slice(0, nbBlanks).map((b, i) => (
+            <div key={i} className="type-editor__blank-group">
+              <span className="type-editor__blank-label">Trou {i + 1}</span>
+              <div className="type-editor__blank-reponses">
+                <div className="type-editor__blank-rep-row">
+                  <input
+                    type="text"
+                    value={b.reponsesAcceptees[0] || ''}
+                    onChange={(e) => updateBlank(i, { reponsesAcceptees: [e.target.value] })}
+                    placeholder="Réponse correcte"
+                    className="type-editor__blank-input"
+                  />
+                </div>
+                {b.distracteurs.map((d, j) => (
+                  <div key={j} className="type-editor__blank-rep-row">
+                    <input
+                      type="text"
+                      value={d}
+                      onChange={(e) => {
+                        const nd = [...b.distracteurs];
+                        nd[j] = e.target.value;
+                        updateBlank(i, { distracteurs: nd });
+                      }}
+                      placeholder="Distracteur"
+                      className="type-editor__blank-input"
+                    />
+                    <button
+                      type="button"
+                      className="type-editor__remove-btn"
+                      onClick={() => updateBlank(i, { distracteurs: b.distracteurs.filter((_, k) => k !== j) })}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <button type="button" className="type-editor__add-inline-btn" onClick={() => addDistracteur(i)}>
+                  + Distracteur
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- 10. ESSAI / RÉDACTION ----
 
 interface EssaiEditorProps {
   data: EssaiData;

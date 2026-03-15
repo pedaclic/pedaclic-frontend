@@ -18,6 +18,11 @@ import {
   QCMMultipleData,
   DragDropData,
   MiseEnRelationData,
+  TexteACompleterData,
+  VraiFauxData,
+  ReponseCourteData,
+  OrdreChronologiqueData,
+  TexteTrousMenuData,
   EssaiData,
   TYPE_QUESTION_ICONS,
   TYPE_QUESTION_LABELS,
@@ -306,6 +311,41 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           )}
           {currentQuestion.type === 'mise_en_relation' && (
             <MiseEnRelationPlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'texte_a_completer' && (
+            <TexteACompleterPlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'vrai_faux' && (
+            <VraiFauxPlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'reponse_courte' && (
+            <ReponseCourtePlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'ordre_chronologique' && (
+            <OrdreChronologiquePlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'texte_trous_menu' && (
+            <TexteTrousMenuPlayer
               question={currentQuestion}
               reponse={reponses.get(currentQuestion.id)}
               onUpdate={(data) => updateReponse(currentQuestion.id, data)}
@@ -608,7 +648,7 @@ const MiseEnRelationPlayer: React.FC<{
   // Mettre à jour la réponse
   useEffect(() => {
     onUpdate({ relationsProposees: relations });
-  }, [relations]);
+  }, [relations, onUpdate]);
 
   const handleSelectGauche = (paireId: string) => {
     setSelectedGauche(paireId);
@@ -690,7 +730,213 @@ const MiseEnRelationPlayer: React.FC<{
   );
 };
 
-// ---- 5. ESSAI ----
+// ---- 5. TEXTE À COMPLÉTER ----
+
+const BLANK_PATTERN = /_{2,}/g;
+
+const TexteACompleterPlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+}> = ({ question, reponse, onUpdate }) => {
+  const data = question.typeData as TexteACompleterData;
+  const remplissages = reponse?.remplissages || [];
+
+  const updateRemplissage = (index: number, value: string) => {
+    const newRemplissages = [...remplissages];
+    while (newRemplissages.length <= index) newRemplissages.push('');
+    newRemplissages[index] = value;
+    onUpdate({ remplissages: newRemplissages });
+  };
+
+  // Découper la phrase en segments (texte + indices de trous)
+  const segments = useMemo(() => {
+    const parts: { type: 'text' | 'blank'; value?: string; index?: number }[] = [];
+    let lastIndex = 0;
+    let match;
+    const re = new RegExp(BLANK_PATTERN.source, 'g');
+    let blankIndex = 0;
+    while ((match = re.exec(data.phrase)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push({ type: 'text', value: data.phrase.slice(lastIndex, match.index) });
+      }
+      parts.push({ type: 'blank', index: blankIndex++ });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < data.phrase.length) {
+      parts.push({ type: 'text', value: data.phrase.slice(lastIndex) });
+    }
+    return parts;
+  }, [data.phrase]);
+
+  return (
+    <div className="player-texte-completer">
+      <p className="player-texte-completer__hint">Complétez les trous</p>
+      <div className="player-texte-completer__phrase">
+        {segments.map((seg, i) =>
+          seg.type === 'text' ? (
+            <span key={i}>{seg.value}</span>
+          ) : (
+            <input
+              key={i}
+              type="text"
+              value={remplissages[seg.index!] || ''}
+              onChange={(e) => updateRemplissage(seg.index!, e.target.value)}
+              placeholder={`Trou ${(seg.index ?? 0) + 1}`}
+              className="player-texte-completer__input"
+            />
+          )
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---- 6. VRAI / FAUX ----
+
+const VraiFauxPlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+}> = ({ question, reponse, onUpdate }) => {
+  const data = question.typeData as VraiFauxData;
+  const value = reponse?.valueBool;
+
+  return (
+    <div className="player-vraifaux">
+      {data.affirmation && (
+        <div
+          className="player-vraifaux__affirmation"
+          dangerouslySetInnerHTML={{ __html: data.affirmation }}
+        />
+      )}
+      <div className="player-vraifaux__options">
+        <label className={`player-vraifaux__option ${value === true ? 'player-vraifaux__option--selected' : ''}`}>
+          <input
+            type="radio"
+            name={`vf_${question.id}`}
+            checked={value === true}
+            onChange={() => onUpdate({ valueBool: true })}
+          />
+          <span>Vrai</span>
+        </label>
+        <label className={`player-vraifaux__option ${value === false ? 'player-vraifaux__option--selected' : ''}`}>
+          <input
+            type="radio"
+            name={`vf_${question.id}`}
+            checked={value === false}
+            onChange={() => onUpdate({ valueBool: false })}
+          />
+          <span>Faux</span>
+        </label>
+      </div>
+    </div>
+  );
+};
+
+// ---- 7. RÉPONSE COURTE ----
+
+const ReponseCourtePlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+}> = ({ question, reponse, onUpdate }) => {
+  const data = question.typeData as ReponseCourteData;
+
+  return (
+    <div className="player-reponse-courte">
+      {data.question && (
+        <div
+          className="player-reponse-courte__question"
+          dangerouslySetInnerHTML={{ __html: data.question }}
+        />
+      )}
+      <input
+        type="text"
+        value={reponse?.reponseCourte || ''}
+        onChange={(e) => onUpdate({ reponseCourte: e.target.value })}
+        placeholder="Votre réponse..."
+        className="player-reponse-courte__input"
+      />
+    </div>
+  );
+};
+
+// ---- 8. ORDRE CHRONOLOGIQUE ----
+
+const OrdreChronologiquePlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+}> = (props) => <DragDropPlayer {...props} />;
+
+// ---- 9. TEXTE À TROUS AVEC MENU ----
+
+const BLANK_PATTERN_MENU = /_{2,}/g;
+
+const TexteTrousMenuPlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+}> = ({ question, reponse, onUpdate }) => {
+  const data = question.typeData as TexteTrousMenuData;
+  const remplissages = reponse?.remplissages || [];
+
+  const optionsParTrou = useMemo(() => {
+    return data.blanks.map((b) => {
+      const all = [...b.reponsesAcceptees, ...b.distracteurs].filter(Boolean);
+      return ['', ...all.sort(() => Math.random() - 0.5)];
+    });
+  }, [data.blanks]);
+
+  const updateRemplissage = (index: number, value: string) => {
+    const newR = [...remplissages];
+    while (newR.length <= index) newR.push('');
+    newR[index] = value;
+    onUpdate({ remplissages: newR });
+  };
+
+  const segments = useMemo(() => {
+    const parts: { type: 'text' | 'blank'; value?: string; index?: number }[] = [];
+    let lastIndex = 0;
+    let match;
+    const re = new RegExp(BLANK_PATTERN_MENU.source, 'g');
+    let idx = 0;
+    while ((match = re.exec(data.phrase)) !== null) {
+      if (match.index > lastIndex) parts.push({ type: 'text', value: data.phrase.slice(lastIndex, match.index) });
+      parts.push({ type: 'blank', index: idx++ });
+      lastIndex = match.index + match[0].length;
+    }
+    if (lastIndex < data.phrase.length) parts.push({ type: 'text', value: data.phrase.slice(lastIndex) });
+    return parts;
+  }, [data.phrase]);
+
+  return (
+    <div className="player-texte-completer">
+      <p className="player-texte-completer__hint">Choisissez dans les menus déroulants</p>
+      <div className="player-texte-completer__phrase">
+        {segments.map((seg, i) =>
+          seg.type === 'text' ? (
+            <span key={i}>{seg.value}</span>
+          ) : (
+            <select
+              key={i}
+              value={remplissages[seg.index!] || ''}
+              onChange={(e) => updateRemplissage(seg.index!, e.target.value)}
+              className="player-texte-completer__select"
+            >
+              {optionsParTrou[seg.index!]?.map((opt, j) => (
+                <option key={j} value={opt}>{opt || '— Choisir —'}</option>
+              ))}
+            </select>
+          )
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ---- 10. ESSAI ----
 
 const EssaiPlayer: React.FC<{
   question: QuestionAvancee;

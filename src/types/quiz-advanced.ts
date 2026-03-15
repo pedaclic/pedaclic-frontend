@@ -18,6 +18,11 @@ export type TypeQuestion =
   | 'qcm_multiple'    // QCM à choix multiple (checkboxes)
   | 'drag_drop'       // Glisser-déposer (réordonner)
   | 'mise_en_relation' // Relier colonne A ↔ colonne B
+  | 'texte_a_completer' // Phrase à compléter (un ou plusieurs trous)
+  | 'vrai_faux'       // Vrai ou Faux
+  | 'reponse_courte'  // Réponse courte (un mot ou phrase)
+  | 'ordre_chronologique' // Classer par ordre chronologique
+  | 'texte_trous_menu'    // Texte à trous avec menu déroulant
   | 'essai';           // Réponse libre (texte long)
 
 /**
@@ -90,6 +95,44 @@ export interface MiseEnRelationData {
 }
 
 /**
+ * Données spécifiques : Texte / Phrase à compléter
+ */
+export interface TexteACompleterData {
+  phrase: string;
+  blanks: { reponsesAcceptees: string[] }[];
+}
+
+/**
+ * Données spécifiques : Vrai / Faux
+ */
+export interface VraiFauxData {
+  affirmation: string;   // L'affirmation (HTML)
+  bonneReponse: boolean; // true = Vrai, false = Faux
+}
+
+/**
+ * Données spécifiques : Réponse courte
+ */
+export interface ReponseCourteData {
+  question: string;           // La question (HTML)
+  reponsesAcceptees: string[]; // Réponses acceptées (variantes)
+}
+
+/**
+ * Données spécifiques : Ordre chronologique (réutilise DragDropData)
+ */
+export type OrdreChronologiqueData = DragDropData;
+
+/**
+ * Données spécifiques : Texte à trous avec menu déroulant
+ * Pour chaque trou : options mélangées (correctes + distracteurs)
+ */
+export interface TexteTrousMenuData {
+  phrase: string;  // Texte avec "_____" pour chaque trou
+  blanks: { reponsesAcceptees: string[]; distracteurs: string[] }[];
+}
+
+/**
  * Mot-clé attendu dans une réponse essai (correction automatique)
  */
 export interface MotCleEssai {
@@ -131,6 +174,7 @@ export interface QuestionAvancee {
           | QCMMultipleData 
           | DragDropData 
           | MiseEnRelationData 
+          | TexteACompleterData
           | EssaiData;
 }
 
@@ -206,6 +250,15 @@ export interface ReponseEleve {
   // Mise en Relation : Paires proposées { gaucheId: droiteId }
   relationsProposees?: { [gaucheId: string]: string };
 
+  // Texte à compléter / Texte trous menu : Réponses par trou
+  remplissages?: string[];
+
+  // Vrai/Faux : true = Vrai, false = Faux
+  valueBool?: boolean;
+
+  // Réponse courte : texte saisi
+  reponseCourte?: string;
+
   // Essai : Texte de la réponse (HTML)
   texteReponse?: string;
 }
@@ -252,6 +305,11 @@ export const TYPE_QUESTION_LABELS: Record<TypeQuestion, string> = {
   qcm_multiple: 'QCM — Choix multiple',
   drag_drop: 'Glisser-Déposer',
   mise_en_relation: 'Mise en relation',
+  texte_a_completer: 'Texte à compléter',
+  vrai_faux: 'Vrai / Faux',
+  reponse_courte: 'Réponse courte',
+  ordre_chronologique: 'Ordre chronologique',
+  texte_trous_menu: 'Texte à trous (menu)',
   essai: 'Essai / Rédaction',
 };
 
@@ -263,6 +321,7 @@ export const TYPE_QUESTION_ICONS: Record<TypeQuestion, string> = {
   qcm_multiple: '☑️',
   drag_drop: '↕️',
   mise_en_relation: '🔗',
+  texte_a_completer: '✏️',
   essai: '✍️',
 };
 
@@ -274,6 +333,11 @@ export const TYPE_QUESTION_COLORS: Record<TypeQuestion, string> = {
   qcm_multiple: '#7c3aed',
   drag_drop: '#059669',
   mise_en_relation: '#d97706',
+  texte_a_completer: '#0891b2',
+  vrai_faux: '#0d9488',
+  reponse_courte: '#ca8a04',
+  ordre_chronologique: '#c026d3',
+  texte_trous_menu: '#0284c7',
   essai: '#dc2626',
 };
 
@@ -348,6 +412,58 @@ export function creerQuestionVide(type: TypeQuestion, ordre: number): QuestionAv
             { id: generateId('pair'), gauche: '', droite: '' },
           ],
         } as MiseEnRelationData,
+      };
+
+    case 'texte_a_completer':
+      return {
+        ...base,
+        typeData: {
+          phrase: 'La _____ du Sénégal est _____.',
+          blanks: [{ reponsesAcceptees: ['capitale'] }, { reponsesAcceptees: ['Dakar'] }],
+        } as TexteACompleterData,
+      };
+
+    case 'vrai_faux':
+      return {
+        ...base,
+        typeData: {
+          affirmation: 'Le Sénégal est situé en Afrique de l\'Ouest.',
+          bonneReponse: true,
+        } as VraiFauxData,
+      };
+
+    case 'reponse_courte':
+      return {
+        ...base,
+        typeData: {
+          question: 'Quelle est la capitale du Sénégal ?',
+          reponsesAcceptees: ['Dakar'],
+        } as ReponseCourteData,
+      };
+
+    case 'ordre_chronologique':
+      return {
+        ...base,
+        typeData: {
+          items: [
+            { id: generateId('item'), texte: 'Indépendance du Sénégal', ordreCorrect: 1 },
+            { id: generateId('item'), texte: 'Création de l\'UEMOA', ordreCorrect: 2 },
+            { id: generateId('item'), texte: 'Adoption du franc CFA', ordreCorrect: 3 },
+          ],
+          consigneOrdre: 'Classez les événements du plus ancien au plus récent',
+        } as OrdreChronologiqueData,
+      };
+
+    case 'texte_trous_menu':
+      return {
+        ...base,
+        typeData: {
+          phrase: 'La _____ du Sénégal est _____.',
+          blanks: [
+            { reponsesAcceptees: ['capitale'], distracteurs: ['ville', 'région'] },
+            { reponsesAcceptees: ['Dakar'], distracteurs: ['Saint-Louis', 'Thiès'] },
+          ],
+        } as TexteTrousMenuData,
       };
 
     case 'essai':

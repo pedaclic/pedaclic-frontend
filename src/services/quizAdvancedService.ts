@@ -31,6 +31,10 @@ import type {
   QCMMultipleData,
   DragDropData,
   MiseEnRelationData,
+  TexteACompleterData,
+  VraiFauxData,
+  ReponseCourteData,
+  TexteTrousMenuData,
   EssaiData,
 } from '../types/quiz-advanced';
 
@@ -340,6 +344,101 @@ export function corrigerQuiz(
           pointsObtenus = Math.round(
             (question.points * positionsCorrectes) / ordreCorrect.length * 100
           ) / 100;
+          isPartiel = true;
+        }
+        break;
+      }
+
+      // ---- Texte à compléter ----
+      case 'texte_a_completer': {
+        const data = question.typeData as TexteACompleterData;
+        const remplissages = reponse.remplissages || [];
+        const blanks = data.blanks || [];
+
+        let corrects = 0;
+        for (let i = 0; i < blanks.length; i++) {
+          const reponseEleve = (remplissages[i] || '').trim().toLowerCase();
+          const acceptees = blanks[i].reponsesAcceptees
+            .map((r) => r.trim().toLowerCase())
+            .filter(Boolean);
+          if (acceptees.length === 0) continue;
+          const isCorrect = acceptees.some((a) => a === reponseEleve);
+          if (isCorrect) corrects++;
+        }
+
+        if (corrects === blanks.length && blanks.length > 0) {
+          pointsObtenus = question.points;
+          isCorrect = true;
+        } else if (corrects > 0 && blanks.length > 0) {
+          pointsObtenus = Math.round(
+            (question.points * corrects) / blanks.length * 100
+          ) / 100;
+          isPartiel = true;
+        }
+        break;
+      }
+
+      // ---- Vrai / Faux ----
+      case 'vrai_faux': {
+        const data = question.typeData as VraiFauxData;
+        const value = reponse.valueBool;
+        if (value === data.bonneReponse) {
+          pointsObtenus = question.points;
+          isCorrect = true;
+        }
+        break;
+      }
+
+      // ---- Réponse courte ----
+      case 'reponse_courte': {
+        const data = question.typeData as ReponseCourteData;
+        const rep = (reponse.reponseCourte || '').trim().toLowerCase();
+        const acceptees = data.reponsesAcceptees.map((r) => r.trim().toLowerCase()).filter(Boolean);
+        if (acceptees.length > 0 && acceptees.some((a) => a === rep)) {
+          pointsObtenus = question.points;
+          isCorrect = true;
+        }
+        break;
+      }
+
+      // ---- Ordre chronologique (même logique que drag_drop) ----
+      case 'ordre_chronologique': {
+        const data = question.typeData as DragDropData;
+        const ordrePropose = reponse.ordrePropose || [];
+        const ordreCorrect = data.items
+          .sort((a, b) => a.ordreCorrect - b.ordreCorrect)
+          .map((item) => item.id);
+        let positionsCorrectes = 0;
+        for (let i = 0; i < ordreCorrect.length; i++) {
+          if (ordrePropose[i] === ordreCorrect[i]) positionsCorrectes++;
+        }
+        if (positionsCorrectes === ordreCorrect.length) {
+          pointsObtenus = question.points;
+          isCorrect = true;
+        } else if (positionsCorrectes > 0) {
+          pointsObtenus = Math.round((question.points * positionsCorrectes) / ordreCorrect.length * 100) / 100;
+          isPartiel = true;
+        }
+        break;
+      }
+
+      // ---- Texte à trous avec menu ----
+      case 'texte_trous_menu': {
+        const data = question.typeData as TexteTrousMenuData;
+        const remplissages = reponse.remplissages || [];
+        const blanks = data.blanks || [];
+        let corrects = 0;
+        for (let i = 0; i < blanks.length; i++) {
+          const repEleve = (remplissages[i] || '').trim().toLowerCase();
+          const acceptees = blanks[i].reponsesAcceptees.map((r) => r.trim().toLowerCase()).filter(Boolean);
+          if (acceptees.length === 0) continue;
+          if (acceptees.some((a) => a === repEleve)) corrects++;
+        }
+        if (corrects === blanks.length && blanks.length > 0) {
+          pointsObtenus = question.points;
+          isCorrect = true;
+        } else if (corrects > 0 && blanks.length > 0) {
+          pointsObtenus = Math.round((question.points * corrects) / blanks.length * 100) / 100;
           isPartiel = true;
         }
         break;
