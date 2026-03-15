@@ -38,7 +38,8 @@ type ToolbarOption =
   | 'blockquote'
   | 'subscript' | 'superscript'
   | 'link' | 'clean'
-  | 'separator';
+  | 'separator'
+  | 'rowBreak';
 
 // ==================== PALETTES ====================
 
@@ -97,7 +98,8 @@ const FONT_SIZES: { value: string; label: string }[] = [
 const DEFAULT_TOOLBAR: ToolbarOption[] = [
   'headinglevel', 'fontsize', 'separator',
   'bold', 'italic', 'underline', 'strikethrough', 'separator',
-  'color', 'highlight', 'blockBg', 'separator',
+  'color', 'highlight', 'blockBg',
+  'rowBreak',
   'alignLeft', 'alignCenter', 'alignRight', 'alignJustify', 'separator',
   'bulletList', 'numberedList', 'indent', 'outdent', 'separator',
   'subscript', 'superscript', 'link', 'clean',
@@ -200,6 +202,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       case 'separator':
         return <span key={`sep-${key}`} className="rte-separator" />;
+
+      case 'rowBreak':
+        return null;
 
       case 'bold':
         return (
@@ -504,11 +509,11 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   };
 
-  // Grouper la toolbar par séparateurs pour afficher sur 2 lignes horizontales
+  // Grouper la toolbar par rowBreak — max 2 lignes horizontales
   const toolbarRows: ToolbarOption[][] = [];
   let currentRow: ToolbarOption[] = [];
   for (const opt of toolbar) {
-    if (opt === 'separator') {
+    if (opt === 'rowBreak') {
       if (currentRow.length) {
         toolbarRows.push(currentRow);
         currentRow = [];
