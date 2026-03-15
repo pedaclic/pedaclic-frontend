@@ -11,6 +11,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { QuizPlayer } from '../components/quiz/QuizPlayer';
 import { getQuizAvance } from '../services/quizAdvancedService';
+import { getGroupesEleve } from '../services/profGroupeService';
 import type { QuizAvance } from '../types/quiz-advanced';
 
 const QuizPlayerPage: React.FC = () => {
@@ -37,10 +38,16 @@ const QuizPlayerPage: React.FC = () => {
           return;
         }
 
-        // Vérifier accès Premium
+        // Vérifier accès Premium : OK si Premium OU si élève dans la classe liée
         if (data.isPremium && !currentUser?.isPremium) {
-          setError('Ce quiz est réservé aux abonnés Premium');
-          return;
+          const eleveDansClasse =
+            data.groupeId &&
+            currentUser?.uid &&
+            (await getGroupesEleve(currentUser.uid)).some((g) => g.id === data.groupeId);
+          if (!eleveDansClasse) {
+            setError('Ce quiz est réservé aux abonnés Premium');
+            return;
+          }
         }
 
         setQuiz(data);
