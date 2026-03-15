@@ -4,11 +4,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && cp dist/index.html dist/404.html",
     "preview": "vite preview",
-    "deploy": "npm run build && cp dist/index.html dist/404.html && gh-pages -d dist && firebase deploy --only hosting",
-    "deploy:gh": "npm run build && cp dist/index.html dist/404.html && gh-pages -d dist",
-    "deploy:firebase": "npm run build && cp dist/index.html dist/404.html && firebase deploy --only hosting",
+    "deploy": "npm run build && gh-pages -d dist && firebase deploy --only hosting",
+    "deploy:gh": "npm run build && gh-pages -d dist",
+    "deploy:firebase": "npm run build && firebase deploy --only hosting",
     "deploy:full": "firebase deploy"
   },
   "dependencies": {

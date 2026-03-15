@@ -12,7 +12,6 @@ import {
   persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
-import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // --- Configuration Firebase (variables d'environnement) ---
 const firebaseConfig = {
@@ -29,22 +28,17 @@ const app = initializeApp(firebaseConfig);
 
 // ============================================
 // PHASE 28 — Firebase App Check (reCAPTCHA v3)
+// TEMPORAIREMENT COMMENTÉ POUR TEST
 // ============================================
-// En développement : token de debug automatique
-// (permet de tester sans déclencher reCAPTCHA)
-// En production : reCAPTCHA v3 invisible pour l'utilisateur
-if (import.meta.env.DEV) {
-  // @ts-ignore — propriété globale Firebase App Check debug
-  self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-}
-
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider(
-    import.meta.env.VITE_RECAPTCHA_SITE_KEY
-  ),
-  // Renouvelle automatiquement le token avant expiration
-  isTokenAutoRefreshEnabled: true,
-});
+// if (import.meta.env.DEV) {
+//   (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+// }
+// initializeAppCheck(app, {
+//   provider: new ReCaptchaV3Provider(
+//     import.meta.env.VITE_RECAPTCHA_SITE_KEY
+//   ),
+//   isTokenAutoRefreshEnabled: true,
+// });
 
 // --- Auth (inchangé) ---
 export const auth = getAuth(app);

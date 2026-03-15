@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>PedaClic - L'école en un clic</title>
+  <title>PedaClic - Redirection</title>
+  <!-- Fallback : si cette page est servie (404), rediriger vers l'app SPA -->
+  <meta http-equiv="refresh" content="0;url=/" />
+  <script>window.location.replace('/');</script>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+  <p>Redirection vers PedaClic…</p>
 </body>
 </html>
