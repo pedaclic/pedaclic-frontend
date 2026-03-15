@@ -36,6 +36,7 @@ const ProfQuizClassicEditPage: React.FC = () => {
   const [duree, setDuree] = useState(15);
   const [noteMinimale, setNoteMinimale] = useState(10);
   const [questions, setQuestions] = useState<Question[]>([createEmptyQuestion()]);
+  const [isDraft, setIsDraft] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -65,6 +66,7 @@ const ProfQuizClassicEditPage: React.FC = () => {
         setDuree(quiz.duree || 15);
         setNoteMinimale(quiz.noteMinimale ?? 10);
         setQuestions(quiz.questions?.length ? quiz.questions : [createEmptyQuestion()]);
+        setIsDraft(quiz.status === 'draft');
       } catch (err) {
         console.error('Erreur chargement:', err);
         setError('Erreur de chargement');
@@ -100,7 +102,8 @@ const ProfQuizClassicEditPage: React.FC = () => {
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /** Enregistrer comme brouillon (validation complète) — reste en brouillon */
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quizId) return;
     if (!titre.trim()) { setError('Le titre est obligatoire'); return; }
@@ -114,18 +117,61 @@ const ProfQuizClassicEditPage: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      await updateQuiz(quizId, {
-        disciplineId,
-        titre: titre.trim(),
-        questions,
-        duree,
-        isPremium: false,
-        noteMinimale,
-        groupeId: groupeId || undefined,
-      });
+      await updateQuiz(
+        quizId,
+        {
+          disciplineId,
+          titre: titre.trim(),
+          questions,
+          duree,
+          isPremium: false,
+          noteMinimale,
+          groupeId: groupeId || undefined,
+        },
+        { asDraft: true }
+      );
+      setIsDraft(true);
+      alert('📝 Brouillon enregistré. Vous pouvez continuer ou publier quand vous serez prêt.');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'enregistrement');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** Publier le quiz — visible aux élèves */
+  const handlePublish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quizId) return;
+    if (!titre.trim()) { setError('Le titre est obligatoire'); return; }
+    if (!disciplineId) { setError('Sélectionnez une discipline'); return; }
+    if (groupes.length > 0 && !groupeId) { setError('Sélectionnez une classe'); return; }
+    if (questions.some((q) => !q.question.trim())) {
+      setError('Chaque question doit avoir un énoncé');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      await updateQuiz(
+        quizId,
+        {
+          disciplineId,
+          titre: titre.trim(),
+          questions,
+          duree,
+          isPremium: false,
+          noteMinimale,
+          groupeId: groupeId || undefined,
+        },
+        { asDraft: false }
+      );
+      setIsDraft(false);
+      alert('✅ Quiz publié ! Il est maintenant visible par vos élèves.');
       navigate('/prof/quiz');
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour');
+      setError(err.message || 'Erreur lors de la publication');
     } finally {
       setSaving(false);
     }
@@ -198,6 +244,11 @@ const ProfQuizClassicEditPage: React.FC = () => {
 
       <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1rem' }}>
         ✏️ Modifier le quiz classique
+        {isDraft && (
+          <span style={{ fontSize: '0.75rem', background: '#fef3c7', color: '#92400e', padding: '0.2rem 0.5rem', borderRadius: 4, marginLeft: '0.5rem', fontWeight: 500 }}>
+            Brouillon
+          </span>
+        )}
       </h1>
 
       {error && (
@@ -332,8 +383,11 @@ const ProfQuizClassicEditPage: React.FC = () => {
           <button type="button" onClick={handleSaveDraft} disabled={saving || !disciplines.length} style={{ padding: '0.6rem 1rem', background: '#fff', color: '#2563eb', border: '2px solid #2563eb', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
             {saving ? 'Enregistrement...' : '📝 Enregistrer comme brouillon'}
           </button>
-          <button type="submit" disabled={saving} style={{ padding: '0.6rem 1.2rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+          <button type="submit" disabled={saving} style={{ padding: '0.6rem 1rem', background: '#e5e7eb', color: '#374151', border: '1px solid #d1d5db', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
             {saving ? 'Enregistrement...' : 'Enregistrer'}
+          </button>
+          <button type="button" onClick={handlePublish} disabled={saving} style={{ padding: '0.6rem 1.2rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+            {saving ? 'Publication...' : '📤 Publier'}
           </button>
         </div>
       </form>
