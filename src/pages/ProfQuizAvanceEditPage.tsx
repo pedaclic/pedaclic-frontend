@@ -95,6 +95,9 @@ const ProfQuizAvanceEditPage: React.FC = () => {
       groupes={groupes}
       auteurId={currentUser?.uid || ''}
       onSave={() => navigate('/prof/quiz')}
+      onSaveDraft={() => {
+        alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+      }}
       onCancel={() => navigate('/prof/quiz')}
     />
   );

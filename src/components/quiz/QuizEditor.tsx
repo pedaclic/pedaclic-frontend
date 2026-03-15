@@ -44,8 +44,10 @@ interface QuizEditorProps {
   auteurId: string;
   /** Groupes du prof (pour quiz de classe) — si fourni, affiche sélecteur */
   groupes?: { id: string; nom: string }[];
-  /** Callback après sauvegarde réussie */
+  /** Callback après sauvegarde réussie (quiz publié) */
   onSave?: (quizId: string) => void;
+  /** Callback après enregistrement en brouillon (quizId, isNew) */
+  onSaveDraft?: (quizId: string, isNew: boolean) => void;
   /** Callback pour annuler */
   onCancel?: () => void;
 }
@@ -58,6 +60,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   auteurId,
   groupes,
   onSave,
+  onSaveDraft,
   onCancel,
 }) => {
   // ---- États du formulaire ----
@@ -138,6 +141,51 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
 
   // ==================== SAUVEGARDE ====================
 
+  /** Enregistrer comme brouillon — validation allégée */
+  const handleSaveDraft = async () => {
+    const titreVal = titre.trim() || 'Brouillon sans titre';
+    const discId = disciplineId || disciplines[0]?.id || '';
+
+    if (!discId) {
+      setError('Sélectionnez une discipline pour enregistrer le brouillon');
+      return;
+    }
+
+    setError(null);
+    setSaving(true);
+
+    try {
+      const formData: QuizAvanceFormData = {
+        disciplineId: discId,
+        titre: titreVal,
+        description: description.trim() || undefined,
+        questions,
+        duree,
+        isPremium,
+        noteMinimale,
+        melangerQuestions,
+        melangerOptions,
+        afficherCorrection,
+        tentativesMax,
+        groupeId: groupes && groupes.length > 0 ? (groupeId || null) : undefined,
+      };
+
+      let quizId: string;
+      if (existingQuiz?.id) {
+        await updateQuizAvance(existingQuiz.id, formData, { asDraft: true });
+        quizId = existingQuiz.id;
+        onSaveDraft?.(quizId, false);
+      } else {
+        quizId = await createQuizAvance(formData, auteurId, true);
+        onSaveDraft?.(quizId, true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'enregistrement du brouillon');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     // Validations
     if (!titre.trim()) { setError('Le titre est obligatoire'); return; }
@@ -176,10 +224,10 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
 
       let quizId: string;
       if (existingQuiz?.id) {
-        await updateQuizAvance(existingQuiz.id, formData);
+        await updateQuizAvance(existingQuiz.id, formData, { asDraft: false });
         quizId = existingQuiz.id;
       } else {
-        quizId = await createQuizAvance(formData, auteurId);
+        quizId = await createQuizAvance(formData, auteurId, false);
       }
 
       onSave?.(quizId);
@@ -430,6 +478,15 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
           disabled={saving}
         >
           Annuler
+        </button>
+        <button
+          type="button"
+          className="quiz-editor__btn quiz-editor__btn--outline"
+          onClick={handleSaveDraft}
+          disabled={saving || !disciplines.length}
+          title="Sauvegarder pour continuer plus tard"
+        >
+          {saving ? '⏳ Enregistrement...' : '📝 Enregistrer comme brouillon'}
         </button>
         <button
           type="button"

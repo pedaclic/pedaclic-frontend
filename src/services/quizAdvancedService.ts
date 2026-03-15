@@ -43,14 +43,20 @@ const RESULTS_COLLECTION = 'quiz_results_v2';   // Résultats quiz avancés
 
 /**
  * Créer un nouveau quiz avancé
+ * @param data Données du quiz
+ * @param auteurId ID de l'auteur
+ * @param asDraft Si true, enregistre comme brouillon (non visible aux élèves)
  */
 export async function createQuizAvance(
   data: QuizAvanceFormData,
-  auteurId: string
+  auteurId: string,
+  asDraft?: boolean
 ): Promise<string> {
   try {
+    const status = asDraft ? 'draft' : (data.status || 'published');
     const docRef = await addDoc(collection(db, QUIZZES_COLLECTION), {
       ...data,
+      status,
       auteurId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
@@ -65,17 +71,20 @@ export async function createQuizAvance(
 
 /**
  * Mettre à jour un quiz avancé
+ * @param asDraft Si fourni, met à jour le statut (brouillon ou publié)
  */
 export async function updateQuizAvance(
   quizId: string,
-  data: Partial<QuizAvanceFormData>
+  data: Partial<QuizAvanceFormData>,
+  options?: { asDraft?: boolean }
 ): Promise<void> {
   try {
     const docRef = doc(db, QUIZZES_COLLECTION, quizId);
-    await updateDoc(docRef, {
-      ...data,
-      updatedAt: serverTimestamp(),
-    });
+    const updates: Record<string, any> = { ...data, updatedAt: serverTimestamp() };
+    if (options?.asDraft !== undefined) {
+      updates.status = options.asDraft ? 'draft' : 'published';
+    }
+    await updateDoc(docRef, updates);
     console.log('✅ Quiz avancé mis à jour :', quizId);
   } catch (error) {
     console.error('❌ Erreur mise à jour quiz :', error);
@@ -215,6 +224,7 @@ export async function getQuizzesAvanceForEleve(
     const groupeIds = groupes.map((g) => g.id);
 
     return allQuizzes.filter((q) => {
+      if (q.status === 'draft') return false;
       if (q.isPremium && !isPremium) return false;
       return (
         !q.groupeId ||

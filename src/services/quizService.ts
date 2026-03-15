@@ -39,8 +39,13 @@ export interface Question {
   points: number;
 }
 
+/** Statut de publication du quiz */
+export type QuizStatus = 'draft' | 'published';
+
 export interface Quiz {
   id: string;
+  /** Brouillon (non visible aux élèves) ou publié — défaut: published */
+  status?: QuizStatus;
   disciplineId: string;
   titre: string;
   questions: Question[];
@@ -69,6 +74,8 @@ export interface QuizFilters {
   /** Si true, restreint la requête aux quiz gratuits (évite permission-denied pour élèves) */
   freeOnly?: boolean;
   difficulte?: string;
+  /** Si true, exclut les brouillons (pour les listes élèves) */
+  excludeDrafts?: boolean;
 }
 
 /* ══════════════════════════════════════════════
@@ -104,6 +111,10 @@ export const getQuizzes = async (filters?: QuizFilters): Promise<Quiz[]> => {
       );
     }
 
+    if (filters?.excludeDrafts) {
+      quizzes = quizzes.filter((quiz) => quiz.status !== 'draft');
+    }
+
     return quizzes;
   } catch (error) {
     console.error('Erreur lors de la récupération des quiz :', error);
@@ -124,13 +135,20 @@ export const getQuizById = async (quizId: string): Promise<Quiz | null> => {
   }
 };
 
-export const createQuiz = async (quizData: Omit<Quiz, 'id'>): Promise<string> => {
+export const createQuiz = async (
+  quizData: Omit<Quiz, 'id'>,
+  options?: { asDraft?: boolean }
+): Promise<string> => {
   try {
-    const docRef = await addDoc(quizzesRef, {
+    const doc: Record<string, any> = {
       ...quizData,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
-    });
+    };
+    if (options?.asDraft !== undefined) {
+      doc.status = options.asDraft ? 'draft' : 'published';
+    }
+    const docRef = await addDoc(quizzesRef, doc);
     return docRef.id;
   } catch (error) {
     console.error('Erreur lors de la création du quiz :', error);
@@ -140,13 +158,15 @@ export const createQuiz = async (quizData: Omit<Quiz, 'id'>): Promise<string> =>
 
 export const updateQuiz = async (
   quizId: string,
-  quizData: Partial<Omit<Quiz, 'id'>>
+  quizData: Partial<Omit<Quiz, 'id'>>,
+  options?: { asDraft?: boolean }
 ): Promise<void> => {
   try {
-    await updateDoc(doc(db, 'quizzes', quizId), {
-      ...quizData,
-      updatedAt: Timestamp.now(),
-    });
+    const updates: Record<string, any> = { ...quizData, updatedAt: Timestamp.now() };
+    if (options?.asDraft !== undefined) {
+      updates.status = options.asDraft ? 'draft' : 'published';
+    }
+    await updateDoc(doc(db, 'quizzes', quizId), updates);
   } catch (error) {
     console.error('Erreur lors de la mise à jour du quiz :', error);
     throw error;
@@ -232,7 +252,7 @@ export const getQuizzesForEleve = async (
   try {
     const [groupes, allQuizzes] = await Promise.all([
       getGroupesEleve(eleveId),
-      getQuizzes({ freeOnly: !isPremium }),
+      getQuizzes({ freeOnly: !isPremium, excludeDrafts: true }),
     ]);
     const groupeIds = groupes.map((g) => g.id);
     return allQuizzes.filter(

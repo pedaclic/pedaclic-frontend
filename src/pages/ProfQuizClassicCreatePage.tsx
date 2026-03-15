@@ -110,6 +110,39 @@ const ProfQuizClassicCreatePage: React.FC = () => {
     }
   };
 
+  const handleSaveDraft = async () => {
+    const titreVal = titre.trim() || 'Brouillon sans titre';
+    const discId = disciplineId || disciplines[0]?.id;
+    if (!discId) {
+      setError('Sélectionnez une discipline pour enregistrer le brouillon');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const id = await createQuiz(
+        {
+          disciplineId: discId,
+          titre: titreVal,
+          questions,
+          duree,
+          isPremium: false,
+          noteMinimale,
+          profId: currentUser?.uid ?? undefined,
+          groupeId: groupes.length > 0 ? (groupeId || undefined) : undefined,
+        },
+        { asDraft: true }
+      );
+      alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+      navigate(`/prof/quiz/classique/${id}/modifier`);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'enregistrement du brouillon');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem' }}>
@@ -260,9 +293,12 @@ const ProfQuizClassicCreatePage: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => navigate('/prof/quiz')} style={{ padding: '0.6rem 1rem', background: '#f3f4f6', border: 'none', borderRadius: 8, cursor: 'pointer' }}>
             Annuler
+          </button>
+          <button type="button" onClick={handleSaveDraft} disabled={saving || !disciplines.length} style={{ padding: '0.6rem 1rem', background: '#fff', color: '#2563eb', border: '2px solid #2563eb', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
+            {saving ? 'Enregistrement...' : '📝 Enregistrer comme brouillon'}
           </button>
           <button type="submit" disabled={saving} style={{ padding: '0.6rem 1.2rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600 }}>
             {saving ? 'Création...' : 'Créer le quiz'}
