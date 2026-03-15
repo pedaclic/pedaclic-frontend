@@ -397,9 +397,13 @@ export const AdminEbooks: React.FC = () => {
                   onChange={handleInputChange}
                 >
                   <option value="">-- Sélectionner --</option>
-                  {matieresOptions.map(m => (
-                    <option key={m} value={m}>{m}</option>
-                  ))}
+                  {matieresOptions.map((m: any) => {
+                    const val = typeof m === 'string' ? m : m.valeur;
+                    const lbl = typeof m === 'string' ? m : m.label;
+                    return (
+                      <option key={val} value={val}>{lbl}</option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="form-group">
