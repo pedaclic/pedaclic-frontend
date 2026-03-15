@@ -36,15 +36,23 @@ const QuizListPage: React.FC = () => {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState('');
   const [recherche, setRecherche] = useState('');
+  const [groupeIds, setGroupeIds] = useState<string[]>([]);
 
   useEffect(() => {
     const fetch = async () => {
       try {
         const isEleve = currentUser?.role === 'eleve';
-        const data = isEleve && currentUser?.uid
-          ? await getQuizzesAvanceForEleve(currentUser.uid, currentUser?.isPremium ?? false)
-          : await getAllQuizzes();
-        setQuizzes(data);
+        if (isEleve && currentUser?.uid) {
+          const [data, groupes] = await Promise.all([
+            getQuizzesAvanceForEleve(currentUser.uid, currentUser?.isPremium ?? false),
+            import('../services/profGroupeService').then((m) => m.getGroupesEleve(currentUser.uid)),
+          ]);
+          setQuizzes(data);
+          setGroupeIds(groupes.map((g) => g.id));
+        } else {
+          const data = await getAllQuizzes();
+          setQuizzes(data);
+        }
       } catch {
         setError('Impossible de charger les quiz.');
       } finally {
@@ -124,7 +132,8 @@ const QuizListPage: React.FC = () => {
             const total    = scoreTotal(quiz.questions);
             const nbQ      = quiz.questions?.length ?? 0;
             const isPremiumQuiz = quiz.isPremium;
-            const canAccess = !isPremiumQuiz || currentUser?.isPremium;
+            const eleveDansClasse = quiz.groupeId && groupeIds.includes(quiz.groupeId);
+            const canAccess = !isPremiumQuiz || currentUser?.isPremium || eleveDansClasse;
 
             return (
               <div

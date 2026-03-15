@@ -229,7 +229,10 @@ export async function getQuizzesAvanceForEleve(
 
     return allQuizzes.filter((q) => {
       if (q.status === 'draft') return false;
-      if (q.isPremium && !isPremium) return false;
+      // Premium : accessible si élève Premium OU si élève dans la classe liée au quiz
+      const premiumOk = !q.isPremium || isPremium || (q.groupeId && groupeIds.includes(q.groupeId));
+      if (!premiumOk) return false;
+      // Groupe : quiz global ou élève dans la classe cible
       return (
         !q.groupeId ||
         q.groupeId === null ||
