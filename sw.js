@@ -85,7 +85,7 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "revision": "9e820a797a6c7f5cd34a106890bd0752"
   }, {
     "url": "404.html",
-    "revision": "d0e9f9bdb9145562f5d9f35dca8b2840"
+    "revision": "6a70d336d00aecab451233c19c009113"
   }, {
     "url": "icons/shortcut-premium.png",
     "revision": "b09c6110f13b124731656faf4907ff86"
