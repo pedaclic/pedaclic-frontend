@@ -780,12 +780,67 @@
   font-size: 0.9rem;
 }
 
-.type-editor__input {
+.type-editor__input,
+.type-editor__input-full {
   width: 100%;
   padding: 0.5rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 6px;
   font-size: 0.9rem;
+}
+
+/* Texte à compléter */
+.type-editor__blanks {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.type-editor__blank-group {
+  margin-bottom: 1rem;
+}
+
+.type-editor__blank-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.35rem;
+}
+
+.type-editor__blank-reponses {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.type-editor__blank-rep-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.type-editor__blank-input {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.type-editor__add-inline-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  background: #e0f2fe;
+  color: #0369a1;
+  border: 1px solid #7dd3fc;
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+.type-editor__add-inline-btn:hover {
+  background: #bae6fd;
 }
 
 /* Paramètres essai */
@@ -1418,6 +1473,104 @@
 .player-relation__linked {
   font-size: 0.9rem;
   margin-left: 0.5rem;
+}
+
+/* ==================== PLAYER : TEXTE À COMPLÉTER ==================== */
+.player-texte-completer__hint {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+.player-texte-completer__phrase {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.player-texte-completer__input {
+  min-width: 120px;
+  max-width: 220px;
+  padding: 0.4rem 0.6rem;
+  border: 2px solid #0891b2;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  background: #f0fdfa;
+}
+
+.player-texte-completer__input:focus {
+  outline: none;
+  border-color: #0e7490;
+  box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.2);
+}
+
+.player-texte-completer__select {
+  min-width: 100px;
+  padding: 0.4rem 0.6rem;
+  border: 2px solid #0284c7;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #f0f9ff;
+  cursor: pointer;
+}
+
+/* Vrai / Faux */
+.player-vraifaux__affirmation {
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f0fdfa;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.player-vraifaux__options {
+  display: flex;
+  gap: 1rem;
+}
+
+.player-vraifaux__option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.player-vraifaux__option:hover {
+  border-color: #0d9488;
+  background: #f0fdfa;
+}
+
+.player-vraifaux__option--selected {
+  border-color: #0d9488;
+  background: #ccfbf1;
+}
+
+/* Réponse courte */
+.player-reponse-courte__question {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
+.player-reponse-courte__input {
+  width: 100%;
+  max-width: 400px;
+  padding: 0.6rem 0.75rem;
+  border: 2px solid #ca8a04;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.player-reponse-courte__input:focus {
+  outline: none;
+  border-color: #a16207;
+  box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.2);
 }
 
 /* ==================== PLAYER : ESSAI ==================== */
