@@ -51,8 +51,10 @@ import type {
   AlerteProf
 } from '../../types/prof';
 import type { TravailAFaire } from '../../types/groupeAbsences.types';
+import RichTextEditor from '../../RichTextEditor';
 import '../../styles/prof.css';
 import '../../styles/feuillesNotes.css';
+import '../../styles/CahierEnrichi.css';
 
 
 // ==================== TYPES LOCAUX ====================
@@ -902,13 +904,16 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
               value={nouveauTravailTitre}
               onChange={(e) => setNouveauTravailTitre(e.target.value)}
             />
-            <textarea
-              className="prof-textarea"
-              rows={2}
-              placeholder="Description (optionnel)"
-              value={nouveauTravailDesc}
-              onChange={(e) => setNouveauTravailDesc(e.target.value)}
-            />
+            <div className="groupe-travaux-desc-editor">
+              <label className="groupe-travaux-desc-label">Description (optionnel) — texte enrichi</label>
+              <RichTextEditor
+                value={nouveauTravailDesc}
+                onChange={setNouveauTravailDesc}
+                placeholder="Décrivez le travail à réaliser (gras, listes, tableaux…)"
+                minHeight={160}
+                className="groupe-travaux-rte"
+              />
+            </div>
             <div className="groupe-travaux-echeance">
               <label>Échéance :</label>
               <input
@@ -937,7 +942,12 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                   <li key={t.id} className="groupe-travaux-item">
                     <div>
                       <strong>{t.titre}</strong>
-                      {t.description && <p className="groupe-travaux-desc">{t.description}</p>}
+                      {t.description && (
+                        <div
+                          className="groupe-travaux-desc groupe-travaux-desc--html"
+                          dangerouslySetInnerHTML={{ __html: t.description }}
+                        />
+                      )}
                       <span className="groupe-travaux-date">
                         📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
                       </span>

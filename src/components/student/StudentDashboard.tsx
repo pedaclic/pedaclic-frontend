@@ -454,9 +454,11 @@ const StudentDashboard: React.FC = () => {
               >
                 <strong style={{ fontSize: '0.95rem' }}>📋 {t.titre}</strong>
                 {t.description && (
-                  <p style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}>
-                    {t.description}
-                  </p>
+                  <div
+                    className="sd-travaux-desc sd-travaux-desc--html"
+                    style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}
+                    dangerouslySetInnerHTML={{ __html: t.description }}
+                  />
                 )}
                 <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
                   📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}

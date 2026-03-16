@@ -713,7 +713,10 @@ const ParentDashboard: React.FC = () => {
                             <div key={t.id} className="parent-travaux-item">
                               <strong>{t.titre}</strong>
                               {t.description && (
-                                <p className="parent-travaux-desc">{t.description}</p>
+                                <div
+                                  className="parent-travaux-desc parent-travaux-desc--html"
+                                  dangerouslySetInnerHTML={{ __html: t.description }}
+                                />
                               )}
                               <span className="parent-travaux-echeance">
                                 📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')} • {t.groupeNom}

@@ -64,6 +64,25 @@ const TYPES_LISTE_ORDONNEE: {
   { valeur: 'lower-alpha', label: 'Lettres minuscules',     exemple: 'a, b, c',       icone: 'ⓐ' },
 ];
 
+/** Polices disponibles (PedaClic — lisibles et professionnelles) */
+const POLICES_DISPONIBLES: { valeur: string; label: string }[] = [
+  { valeur: 'inherit', label: 'Par défaut' },
+  { valeur: 'Georgia', label: 'Georgia' },
+  { valeur: 'Times New Roman', label: 'Times New Roman' },
+  { valeur: 'Arial', label: 'Arial' },
+  { valeur: 'Helvetica', label: 'Helvetica' },
+  { valeur: 'Verdana', label: 'Verdana' },
+  { valeur: 'Trebuchet MS', label: 'Trebuchet MS' },
+  { valeur: 'Courier New', label: 'Courier New' },
+];
+
+/** Teintes de surlignage (arrière-plan du texte) */
+const HIGHLIGHT_COLORS = [
+  '#fef08a', '#fde68a', '#fef3c7', '#bbf7d0', '#d1fae5',
+  '#bfdbfe', '#dbeafe', '#fecaca', '#fee2e2', '#e9d5ff',
+  '#f3e8ff', '#fed7aa', '#ffedd5', 'transparent',
+];
+
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES
 // ─────────────────────────────────────────────────────────────
@@ -138,6 +157,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [tableauColonnes, setTableauColonnes]       = useState(3);
   /** Type de liste ordonnée actuellement sélectionné */
   const [typeListeActuel, setTypeListeActuel]       = useState<TypeListeOrdonnee>('decimal');
+  /** Palette couleur de fond (surlignage) visible ? */
+  const [showHighlightPicker, setShowHighlightPicker] = useState(false);
 
   // ── Synchronisation value → DOM (montage uniquement) ────────
   useEffect(() => {
@@ -274,9 +295,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     emettrChangement();
   }, [tableauLignes, tableauColonnes, emettrChangement, restaurerSelection]);
 
-  // ── Fermeture du dropdown au clic extérieur ──────────────────
+  // ── Fermeture des dropdowns au clic extérieur ──────────────────
   useEffect(() => {
-    const fermer = () => setDropdownOuvert(false);
+    const fermer = () => {
+      setDropdownOuvert(false);
+      setShowHighlightPicker(false);
+    };
     document.addEventListener('mousedown', fermer);
     return () => document.removeEventListener('mousedown', fermer);
   }, []);
@@ -328,6 +352,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <option value="h2">Titre 2</option>
               <option value="h3">Titre 3</option>
               <option value="blockquote">Citation</option>
+            </select>
+          </div>
+          <div className="rte-toolbar__group" aria-label="Police">
+            <select
+              className="rte-select rte-select--font"
+              onChange={e => { const v = e.target.value; if (v && v !== 'inherit') formater('fontName', v); e.target.value = 'inherit'; }}
+              value="inherit"
+              title="Police de caractères"
+              aria-label="Police de caractères"
+            >
+              {POLICES_DISPONIBLES.map(p => (
+                <option key={p.valeur} value={p.valeur}>{p.label}</option>
+              ))}
             </select>
           </div>
           <div className="rte-toolbar__sep" aria-hidden="true" />
@@ -440,6 +477,40 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 aria-label="Choisir la couleur du texte"
               />
             </label>
+            <div className="rte-dropdown-wrapper" onMouseDown={e => e.stopPropagation()}>
+              <button
+                type="button"
+                className="rte-btn"
+                onClick={() => { setShowHighlightPicker(p => !p); }}
+                title="Couleur de fond (surlignage)"
+                aria-label="Surlignage"
+              >
+                <span className="rte-btn--highlight-icon">A</span>
+              </button>
+              {showHighlightPicker && (
+                <div className="rte-color-picker rte-color-picker--grid">
+                  {HIGHLIGHT_COLORS.map((color, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="rte-color-swatch"
+                      style={{
+                        backgroundColor: color === 'transparent' ? '#fff' : color,
+                        border: '1px solid #d1d5db',
+                      }}
+                      title={color === 'transparent' ? 'Aucun surlignage' : color}
+                      onMouseDown={e => {
+                        e.preventDefault();
+                        formater('hiliteColor', color === 'transparent' ? 'transparent' : color);
+                        setShowHighlightPicker(false);
+                      }}
+                    >
+                      {color === 'transparent' ? <span style={{ fontSize: 10, color: '#6b7280' }}>✕</span> : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <div className="rte-toolbar__sep" aria-hidden="true" />
           <div className="rte-toolbar__group" aria-label="Insertion">

@@ -1094,6 +1094,55 @@
   margin: var(--spacing-xs) 0;
 }
 
+/* Description enrichie (HTML) — listes, tableaux, gras, etc. */
+.groupe-travaux-desc--html {
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.groupe-travaux-desc--html ul,
+.groupe-travaux-desc--html ol {
+  margin: 0.35em 0;
+  padding-left: 1.5em;
+}
+
+.groupe-travaux-desc--html table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+}
+
+.groupe-travaux-desc--html th,
+.groupe-travaux-desc--html td {
+  border: 1px solid var(--color-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.groupe-travaux-desc--html th {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
+.groupe-travaux-desc-editor {
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-travaux-desc-label {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xs);
+}
+
+.groupe-travaux-rte.rte-wrapper {
+  border-radius: var(--radius-md);
+}
+
 .groupe-travaux-item .groupe-travaux-date {
   font-size: var(--text-sm);
   color: var(--color-primary);

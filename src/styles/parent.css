@@ -1048,6 +1048,32 @@
   line-height: 1.4;
 }
 
+.parent-travaux-desc--html ul,
+.parent-travaux-desc--html ol {
+  margin: 0.35em 0;
+  padding-left: 1.5em;
+}
+
+.parent-travaux-desc--html table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+  font-size: 0.85em;
+}
+
+.parent-travaux-desc--html th,
+.parent-travaux-desc--html td {
+  border: 1px solid var(--parent-border);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.parent-travaux-desc--html th {
+  background: var(--parent-primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 .parent-travaux-echeance {
   font-size: 0.8rem;
   color: var(--parent-secondary);
