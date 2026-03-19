@@ -18,6 +18,10 @@ import {
   updateEntree,
   updateCahier,
   toggleArchiveCahier,
+  COULEURS_RUBRIQUES,
+  ajouterRubrique,
+  modifierRubrique,
+  supprimerRubrique,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -29,13 +33,15 @@ import {
   type PeriodeExport,
 } from '../utils/cahierExportPDF';
 import type {
-  CahierTextes, EntreeCahier, StatutSeance,
+  CahierTextes, EntreeCahier, StatutSeance, RubriqueCahier,
 } from '../types/cahierTextes.types';
 import CahierCalendar from '../components/prof/CahierCalendar';
 import RappelWidget from '../components/prof/RappelWidget';
 import SignetFilter from '../components/prof/SignetFilter';
 import CahierStats from '../components/prof/CahierStats';
+import CahierProgressionWidget from '../components/prof/CahierProgressionWidget';
 import '../styles/CahierTextes.css';
+import '../styles/CahierEnrichi.css';
 
 // ─── Types ───────────────────────────────────────────────────
 type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats';
@@ -78,6 +84,13 @@ const CahierDetailPage: React.FC = () => {
 
   const [cahier, setCahier] = useState<CahierTextes | null>(null);
   const [entrees, setEntrees] = useState<EntreeCahier[]>([]);
+  const [rubriques, setRubriques] = useState<RubriqueCahier[]>([]);
+  const [afficherFormRubrique, setAfficherFormRubrique] = useState(false);
+  const [rubriqueEnEdition, setRubriqueEnEdition] = useState<RubriqueCahier | null>(null);
+  const [formRubriqueNom, setFormRubriqueNom] = useState('');
+  const [formRubriqueCouleur, setFormRubriqueCouleur] = useState(COULEURS_RUBRIQUES[0]);
+  const [savingRubrique, setSavingRubrique] = useState(false);
+  const [errorRubrique, setErrorRubrique] = useState('');
   const [loadingCahier, setLoadingCahier] = useState(true);
   const [loadingEntrees, setLoadingEntrees] = useState(true);
   const [vue, setVue] = useState<VueActive>('liste');
@@ -116,6 +129,7 @@ const CahierDetailPage: React.FC = () => {
         const data = await getCahierById(cahierId);
         if (!data) { navigate('/prof/cahiers'); return; }
         setCahier(data);
+        setRubriques(data.rubriques ?? []);
       } finally {
         setLoadingCahier(false);
       }
@@ -172,6 +186,78 @@ const CahierDetailPage: React.FC = () => {
       setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
     } catch {
       alert('Erreur mise à jour statut.');
+    }
+  };
+
+  // ── Phase 29 : Handlers rubriques ─────────────────────────
+  const ouvrirAjoutRubrique = () => {
+    setRubriqueEnEdition(null);
+    setFormRubriqueNom('');
+    setFormRubriqueCouleur(COULEURS_RUBRIQUES[rubriques.length % COULEURS_RUBRIQUES.length]);
+    setErrorRubrique('');
+    setAfficherFormRubrique(true);
+  };
+
+  const ouvrirEditionRubrique = (r: RubriqueCahier) => {
+    setRubriqueEnEdition(r);
+    setFormRubriqueNom(r.nom);
+    setFormRubriqueCouleur(r.couleur ?? COULEURS_RUBRIQUES[0]);
+    setErrorRubrique('');
+    setAfficherFormRubrique(true);
+  };
+
+  const fermerFormRubrique = () => {
+    setAfficherFormRubrique(false);
+    setRubriqueEnEdition(null);
+    setFormRubriqueNom('');
+  };
+
+  const handleSauvegarderRubrique = async () => {
+    if (!formRubriqueNom.trim()) {
+      setErrorRubrique('Le nom de la rubrique est obligatoire.');
+      return;
+    }
+    if (!cahier || !cahierId) return;
+    setSavingRubrique(true);
+    setErrorRubrique('');
+    try {
+      let nouvelleListe: RubriqueCahier[];
+      if (rubriqueEnEdition) {
+        nouvelleListe = await modifierRubrique(
+          cahierId,
+          rubriques,
+          rubriqueEnEdition.id,
+          { nom: formRubriqueNom.trim(), couleur: formRubriqueCouleur }
+        );
+      } else {
+        nouvelleListe = await ajouterRubrique(
+          cahierId,
+          rubriques,
+          formRubriqueNom.trim(),
+          formRubriqueCouleur
+        );
+      }
+      setRubriques(nouvelleListe);
+      setCahier(prev => prev ? { ...prev, rubriques: nouvelleListe } : prev);
+      fermerFormRubrique();
+    } catch (err) {
+      console.error('[CahierDetailPage] Erreur sauvegarde rubrique :', err);
+      setErrorRubrique('Erreur lors de la sauvegarde. Veuillez réessayer.');
+    } finally {
+      setSavingRubrique(false);
+    }
+  };
+
+  const handleSupprimerRubrique = async (rubriqueId: string, rubriqueNom: string) => {
+    if (!cahierId) return;
+    if (!window.confirm(`Supprimer la rubrique "${rubriqueNom}" ?\nLes séances liées passeront dans "Sans rubrique".`)) return;
+    try {
+      const nouvelleListe = await supprimerRubrique(cahierId, rubriques, rubriqueId);
+      setRubriques(nouvelleListe);
+      setCahier(prev => prev ? { ...prev, rubriques: nouvelleListe } : prev);
+    } catch (err) {
+      console.error('[CahierDetailPage] Erreur suppression rubrique :', err);
+      alert('Erreur lors de la suppression.');
     }
   };
 
@@ -410,6 +496,139 @@ const CahierDetailPage: React.FC = () => {
             + Nouvelle séance
           </button>
         </div>
+      </div>
+
+      {/* ── Phase 29 : Widget progression + Rubriques ── */}
+      <div className="cahier-phase29-section no-print">
+        <CahierProgressionWidget
+          entrees={entrees}
+          rubriques={rubriques}
+          titre="Progression du cahier"
+        />
+
+        <section className="cahier-rubriques-section" aria-label="Gestion des rubriques">
+          <div className="cahier-rubriques-header">
+            <h3 className="cahier-rubriques-titre">
+              📂 Rubriques
+              <span className="cahier-rubriques-count">{rubriques.length}</span>
+            </h3>
+            <button
+              className="cahier-btn-add-rubrique"
+              onClick={ouvrirAjoutRubrique}
+              title="Ajouter une rubrique"
+            >
+              + Ajouter
+            </button>
+          </div>
+
+          {rubriques.length === 0 ? (
+            <p className="cahier-rubriques-empty">
+              Aucune rubrique définie. Créez des rubriques pour organiser et
+              suivre la progression de vos séances.
+            </p>
+          ) : (
+            <div className="cahier-rubriques-list">
+              {rubriques.map(r => (
+                <div key={r.id} className="cahier-rubrique-item">
+                  <span
+                    className="cahier-rubrique-badge"
+                    style={{
+                      backgroundColor: (r.couleur ?? '#64748b') + '1a',
+                      borderColor: r.couleur ?? '#64748b',
+                      color: r.couleur ?? '#64748b',
+                    }}
+                  >
+                    {r.nom}
+                  </span>
+                  <div className="cahier-rubrique-actions">
+                    <button
+                      className="cahier-rubrique-btn-edit"
+                      onClick={() => ouvrirEditionRubrique(r)}
+                      title="Modifier"
+                      aria-label={`Modifier la rubrique "${r.nom}"`}
+                    >
+                      ✏️
+                    </button>
+                    <button
+                      className="cahier-rubrique-btn-delete"
+                      onClick={() => handleSupprimerRubrique(r.id, r.nom)}
+                      title="Supprimer"
+                      aria-label={`Supprimer la rubrique "${r.nom}"`}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {afficherFormRubrique && (
+            <div className="cahier-rubrique-form-wrapper">
+              <h4 className="cahier-rubrique-form-titre">
+                {rubriqueEnEdition ? 'Modifier la rubrique' : 'Nouvelle rubrique'}
+              </h4>
+              <div className="cahier-rubrique-form-field">
+                <label htmlFor="rubrique-nom" className="cahier-rubrique-form-label">Nom *</label>
+                <input
+                  id="rubrique-nom"
+                  type="text"
+                  className="cahier-rubrique-form-input"
+                  placeholder="Ex : Chapitre 1 – Les vecteurs"
+                  value={formRubriqueNom}
+                  onChange={e => setFormRubriqueNom(e.target.value)}
+                  maxLength={80}
+                  autoFocus
+                />
+              </div>
+              <div className="cahier-rubrique-form-field">
+                <label className="cahier-rubrique-form-label">Couleur</label>
+                <div className="cahier-couleur-swatches">
+                  {COULEURS_RUBRIQUES.map(couleur => (
+                    <button
+                      key={couleur}
+                      type="button"
+                      className={`cahier-couleur-swatch${formRubriqueCouleur === couleur ? ' swatch-selected' : ''}`}
+                      style={{ backgroundColor: couleur }}
+                      onClick={() => setFormRubriqueCouleur(couleur)}
+                      aria-label={`Couleur ${couleur}`}
+                      title={couleur}
+                    />
+                  ))}
+                </div>
+                <span
+                  className="cahier-couleur-apercu"
+                  style={{
+                    backgroundColor: formRubriqueCouleur + '1a',
+                    borderColor: formRubriqueCouleur,
+                    color: formRubriqueCouleur,
+                  }}
+                >
+                  {formRubriqueNom || 'Aperçu'}
+                </span>
+              </div>
+              {errorRubrique && (
+                <p className="cahier-rubrique-error" role="alert">{errorRubrique}</p>
+              )}
+              <div className="cahier-rubrique-form-actions">
+                <button
+                  className="cahier-btn-save"
+                  onClick={handleSauvegarderRubrique}
+                  disabled={savingRubrique}
+                >
+                  {savingRubrique ? 'Enregistrement…' : rubriqueEnEdition ? 'Modifier' : 'Ajouter'}
+                </button>
+                <button
+                  className="cahier-btn-cancel"
+                  onClick={fermerFormRubrique}
+                  disabled={savingRubrique}
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ── Tabs de vue ── */}
@@ -670,7 +889,23 @@ const CahierDetailPage: React.FC = () => {
                               >
                                 {statutCfg.label}
                               </span>
-                              {entree.rubrique && (
+                              {entree.rubriqueId && (() => {
+                                const r = rubriques.find(x => x.id === entree.rubriqueId);
+                                if (!r) return null;
+                                return (
+                                  <span
+                                    className="entree-card-rubrique-badge"
+                                    style={{
+                                      backgroundColor: (r.couleur ?? '#64748b') + '1a',
+                                      borderColor: r.couleur ?? '#64748b',
+                                      color: r.couleur ?? '#64748b',
+                                    }}
+                                  >
+                                    {r.nom}
+                                  </span>
+                                );
+                              })()}
+                              {entree.rubrique && !entree.rubriqueId && (
                                 <span className="entree-rubrique-badge">{entree.rubrique}</span>
                               )}
                               {entree.isMarqueEvaluation && (

@@ -33,7 +33,7 @@ import type {
   EntreeFormData, TypeContenu, StatutSeance,
   TypeEvaluation, CahierTextes,
   EntreeCahier, PieceJointe,
-  LienExterne, LienEbook, LienContenuIA,
+  LienExterne, LienEbook, LienContenuIA, RubriqueCahier,
 } from '../types/cahierTextes.types';
 // Phase 22 — composants enrichis
 import LienExterneEditor from '../components/prof/LienExterneEditor';
@@ -88,6 +88,8 @@ const EntreeEditorPage: React.FC = () => {
   // État Phase 23 — contenus IA
   const [contenuIA, setContenuIA]   = useState<LienContenuIA[]>([]);
   const [cahierRubriques, setCahierRubriques] = useState<string[]>([]);
+  // Phase 29 — rubrique du cahier (RubriqueCahier)
+  const [rubriqueId, setRubriqueId] = useState<string>('');
 
   const isEdit = !!entreeId;
 
@@ -125,6 +127,7 @@ const EntreeEditorPage: React.FC = () => {
             setEbooksLies(entreeData.ebooksLies ?? []);
             // Phase 23 — contenus IA
             setContenuIA(entreeData.contenuIA ?? []);
+            setRubriqueId(entreeData.rubriqueId ?? '');
             setForm({
               date: entreeData.date.toDate().toISOString().slice(0, 10),
               heureDebut: entreeData.heureDebut || '',
@@ -233,9 +236,11 @@ const EntreeEditorPage: React.FC = () => {
         if (piecesJointes.length > 0) {
           await addPiecesJointes(newId, [], piecesJointes);
         }
-        // Médias Phase 22 sauvegardés sur la nouvelle entrée
-        if (liens.length > 0 || ebooksLies.length > 0 || contenuIA.length > 0) {
-          await updateEntree(newId, { liens, ebooksLies, contenuIA });
+        // Médias Phase 22 + Phase 29 rubriqueId sauvegardés sur la nouvelle entrée
+        const extras = { liens, ebooksLies, contenuIA, rubriqueId: rubriqueId || null };
+        const hasExtras = liens.length > 0 || ebooksLies.length > 0 || contenuIA.length > 0 || !!rubriqueId;
+        if (hasExtras) {
+          await updateEntree(newId, extras);
         }
       }
 
@@ -307,6 +312,42 @@ const EntreeEditorPage: React.FC = () => {
               value={form.chapitre}
               onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
           </div>
+
+          {/* Phase 29 — Sélecteur rubrique (cahier.rubriques) */}
+          {cahier?.rubriques && cahier.rubriques.length > 0 && (
+            <div className="entree-form-field form-group">
+              <label htmlFor="entree-rubrique" className="form-label">
+                Rubrique <span className="entree-form-hint">(optionnel)</span>
+              </label>
+              <select
+                id="entree-rubrique"
+                value={rubriqueId}
+                onChange={e => setRubriqueId(e.target.value)}
+                className="form-select entree-rubrique-select"
+              >
+                <option value="">— Sans rubrique —</option>
+                {cahier.rubriques.map(r => (
+                  <option key={r.id} value={r.id}>{r.nom}</option>
+                ))}
+              </select>
+              {rubriqueId && (() => {
+                const r = cahier.rubriques!.find(x => x.id === rubriqueId);
+                if (!r) return null;
+                return (
+                  <span
+                    className="entree-rubrique-apercu"
+                    style={{
+                      backgroundColor: (r.couleur ?? '#64748b') + '1a',
+                      borderColor: r.couleur ?? '#64748b',
+                      color: r.couleur ?? '#64748b',
+                    }}
+                  >
+                    {r.nom}
+                  </span>
+                );
+              })()}
+            </div>
+          )}
 
           <div className="form-row" style={cahierRubriques.length > 0 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
             <div className="form-group">

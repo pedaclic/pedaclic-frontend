@@ -63,9 +63,9 @@ const CarteQuizAvance: React.FC<{
         <p className="qg-card__description" dangerouslySetInnerHTML={{ __html: quiz.description }} />
       )}
       <div className="qg-card__meta">
-        {((quiz as Record<string, unknown>).disciplineNom ?? (quiz as Record<string, unknown>).matiere) && (
+        {(quiz.disciplineNom ?? quiz.matiere) && (
           <span className="qg-card__meta-item">
-            📚 {String((quiz as Record<string, unknown>).disciplineNom ?? (quiz as Record<string, unknown>).matiere)}
+            📚 {String(quiz.disciplineNom ?? quiz.matiere)}
           </span>
         )}
         <span className="qg-card__meta-item">❓ {nbQ} question{nbQ > 1 ? 's' : ''}</span>
@@ -258,7 +258,7 @@ const QuizGratuitsPage: React.FC = () => {
 
   // ── Filtrage quiz avancés ───────────────────────────────────
   const getMatiereQuiz = (q: QuizAvance) =>
-    String((q as Record<string, unknown>).disciplineNom ?? (q as Record<string, unknown>).matiere ?? '');
+    String(q.disciplineNom ?? q.matiere ?? '');
   const quizzesAvancesFiltres = quizzesAvances.filter(q => {
     const matiere = getMatiereQuiz(q);
     const matchRecherche = !recherche ||

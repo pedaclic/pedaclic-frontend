@@ -196,7 +196,17 @@ export interface LienContenuIA {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CAHIER DE TEXTES — Phase 21 + Phase 22
+// PHASE 29 — RUBRIQUE CAHIER (chapitre, unité thématique…)
+// ─────────────────────────────────────────────────────────────
+export interface RubriqueCahier {
+  id: string;
+  nom: string;
+  ordre: number;
+  couleur?: string;
+}
+
+// ─────────────────────────────────────────────────────────────
+// CAHIER DE TEXTES — Phase 21 + Phase 22 + Phase 29
 // ─────────────────────────────────────────────────────────────
 export interface CahierTextes {
   id: string;
@@ -216,6 +226,8 @@ export interface CahierTextes {
   groupeIds: string[];
   groupeNoms: string[];
   isPartage: boolean;
+  // Phase 29 — rubriques définies par le prof
+  rubriques?: RubriqueCahier[];
 }
 
 export interface CahierFormData {
@@ -266,6 +278,8 @@ export interface EntreeCahier {
   ebooksLies?: LienEbook[];
   // Phase 23
   contenuIA?: LienContenuIA[];
+  // Phase 29 — ID de la rubrique (RubriqueCahier) à laquelle appartient cette entrée
+  rubriqueId?: string | null;
 }
 
 export interface EntreeFormData {
@@ -342,6 +356,8 @@ export interface GroupeProf {
   codeInvitation: string;
   nombreInscrits: number;
   anneeScolaire: string;
+  /** Statut du groupe — "actif" | "archive" (optionnel, rétrocompatible) */
+  statut?: 'actif' | 'archive' | string;
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -170,12 +170,16 @@ export interface QuestionAvancee {
   ordre: number;                      // Ordre dans le quiz
 
   // Données spécifiques selon le type
-  typeData: QCMUniqueData 
-          | QCMMultipleData 
-          | DragDropData 
-          | MiseEnRelationData 
+  typeData: QCMUniqueData
+          | QCMMultipleData
+          | DragDropData
+          | MiseEnRelationData
           | TexteACompleterData
-          | EssaiData;
+          | EssaiData
+          | VraiFauxData
+          | ReponseCourteData
+          | OrdreChronologiqueData
+          | TexteTrousMenuData;
 }
 
 // ==================== QUIZ AVANCÉ ====================
@@ -191,6 +195,10 @@ export interface QuizAvance {
   /** Brouillon (non visible aux élèves) ou publié */
   status?: QuizStatus;
   disciplineId: string;               // ID de la discipline
+  /** Nom lisible de la discipline (dénormalisé) */
+  disciplineNom?: string;
+  /** Matière libre (fallback pour les anciens quiz) */
+  matiere?: string;
   titre: string;                      // Titre du quiz
   description?: string;               // Description (HTML autorisé)
   questions: QuestionAvancee[];       // Liste des questions (multi-types)
@@ -323,6 +331,10 @@ export const TYPE_QUESTION_ICONS: Record<TypeQuestion, string> = {
   mise_en_relation: '🔗',
   texte_a_completer: '✏️',
   essai: '✍️',
+  vrai_faux: '✅',
+  reponse_courte: '✍️',
+  ordre_chronologique: '🔢',
+  texte_trous_menu: '📝',
 };
 
 /**

@@ -27,6 +27,7 @@ import type {
   EntreeCahier,
   GroupeProf,
   EbookApercu,
+  RubriqueCahier,
   TypeContenu,
   StatutSeance,
 } from '../types/cahierTextes.types';
@@ -446,6 +447,155 @@ export async function setPartage(cahierId: string, isPartage: boolean): Promise<
     isPartage,
     updatedAt: Timestamp.now(),
   });
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 29 — PROGRESSION ET RUBRIQUES
+// ─────────────────────────────────────────────────────────────
+
+export const COULEURS_RUBRIQUES: string[] = [
+  '#2563eb', '#16a34a', '#d97706', '#dc2626',
+  '#7c3aed', '#0891b2', '#db2777', '#65a30d',
+];
+
+export interface ProgressionItem {
+  rubriqueId: string | null;
+  rubriqueNom: string;
+  couleur: string;
+  total: number;
+  realise: number;
+  planifie: number;
+  annule: number;
+  pourcentage: number;
+}
+
+export interface ProgressionCahier {
+  global: ProgressionItem;
+  parRubrique: ProgressionItem[];
+}
+
+export function calculerProgression(
+  entrees: EntreeCahier[],
+  rubriques: RubriqueCahier[]
+): ProgressionCahier {
+  const map = new Map<string | null, ProgressionItem>();
+
+  rubriques.forEach((r, idx) => {
+    map.set(r.id, {
+      rubriqueId: r.id,
+      rubriqueNom: r.nom,
+      couleur: r.couleur ?? COULEURS_RUBRIQUES[idx % COULEURS_RUBRIQUES.length],
+      total: 0,
+      realise: 0,
+      planifie: 0,
+      annule: 0,
+      pourcentage: 0,
+    });
+  });
+
+  map.set(null, {
+    rubriqueId: null,
+    rubriqueNom: 'Sans rubrique',
+    couleur: '#64748b',
+    total: 0,
+    realise: 0,
+    planifie: 0,
+    annule: 0,
+    pourcentage: 0,
+  });
+
+  entrees.forEach(e => {
+    const key = e.rubriqueId && map.has(e.rubriqueId) ? e.rubriqueId : null;
+    const item = map.get(key)!;
+    item.total++;
+    if (e.statut === 'realise') item.realise++;
+    else if (e.statut === 'planifie') item.planifie++;
+    else if (e.statut === 'annule') item.annule++;
+  });
+
+  map.forEach(item => {
+    const base = item.realise + item.planifie;
+    item.pourcentage = base > 0 ? (item.realise / base) * 100 : 0;
+  });
+
+  const allItems = [...map.values()];
+  const totalRealise = allItems.reduce((s, i) => s + i.realise, 0);
+  const totalPlanifie = allItems.reduce((s, i) => s + i.planifie, 0);
+  const totalAnnule = allItems.reduce((s, i) => s + i.annule, 0);
+  const baseGlobal = totalRealise + totalPlanifie;
+
+  const global: ProgressionItem = {
+    rubriqueId: null,
+    rubriqueNom: 'Global',
+    couleur: '#2563eb',
+    total: totalRealise + totalPlanifie + totalAnnule,
+    realise: totalRealise,
+    planifie: totalPlanifie,
+    annule: totalAnnule,
+    pourcentage: baseGlobal > 0 ? (totalRealise / baseGlobal) * 100 : 0,
+  };
+
+  const parRubrique = [...map.values()]
+    .filter(item => item.rubriqueId !== null || item.total > 0)
+    .sort((a, b) => {
+      if (a.rubriqueId === null) return 1;
+      if (b.rubriqueId === null) return -1;
+      const ia = rubriques.findIndex(r => r.id === a.rubriqueId);
+      const ib = rubriques.findIndex(r => r.id === b.rubriqueId);
+      return ia - ib;
+    });
+
+  return { global, parRubrique };
+}
+
+export async function ajouterRubrique(
+  cahierId: string,
+  rubriquesActuelles: RubriqueCahier[],
+  nom: string,
+  couleur?: string
+): Promise<RubriqueCahier[]> {
+  const nouvelleRubrique: RubriqueCahier = {
+    id: Date.now().toString(),
+    nom: nom.trim(),
+    ordre: rubriquesActuelles.length,
+    couleur: couleur ?? COULEURS_RUBRIQUES[rubriquesActuelles.length % COULEURS_RUBRIQUES.length],
+  };
+  const nouvelleListe = [...rubriquesActuelles, nouvelleRubrique];
+  await updateCahier(cahierId, { rubriques: nouvelleListe });
+  return nouvelleListe;
+}
+
+export async function modifierRubrique(
+  cahierId: string,
+  rubriquesActuelles: RubriqueCahier[],
+  rubriqueId: string,
+  modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur'>>
+): Promise<RubriqueCahier[]> {
+  const nouvelleListe = rubriquesActuelles.map(r =>
+    r.id === rubriqueId ? { ...r, ...modifications } : r
+  );
+  await updateCahier(cahierId, { rubriques: nouvelleListe });
+  return nouvelleListe;
+}
+
+export async function supprimerRubrique(
+  cahierId: string,
+  rubriquesActuelles: RubriqueCahier[],
+  rubriqueId: string
+): Promise<RubriqueCahier[]> {
+  const nouvelleListe = rubriquesActuelles
+    .filter(r => r.id !== rubriqueId)
+    .map((r, idx) => ({ ...r, ordre: idx }));
+  await updateCahier(cahierId, { rubriques: nouvelleListe });
+  return nouvelleListe;
+}
+
+export async function reordonnerRubriques(
+  cahierId: string,
+  nouvelleListe: RubriqueCahier[]
+): Promise<void> {
+  const listeReindexee = nouvelleListe.map((r, idx) => ({ ...r, ordre: idx }));
+  await updateCahier(cahierId, { rubriques: listeReindexee });
 }
 
 // ─────────────────────────────────────────────────────────────
