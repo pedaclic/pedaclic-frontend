@@ -1,0 +1,342 @@
+/* ============================================================
+   PedaClic – Phase 30 : ElveCahierFiltres.css
+   Barre de filtres vue élève du Cahier de Textes
+   Thème : bleu #2563eb, blanc, ombres légères
+   Mobile-first
+   ============================================================ */
+
+
+/* ── Conteneur principal de la barre de filtres ─────────── */
+.filtres-bar {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+/* Titre de la barre */
+.filtres-bar-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filtres-bar-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Bouton "Réinitialiser les filtres" */
+.filtres-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #ef4444;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 20px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.filtres-reset-btn:hover {
+  background: #fee2e2;
+  border-color: #f87171;
+}
+
+
+/* ── Groupe de filtres ───────────────────────────────────── */
+.filtres-groupe {
+  margin-bottom: 0.75rem;
+}
+
+.filtres-groupe:last-child {
+  margin-bottom: 0;
+}
+
+/* Libellé du groupe */
+.filtres-groupe-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.45rem;
+  display: block;
+}
+
+/* Liste de pills */
+.filtres-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+
+/* ── Pill (bouton filtre) ────────────────────────────────── */
+.filtre-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.filtre-pill:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* Pill active — état "Tout" / période */
+.filtre-pill.actif {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+/* Point coloré dans la pill de rubrique */
+.filtre-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Pill "Toutes rubriques" active */
+.filtre-pill.actif-tout {
+  background: #f8fafc;
+  color: #334155;
+  border-color: #cbd5e1;
+}
+
+/* Séparateur vertical entre pills */
+.filtres-sep {
+  width: 1px;
+  height: 20px;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+
+/* ── Sélecteur de mois (input month) ────────────────────── */
+.filtres-mois-picker {
+  padding: 0.28rem 0.65rem;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  color: #334155;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-family: inherit;
+}
+
+.filtres-mois-picker:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px #2563eb1a;
+}
+
+.filtres-mois-picker.actif {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+
+/* ── Barre de résultats ──────────────────────────────────── */
+.filtres-resultats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.82rem;
+}
+
+.filtres-resultats-count {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.filtres-resultats-detail {
+  color: #64748b;
+  font-size: 0.77rem;
+}
+
+/* Badge "filtre actif" */
+.filtres-badge-actif {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  border-radius: 20px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+
+/* ── En-tête de groupe mensuel ───────────────────────────── */
+.seances-mois-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 1.25rem 0 0.75rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Ligne autour du label */
+.seances-mois-header::before,
+.seances-mois-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e2e8f0;
+}
+
+/* Premier header pas de marge top */
+.seances-mois-header:first-child {
+  margin-top: 0;
+}
+
+
+/* ── Badge rubrique dans la carte séance ────────────────── */
+.seance-rubrique-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.55rem;
+  border-radius: 20px;
+  border: 1.5px solid currentColor;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seance-rubrique-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+
+/* ── État vide après filtrage ────────────────────────────── */
+.filtres-vide {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  background: #f9fafb;
+  border: 1px dashed #d1d5db;
+  border-radius: 12px;
+  color: #9ca3af;
+}
+
+.filtres-vide-emoji {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.75rem;
+}
+
+.filtres-vide-titre {
+  font-weight: 600;
+  color: #4b5563;
+  margin: 0 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.filtres-vide-sub {
+  font-size: 0.82rem;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+.filtres-vide-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 1rem;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.filtres-vide-btn:hover {
+  background: #1d4ed8;
+}
+
+
+/* ── Responsive Mobile ───────────────────────────────────── */
+@media (max-width: 600px) {
+
+  .filtres-bar {
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+  }
+
+  .filtre-pill {
+    font-size: 0.73rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .filtres-mois-picker {
+    font-size: 0.73rem;
+  }
+
+  .filtres-resultats {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .seances-mois-header {
+    font-size: 0.7rem;
+  }
+
+  .seance-rubrique-badge {
+    max-width: 130px;
+  }
+}

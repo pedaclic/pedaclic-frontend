@@ -1,32 +1,42 @@
 // ============================================================
-// PedaClic — Phase 22 : ElveCahierPage
+// PedaClic — Phase 22 + Phase 30 : ElveCahierPage
 // Vue lecture seule pour les élèves des groupes liés.
 // Route : /eleve/cahiers/:cahierId
+// Filtres période (semaine, mois, mois choisi) + rubrique (Phase 30).
 // Affiche uniquement les séances "réalisées", sans notes privées.
 // ============================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { CahierTextes, EntreeCahier } from '../types/cahierTextes.types';
+import type { CahierTextes, EntreeCahier, RubriqueCahier } from '../types/cahierTextes.types';
 import {
+  COULEURS_RUBRIQUES,
   getCahierPartageById,
   getEntreesRealisees,
 } from '../services/cahierTextesService';
 import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
 import MediaPlayer from '../components/prof/MediaPlayer';
+import ElveCahierFiltres, {
+  FILTRES_DEFAUT,
+  filtresActifs,
+  type FiltresCahier,
+} from '../components/eleve/ElveCahierFiltres';
+
 import '../styles/CahierEnrichi.css';
+import '../styles/ElveCahierFiltres.css';
 
 // ─────────────────────────────────────────────────────────────
-// UTILITAIRES
+// UTILITAIRES DE DATE
 // ─────────────────────────────────────────────────────────────
 
-/**
- * Formate une date Firestore Timestamp en chaîne longue lisible.
- * ex: "Lundi 12 janvier 2025"
- */
+function tsToDate(ts: { toDate: () => Date }): Date {
+  return ts.toDate();
+}
+
+/** ex: "Lundi 12 janvier 2025" */
 function formatDateLongue(ts: { toDate: () => Date }): string {
-  return ts.toDate().toLocaleDateString('fr-FR', {
+  return tsToDate(ts).toLocaleDateString('fr-FR', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -34,39 +44,129 @@ function formatDateLongue(ts: { toDate: () => Date }): string {
   });
 }
 
+function lundiDeLaSemaine(d: Date): Date {
+  const date = new Date(d);
+  const jour = date.getDay();
+  const diff = jour === 0 ? -6 : 1 - jour;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function dimancheDeLaSemaine(d: Date): Date {
+  const lundi = lundiDeLaSemaine(d);
+  const dim = new Date(lundi);
+  dim.setDate(lundi.getDate() + 6);
+  dim.setHours(23, 59, 59, 999);
+  return dim;
+}
+
+function labelMois(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+}
+
+function cleMois(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function couleurRubrique(r: RubriqueCahier, idx: number): string {
+  return r.couleur ?? COULEURS_RUBRIQUES[idx % COULEURS_RUBRIQUES.length];
+}
+
 // ─────────────────────────────────────────────────────────────
-// COMPOSANT PRINCIPAL : ElveCahierPage
+// FILTRAGE (client-side)
+// ─────────────────────────────────────────────────────────────
+
+function filtrerEntrees(entrees: EntreeCahier[], filtres: FiltresCahier): EntreeCahier[] {
+  const maintenant = new Date();
+
+  return entrees.filter((e) => {
+    const dateEntree = tsToDate(e.date as { toDate: () => Date });
+
+    if (filtres.periode === 'semaine') {
+      const debut = lundiDeLaSemaine(maintenant);
+      const fin = dimancheDeLaSemaine(maintenant);
+      if (dateEntree < debut || dateEntree > fin) return false;
+    }
+
+    if (filtres.periode === 'mois') {
+      if (
+        dateEntree.getFullYear() !== maintenant.getFullYear() ||
+        dateEntree.getMonth() !== maintenant.getMonth()
+      ) {
+        return false;
+      }
+    }
+
+    if (filtres.periode === 'mois_choisi' && filtres.moisChoisi) {
+      const [an, mo] = filtres.moisChoisi.split('-').map(Number);
+      if (dateEntree.getFullYear() !== an || dateEntree.getMonth() + 1 !== mo) return false;
+    }
+
+    if (filtres.rubriqueId !== null) {
+      if (filtres.rubriqueId === '__sans_rubrique__') {
+        if (e.rubriqueId) return false;
+      } else if (e.rubriqueId !== filtres.rubriqueId) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+interface GroupeMois {
+  cle: string;
+  label: string;
+  entrees: EntreeCahier[];
+}
+
+function grouperParMois(entrees: EntreeCahier[]): GroupeMois[] {
+  const map = new Map<string, GroupeMois>();
+
+  entrees.forEach((e) => {
+    const d = tsToDate(e.date as { toDate: () => Date });
+    const cle = cleMois(d);
+    if (!map.has(cle)) {
+      map.set(cle, { cle, label: labelMois(d), entrees: [] });
+    }
+    map.get(cle)!.entrees.push(e);
+  });
+
+  return [...map.values()].sort((a, b) => b.cle.localeCompare(a.cle));
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPOSANT
 // ─────────────────────────────────────────────────────────────
 
 const ElveCahierPage: React.FC = () => {
   const { cahierId } = useParams<{ cahierId: string }>();
   const navigate = useNavigate();
 
-  // État du cahier et de ses entrées
-  const [cahier, setCahier]         = useState<CahierTextes | null>(null);
-  const [entrees, setEntrees]       = useState<EntreeCahier[]>([]);
+  const [cahier, setCahier] = useState<CahierTextes | null>(null);
+  const [entrees, setEntrees] = useState<EntreeCahier[]>([]);
   const [chargement, setChargement] = useState(true);
-  const [erreur, setErreur]         = useState('');
-
-  // Contrôle l'expansion d'une séance (accordéon)
+  const [erreur, setErreur] = useState('');
   const [entreeOuverte, setEntreeOuverte] = useState<string | null>(null);
 
-  /* Charge le cahier et ses entrées réalisées */
+  const [rubriques, setRubriques] = useState<RubriqueCahier[]>([]);
+  const [filtres, setFiltres] = useState<FiltresCahier>(FILTRES_DEFAUT);
+
   useEffect(() => {
     async function charger() {
       if (!cahierId) return;
       setChargement(true);
 
       try {
-        // Récupère le cahier (retourne null s'il n'est pas partagé)
         const c = await getCahierPartageById(cahierId);
         if (!c) {
-          setErreur('Ce cahier n\'est pas accessible ou n\'existe pas.');
+          setErreur("Ce cahier n'est pas accessible ou n'existe pas.");
           return;
         }
         setCahier(c);
+        setRubriques(c.rubriques ?? []);
 
-        // Récupère uniquement les séances réalisées
         const e = await getEntreesRealisees(cahierId);
         setEntrees(e);
       } catch {
@@ -78,14 +178,201 @@ const ElveCahierPage: React.FC = () => {
     charger();
   }, [cahierId]);
 
-  /**
-   * Bascule l'accordéon d'une séance.
-   */
+  const entreesFiltrees = useMemo(() => filtrerEntrees(entrees, filtres), [entrees, filtres]);
+
+  const groupes = useMemo(() => grouperParMois(entreesFiltrees), [entreesFiltrees]);
+
+  const rubriquesAvecCouleur = useMemo(
+    () =>
+      rubriques.map((r, idx) => ({
+        ...r,
+        couleur: couleurRubrique(r, idx),
+      })),
+    [rubriques],
+  );
+
+  const rubriquesMap = useMemo(() => {
+    const m = new Map<string, RubriqueCahier & { couleur: string }>();
+    rubriquesAvecCouleur.forEach((r) => {
+      m.set(r.id, { ...r, couleur: r.couleur! });
+    });
+    return m;
+  }, [rubriquesAvecCouleur]);
+
   function toggleEntree(id: string) {
-    setEntreeOuverte(prev => (prev === id ? null : id));
+    setEntreeOuverte((prev) => (prev === id ? null : id));
   }
 
-  // ── Rendu chargement ──
+  function renderSeance(entree: EntreeCahier) {
+    const estOuverte = entreeOuverte === entree.id;
+    const aMedias = (entree.piecesJointes?.length ?? 0) > 0;
+    const aLiens = (entree.liens?.length ?? 0) > 0;
+    const aEbooks = (entree.ebooksLies?.length ?? 0) > 0;
+    const rubrique = entree.rubriqueId ? rubriquesMap.get(entree.rubriqueId) : undefined;
+
+    const ligneDate =
+      `📅 ${formatDateLongue(entree.date as { toDate: () => Date })}` +
+      (entree.heureDebut
+        ? ` · ${entree.heureDebut}${entree.heureFin ? ` → ${entree.heureFin}` : ''}`
+        : '');
+
+    return (
+      <article key={entree.id} className="seance-card-eleve">
+        <button
+          type="button"
+          onClick={() => toggleEntree(entree.id)}
+          style={{
+            width: '100%',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            textAlign: 'left',
+            padding: 0,
+          }}
+          aria-expanded={estOuverte}
+          aria-controls={`seance-corps-${entree.id}`}
+        >
+          <div className="seance-card-eleve-date">{ligneDate}</div>
+
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}
+          >
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <h3 style={{ margin: 0 }}>{entree.chapitre}</h3>
+
+              {rubrique && (
+                <span
+                  className="seance-rubrique-badge"
+                  style={{
+                    backgroundColor: `${rubrique.couleur}1a`,
+                    borderColor: rubrique.couleur,
+                    color: rubrique.couleur,
+                    marginTop: '0.35rem',
+                    display: 'inline-flex',
+                  }}
+                >
+                  <span
+                    className="seance-rubrique-dot"
+                    style={{ backgroundColor: rubrique.couleur }}
+                    aria-hidden="true"
+                  />
+                  {rubrique.nom}
+                </span>
+              )}
+            </div>
+
+            <span
+              style={{
+                fontSize: '1.1rem',
+                transition: 'transform 0.2s',
+                transform: estOuverte ? 'rotate(180deg)' : 'rotate(0)',
+                display: 'inline-block',
+                flexShrink: 0,
+                paddingTop: 2,
+              }}
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {aLiens && (
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  background: '#eff6ff',
+                  color: '#2563eb',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                }}
+              >
+                🔗 Ressources
+              </span>
+            )}
+            {aEbooks && (
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  background: '#fef3c7',
+                  color: '#92400e',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                }}
+              >
+                📚 Ebooks
+              </span>
+            )}
+            {aMedias && (
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  background: '#f0fdf4',
+                  color: '#16a34a',
+                  padding: '2px 8px',
+                  borderRadius: 9999,
+                }}
+              >
+                🖼️ Médias
+              </span>
+            )}
+          </div>
+        </button>
+
+        {estOuverte && (
+          <div
+            id={`seance-corps-${entree.id}`}
+            style={{ marginTop: 14, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}
+          >
+            {entree.objectifs && (
+              <div
+                style={{
+                  background: '#f0fdf4',
+                  border: '1px solid #bbf7d0',
+                  borderRadius: 8,
+                  padding: 10,
+                  fontSize: '0.875rem',
+                  color: '#166534',
+                  marginBottom: 12,
+                }}
+              >
+                <strong>🎯 Objectifs :</strong> {entree.objectifs}
+              </div>
+            )}
+
+            {entree.contenu && (
+              <div
+                className="seance-card-eleve-contenu rte-content rte-content--lecture"
+                dangerouslySetInnerHTML={{ __html: entree.contenu }}
+              />
+            )}
+
+            {aLiens && (
+              <LienExterneEditor liens={entree.liens ?? []} onChange={() => {}} readonly />
+            )}
+            {aEbooks && (
+              <EbookSelector ebooksLies={entree.ebooksLies ?? []} onChange={() => {}} readonly />
+            )}
+            {aMedias && (
+              <MediaPlayer
+                piecesJointes={entree.piecesJointes ?? []}
+                entreeId={entree.id}
+                profId=""
+                onChange={() => {}}
+                readonly
+              />
+            )}
+          </div>
+        )}
+      </article>
+    );
+  }
+
   if (chargement) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6b7280' }}>
@@ -95,14 +382,11 @@ const ElveCahierPage: React.FC = () => {
     );
   }
 
-  // ── Rendu erreur / accès refusé ──
   if (erreur || !cahier) {
     return (
       <div style={{ textAlign: 'center', padding: '60px 20px' }}>
         <div style={{ fontSize: '2.5rem' }}>🔒</div>
-        <p style={{ color: '#dc2626', fontWeight: 600 }}>
-          {erreur || 'Accès non autorisé'}
-        </p>
+        <p style={{ color: '#dc2626', fontWeight: 600 }}>{erreur || 'Accès non autorisé'}</p>
         <button
           type="button"
           className="btn-secondary"
@@ -115,12 +399,11 @@ const ElveCahierPage: React.FC = () => {
     );
   }
 
-  // ── Rendu principal ──
+  const aFiltreActif = filtresActifs(filtres);
+
   return (
     <main style={{ maxWidth: 760, margin: '0 auto', padding: '20px 16px' }}>
-      {/* ── En-tête du cahier ── */}
       <header className="eleve-cahier-header">
-        {/* Bouton retour */}
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -140,19 +423,13 @@ const ElveCahierPage: React.FC = () => {
         >
           ← Retour
         </button>
-
         <h1>{cahier.titre}</h1>
         <p>
           {cahier.matiere} · {cahier.classe} · {cahier.anneeScolaire}
         </p>
-
-        {/* Badge lecture seule */}
-        <span className="badge-lecture-seule">
-          👁️ Lecture seule — Séances réalisées
-        </span>
+        <span className="badge-lecture-seule">👁️ Lecture seule — Séances réalisées</span>
       </header>
 
-      {/* ── Description du cahier ── */}
       {cahier.description && (
         <div
           style={{
@@ -169,20 +446,24 @@ const ElveCahierPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Compteur de séances ── */}
-      <p
-        style={{
-          fontSize: '0.875rem',
-          color: '#6b7280',
-          marginBottom: 16,
-        }}
-      >
-        {entrees.length === 0
-          ? 'Aucune séance réalisée pour l\'instant.'
-          : `${entrees.length} séance${entrees.length > 1 ? 's' : ''} réalisée${entrees.length > 1 ? 's' : ''}`}
-      </p>
+      {entrees.length > 0 && (
+        <ElveCahierFiltres
+          filtres={filtres}
+          onChangeFiltres={setFiltres}
+          rubriques={rubriquesAvecCouleur}
+          totalEntrees={entrees.length}
+          entreesFiltrees={entreesFiltrees.length}
+        />
+      )}
 
-      {/* ── Message vide ── */}
+      {!aFiltreActif && (
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 16 }}>
+          {entrees.length === 0
+            ? "Aucune séance réalisée pour l'instant."
+            : `${entrees.length} séance${entrees.length > 1 ? 's' : ''} réalisée${entrees.length > 1 ? 's' : ''}`}
+        </p>
+      )}
+
       {entrees.length === 0 && (
         <div className="eleve-vide">
           <span className="emoji">📭</span>
@@ -191,167 +472,36 @@ const ElveCahierPage: React.FC = () => {
         </div>
       )}
 
-      {/* ── Liste des séances réalisées (accordéon) ── */}
-      {entrees.map(entree => {
-        const estOuverte = entreeOuverte === entree.id;
-        const aMedias    = (entree.piecesJointes?.length ?? 0) > 0;
-        const aLiens     = (entree.liens?.length ?? 0) > 0;
-        const aEbooks    = (entree.ebooksLies?.length ?? 0) > 0;
+      {entrees.length > 0 && entreesFiltrees.length === 0 && (
+        <div className="filtres-vide">
+          <span className="filtres-vide-emoji">🔍</span>
+          <p className="filtres-vide-titre">Aucune séance pour cette sélection</p>
+          <p className="filtres-vide-sub">
+            Aucune séance réalisée ne correspond à vos critères de filtrage. Essayez une autre période ou
+            une autre rubrique.
+          </p>
+          <button type="button" className="filtres-vide-btn" onClick={() => setFiltres(FILTRES_DEFAUT)}>
+            ✕ Effacer les filtres
+          </button>
+        </div>
+      )}
 
-        return (
-          <article key={entree.id} className="seance-card-eleve">
-            {/* ── Entête cliquable de la séance ── */}
-            <button
-              type="button"
-              onClick={() => toggleEntree(entree.id)}
-              style={{
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                textAlign: 'left',
-                padding: 0,
-              }}
-              aria-expanded={estOuverte}
-              aria-controls={`seance-corps-${entree.id}`}
-            >
-              {/* Date de la séance */}
-              <div className="seance-card-eleve-date">
-               📅 {formatDateLongue(entree.date as any)}{entree.heureDebut ? ` · ${entree.heureDebut}${entree.heureFin ? ` → ${entree.heureFin}` : ''}` : ''}
-              </div>
-
-              {/* Titre + chevron */}
+      {entreesFiltrees.length > 0 && (
+        <>
+          {groupes.map((groupe, gi) => (
+            <React.Fragment key={groupe.cle}>
               <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
+                className="seances-mois-header"
+                style={{ marginTop: gi === 0 ? 0 : undefined }}
+                aria-label={`Séances de ${groupe.label}`}
               >
-                <h3 style={{ margin: 0 }}>{entree.chapitre}</h3>
-                <span
-                  style={{
-                    fontSize: '1.1rem',
-                    transition: 'transform 0.2s',
-                    transform: estOuverte ? 'rotate(180deg)' : 'rotate(0)',
-                    display: 'inline-block',
-                  }}
-                  aria-hidden="true"
-                >
-                  ▾
-                </span>
+                <span>{groupe.label}</span>
               </div>
-
-              {/* Indicateurs de contenu enrichi */}
-              <div
-                style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}
-              >
-                {aLiens && (
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      background: '#eff6ff',
-                      color: '#2563eb',
-                      padding: '2px 8px',
-                      borderRadius: 9999,
-                    }}
-                  >
-                    🔗 Ressources
-                  </span>
-                )}
-                {aEbooks && (
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      background: '#fef3c7',
-                      color: '#92400e',
-                      padding: '2px 8px',
-                      borderRadius: 9999,
-                    }}
-                  >
-                    📚 Ebooks
-                  </span>
-                )}
-                {aMedias && (
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      background: '#f0fdf4',
-                      color: '#16a34a',
-                      padding: '2px 8px',
-                      borderRadius: 9999,
-                    }}
-                  >
-                    🖼️ Médias
-                  </span>
-                )}
-              </div>
-            </button>
-
-            {/* ── Contenu de la séance (dépliable) ── */}
-            {estOuverte && (
-              <div
-                id={`seance-corps-${entree.id}`}
-                style={{ marginTop: 14, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}
-              >
-                {/* Objectifs */}
-                {entree.objectifs && (
-                  <div
-                    style={{
-                      background: '#f0fdf4',
-                      border: '1px solid #bbf7d0',
-                      borderRadius: 8,
-                      padding: 10,
-                      fontSize: '0.875rem',
-                      color: '#166534',
-                      marginBottom: 12,
-                    }}
-                  >
-                    <strong>🎯 Objectifs :</strong> {entree.objectifs}
-                  </div>
-                )}
-
-                {/* Contenu de la séance (HTML enrichi depuis l'éditeur) */}
-                {entree.contenu && (
-                  <div
-                    className="seance-card-eleve-contenu rte-content rte-content--lecture"
-                    dangerouslySetInnerHTML={{ __html: entree.contenu }}
-                  />
-                )}
-
-                {/* Liens externes (lecture seule) */}
-                {aLiens && (
-                  <LienExterneEditor
-                    liens={entree.liens ?? []}
-                    onChange={() => {}} /* Aucun changement possible */
-                    readonly
-                  />
-                )}
-
-                {/* Ebooks liés (lecture seule) */}
-                {aEbooks && (
-                  <EbookSelector
-                    ebooksLies={entree.ebooksLies ?? []}
-                    onChange={() => {}}
-                    readonly
-                  />
-                )}
-
-                {/* Médias (lecture seule) */}
-                {aMedias && (
-                  <MediaPlayer
-                    piecesJointes={entree.piecesJointes ?? []}
-                    entreeId={entree.id}
-                    profId="" /* Pas utilisé en readonly */
-                    onChange={() => {}}
-                    readonly
-                  />
-                )}
-              </div>
-            )}
-          </article>
-        );
-      })}
+              {groupe.entrees.map((e) => renderSeance(e))}
+            </React.Fragment>
+          ))}
+        </>
+      )}
     </main>
   );
 };
