@@ -195,16 +195,16 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "url": "assets/jspdf.plugin.autotable-CBbcTuFj.js",
     "revision": null
   }, {
-    "url": "assets/jspdf.es.min-CfdYyQjE.js",
+    "url": "assets/jspdf.es.min-DWkX6QK4.js",
     "revision": null
   }, {
-    "url": "assets/index.es-dD5K0TOo.js",
+    "url": "assets/index.es-B3IWbXVM.js",
+    "revision": null
+  }, {
+    "url": "assets/index-Bi9GCR2X.js",
     "revision": null
   }, {
     "url": "assets/index-BcPT_vkI.css",
-    "revision": null
-  }, {
-    "url": "assets/index-B8OzBBI3.js",
     "revision": null
   }, {
     "url": "assets/html2canvas.esm-DXEQVQnt.js",
