@@ -483,7 +483,7 @@ export function calculerProgression(
   const map = new Map<string | null, ProgressionItem>();
 
   rubriques.forEach((r, idx) => {
-    const seancesPrevu = r.nombreSeancesPrevu ?? 0;
+    const seancesPrevu = r.nombreSeancesPrevu ?? r.seancesPrevues ?? 0;
     map.set(r.id, {
       rubriqueId: r.id,
       rubriqueNom: r.nom,
@@ -505,6 +505,7 @@ export function calculerProgression(
     realise: 0,
     planifie: 0,
     annule: 0,
+    seancesPrevu: undefined,
     pourcentage: 0,
   });
 
@@ -519,7 +520,7 @@ export function calculerProgression(
 
   map.forEach(item => {
     const r = item.rubriqueId ? rubriques.find(x => x.id === item.rubriqueId) : null;
-    const seancesPrevu = r?.nombreSeancesPrevu;
+    const seancesPrevu = r?.nombreSeancesPrevu ?? r?.seancesPrevues;
     if (seancesPrevu != null && seancesPrevu > 0) {
       item.seancesPrevu = seancesPrevu;
       item.pourcentage = Math.min(100, (item.realise / seancesPrevu) * 100);
@@ -533,7 +534,16 @@ export function calculerProgression(
   const totalRealise = allItems.reduce((s, i) => s + i.realise, 0);
   const totalPlanifie = allItems.reduce((s, i) => s + i.planifie, 0);
   const totalAnnule = allItems.reduce((s, i) => s + i.annule, 0);
-  const baseGlobal = totalRealise + totalPlanifie;
+
+  const getPrevues = (r: RubriqueCahier) => r.nombreSeancesPrevu ?? r.seancesPrevues ?? 0;
+  const totalPrevues = rubriques.length > 0 && rubriques.every(r => getPrevues(r) > 0)
+    ? rubriques.reduce((s, r) => s + getPrevues(r), 0)
+    : undefined;
+
+  const baseGlobal = totalPrevues ?? (totalRealise + totalPlanifie);
+  const pctGlobal = baseGlobal > 0
+    ? Math.min(100, (totalRealise / baseGlobal) * 100)
+    : 0;
 
   const global: ProgressionItem = {
     rubriqueId: null,
@@ -543,7 +553,8 @@ export function calculerProgression(
     realise: totalRealise,
     planifie: totalPlanifie,
     annule: totalAnnule,
-    pourcentage: baseGlobal > 0 ? (totalRealise / baseGlobal) * 100 : 0,
+    seancesPrevu: totalPrevues,
+    pourcentage: pctGlobal,
   };
 
   const parRubrique = [...map.values()]

@@ -20,10 +20,12 @@ const BarreProgression: React.FC<{
   isGlobal?: boolean;
 }> = ({ item, isGlobal = false }) => {
   const pct = Math.round(item.pourcentage);
-  const base = Math.max(item.total, 1);
-  const pctRealise = (item.realise / base) * 100;
-  const pctPlanifie = (item.planifie / base) * 100;
-  const pctAnnule = (item.annule / base) * 100;
+  const denomVisuel = item.seancesPrevu != null && item.seancesPrevu > 0
+    ? Math.max(item.seancesPrevu, item.total)
+    : Math.max(item.total, 1);
+  const segRealise = Math.min((item.realise / denomVisuel) * 100, 100);
+  const segPlanifie = Math.min((item.planifie / denomVisuel) * 100, Math.max(0, 100 - segRealise));
+  const segAnnule = Math.min((item.annule / denomVisuel) * 100, Math.max(0, 100 - segRealise - segPlanifie));
 
   const pctClass =
     pct >= 100 ? 'prog-pct-badge prog-pct-complete'
@@ -63,19 +65,19 @@ const BarreProgression: React.FC<{
       >
         <div
           className="prog-fill prog-fill-realise"
-          style={{ width: `${pctRealise}%` }}
+          style={{ width: `${segRealise}%` }}
           title={`Réalisé : ${item.realise}`}
         />
         <div
           className="prog-fill prog-fill-planifie"
-          style={{ width: `${pctPlanifie}%`, left: `${pctRealise}%` }}
+          style={{ width: `${segPlanifie}%`, left: `${segRealise}%` }}
           title={`Planifié : ${item.planifie}`}
         />
         <div
           className="prog-fill prog-fill-annule"
           style={{
-            width: `${pctAnnule}%`,
-            left: `${pctRealise + pctPlanifie}%`,
+            width: `${segAnnule}%`,
+            left: `${segRealise + segPlanifie}%`,
           }}
           title={`Annulé : ${item.annule}`}
         />
@@ -99,7 +101,7 @@ const BarreProgression: React.FC<{
         )}
         <span className="prog-count prog-count-total">
           {item.seancesPrevu != null && item.seancesPrevu > 0
-            ? `${item.realise} / ${item.seancesPrevu} séance${item.seancesPrevu > 1 ? 's' : ''} prévue${item.seancesPrevu > 1 ? 's' : ''}`
+            ? `${item.realise} / ${item.seancesPrevu} séances prévues`
             : `${item.total} séance${item.total > 1 ? 's' : ''} au total`}
         </span>
       </div>

@@ -205,6 +205,8 @@ export interface RubriqueCahier {
   couleur?: string;
   /** Nombre de séances prévues pour ce module (optionnel, rétrocompatible) */
   nombreSeancesPrevu?: number;
+  /** Alias pour compatibilité avec données Firestore existantes */
+  seancesPrevues?: number;
 }
 
 // ─────────────────────────────────────────────────────────────
