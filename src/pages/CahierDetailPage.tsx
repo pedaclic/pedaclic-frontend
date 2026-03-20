@@ -22,6 +22,7 @@ import {
   ajouterRubrique,
   modifierRubrique,
   supprimerRubrique,
+  resoudreRubriqueIdPourEntree,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -932,25 +933,30 @@ const CahierDetailPage: React.FC = () => {
                               >
                                 {statutCfg.label}
                               </span>
-                              {entree.rubriqueId && (() => {
-                                const r = rubriques.find(x => x.id === entree.rubriqueId);
-                                if (!r) return null;
-                                return (
-                                  <span
-                                    className="entree-card-rubrique-badge"
-                                    style={{
-                                      backgroundColor: (r.couleur ?? '#64748b') + '1a',
-                                      borderColor: r.couleur ?? '#64748b',
-                                      color: r.couleur ?? '#64748b',
-                                    }}
-                                  >
-                                    {r.nom}
-                                  </span>
-                                );
+                              {(() => {
+                                const rid = resoudreRubriqueIdPourEntree(entree, rubriques);
+                                const r = rid ? rubriques.find(x => x.id === rid) : null;
+                                if (r) {
+                                  return (
+                                    <span
+                                      className="entree-card-rubrique-badge"
+                                      style={{
+                                        backgroundColor: (r.couleur ?? '#64748b') + '1a',
+                                        borderColor: r.couleur ?? '#64748b',
+                                        color: r.couleur ?? '#64748b',
+                                      }}
+                                    >
+                                      {r.nom}
+                                    </span>
+                                  );
+                                }
+                                if (entree.rubrique?.trim()) {
+                                  return (
+                                    <span className="entree-rubrique-badge">{entree.rubrique}</span>
+                                  );
+                                }
+                                return null;
                               })()}
-                              {entree.rubrique && !entree.rubriqueId && (
-                                <span className="entree-rubrique-badge">{entree.rubrique}</span>
-                              )}
                               {entree.isMarqueEvaluation && (
                                 <span className="signet-badge">📌 Évaluation</span>
                               )}

@@ -1727,6 +1727,14 @@
   margin-top: 0.4rem;
 }
 
+.entree-rubrique-progression-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.45;
+  max-width: 42rem;
+}
+
 .entree-card-rubrique-badge {
   display: inline-block;
   font-size: 0.72rem;

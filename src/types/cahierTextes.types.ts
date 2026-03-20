@@ -263,6 +263,7 @@ export interface EntreeCahier {
   contenu: string;
   objectifs?: string;
   competences?: string[];
+  /** Sous-rubrique (liste configurable par l’admin, distincte du module du cahier) */
   rubrique?: string;
   statut: StatutSeance;
   motifAnnulation?: string;
@@ -295,6 +296,7 @@ export interface EntreeFormData {
   contenu: string;
   objectifs: string;
   competences: string[];
+  /** Sous-rubrique (liste admin), distincte du module du cahier */
   rubrique: string;
   statut: StatutSeance;
   motifAnnulation: string;

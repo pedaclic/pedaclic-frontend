@@ -22,6 +22,7 @@ import {
   uploadPieceJointe,
   addPiecesJointes,
   deletePieceJointe,
+  resoudreRubriqueIdPourEntree,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -93,7 +94,7 @@ const EntreeEditorPage: React.FC = () => {
 
   const isEdit = !!entreeId;
 
-  // Charger les rubriques configurables (admin) — lisible par tout utilisateur authentifié
+  // Charger les sous-rubriques configurables (admin) — lisible par tout utilisateur authentifié
   useEffect(() => {
     getDoc(doc(db, 'settings', 'platform'))
       .then(snap => {
@@ -127,7 +128,13 @@ const EntreeEditorPage: React.FC = () => {
             setEbooksLies(entreeData.ebooksLies ?? []);
             // Phase 23 — contenus IA
             setContenuIA(entreeData.contenuIA ?? []);
-            setRubriqueId(entreeData.rubriqueId ?? '');
+            const rubsCahier = cahierData.rubriques ?? [];
+            let ridPhase29 = entreeData.rubriqueId ?? '';
+            if (!ridPhase29 && rubsCahier.length > 0) {
+              const resolu = resoudreRubriqueIdPourEntree(entreeData, rubsCahier);
+              if (resolu) ridPhase29 = resolu;
+            }
+            setRubriqueId(ridPhase29);
             setForm({
               date: entreeData.date.toDate().toISOString().slice(0, 10),
               heureDebut: entreeData.heureDebut || '',
@@ -225,20 +232,34 @@ const EntreeEditorPage: React.FC = () => {
     setSaving(true);
     setError('');
     try {
+      const rubriqueIdFirestore = resoudreRubriqueIdPourEntree(
+        { rubriqueId: rubriqueId || undefined, rubrique: form.rubrique },
+        cahier.rubriques ?? []
+      );
+
       if (isEdit && entreeId) {
         // Phase 21 — mise à jour base + Phase 22 — médias enrichis
         await updateEntree(entreeId, cahierId, form);
-        // Mise à jour séparée des champs Phase 22 (liens, ebooks, contenus IA)
-        await updateEntree(entreeId, { liens, ebooksLies, contenuIA });
+        // Phase 22 + Phase 29 : rubriqueId doit toujours être écrit en édition (sinon la progression reste « Sans rubrique »)
+        await updateEntree(entreeId, {
+          liens,
+          ebooksLies,
+          contenuIA,
+          rubriqueId: rubriqueIdFirestore,
+        });
       } else {
         const newId = await createEntree(cahierId, currentUser.uid, form);
         // Pièces jointes uploadées avant création (Phase 21)
         if (piecesJointes.length > 0) {
           await addPiecesJointes(newId, [], piecesJointes);
         }
-        // Médias Phase 22 + Phase 29 rubriqueId sauvegardés sur la nouvelle entrée
-        const extras = { liens, ebooksLies, contenuIA, rubriqueId: rubriqueId || null };
-        const hasExtras = liens.length > 0 || ebooksLies.length > 0 || contenuIA.length > 0 || !!rubriqueId;
+        const extras = { liens, ebooksLies, contenuIA, rubriqueId: rubriqueIdFirestore };
+        const hasExtras =
+          liens.length > 0 ||
+          ebooksLies.length > 0 ||
+          contenuIA.length > 0 ||
+          rubriqueId !== '' ||
+          (cahier.rubriques?.length ?? 0) > 0;
         if (hasExtras) {
           await updateEntree(newId, extras);
         }
@@ -313,11 +334,11 @@ const EntreeEditorPage: React.FC = () => {
               onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
           </div>
 
-          {/* Phase 29 — Sélecteur rubrique (cahier.rubriques) */}
+          {/* Phase 29 — Module du cahier (utilisé pour la progression par rubrique) */}
           {cahier?.rubriques && cahier.rubriques.length > 0 && (
             <div className="entree-form-field form-group">
               <label htmlFor="entree-rubrique" className="form-label">
-                Rubrique <span className="entree-form-hint">(optionnel)</span>
+                Module du cahier <span className="entree-form-hint">(progression)</span>
               </label>
               <select
                 id="entree-rubrique"
@@ -346,10 +367,18 @@ const EntreeEditorPage: React.FC = () => {
                   </span>
                 );
               })()}
+              <p className="entree-rubrique-progression-hint">
+                Ce choix compte pour les barres « par rubrique ». Si vous aviez renseigné une sous-rubrique (liste admin)
+                dont le libellé est identique au nom d’un module, elle est reconnue automatiquement pour la progression.
+              </p>
             </div>
           )}
 
-          <div className="form-row" style={cahierRubriques.length > 0 ? { gridTemplateColumns: '1fr 1fr 1fr' } : undefined}>
+          <div className="form-row" style={
+            cahierRubriques.length > 0 && !(cahier?.rubriques && cahier.rubriques.length > 0)
+              ? { gridTemplateColumns: '1fr 1fr 1fr' }
+              : undefined
+          }>
             <div className="form-group">
               <label className="form-label">Type de séance</label>
               <select className="form-select" value={form.typeContenu}
@@ -359,9 +388,9 @@ const EntreeEditorPage: React.FC = () => {
                 ))}
               </select>
             </div>
-            {cahierRubriques.length > 0 && (
+            {cahierRubriques.length > 0 && !(cahier?.rubriques && cahier.rubriques.length > 0) && (
               <div className="form-group">
-                <label className="form-label">Rubrique</label>
+                <label className="form-label">Sous-rubrique <span className="entree-form-hint">(admin)</span></label>
                 <select className="form-select" value={form.rubrique}
                   onChange={e => setForm(f => ({ ...f, rubrique: e.target.value }))}>
                   <option value="">— Aucune —</option>

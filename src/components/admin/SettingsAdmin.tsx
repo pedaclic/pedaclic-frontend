@@ -51,7 +51,7 @@ interface PlatformSettings {
 
   /* Cahier de textes */
   cahierPdfExport: boolean;   /* Autoriser l'export PDF du cahier */
-  cahierRubriques: string[]; /* Rubriques configurables (entre Type de séance et Statut) */
+  cahierRubriques: string[]; /* Sous-rubriques configurables (entre Type de séance et Statut) */
 
   /* Métadonnées */
   updatedAt?: any;
@@ -430,9 +430,10 @@ const SettingsAdmin: React.FC = () => {
           </div>
 
           <div className="settings-field settings-field--full">
-            <label className="settings-label">Rubriques du cahier</label>
+            <label className="settings-label">Sous-rubriques du cahier</label>
             <p className="settings-hint" style={{ marginBottom: '0.5rem' }}>
-              Liste des rubriques proposées entre "Type de séance" et "Statut" dans le formulaire de séance
+              Liste des sous-rubriques proposées entre « Type de séance » et « Statut » dans le formulaire de séance
+              (distinctes des modules du cahier, gérés par le professeur sur chaque cahier).
             </p>
             <div className="cahier-rubriques-editor">
               {(settings.cahierRubriques || []).map((r, idx) => (
@@ -466,7 +467,7 @@ const SettingsAdmin: React.FC = () => {
                 className="admin-btn admin-btn-ghost"
                 onClick={() => handleChange('cahierRubriques', [...(settings.cahierRubriques || []), ''])}
               >
-                + Ajouter une rubrique
+                + Ajouter une sous-rubrique
               </button>
             </div>
           </div>

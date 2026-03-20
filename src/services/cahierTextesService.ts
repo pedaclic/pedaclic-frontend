@@ -476,6 +476,43 @@ export interface ProgressionCahier {
   parRubrique: ProgressionItem[];
 }
 
+/** Normalise un libellé pour comparaison (casse, accents, espaces). */
+export function normaliserLibelleRubrique(s: string): string {
+  return s
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '');
+}
+
+/**
+ * Associe une entrée à une rubrique du cahier :
+ * 1) rubriqueId valide (Phase 29)
+ * 2) sinon champ texte `rubrique` (référentiel admin / legacy) dont le libellé
+ *    correspond au nom d'un module du cahier (même comportement que la progression).
+ */
+export function resoudreRubriqueIdPourEntree(
+  entree: Pick<EntreeCahier, 'rubriqueId' | 'rubrique'>,
+  rubriques: RubriqueCahier[]
+): string | null {
+  if (!rubriques.length) {
+    const id = entree.rubriqueId?.trim();
+    return id || null;
+  }
+  const ids = new Set(rubriques.map(r => r.id));
+  const rid = entree.rubriqueId?.trim();
+  if (rid && ids.has(rid)) return rid;
+
+  const label = (entree.rubrique ?? '').trim();
+  if (label) {
+    const n = normaliserLibelleRubrique(label);
+    const r = rubriques.find(x => normaliserLibelleRubrique(x.nom) === n);
+    if (r) return r.id;
+  }
+
+  return null;
+}
+
 export function calculerProgression(
   entrees: EntreeCahier[],
   rubriques: RubriqueCahier[]
@@ -510,7 +547,8 @@ export function calculerProgression(
   });
 
   entrees.forEach(e => {
-    const key = e.rubriqueId && map.has(e.rubriqueId) ? e.rubriqueId : null;
+    const resolved = resoudreRubriqueIdPourEntree(e, rubriques);
+    const key = resolved && map.has(resolved) ? resolved : null;
     const item = map.get(key)!;
     item.total++;
     if (e.statut === 'realise') item.realise++;

@@ -110,7 +110,7 @@ export async function exportCahierPDF(
     });
 
   autoTable(doc, {
-    head: [['Date', 'Horaire', 'Chapitre', 'Type', 'Rubrique', 'Statut', 'Contenu (extrait)']],
+    head: [['Date', 'Horaire', 'Chapitre', 'Type', 'Sous-rubrique', 'Statut', 'Contenu (extrait)']],
     body: rows,
     startY: 26,
     styles: { fontSize: 8 },
