@@ -98,7 +98,9 @@ const BarreProgression: React.FC<{
           </span>
         )}
         <span className="prog-count prog-count-total">
-          {item.total} séance{item.total > 1 ? 's' : ''} au total
+          {item.seancesPrevu != null && item.seancesPrevu > 0
+            ? `${item.realise} / ${item.seancesPrevu} séance${item.seancesPrevu > 1 ? 's' : ''} prévue${item.seancesPrevu > 1 ? 's' : ''}`
+            : `${item.total} séance${item.total > 1 ? 's' : ''} au total`}
         </span>
       </div>
     </div>

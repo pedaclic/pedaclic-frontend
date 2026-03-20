@@ -1482,10 +1482,27 @@
   gap: 0.4rem;
 }
 
+.cahier-rubriques-list-header {
+  display: grid;
+  grid-template-columns: 1fr minmax(7rem, auto) auto;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.cahier-rubriques-col-nom { }
+.cahier-rubriques-col-seances { text-align: center; min-width: 6rem; }
+.cahier-rubriques-col-actions { width: 4.5rem; }
+
 .cahier-rubrique-item {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr minmax(7rem, auto) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 0.5rem;
   padding: 0.4rem 0;
   border-bottom: 1px dashed #f1f5f9;
@@ -1501,11 +1518,18 @@
   padding: 0.2rem 0.65rem;
   border-radius: 20px;
   border: 1.5px solid currentColor;
-  flex: 1;
-  max-width: 75%;
+  max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.cahier-rubrique-seances-prevu {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: #475569;
+  text-align: center;
+  min-width: 6rem;
 }
 
 .cahier-rubrique-actions {
@@ -1544,6 +1568,22 @@
 
 .cahier-rubrique-form-field {
   margin-bottom: 0.85rem;
+}
+
+.cahier-rubrique-form-row {
+  margin-bottom: 0.5rem;
+}
+
+.cahier-rubrique-form-input-narrow {
+  max-width: 6rem;
+}
+
+.cahier-rubrique-form-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  margin-top: 0.25rem;
+  font-weight: 400;
 }
 
 .cahier-rubrique-form-label {

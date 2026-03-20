@@ -203,6 +203,8 @@ export interface RubriqueCahier {
   nom: string;
   ordre: number;
   couleur?: string;
+  /** Nombre de séances prévues pour ce module (optionnel, rétrocompatible) */
+  nombreSeancesPrevu?: number;
 }
 
 // ─────────────────────────────────────────────────────────────

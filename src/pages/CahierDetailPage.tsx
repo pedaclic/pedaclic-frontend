@@ -89,6 +89,7 @@ const CahierDetailPage: React.FC = () => {
   const [rubriqueEnEdition, setRubriqueEnEdition] = useState<RubriqueCahier | null>(null);
   const [formRubriqueNom, setFormRubriqueNom] = useState('');
   const [formRubriqueCouleur, setFormRubriqueCouleur] = useState(COULEURS_RUBRIQUES[0]);
+  const [formRubriqueSeancesPrevu, setFormRubriqueSeancesPrevu] = useState<number | ''>(0);
   const [savingRubrique, setSavingRubrique] = useState(false);
   const [errorRubrique, setErrorRubrique] = useState('');
   const [loadingCahier, setLoadingCahier] = useState(true);
@@ -194,6 +195,7 @@ const CahierDetailPage: React.FC = () => {
     setRubriqueEnEdition(null);
     setFormRubriqueNom('');
     setFormRubriqueCouleur(COULEURS_RUBRIQUES[rubriques.length % COULEURS_RUBRIQUES.length]);
+    setFormRubriqueSeancesPrevu(0);
     setErrorRubrique('');
     setAfficherFormRubrique(true);
   };
@@ -202,6 +204,7 @@ const CahierDetailPage: React.FC = () => {
     setRubriqueEnEdition(r);
     setFormRubriqueNom(r.nom);
     setFormRubriqueCouleur(r.couleur ?? COULEURS_RUBRIQUES[0]);
+    setFormRubriqueSeancesPrevu(r.nombreSeancesPrevu ?? 0);
     setErrorRubrique('');
     setAfficherFormRubrique(true);
   };
@@ -210,6 +213,7 @@ const CahierDetailPage: React.FC = () => {
     setAfficherFormRubrique(false);
     setRubriqueEnEdition(null);
     setFormRubriqueNom('');
+    setFormRubriqueSeancesPrevu(0);
   };
 
   const handleSauvegarderRubrique = async () => {
@@ -222,19 +226,27 @@ const CahierDetailPage: React.FC = () => {
     setErrorRubrique('');
     try {
       let nouvelleListe: RubriqueCahier[];
+      const nbPrevu = typeof formRubriqueSeancesPrevu === 'number'
+        ? formRubriqueSeancesPrevu
+        : parseInt(String(formRubriqueSeancesPrevu), 10) || 0;
       if (rubriqueEnEdition) {
         nouvelleListe = await modifierRubrique(
           cahierId,
           rubriques,
           rubriqueEnEdition.id,
-          { nom: formRubriqueNom.trim(), couleur: formRubriqueCouleur }
+          {
+            nom: formRubriqueNom.trim(),
+            couleur: formRubriqueCouleur,
+            nombreSeancesPrevu: nbPrevu > 0 ? nbPrevu : undefined,
+          }
         );
       } else {
         nouvelleListe = await ajouterRubrique(
           cahierId,
           rubriques,
           formRubriqueNom.trim(),
-          formRubriqueCouleur
+          formRubriqueCouleur,
+          nbPrevu > 0 ? nbPrevu : undefined
         );
       }
       setRubriques(nouvelleListe);
@@ -528,6 +540,11 @@ const CahierDetailPage: React.FC = () => {
             </p>
           ) : (
             <div className="cahier-rubriques-list">
+              <div className="cahier-rubriques-list-header">
+                <span className="cahier-rubriques-col-nom">Module</span>
+                <span className="cahier-rubriques-col-seances">Séances prévues</span>
+                <span className="cahier-rubriques-col-actions" />
+              </div>
               {rubriques.map(r => (
                 <div key={r.id} className="cahier-rubrique-item">
                   <span
@@ -539,6 +556,11 @@ const CahierDetailPage: React.FC = () => {
                     }}
                   >
                     {r.nom}
+                  </span>
+                  <span className="cahier-rubrique-seances-prevu">
+                    {r.nombreSeancesPrevu != null && r.nombreSeancesPrevu > 0
+                      ? `${r.nombreSeancesPrevu} séance${r.nombreSeancesPrevu > 1 ? 's' : ''}`
+                      : '—'}
                   </span>
                   <div className="cahier-rubrique-actions">
                     <button
@@ -580,6 +602,27 @@ const CahierDetailPage: React.FC = () => {
                   maxLength={80}
                   autoFocus
                 />
+              </div>
+              <div className="cahier-rubrique-form-field cahier-rubrique-form-row">
+                <div className="cahier-rubrique-form-field">
+                  <label htmlFor="rubrique-seances" className="cahier-rubrique-form-label">
+                    Séances prévues pour ce module
+                  </label>
+                  <input
+                    id="rubrique-seances"
+                    type="number"
+                    min={0}
+                    max={200}
+                    className="cahier-rubrique-form-input cahier-rubrique-form-input-narrow"
+                    placeholder="Ex : 8"
+                    value={formRubriqueSeancesPrevu === '' ? '' : formRubriqueSeancesPrevu}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setFormRubriqueSeancesPrevu(v === '' ? '' : Math.max(0, parseInt(v, 10) || 0));
+                    }}
+                  />
+                  <span className="cahier-rubrique-form-hint">Optionnel — le pourcentage sera calculé par rapport à ce nombre</span>
+                </div>
               </div>
               <div className="cahier-rubrique-form-field">
                 <label className="cahier-rubrique-form-label">Couleur</label>

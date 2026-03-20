@@ -466,6 +466,8 @@ export interface ProgressionItem {
   realise: number;
   planifie: number;
   annule: number;
+  /** Nombre de séances prévues pour ce module (si défini par le prof) */
+  seancesPrevu?: number;
   pourcentage: number;
 }
 
@@ -481,6 +483,7 @@ export function calculerProgression(
   const map = new Map<string | null, ProgressionItem>();
 
   rubriques.forEach((r, idx) => {
+    const seancesPrevu = r.nombreSeancesPrevu ?? 0;
     map.set(r.id, {
       rubriqueId: r.id,
       rubriqueNom: r.nom,
@@ -489,6 +492,7 @@ export function calculerProgression(
       realise: 0,
       planifie: 0,
       annule: 0,
+      seancesPrevu: seancesPrevu > 0 ? seancesPrevu : undefined,
       pourcentage: 0,
     });
   });
@@ -514,8 +518,15 @@ export function calculerProgression(
   });
 
   map.forEach(item => {
-    const base = item.realise + item.planifie;
-    item.pourcentage = base > 0 ? (item.realise / base) * 100 : 0;
+    const r = item.rubriqueId ? rubriques.find(x => x.id === item.rubriqueId) : null;
+    const seancesPrevu = r?.nombreSeancesPrevu;
+    if (seancesPrevu != null && seancesPrevu > 0) {
+      item.seancesPrevu = seancesPrevu;
+      item.pourcentage = Math.min(100, (item.realise / seancesPrevu) * 100);
+    } else {
+      const base = item.realise + item.planifie;
+      item.pourcentage = base > 0 ? (item.realise / base) * 100 : 0;
+    }
   });
 
   const allItems = [...map.values()];
@@ -552,13 +563,15 @@ export async function ajouterRubrique(
   cahierId: string,
   rubriquesActuelles: RubriqueCahier[],
   nom: string,
-  couleur?: string
+  couleur?: string,
+  nombreSeancesPrevu?: number
 ): Promise<RubriqueCahier[]> {
   const nouvelleRubrique: RubriqueCahier = {
     id: Date.now().toString(),
     nom: nom.trim(),
     ordre: rubriquesActuelles.length,
     couleur: couleur ?? COULEURS_RUBRIQUES[rubriquesActuelles.length % COULEURS_RUBRIQUES.length],
+    ...(nombreSeancesPrevu != null && nombreSeancesPrevu > 0 && { nombreSeancesPrevu }),
   };
   const nouvelleListe = [...rubriquesActuelles, nouvelleRubrique];
   await updateCahier(cahierId, { rubriques: nouvelleListe });
@@ -569,7 +582,7 @@ export async function modifierRubrique(
   cahierId: string,
   rubriquesActuelles: RubriqueCahier[],
   rubriqueId: string,
-  modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur'>>
+  modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur' | 'nombreSeancesPrevu'>>
 ): Promise<RubriqueCahier[]> {
   const nouvelleListe = rubriquesActuelles.map(r =>
     r.id === rubriqueId ? { ...r, ...modifications } : r
