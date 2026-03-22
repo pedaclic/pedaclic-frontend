@@ -37,9 +37,9 @@ export default defineConfig({
         globPatterns: [
           '**/*.{js,css,html,ico,png,svg,woff,woff2,ttf,eot}'
         ],
-        // Ne jamais précacher index.html : toujours le récupérer du réseau
-        // pour que chaque déploiement serve immédiatement la nouvelle version
-        globIgnores: ['**/node_modules/**/*', 'index.html', '**/index.html'],
+        // index.html doit être précaché : sinon Workbox lève
+        // "createHandlerBoundToURL('/index.html') … not precached" (navigateFallback).
+        globIgnores: ['**/node_modules/**/*'],
 
         // --- Page de secours hors-ligne ---
         // Si une page n'est pas en cache ET pas de réseau → offline.html
@@ -131,6 +131,12 @@ export default defineConfig({
               },
               networkTimeoutSeconds: 10,
             },
+          },
+
+          // 4b. API publique PedaClic — jamais de cache (POST /api/generate, etc.)
+          {
+            urlPattern: /^https:\/\/api\.pedaclic\.sn\/.*/i,
+            handler: 'NetworkOnly',
           },
 
           // 5. Firebase Storage (vidéo/audio) — Network Only

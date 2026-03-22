@@ -120,10 +120,10 @@ const API_BASE_URL =
 
 /**
  * Timeout global pour chaque appel IA (en millisecondes).
- * 120 000 ms = 2 minutes — suffisant pour Claude avec 2000 tokens.
- * Augmenter à 180_000 si Railway est sur un plan lent.
+ * 180 s : le client doit rester ouvert plus longtemps que le cold start + génération ;
+ * le proxy (Railway / CDN) peut tout de même répondre 504 avant la fin — d’où les retries.
  */
-const AI_TIMEOUT_MS = 120_000;
+const AI_TIMEOUT_MS = 180_000;
 
 /**
  * Nombre maximum de tentatives en cas d'échec réseau.
@@ -172,7 +172,12 @@ function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
   }
 
   const { sourceText: _drop, consignesSpeciales: _old, ...restOpts } = o;
-  const merged = parts.filter(Boolean).join('\n\n');
+  let merged = parts.filter(Boolean).join('\n\n');
+  if (merged.length > MAX_CONSIGNES_TOTAL_CHARS) {
+    merged =
+      merged.slice(0, MAX_CONSIGNES_TOTAL_CHARS) +
+      "\n\n[… Contenu tronqué automatiquement pour limiter la charge sur le serveur. Réduisez les objectifs ou le texte source.]";
+  }
 
   return {
     ...req,
@@ -314,11 +319,7 @@ export async function pingServeurIA(): Promise<void> {
 
 /**
  * Appelle le backend Railway pour générer du contenu IA.
- * — Timeout 120 secondes via AbortController
- * — Retry automatique 1 fois en cas d'échec réseau
- *
- * @param request - Paramètres de génération
- * @returns Réponse du backend avec le contenu généré
+ * — Timeout 180 s ; retry réseau via `avecRetry` ; 2ᵉ essai sur 502/503/504 (gateway)
  */
 export async function generateContent(
   request: GenerationRequest
@@ -326,45 +327,63 @@ export async function generateContent(
   const payload = finalizeGenerationRequest(request);
   const body = JSON.stringify(payload);
 
-  // Options fetch communes
   const fetchOptions: RequestInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body,
   };
 
-  // Appel avec timeout + retry
-  const response = await avecRetry(() =>
-    fetchAvecTimeout(`${API_BASE_URL}/api/generate`, fetchOptions)
-  ).catch((err: Error) => {
-    console.error('[aiGeneratorService] Erreur génération:', err);
+  const url = `${API_BASE_URL}/api/generate`;
+  const MAX_TENTATIVES_GATEWAY = 2;
 
-    // Erreur réseau (pas de connexion du tout)
-    if (err instanceof TypeError && err.message.includes('fetch')) {
-      throw new Error(
-        'Impossible de contacter le serveur. Vérifiez votre connexion internet.'
-      );
+  for (let t = 0; t < MAX_TENTATIVES_GATEWAY; t++) {
+    try {
+      const response = await avecRetry(() => fetchAvecTimeout(url, fetchOptions));
+
+      const status = response.status;
+
+      if (status === 504 || status === 502 || status === 503) {
+        if (t < MAX_TENTATIVES_GATEWAY - 1) {
+          console.warn(
+            `[aiGeneratorService] HTTP ${status} sur /api/generate — nouvelle tentative dans 6s…`
+          );
+          await new Promise((r) => setTimeout(r, 6000));
+          continue;
+        }
+        throw new Error(
+          'Le serveur a mis trop de temps à répondre (délai dépassé côté hébergement). ' +
+            'Réessayez dans une minute, ou allégez la requête : moins de texte dans les objectifs, ' +
+            'les consignes ou le contenu source (fichier importé).'
+        );
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const message =
+          (errorData as { error?: string }).error ||
+          `Erreur serveur (${response.status})`;
+        throw new Error(message);
+      }
+
+      const data: GenerationResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'La génération a échoué.');
+      }
+
+      return data;
+    } catch (err) {
+      console.error('[aiGeneratorService] Erreur génération:', err);
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        throw new Error(
+          'Impossible de contacter le serveur. Vérifiez votre connexion internet.'
+        );
+      }
+      throw err instanceof Error ? err : new Error(String(err));
     }
-
-    throw err;
-  });
-
-  // Gestion des erreurs HTTP (4xx, 5xx)
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const message =
-      (errorData as { error?: string }).error ||
-      `Erreur serveur (${response.status})`;
-    throw new Error(message);
   }
 
-  const data: GenerationResponse = await response.json();
-
-  if (!data.success) {
-    throw new Error(data.error || 'La génération a échoué.');
-  }
-
-  return data;
+  throw new Error('La génération a échoué.');
 }
 
 /**

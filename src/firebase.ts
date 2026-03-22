@@ -48,6 +48,8 @@ export const auth = getAuth(app);
 // Multi-tab : plusieurs onglets peuvent accéder au cache simultanément.
 // En cas de perte de connexion, Firestore sert les données depuis IndexedDB.
 export const db = initializeFirestore(app, {
+  // Réduit les erreurs WebChannel / QUIC sur certains réseaux (proxy, antivirus…)
+  experimentalForceLongPolling: true,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager()
   })
