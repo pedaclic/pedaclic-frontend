@@ -132,7 +132,10 @@ const AI_TIMEOUT_MS = 180_000;
 const MAX_RETRIES = 1;
 
 /** Taille max du texte source injecté dans le prompt (caractères). */
-const MAX_SOURCE_IN_PROMPT = 12_000;
+const MAX_SOURCE_IN_PROMPT = 7_000;
+
+/** Plafond total des consignes fusionnées (évite des requêtes trop lourdes). */
+const MAX_CONSIGNES_TOTAL_CHARS = 16_000;
 
 /**
  * Fusionne le texte source et les options de structure dans `consignesSpeciales`
