@@ -20,7 +20,7 @@
  * ============================================================
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -52,6 +52,7 @@ import {
   CompiledEbook,
 } from '../../services/compiledEbookService';
 import { CLASSES } from '../../types/cahierTextes.types';
+import { extractTextFromFile } from '../../utils/extractTextFromFile';
 
 // ==================== CONSTANTES ====================
 
@@ -84,6 +85,19 @@ const AIGenerator: React.FC = () => {
   const [selectedClasse, setSelectedClasse] = useState<string>('');
   const [dureeCours, setDureeCours] = useState<number | ''>('');
   const [chapitre, setChapitre] = useState('');
+  /** Texte source optionnel (collé ou import depuis fichier) */
+  const [sourceText, setSourceText] = useState('');
+  const [sourceFileLabel, setSourceFileLabel] = useState<string | null>(null);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const sourceFileInputRef = useRef<HTMLInputElement>(null);
+
+  /** Options de structure (étape 4) */
+  const [includeExercices, setIncludeExercices] = useState(true);
+  const [includeQuiz, setIncludeQuiz] = useState(false);
+  /** Filigrane affiché sur les exports PDF / Word uniquement */
+  const [filigrane, setFiligrane] = useState('');
+
   const [selectedType, setSelectedType] = useState<GenerationType | null>(null);
   const [options, setOptions] = useState<GenerationOptions>({});
 
@@ -238,6 +252,12 @@ const AIGenerator: React.FC = () => {
     setSelectedClasse('');
     setDureeCours('');
     setChapitre('');
+    setSourceText('');
+    setSourceFileLabel(null);
+    setUploadError(null);
+    setIncludeExercices(true);
+    setIncludeQuiz(false);
+    setFiligrane('');
     setSelectedType(null);
     setOptions({});
     setGenerationResult(null);
@@ -261,6 +281,10 @@ const AIGenerator: React.FC = () => {
       const mergedOptions: GenerationOptions = {
         ...options,
         duree: typeof dureeCours === 'number' ? dureeCours : undefined,
+        sourceText: sourceText.trim() || undefined,
+        includeExercices:
+          selectedType === 'exercices_corriges' ? true : includeExercices,
+        includeQuiz: selectedType === 'quiz_auto' ? true : includeQuiz,
       };
 
       const request: GenerationRequest = {
@@ -319,6 +343,9 @@ const AIGenerator: React.FC = () => {
         options: {
           ...options,
           duree: typeof dureeCours === 'number' ? dureeCours : undefined,
+          includeExercices:
+            selectedType === 'exercices_corriges' ? true : includeExercices,
+          includeQuiz: selectedType === 'quiz_auto' ? true : includeQuiz,
         },
       };
 
@@ -398,9 +425,48 @@ const AIGenerator: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleSourceFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError(null);
+    setUploadBusy(true);
+    try {
+      const text = await extractTextFromFile(file);
+      const t = text.trim();
+      if (!t) {
+        setUploadError('Aucun texte lisible dans ce fichier.');
+        return;
+      }
+      setSourceText((prev) => {
+        if (!prev.trim()) return text;
+        return `${prev.trim()}\n\n---\n\n${text}`;
+      });
+      setSourceFileLabel(file.name);
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Import du fichier impossible.");
+    } finally {
+      setUploadBusy(false);
+      const input = e.target;
+      if (input) input.value = '';
+    }
+  };
+
+  const escapeHtml = (s: string) =>
+    s
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+  const watermarkHtml = (text: string) =>
+    text.trim()
+      ? `<div class="ai-generator__watermark" aria-hidden="true">${escapeHtml(text.trim())}</div>`
+      : '';
+
   /** Télécharge le contenu en Word (.doc) via HTML compatible Office */
-  const handleDownloadWord = (content: string, titre: string) => {
+  const handleDownloadWord = (content: string, titre: string, watermark?: string) => {
     const html = markdownToHtml(content);
+    const wm = watermarkHtml(watermark || '');
     const wordHtml = `
 <!DOCTYPE html>
 <html xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -408,7 +474,7 @@ const AIGenerator: React.FC = () => {
       xmlns="http://www.w3.org/TR/REC-html40">
 <head>
   <meta charset="utf-8">
-  <title>${titre}</title>
+  <title>${escapeHtml(titre)}</title>
   <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
   <style>
     body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.6; margin: 2cm; color: #1a1a1a; }
@@ -423,11 +489,23 @@ const AIGenerator: React.FC = () => {
     code { font-family: Courier New; background: #f5f5f5; padding: 1pt 3pt; }
     pre  { font-family: Courier New; background: #f5f5f5; padding: 8pt; margin: 8pt 0; }
     hr { border: none; border-top: 1px solid #ccc; margin: 12pt 0; }
+    .ai-generator__watermark {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-32deg);
+      font-size: 44pt; font-weight: 700;
+      color: rgba(26, 86, 219, 0.08);
+      z-index: 0; pointer-events: none;
+      white-space: pre-wrap; text-align: center; max-width: 95%; line-height: 1.15;
+    }
+    .ai-generator__print-body { position: relative; z-index: 1; }
   </style>
 </head>
 <body>
-  <h1>${titre}</h1>
+  ${wm}
+  <div class="ai-generator__print-body">
+  <h1>${escapeHtml(titre)}</h1>
   ${html}
+  </div>
 </body>
 </html>`;
     const blob = new Blob(['\ufeff', wordHtml], {
@@ -436,9 +514,18 @@ const AIGenerator: React.FC = () => {
     triggerDownload(blob, `${safeFilename(titre)}.doc`);
   };
 
+  /** Export brut Markdown / texte */
+  const handleDownloadMarkdown = (content: string, titre: string) => {
+    const blob = new Blob(['\ufeff', content], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    triggerDownload(blob, `${safeFilename(titre)}.md`);
+  };
+
   /** Ouvre une fenêtre d'impression pour enregistrer en PDF */
-  const handleDownloadPDF = (content: string, titre: string) => {
+  const handleDownloadPDF = (content: string, titre: string, watermark?: string) => {
     const html = markdownToHtml(content);
+    const wm = watermarkHtml(watermark || '');
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) return;
     printWindow.document.write(`
@@ -446,7 +533,7 @@ const AIGenerator: React.FC = () => {
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>${titre}</title>
+  <title>${escapeHtml(titre)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.7; color: #1a1a1a; padding: 2cm; max-width: 800px; margin: auto; }
@@ -462,6 +549,15 @@ const AIGenerator: React.FC = () => {
     pre  { font-family: Courier New, monospace; background: #f5f5f5; padding: 10pt; margin: 8pt 0; border-radius: 4pt; font-size: 10pt; white-space: pre-wrap; }
     hr { border: none; border-top: 1px solid #ddd; margin: 14pt 0; }
     .header-meta { font-size: 9pt; color: #888; margin-bottom: 18pt; }
+    .ai-generator__watermark {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) rotate(-32deg);
+      font-size: 56px; font-weight: 700;
+      color: rgba(26, 86, 219, 0.08);
+      z-index: 0; pointer-events: none;
+      white-space: pre-wrap; text-align: center; max-width: 95%; line-height: 1.15;
+    }
+    .ai-generator__print-body { position: relative; z-index: 1; }
     @media print {
       body { padding: 0; }
       @page { margin: 2cm; }
@@ -469,9 +565,12 @@ const AIGenerator: React.FC = () => {
   </style>
 </head>
 <body>
-  <h1>${titre}</h1>
+  ${wm}
+  <div class="ai-generator__print-body">
+  <h1>${escapeHtml(titre)}</h1>
   <p class="header-meta">PedaClic · Généré le ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
   ${html}
+  </div>
   <script>window.onload = () => { window.print(); };<\/script>
 </body>
 </html>`);
@@ -871,6 +970,52 @@ const AIGenerator: React.FC = () => {
               />
             </div>
 
+            <div className="ai-generator__field">
+              <label className="ai-generator__label" htmlFor="sourceText">
+                Contenu source (optionnel)
+              </label>
+              <p className="ai-generator__hint">
+                Collez un texte ou importez un fichier (.txt, .pdf, .docx). L’IA s’appuiera sur ce
+                matériau pour enrichir et structurer la génération.
+              </p>
+              <textarea
+                id="sourceText"
+                className="ai-generator__textarea ai-generator__textarea--source"
+                rows={6}
+                placeholder="Notes, extrait de cours, synthèse, copie de document…"
+                value={sourceText}
+                onChange={(e) => {
+                  setSourceText(e.target.value);
+                  setUploadError(null);
+                }}
+              />
+              <div className="ai-generator__source-actions">
+                <input
+                  ref={sourceFileInputRef}
+                  type="file"
+                  accept=".txt,.pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                  className="ai-generator__file-input"
+                  onChange={handleSourceFileUpload}
+                />
+                <button
+                  type="button"
+                  className="btn btn--outline btn--sm"
+                  disabled={uploadBusy}
+                  onClick={() => sourceFileInputRef.current?.click()}
+                >
+                  {uploadBusy ? '⏳ Lecture…' : '📎 Importer un fichier'}
+                </button>
+                {sourceFileLabel && (
+                  <span className="ai-generator__source-filename">· {sourceFileLabel}</span>
+                )}
+              </div>
+              {uploadError && (
+                <p className="ai-generator__source-error" role="alert">
+                  {uploadError}
+                </p>
+              )}
+            </div>
+
             {/* Boutons navigation */}
             <div className="ai-generator__nav">
               <button className="btn btn--outline" onClick={handleBack}>
@@ -1067,6 +1212,54 @@ const AIGenerator: React.FC = () => {
                   }
                 />
               </div>
+
+              <div className="ai-generator__field">
+                <span className="ai-generator__label">Structure du document généré</span>
+                <div className="ai-generator__checkbox-row">
+                  <label className="ai-generator__checkbox">
+                    <input
+                      type="checkbox"
+                      checked={
+                        selectedType === 'exercices_corriges' ? true : includeExercices
+                      }
+                      disabled={selectedType === 'exercices_corriges'}
+                      onChange={(e) => setIncludeExercices(e.target.checked)}
+                    />
+                    <span>Inclure des exercices ou applications</span>
+                  </label>
+                  <label className="ai-generator__checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedType === 'quiz_auto' ? true : includeQuiz}
+                      disabled={selectedType === 'quiz_auto'}
+                      onChange={(e) => setIncludeQuiz(e.target.checked)}
+                    />
+                    <span>Inclure une section quiz (QCM) en fin de document</span>
+                  </label>
+                </div>
+                <p className="ai-generator__hint">
+                  {selectedType === 'quiz_auto'
+                    ? 'Le type « Quiz auto-généré » produit un contenu entièrement en QCM.'
+                    : 'Décochez les exercices pour un texte plus synthétique. Cochez le quiz pour une auto-évaluation en fin de parcours.'}
+                </p>
+              </div>
+
+              <div className="ai-generator__field">
+                <label htmlFor="filigrane" className="ai-generator__label">
+                  Filigrane (exports PDF et Word)
+                </label>
+                <input
+                  id="filigrane"
+                  type="text"
+                  className="ai-generator__input"
+                  placeholder="Ex. PedaClic — Usage personnel"
+                  value={filigrane}
+                  onChange={(e) => setFiligrane(e.target.value)}
+                />
+                <p className="ai-generator__hint">
+                  Texte affiché en transparence sur l’aperçu d’impression. Laissez vide pour aucun filigrane.
+                </p>
+              </div>
             </div>
 
             {/* Boutons navigation */}
@@ -1165,7 +1358,8 @@ const AIGenerator: React.FC = () => {
                         onClick={() =>
                           handleDownloadPDF(
                             generationResult.data.content || '',
-                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`
+                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`,
+                            filigrane.trim() || undefined
                           )
                         }
                         title="Télécharger en PDF (via impression)"
@@ -1177,15 +1371,45 @@ const AIGenerator: React.FC = () => {
                         onClick={() =>
                           handleDownloadWord(
                             generationResult.data.content || '',
-                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`
+                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`,
+                            filigrane.trim() || undefined
                           )
                         }
                         title="Télécharger en Word (.doc)"
                       >
                         📝 Word
                       </button>
+                      <button
+                        className="btn btn--outline btn--sm"
+                        onClick={() =>
+                          handleDownloadMarkdown(
+                            generationResult.data.content || '',
+                            `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`
+                          )
+                        }
+                        title="Télécharger le fichier Markdown (.md)"
+                      >
+                        📥 Markdown
+                      </button>
                     </>
                   )}
+                  {generationResult.type === 'quiz' &&
+                    generationResult.data.questions && (
+                      <button
+                        className="btn btn--outline btn--sm"
+                        onClick={() => {
+                          const titre = `${GENERATION_TYPE_LABELS[selectedType!]} — ${selectedDiscipline?.nom} ${selectedClasse}`;
+                          const blob = new Blob(
+                            ['\ufeff', JSON.stringify(generationResult.data.questions, null, 2)],
+                            { type: 'application/json;charset=utf-8' }
+                          );
+                          triggerDownload(blob, `${safeFilename(titre)}.json`);
+                        }}
+                        title="Télécharger les questions au format JSON"
+                      >
+                        📥 JSON
+                      </button>
+                    )}
                 </div>
               </div>
 

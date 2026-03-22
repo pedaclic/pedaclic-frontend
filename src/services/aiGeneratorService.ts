@@ -48,6 +48,15 @@ export interface GenerationOptions {
   typeExamen?: 'BFEM' | 'BAC';
   objectifs?: string;
   consignesSpeciales?: string;
+  /**
+   * Texte collé ou extrait d'un fichier — fusionné dans les consignes envoyées au serveur
+   * (tronqué pour respecter les limites du modèle).
+   */
+  sourceText?: string;
+  /** Inclure des exercices / problèmes dans le contenu généré (sauf type dédié aux exercices). */
+  includeExercices?: boolean;
+  /** Ajouter une section quiz (QCM) en fin de document (ignoré si type = quiz_auto). */
+  includeQuiz?: boolean;
 }
 
 /** Requête de génération envoyée au backend */
@@ -121,6 +130,58 @@ const AI_TIMEOUT_MS = 120_000;
  * La 2ème tentative profite du serveur déjà "chaud".
  */
 const MAX_RETRIES = 1;
+
+/** Taille max du texte source injecté dans le prompt (caractères). */
+const MAX_SOURCE_IN_PROMPT = 12_000;
+
+/**
+ * Fusionne le texte source et les options de structure dans `consignesSpeciales`
+ * pour compatibilité avec l'API existante, et retire `sourceText` du corps envoyé.
+ */
+function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
+  const o = req.options;
+  if (!o) return req;
+
+  const parts: string[] = [];
+  if (o.consignesSpeciales?.trim()) {
+    parts.push(o.consignesSpeciales.trim());
+  }
+
+  const st = o.sourceText?.trim();
+  if (st) {
+    const cap = st.slice(0, MAX_SOURCE_IN_PROMPT);
+    const truncated = st.length > MAX_SOURCE_IN_PROMPT;
+    parts.push(
+      `[CONTENU SOURCE FOURNI PAR L'ENSEIGNANT — À RÉORGANISER, ENRICHIR ET ADAPTER AU PROGRAMME SÉNÉGALAIS]\n${cap}` +
+        (truncated
+          ? `\n\n[… Texte tronqué : ${st.length} caractères au total ; raccourcissez la source si besoin.]`
+          : '')
+    );
+  }
+
+  if (o.includeExercices === false) {
+    parts.push(
+      "Ne pas inclure d'exercices, de problèmes à résoudre ni de corrigés détaillés dans le document généré."
+    );
+  }
+
+  if (o.includeQuiz === true && req.type !== 'quiz_auto') {
+    parts.push(
+      'Inclure une section finale de quiz (QCM) avec questions, propositions de réponses et corrigé court.'
+    );
+  }
+
+  const { sourceText: _drop, consignesSpeciales: _old, ...restOpts } = o;
+  const merged = parts.filter(Boolean).join('\n\n');
+
+  return {
+    ...req,
+    options: {
+      ...restOpts,
+      consignesSpeciales: merged || undefined,
+    },
+  };
+}
 
 /** Labels français pour chaque type de contenu */
 export const GENERATION_TYPE_LABELS: Record<GenerationType, string> = {
@@ -262,8 +323,8 @@ export async function pingServeurIA(): Promise<void> {
 export async function generateContent(
   request: GenerationRequest
 ): Promise<GenerationResponse> {
-  // Corps de la requête
-  const body = JSON.stringify(request);
+  const payload = finalizeGenerationRequest(request);
+  const body = JSON.stringify(payload);
 
   // Options fetch communes
   const fetchOptions: RequestInit = {
