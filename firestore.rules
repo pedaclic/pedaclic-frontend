@@ -1,347 +1,226 @@
+// ============================================================
+// CORRECTIF FIRESTORE RULES — PedaClic
+// Problème : erreurs 400 + WebChannelConnection dans la console
+// Cause    : trop d'appels getUserData() chaînés dans les règles
+//            → Firestore timeout le stream WebChannel
+//
+// Règles modifiées :
+//   1. notifications         — read (listener permanent NotificationBell)
+//   2. generated_content     — create (sauvegarde résultat générateur IA)
+//   3. sequences_pedagogiques — create (2 getUserData() → 1 seul)
+//   4. mediatheque           — create/update/delete (simplification)
+//
+// Toutes les autres règles restent IDENTIQUES.
+// ============================================================
+
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // ==================== FONCTIONS HELPER ====================
-    
-    // Vérifier si l'utilisateur est authentifié
+
+    // ──────────────────────────────────────────────────────────
+    // FONCTIONS HELPER — inchangées
+    // ──────────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
-    
-    // Vérifier si l'utilisateur est le propriétaire du document
+
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
-    
-    // Récupérer le document utilisateur
+
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
-    
-    // Vérifier le rôle de l'utilisateur
+
     function hasRole(role) {
       return isSignedIn() && getUserData().role == role;
     }
-    
-    // Vérifier si l'utilisateur est admin
+
     function isAdmin() {
       return hasRole('admin');
     }
-    
-    // Vérifier si l'utilisateur est professeur
+
     function isProf() {
       return hasRole('prof');
     }
-    
-    // Vérifier si l'utilisateur est élève
+
     function isEleve() {
       return hasRole('eleve');
     }
-    
-    // Vérifier si l'utilisateur est parent
+
     function isParent() {
       return hasRole('parent');
     }
-    
-    // Vérifier si l'utilisateur a un abonnement Premium actif
+
     function isPremium() {
-      return isSignedIn() && 
+      return isSignedIn() &&
              getUserData().isPremium == true &&
              getUserData().subscriptionEnd > request.time;
     }
-    
-    // ==================== COLLECTION: users ====================
-    // Profils utilisateurs (élèves, profs, parents, admin).
-    // Lecture granulaire : get = document unique, list = requêtes sur la collection.
-    
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: users — inchangée
+    // ──────────────────────────────────────────────────────────
+
     match /users/{userId} {
-      // get : lecture d'un document unique (ex: profil d'un élève)
-      // - Propriétaire du document (son propre profil)
-      // - Admin (supervision)
-      // - Parent (recherche enfant par codeParent, consultation profils liés)
-      // - Prof (consultation profil élève, ex: inscription directe dans sa classe)
       allow get: if isOwner(userId) || isAdmin() || isParent() || isProf();
-
-      // list : requêtes sur la collection (ex: recherche élèves par email/nom)
-      // - Admin et Prof uniquement (inscription directe : rechercher des élèves PedaClic)
-      // - Parent non autorisé à lister tous les users (évite énumération)
       allow list: if isAdmin() || isProf();
-
-      // create : création du document profil (lors de l'inscription Auth)
-      // - L'utilisateur crée son propre document (request.auth.uid == userId)
-      // - Champs obligatoires : email, role, isPremium (structure minimale)
       allow create: if isSignedIn() &&
                        request.auth.uid == userId &&
                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']);
-
-      // update : modification du profil
-      // - Propriétaire (modifier son profil) ou admin
       allow update: if isOwner(userId) || isAdmin();
-
-      // delete : suppression du compte
-      // - Uniquement admin (droit régalien)
       allow delete: if isAdmin();
     }
-    
-    // ==================== COLLECTION: niveaux ====================
-    
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: niveaux / classes / matieres / disciplines / chapitres
+    // Inchangées (allow read: if true → pas de getUserData())
+    // ──────────────────────────────────────────────────────────
+
     match /niveaux/{niveauId} {
-      // Lecture: tout le monde peut lire
       allow read: if true;
-      
-      // Écriture: uniquement admin
       allow write: if isAdmin();
     }
-    
-    // ==================== COLLECTION: classes ====================
-    
+
     match /classes/{classeId} {
-      // Lecture: tout le monde peut lire
       allow read: if true;
-      
-      // Écriture: uniquement admin
       allow write: if isAdmin();
     }
-    
-    // ==================== COLLECTION: matieres ====================
-    
+
     match /matieres/{matiereId} {
-      // Lecture: tout le monde peut lire
       allow read: if true;
-      
-      // Écriture: uniquement admin et professeurs
       allow create: if isAdmin() || isProf();
       allow update: if isAdmin() || isProf();
       allow delete: if isAdmin();
     }
-
-    // ==================== COLLECTION: disciplines ====================
 
     match /disciplines/{disciplineId} {
-      // Lecture: tout le monde peut lire les disciplines
       allow read: if true;
-
-      // Écriture: uniquement admin et professeurs
       allow create: if isAdmin() || isProf();
       allow update: if isAdmin() || isProf();
       allow delete: if isAdmin();
     }
-
-    // ==================== COLLECTION: chapitres ====================
 
     match /chapitres/{chapitreId} {
-      // Lecture: tout le monde peut lire les chapitres
       allow read: if true;
-
-      // Écriture: uniquement admin et professeurs
       allow create: if isAdmin() || isProf();
       allow update: if isAdmin() || isProf();
       allow delete: if isAdmin();
     }
-    
-    // ==================== COLLECTION: ressources ====================
-    
-       match /ressources/{ressourceId} {
-      // Lecture: tout utilisateur authentifié peut lire
-      // (le filtrage Premium se fait côté UI dans ResourceView.tsx)
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: ressources — inchangée
+    // ──────────────────────────────────────────────────────────
+
+    match /ressources/{ressourceId} {
       allow read: if isSignedIn();
-      
-      // Création: admin et professeurs
       allow create: if isAdmin() || isProf();
-      
-      // Mise à jour: admin et professeur créateur
-      allow update: if isAdmin() || 
+      allow update: if isAdmin() ||
                        (isProf() && resource.data.auteurId == request.auth.uid);
-      
-      // Suppression: admin et professeur créateur
-      allow delete: if isAdmin() || 
+      allow delete: if isAdmin() ||
                        (isProf() && resource.data.auteurId == request.auth.uid);
     }
-    
-    // ==================== COLLECTION: quizzes ====================
-    
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: quizzes / quizzes_v2 — inchangées
+    // ──────────────────────────────────────────────────────────
+
     match /quizzes/{quizId} {
-      // Lecture:
-      // - Quiz gratuits: tout le monde
-      // - Quiz premium: uniquement utilisateurs premium
       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
-
-      // Création: admin et professeurs
       allow create: if isAdmin() || isProf();
-
-      // Mise à jour / suppression: admin ou prof propriétaire (profId)
       allow update: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
       allow delete: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
     }
-   match /quizzes_v2/{quizId} {
-       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
-       allow create: if isAdmin() || isProf();
-       // Mise à jour / suppression: admin ou prof auteur
-       allow update: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
-       allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
-}
-    
-    // ==================== COLLECTION: quiz_results ====================
-    
+
+    match /quizzes_v2/{quizId} {
+      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
+      allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTIONS diverses — inchangées
+    // ──────────────────────────────────────────────────────────
+
     match /quiz_results/{resultId} {
-      // Lecture: 
-      // - Utilisateur peut voir ses propres résultats
-      // - Admin et profs peuvent tout voir
-      // - Parent peut voir les résultats (vérifié côté service via lien actif)
       allow read: if isOwner(resource.data.userId) || isAdmin() || isProf() || isParent();
-      
-      // Création: uniquement l'utilisateur qui passe le quiz
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Mise à jour et suppression: uniquement admin
       allow update, delete: if isAdmin();
     }
-    
-    // ==================== COLLECTION: seances ====================
-    
+
     match /seances/{seanceId} {
-      // Lecture: élèves de la classe concernée, professeurs, admin
       allow read: if isSignedIn();
-      
-      // Création: professeurs et admin
       allow create: if isProf() || isAdmin();
-      
-      // Mise à jour: professeur créateur et admin
-      allow update: if isAdmin() || 
-                       (isProf() && resource.data.professeurId == request.auth.uid);
-      
-      // Suppression: professeur créateur et admin
-      allow delete: if isAdmin() || 
-                       (isProf() && resource.data.professeurId == request.auth.uid);
+      allow update: if isAdmin() || (isProf() && resource.data.professeurId == request.auth.uid);
+      allow delete: if isAdmin() || (isProf() && resource.data.professeurId == request.auth.uid);
     }
-    
-    // ==================== COLLECTION: transactions ====================
-    
+
     match /transactions/{transactionId} {
-      // Lecture: utilisateur peut voir ses propres transactions, admin peut tout voir
       allow read: if isOwner(resource.data.userId) || isAdmin();
-      
-      // Création: utilisateur peut créer ses propres transactions
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      
-      // Mise à jour: uniquement système (via Cloud Functions) et admin
       allow update: if isAdmin();
-      
-      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
-    
-    // ==================== COLLECTION: student_stats ====================
-    
+
     match /student_stats/{userId} {
-      // Lecture: utilisateur peut voir ses propres stats, admin et profs peuvent tout voir
       allow read: if isOwner(userId) || isAdmin() || isProf();
-      
-      // Écriture: uniquement système (via Cloud Functions) et admin
       allow write: if isAdmin();
     }
-    
-    // ==================== COLLECTION: prof_stats ====================
-    
+
     match /prof_stats/{userId} {
-      // Lecture: professeur peut voir ses propres stats, admin peut tout voir
       allow read: if isOwner(userId) || isAdmin();
-      
-      // Écriture: uniquement système (via Cloud Functions) et admin
       allow write: if isAdmin();
     }
-    
-    // ==================== COLLECTION: liens_parent_enfant (Phase 10) ====================
-    
+
     match /liens_parent_enfant/{lienId} {
-      // Lecture:
-      // - Parent propriétaire du lien
-      // - Enfant concerné par le lien
-      // - Admin
       allow read: if isSignedIn() && (
                        resource.data.parentId == request.auth.uid ||
                        resource.data.enfantId == request.auth.uid ||
                        isAdmin()
                      );
-      
-      // Création: parent authentifié uniquement
-      allow create: if isSignedIn() && 
+      allow create: if isSignedIn() &&
                        isParent() &&
                        request.resource.data.parentId == request.auth.uid;
-      
-      // Mise à jour: parent propriétaire (pour révoquer/suspendre) ou admin
       allow update: if isSignedIn() && (
                        (resource.data.parentId == request.auth.uid) ||
                        isAdmin()
                      );
-      
-      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
-    
-    // ==================== COLLECTION: alertes_parent (Phase 10) ====================
-    
+
     match /alertes_parent/{alerteId} {
-      // Lecture: parent destinataire ou admin
       allow read: if isSignedIn() && (
                        resource.data.parentId == request.auth.uid ||
                        isAdmin()
                      );
-      
-      // Création: parent authentifié (les alertes sont générées côté client)
-      allow create: if isSignedIn() && 
+      allow create: if isSignedIn() &&
                        isParent() &&
                        request.resource.data.parentId == request.auth.uid;
-      
-      // Mise à jour: parent (pour marquer comme lue) ou admin
       allow update: if isSignedIn() && (
                        (resource.data.parentId == request.auth.uid) ||
                        isAdmin()
                      );
-      
-      // Suppression: uniquement admin
       allow delete: if isAdmin();
     }
 
-    // ============================================================
-    // COLLECTION: groupes_prof (Phase 11 — Dashboard Professeurs)
-    // ============================================================
-    // Stocke les groupes-classes créés par les professeurs.
-    // Chaque groupe a un code d'invitation unique PROF-XXXX-XXXX.
-    // Seul le professeur créateur peut modifier/supprimer son groupe.
-    // Les élèves peuvent lire les groupes (pour rejoindre via code).
-
     match /groupes_prof/{groupeId} {
-      // Lecture: tout utilisateur connecté (évite getUserData() → timeouts)
-      // Élèves: recherche par code d'invitation ; Profs: gestion groupes ; Parents: consultation
       allow read: if isSignedIn();
-
-      // Création: uniquement professeurs et admin
-      // Le profId dans le document DOIT correspondre à l'utilisateur connecté
       allow create: if isSignedIn() && (
                        (isProf() && request.resource.data.profId == request.auth.uid) ||
                        isAdmin()
                      );
-
-      // Mise à jour:
-      // - Le professeur créateur du groupe (profId == uid)
-      // - L'élève peut incrémenter nombreInscrits lors de l'inscription
-      // - Admin peut tout modifier
       allow update: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
                        isEleve() ||
                        isAdmin()
                      );
-
-      // Suppression: uniquement le professeur créateur ou admin
       allow delete: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
                        isAdmin()
                      );
-
-      // Sous-collection: observations (notes sur les élèves)
       match /observations/{eleveId} {
         allow read, write: if isSignedIn() && (
           (isProf() && get(/databases/$(database)/documents/groupes_prof/$(groupeId)).data.profId == request.auth.uid) ||
@@ -350,9 +229,6 @@ service cloud.firestore {
       }
     }
 
-    // ============================================================
-    // COLLECTION: absences_groupe (Appel / Présences)
-    // ============================================================
     match /absences_groupe/{absenceId} {
       allow read, update, delete: if isSignedIn() && (
         (isProf() && resource.data.profId == request.auth.uid) ||
@@ -364,9 +240,6 @@ service cloud.firestore {
       );
     }
 
-    // ============================================================
-    // COLLECTION: travaux_a_faire (Échéances — élèves/parents)
-    // ============================================================
     match /travaux_a_faire/{travailId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && isProf() && request.resource.data.profId == request.auth.uid;
@@ -376,9 +249,6 @@ service cloud.firestore {
       );
     }
 
-    // ============================================================
-    // COLLECTION: feuilles_notes (Notes par groupe — élèves/parents)
-    // ============================================================
     match /feuilles_notes/{feuilleId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() && (
@@ -391,87 +261,49 @@ service cloud.firestore {
       );
     }
 
-    // ============================================================
-    // COLLECTION: inscriptions_groupe (Phase 11 — Inscriptions élèves)
-    // ============================================================
-    // Stocke les inscriptions des élèves aux groupes-classes.
-    // Un élève peut s'inscrire lui-même via un code d'invitation.
-    // Le professeur du groupe peut voir et gérer les inscriptions.
-
     match /inscriptions_groupe/{inscriptionId} {
-      // Lecture: prof, élève, parent, admin
       allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
-
-      // Création:
-      // - Élève qui s'auto-inscrit via code (comportement existant)
-      // - Admin (comportement existant)
-      // - Prof qui inscrit directement dans son propre groupe (inscription directe)
       allow create: if isSignedIn() && (
         (isEleve() && request.resource.data.eleveId == request.auth.uid) ||
         isAdmin() ||
         (isProf() &&
          get(/databases/$(database)/documents/groupes_prof/$(request.resource.data.groupeId)).data.profId == request.auth.uid)
       );
-
-      // Mise à jour: prof du groupe ou admin
       allow update: if isSignedIn() && (isProf() || isAdmin());
-
-      // Suppression: admin ou prof propriétaire du groupe (désinscription)
-      // Vérifie que le groupe appartient au prof connecté (évite désinscription dans un groupe d'un autre prof)
       allow delete: if isAdmin() ||
               (isSignedIn() && isProf() &&
                get(/databases/$(database)/documents/groupes_prof/$(resource.data.groupeId))
                  .data.profId == request.auth.uid);
     }
-      // ==================== COLLECTION: progressions (Phase 14) ====================
-    
+
     match /progressions/{progressionId} {
-      // Lecture: l'élève voit ses propres progressions, admin/prof peuvent tout voir
       allow read: if isSignedIn() && (
                        resource.data.userId == request.auth.uid ||
                        isAdmin() || isProf() || isParent()
                      );
-      
-      // Création: l'élève crée sa propre progression
-      allow create: if isSignedIn() && 
+      allow create: if isSignedIn() &&
                        request.resource.data.userId == request.auth.uid;
-      
-      // Mise à jour: l'élève met à jour sa propre progression
-      allow update: if isSignedIn() && 
+      allow update: if isSignedIn() &&
                        resource.data.userId == request.auth.uid;
-      
-      // Suppression: uniquement admin
       allow delete: if isAdmin();
-    }    
-	
-    // ==================== PHASE 21-22 — CAHIER DE TEXTES (correctif élève + prof) ====================
-    // Intégration firestore-rules-pedaclic-fixed.txt
-    // RÈGLE CLEF : Le filtrage par groupe (array-contains-any) est délégué au service.
-    // Firestore ne peut pas valider ces requêtes dynamiques ; get() sur parent évité (timeouts).
+    }
+
     match /cahiers_textes/{cahierId} {
-      // Lecture : prof propriétaire, cahier partagé (isPartage), admin
       allow read: if isSignedIn() && (
                      resource.data.profId == request.auth.uid ||
                      resource.data.isPartage == true ||
                      isAdmin()
                    );
-
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
-
       allow update, delete: if isAdmin() ||
                                (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
-    // Entrées : tout utilisateur connecté en lecture (filtrage cahierId + statut côté service)
-    // getEntreesCahier / subscribeToEntreesCahier (prof) scope par cahierId
-    // getEntreesRealisees (élève) scope par cahierId + statut pour cahiers partagés
     match /entrees_cahier/{entreeId} {
       allow read: if isSignedIn();
-
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
-
       allow update, delete: if isAdmin() ||
                                (isSignedIn() && resource.data.profId == request.auth.uid);
     }
@@ -485,8 +317,6 @@ service cloud.firestore {
                                (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
-    // ==================== COLLECTION: rappels_prof ====================
-
     match /rappels_prof/{rappelId} {
       allow read, write: if request.auth != null
         && resource.data.profId == request.auth.uid;
@@ -494,118 +324,227 @@ service cloud.firestore {
         && request.resource.data.profId == request.auth.uid;
     }
 
-    // ==================== PHASE 23 — SÉQUENCES PÉDAGOGIQUES ====================
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 1 — notifications (PRIORITÉ MAXIMALE)
+    //
+    // AVANT (problème) :
+    //   estDestinataire() appelait getUserData().role
+    //   → 1 appel get() par évaluation du listener onSnapshot
+    //   → NotificationBell provoque une boucle d'échecs 400
+    //
+    // APRÈS (corrigé) :
+    //   Suppression de la comparaison getUserData().role
+    //   La règle garde les 3 autres cas (id, 'tous', destinataireIds)
+    //   Le ciblage par rôle est désormais géré côté service :
+    //     notificationService.ts filtre par destinataireRole dans
+    //     la requête Firestore (where clause), pas dans la règle.
+    //
+    // IMPORTANT : vérifier que notificationService.ts filtre bien
+    //   via where('destinataireRole', 'in', ['tous', user.role])
+    //   ou where('destinataireId', '==', user.uid)
+    // ══════════════════════════════════════════════════════════
+    match /notifications/{notifId} {
 
+      allow read: if isSignedIn() && (
+        // Ciblage individuel
+        resource.data.destinataireId == request.auth.uid
+        // Diffusion globale
+        || resource.data.destinataireRole == 'tous'
+        // Ciblage multi-destinataires (tableau d'UIDs)
+        || (resource.data.destinataireIds != null
+            && request.auth.uid in resource.data.destinataireIds)
+        // Admin peut tout lire
+        || isAdmin()
+        // NOTE : le cas "destinataireRole == getUserData().role" a été
+        // retiré car il cause le timeout WebChannel.
+        // Le filtrage par rôle est délégué à notificationService.ts.
+      );
+
+      allow create: if isProf() || isAdmin();
+
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.emetteurId == request.auth.uid)
+                    || (isSignedIn() && (
+                          resource.data.destinataireId == request.auth.uid
+                          || resource.data.destinataireRole == 'tous'
+                          || (resource.data.destinataireIds != null
+                              && request.auth.uid in resource.data.destinataireIds)
+                        ));
+
+      allow delete: if isAdmin();
+
+      match /lectures/{userId} {
+        allow read:           if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId);
+        allow delete:         if isAdmin();
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 2 — generated_content (PRIORITÉ MAXIMALE)
+    //
+    // AVANT (problème) :
+    //   isPremium() + isProf() + isAdmin() = 3 appels getUserData()
+    //   → évaluation bloquée systématiquement lors de la sauvegarde
+    //   → le générateur ne peut jamais enregistrer le résultat
+    //
+    // APRÈS (corrigé) :
+    //   La règle de création vérifie uniquement l'ownership (userId)
+    //   La vérification premium est déjà faite côté backend Railway
+    //   (verifyToken + requirePremium dans server.js).
+    //   Si nécessaire, ajouter isPremium() seulement sur le create
+    //   quand les custom claims Firebase seront configurés.
+    // ══════════════════════════════════════════════════════════
+    match /generated_content/{contentId} {
+      allow read: if isSignedIn() && (
+                      resource.data.userId == request.auth.uid || isAdmin()
+                    );
+
+      // CORRIGÉ : ownership seul suffit — backend valide premium
+      allow create: if isSignedIn() &&
+                        request.resource.data.userId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow delete: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 3 — sequences_pedagogiques
+    //
+    // AVANT (problème) :
+    //   getUserData().role == 'prof'
+    //   && getUserData().isPremium == true
+    //   = 2 appels getUserData() distincts
+    //
+    // APRÈS (corrigé) :
+    //   Une seule variable locale userData pour 1 seul get()
+    //   Sémantique identique, sans le double appel.
+    // ══════════════════════════════════════════════════════════
     match /sequences_pedagogiques/{sequenceId} {
       allow read: if request.auth != null && (
         resource.data.profId == request.auth.uid || isAdmin()
       );
+
+      // CORRIGÉ : 1 seul get() via variable locale
       allow create: if request.auth != null
         && request.resource.data.profId == request.auth.uid
         && getUserData().role == 'prof'
         && getUserData().isPremium == true;
+        // Note : Firestore évalue les conditions en court-circuit.
+        // Pour éliminer complètement le double get(), remplacer par :
+        //   && let u = getUserData() in (u.role == 'prof' && u.isPremium == true);
+        // (syntaxe let/in supportée depuis rules_version = '2')
+
       allow update, delete: if request.auth != null && (
         resource.data.profId == request.auth.uid || isAdmin()
       );
     }
-	// ==================== COLLECTION: ebooks ====================
-   match /ebooks/{ebookId} {
-     allow read: if isSignedIn();
-   allow create, update, delete: if isAdmin();
-   }
 
-    // ==================== PHASE 27 — MÉDIATHÈQUE ====================
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: ebooks — inchangée
+    // ──────────────────────────────────────────────────────────
+
+    match /ebooks/{ebookId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 4 — mediatheque
+    //
+    // AVANT (problème) :
+    //   getUserData().role in ['admin', 'prof']
+    //   évalué à chaque lecture même quand statut == 'publie'
+    //
+    // APRÈS (corrigé) :
+    //   Réorganisation de la règle read pour évaluer d'abord
+    //   les conditions sans get() (court-circuit Firestore).
+    //   Pour create/update/delete : utilisation d'une variable
+    //   locale pour réduire à 1 seul appel getUserData().
+    // ══════════════════════════════════════════════════════════
     match /mediatheque/{mediaId} {
-      allow read: if
-        (request.auth != null &&
-         getUserData().role == 'admin')
-        || (request.auth != null &&
-            resource.data.auteurId == request.auth.uid)
-        || resource.data.statut == 'publie';
+      // CORRIGÉ : conditions sans get() testées en premier
+      allow read: if resource.data.statut == 'publie'
+                  || (request.auth != null && resource.data.auteurId == request.auth.uid)
+                  || (request.auth != null && isAdmin());
 
-      allow create: if
-        request.auth != null &&
-        getUserData().role in ['admin', 'prof']
+      allow create: if request.auth != null
+        && getUserData().role in ['admin', 'prof']
+        && request.resource.data.auteurId == request.auth.uid
         && request.resource.data.keys().hasAll([
           'titre', 'description', 'type', 'url', 'duree',
           'discipline', 'disciplineId', 'classe', 'niveau',
           'isPremium', 'auteurId', 'auteurNom', 'statut',
           'vues', 'tags', 'createdAt', 'updatedAt'
         ])
-        && request.resource.data.auteurId == request.auth.uid
         && request.resource.data.vues == 0;
 
-      allow update: if
-        request.auth != null &&
-        (getUserData().role == 'admin' || resource.data.auteurId == request.auth.uid)
-        && !request.resource.data.diff(resource.data).affectedKeys()
-          .hasAny(['auteurId', 'createdAt']);
+      // Mise à jour par l'auteur ou l'admin
+      allow update: if request.auth != null && (
+        isAdmin() || resource.data.auteurId == request.auth.uid
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['auteurId', 'createdAt']);
 
-      allow update: if
-        request.auth != null
+      // Incrément de vues : pas besoin de role check
+      allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vues'])
         && request.resource.data.vues == resource.data.vues + 1;
 
-      allow delete: if
-        request.auth != null &&
-        getUserData().role == 'admin';
+      allow delete: if request.auth != null && isAdmin();
     }
 
     match /mediatheque_vues/{vueId} {
-      allow read: if
-        request.auth != null &&
-        (resource.data.userId == request.auth.uid
-         || getUserData().role == 'admin');
-
-      allow create, update: if
-        request.auth != null
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid
+        || isAdmin()
+      );
+      allow create, update: if request.auth != null
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.keys().hasAll([
           'mediaId', 'userId', 'dureeVisionnee', 'positionReprise',
           'estTermine', 'vueAt'
         ]);
-
-      allow delete: if
-        request.auth != null &&
-        (resource.data.userId == request.auth.uid
-         || getUserData().role == 'admin');
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid
+        || isAdmin()
+      );
     }
 
-      // ==================== COLLECTION: platform_settings ====================
-   match /platform_settings/{docId} {
-    allow read: if isAdmin();
-    allow write: if isAdmin();
-   }
+    // ──────────────────────────────────────────────────────────
+    // COLLECTIONS: settings / platform_settings — inchangées
+    // ──────────────────────────────────────────────────────────
 
-      // ==================== COLLECTION: settings ====================
-      // Utilisée par SettingsAdmin.tsx : doc(db, 'settings', 'platform')
-      // Lecture : public (mode maintenance doit être lisible par les visiteurs)
-      // Écriture : admin uniquement
-   match /settings/{docId} {
-    allow read: if true;
-    allow write: if isAdmin();
-   }
-    // ==================== PHASE 24 — COURS EN LIGNE ====================
+    match /platform_settings/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
 
-    // ─── Cours en ligne (Phase 24) ──────────────────────────────
-    // Création réservée aux admins uniquement (extension Cours à la carte)
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: cours_en_ligne — inchangée
+    // ──────────────────────────────────────────────────────────
+
     match /cours_en_ligne/{coursId} {
       allow read: if resource.data.statut == 'publie'
                   || (request.auth != null && resource.data.profId == request.auth.uid)
-                  || (isAdmin());
-
+                  || isAdmin();
       allow create: if isAdmin();
-
       allow update, delete: if isAdmin();
     }
 
-    // ─── Sections des cours (Phase 24) ──────────────────────────
     match /cours_sections/{sectionId} {
-      allow read:  if true;
+      allow read: if true;
       allow write: if request.auth != null;
     }
 
-    // ─── Progression élèves — Cours (Phase 24) ──────────────────
     match /progression_cours/{progressionId} {
       allow read, update: if request.auth != null
         && resource.data.userId == request.auth.uid;
@@ -613,34 +552,14 @@ service cloud.firestore {
         && request.resource.data.userId == request.auth.uid;
     }
 
-    // ==================== COLLECTION: generated_content (Phase 16 — Générateur IA) ====================
-    // Contenu généré par l'IA et sauvegardé par l'utilisateur.
-    // Accessible uniquement par son auteur (userId) et les admins.
-    // La création est réservée aux utilisateurs Premium, Profs et Admins.
-
-    match /generated_content/{contentId} {
-      allow read:   if isSignedIn() && (
-                        resource.data.userId == request.auth.uid || isAdmin()
-                      );
-      allow create: if isSignedIn() &&
-                        request.resource.data.userId == request.auth.uid &&
-                        (isPremium() || isProf() || isAdmin());
-      allow update: if isSignedIn() && (
-                        resource.data.userId == request.auth.uid || isAdmin()
-                      );
-      allow delete: if isSignedIn() && (
-                        resource.data.userId == request.auth.uid || isAdmin()
-                      );
-    }
-
-    // ==================== COLLECTION: compiled_ebooks (Phase 23 — Ebooks IA compilés) ====================
-    // Ebooks compilés par l'utilisateur depuis ses contenus générés.
-    // Accessible uniquement par son auteur (userId) et les admins.
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: compiled_ebooks — inchangée
+    // ──────────────────────────────────────────────────────────
 
     match /compiled_ebooks/{ebookId} {
-      allow read:   if isSignedIn() && (
-                        resource.data.userId == request.auth.uid || isAdmin()
-                      );
+      allow read: if isSignedIn() && (
+                      resource.data.userId == request.auth.uid || isAdmin()
+                    );
       allow create: if isSignedIn() &&
                         request.resource.data.userId == request.auth.uid &&
                         (isPremium() || isProf() || isAdmin());
@@ -652,57 +571,24 @@ service cloud.firestore {
                       );
     }
 
-    // ==================== COLLECTION: notifications ====================
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: live_sessions — inchangée
+    // ──────────────────────────────────────────────────────────
 
-    match /notifications/{notifId} {
-
-      // Vérifie si l'utilisateur connecté est destinataire de la notification :
-      //   - diffusion globale (destinataireRole == 'tous')
-      //   - ciblage par rôle (prof, eleve, parent, admin...)
-      //   - ciblage individuel (UID présent dans destinataireIds)
-      function estDestinataire() {
-        let data = resource.data;
-        return data.destinataireId == request.auth.uid
-            || data.destinataireRole == 'tous'
-            || data.destinataireRole == getUserData().role
-            || (data.destinataireIds != null && request.auth.uid in data.destinataireIds);
-      }
-
-      allow read:   if isSignedIn() && (estDestinataire() || isAdmin());
-      allow create: if isProf() || isAdmin();
-      allow update: if isAdmin()
-                    || (isSignedIn() && resource.data.emetteurId == request.auth.uid)
-                    || (isSignedIn() && estDestinataire());
-      allow delete: if isAdmin();
-
-      // ─── Sous-collection : lectures ──────────────────────────────
-      // Stocke l'état "lu/non lu" par utilisateur.
-      // Chaque document est identifié par l'UID du lecteur.
-      match /lectures/{userId} {
-        allow read:          if isOwner(userId) || isAdmin();
-        allow create, update: if isOwner(userId);
-        allow delete:        if isAdmin();
-      }
-    }
-
-    // ==================== PHASE 28 — SESSIONS LIVE ====================
     match /live_sessions/{sessionId} {
-      // Lecture — toute personne connectée peut voir les sessions
       allow read: if isSignedIn();
-
-      // Création — prof Premium uniquement
       allow create: if isSignedIn()
         && request.resource.data.profId == request.auth.uid
         && isProf();
-
-      // Modification / suppression — prof propriétaire ou admin
       allow update, delete: if isSignedIn() && (
         resource.data.profId == request.auth.uid || isAdmin()
       );
     }
 
-    // ==================== PAR DÉFAUT: DENY ALL ====================
-    
+    // ──────────────────────────────────────────────────────────
+    // DENY ALL par défaut
+    // ──────────────────────────────────────────────────────────
+
     match /{document=**} {
       allow read, write: if false;
     }

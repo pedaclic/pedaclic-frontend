@@ -12,6 +12,7 @@
 //   • archiverNotification()      — archiver
 //   • supprimerNotification()     — supprimer
 //   • compterNonLues()            — badge compteur
+//   • ecouterNotificationsEtendues — cloche Header (perso + diffusion « tous »)
 //   • envoyerNotificationGroupe() — diffusion à un groupe-classe
 //   • envoyerNotificationRole()   — diffusion à tous les users d'un rôle
 // ============================================================
@@ -340,6 +341,82 @@ export function ecouterNotificationsNonLues(
     );
     callback(notifs);
   });
+}
+
+/**
+ * Écoute en temps réel les notifications non lues visibles pour l'utilisateur,
+ * en combinant les requêtes côté client (règles Firestore sans getUserData().role dans la lecture).
+ *
+ * — personnelles : destinataireId == userId + statut + tri (index dédié)
+ * — diffusion globale : destinataireRole == 'tous' + statut + tri (index dédié)
+ * — `userRole` : obligatoire pour souscrire uniquement quand le profil est chargé (aligné sur AuthContext).
+ *
+ * Fusion dédupliquée par id, tri par date décroissante, max 20.
+ */
+export function ecouterNotificationsEtendues(
+  userId: string,
+  userRole: string,
+  callback: (notifications: Notification[]) => void
+): () => void {
+  if (!userId.trim() || !userRole.trim()) {
+    return () => {};
+  }
+
+  const qPerso = query(
+    collection(db, COLLECTION_NOTIFS),
+    where('destinataireId', '==', userId),
+    where('statut', '==', 'non_lue'),
+    orderBy('createdAt', 'desc'),
+    limit(20)
+  );
+
+  const qGlobales = query(
+    collection(db, COLLECTION_NOTIFS),
+    where('destinataireRole', '==', 'tous'),
+    where('statut', '==', 'non_lue'),
+    orderBy('createdAt', 'desc'),
+    limit(20)
+  );
+
+  let perso: Notification[] = [];
+  let globales: Notification[] = [];
+
+  const merge = () => {
+    const map = new Map<string, Notification>();
+    [...perso, ...globales].forEach((n) => map.set(n.id, n));
+    callback(
+      Array.from(map.values())
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        .slice(0, 20)
+    );
+  };
+
+  const unsubPerso = onSnapshot(
+    qPerso,
+    (snap) => {
+      perso = snap.docs.map((d) =>
+        docToNotification(d.id, d.data() as Record<string, unknown>)
+      );
+      merge();
+    },
+    (err) => console.error('[notificationService] ecouterNotificationsEtendues (perso):', err)
+  );
+
+  const unsubGlobales = onSnapshot(
+    qGlobales,
+    (snap) => {
+      globales = snap.docs.map((d) =>
+        docToNotification(d.id, d.data() as Record<string, unknown>)
+      );
+      merge();
+    },
+    (err) => console.error('[notificationService] ecouterNotificationsEtendues (globales):', err)
+  );
+
+  return () => {
+    unsubPerso();
+    unsubGlobales();
+  };
 }
 
 // ============================================================

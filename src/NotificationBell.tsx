@@ -14,7 +14,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import {
-  ecouterNotificationsNonLues,
+  ecouterNotificationsEtendues,
   marquerCommeLue,
   marquerToutesCommeLues,
 } from './notificationService';
@@ -52,17 +52,18 @@ const NotificationBell: React.FC = () => {
   // Référence pour fermer le dropdown au clic extérieur
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ── Écoute temps réel des notifications non lues ──
+  // ── Écoute temps réel des notifications non lues (requêtes alignées sur les règles Firestore) ──
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser?.uid || !currentUser?.role) return;
 
-    const unsubscribe = ecouterNotificationsNonLues(
+    const unsubscribe = ecouterNotificationsEtendues(
       currentUser.uid,
+      currentUser.role,
       (notifs) => setNotifications(notifs)
     );
 
     return () => unsubscribe();
-  }, [currentUser]);
+  }, [currentUser?.uid, currentUser?.role]);
 
   // ── Fermer le dropdown au clic extérieur ──
   useEffect(() => {
