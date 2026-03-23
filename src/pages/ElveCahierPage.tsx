@@ -362,7 +362,7 @@ const ElveCahierPage: React.FC = () => {
               <MediaPlayer
                 piecesJointes={entree.piecesJointes ?? []}
                 entreeId={entree.id}
-                profId=""
+                profId={cahier.profId}
                 onChange={() => {}}
                 readonly
               />

@@ -6,6 +6,16 @@ service firebase.storage {
       return request.auth != null && 
              firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+
+    /** Rôle applicatif (users/{uid}) — utilisé par les règles Storage qui s'alignent sur Firestore. */
+    function userRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    /** Admin ou professeur (pour médias cahiers, médiathèque, etc.). */
+    function isProfOrAdmin() {
+      return request.auth != null && userRole() in ['admin', 'prof'];
+    }
     
     match /ressources/{allPaths=**} {
       allow read: if request.auth != null;
@@ -28,12 +38,19 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
-    /* ==================== PHASE 21 — CAHIER DE TEXTES (pièces jointes) ==================== */
-    match /cahiers/{profId}/{cahierId}/{fileName} {
+    /* ==================== CAHIER DE TEXTES — pièces jointes ====================
+       Chemin côté app : cahiers/{profId}/{entreeId|sous-dossier}/{fichier}
+       (MediaPlayer : entreeId ; uploadPieceJointe : cahierId — même motif à 3 segments.)
+       Lecture : tout utilisateur authentifié (élèves inclus).
+       Écriture / suppression : admin ou prof, avec restriction prof → son seul profId.
+       Plafond 50 Mo (aligné MediaPlayer / cahierTextesService). */
+    match /cahiers/{profId}/{entreeId}/{fichier} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == profId
-        && request.resource.size < 10 * 1024 * 1024;
-      allow delete: if request.auth != null && request.auth.uid == profId;
+      allow write: if isProfOrAdmin()
+        && (userRole() == 'admin' || request.auth.uid == profId)
+        && request.resource.size < 50 * 1024 * 1024;
+      allow delete: if isProfOrAdmin()
+        && (userRole() == 'admin' || request.auth.uid == profId);
     }
 
     match /cours-images/{coursId}/{allSubPaths=**} {
