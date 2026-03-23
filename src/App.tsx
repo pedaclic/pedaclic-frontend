@@ -116,8 +116,8 @@ import MediaAjoutPage from './pages/MediaAjoutPage';
 import MediaEditPage from './pages/MediaEditPage';
 
 /* ==================== PHASE 26 — NOTIFICATIONS ==================== */
-import NotificationsPage    from './NotificationsPage';
-import NotificationComposer from './NotificationComposer';
+import NotificationsPage    from './pages/NotificationsPage';
+import NotificationComposer from './components/NotificationComposer';
 
 /* ==================== COMPOSANTS PARENT ==================== */
 import ParentDashboard from './components/parent/ParentDashboard';

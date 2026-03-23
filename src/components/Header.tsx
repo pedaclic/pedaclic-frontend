@@ -36,7 +36,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import './Header.css';
-import NotificationBell from '../NotificationBell';
+import NotificationBell from './NotificationBell';
 
 /* ==================== INTERFACE ==================== */
 

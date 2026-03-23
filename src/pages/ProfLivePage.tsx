@@ -33,19 +33,19 @@ import {
   supprimerSession,
   envoyerNotifSession,
   extractYoutubeIdLive,
-} from '../liveService';
+} from '../services/liveService';
 import type {
   LiveSession,
   LiveSessionFormData,
   StatutLive,
-} from '../live_types';
+} from '../types/live_types';
 import {
   FORM_LIVE_INITIAL,
   LABELS_STATUT_LIVE,
   LABELS_ACCES_LIVE,
   OPTIONS_DUREE,
-} from '../live_types';
-import '../Live.css';
+} from '../types/live_types';
+import '../styles/Live.css';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES LOCAUX

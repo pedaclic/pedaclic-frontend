@@ -15,7 +15,7 @@ import {
   getNombreCoursMax,
   PLANS_A_LA_CARTE,
 } from '../types/premiumPlans';
-import type { CoursEnLigne } from '../cours_types';
+import type { CoursEnLigne } from '../types/cours_types';
 import { CLASSES_OPTIONS, normaliserClassePourComparaison } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import MatieresNiveauxSelector from '../components/premium/MatieresNiveauxSelector';

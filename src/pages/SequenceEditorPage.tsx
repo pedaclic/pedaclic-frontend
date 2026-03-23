@@ -40,8 +40,7 @@ import {
 }                                                   from '../types/sequencePedagogique.types';
 import '../styles/SequencesPedagogiques.css';
 import '../styles/CahierEnrichi.css';
-import '../styles/CahierEnrichi.css';
-import RichTextEditor from '../RichTextEditor';
+import RichTextEditor from '../components/RichTextEditor';
 
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES

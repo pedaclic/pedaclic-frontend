@@ -16,7 +16,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { ProgressionCours, ReponseQuiz } from '../cours_types';
+import type { ProgressionCours, ReponseQuiz } from '../types/cours_types';
 import { incrementerInscrits } from './coursService';
 
 // ─────────────────────────────────────────────────────────────

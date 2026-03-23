@@ -32,14 +32,14 @@ import {
   onSnapshot,
   writeBatch,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '../firebase';
 import type {
   Notification,
   CreateNotificationPayload,
   EmailPayload,
   EmailApiResponse,
   NotificationCounts,
-} from './notification_types';
+} from '../types/notification_types';
 
 // ─── Configuration Railway ───────────────────────────────────
 // L'URL de ton backend Railway (variable d'environnement)

@@ -27,7 +27,7 @@ import type {
   FiltresCours,
   CoursFormData,
   SectionFormData,
-} from '../cours_types';
+} from '../types/cours_types';
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTES DES COLLECTIONS FIRESTORE

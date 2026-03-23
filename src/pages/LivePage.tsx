@@ -24,10 +24,10 @@ import {
   buildEmbedUrl,
   tempsAvantDebut,
   peutAccederSession,
-} from '../liveService';
-import type { LiveSession, FiltresLive } from '../live_types';
-import { LABELS_STATUT_LIVE, LABELS_ACCES_LIVE } from '../live_types';
-import '../Live.css';
+} from '../services/liveService';
+import type { LiveSession, FiltresLive } from '../types/live_types';
+import { LABELS_STATUT_LIVE, LABELS_ACCES_LIVE } from '../types/live_types';
+import '../styles/Live.css';
 
 // ─────────────────────────────────────────────────────────────
 // SOUS-COMPOSANT — Carte session dans le catalogue

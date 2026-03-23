@@ -30,13 +30,13 @@ import {
   Timestamp,
   increment,
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db } from '../firebase';
 import type {
   LiveSession,
   LiveSessionFormData,
   StatutLive,
   FiltresLive,
-} from './live_types';
+} from '../types/live_types';
 import {
   envoyerNotificationGroupe,
   envoyerNotificationRole,

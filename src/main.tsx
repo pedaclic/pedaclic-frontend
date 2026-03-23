@@ -6,8 +6,8 @@ import App from './App';
 // Import des styles
 import './globals.css';
 import './styles/admin.css';
-import './Notifications.css';
-import './Live.css';
+import './styles/Notifications.css';
+import './styles/Live.css';
 
 // ============================================
 // PHASE 28 — Désinstallation forcée du SW

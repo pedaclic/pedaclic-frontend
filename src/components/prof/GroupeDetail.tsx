@@ -51,7 +51,7 @@ import type {
   AlerteProf
 } from '../../types/prof';
 import type { TravailAFaire } from '../../types/groupeAbsences.types';
-import RichTextEditor from '../../RichTextEditor';
+import RichTextEditor from '../RichTextEditor';
 import '../../styles/prof.css';
 import '../../styles/feuillesNotes.css';
 import '../../styles/CahierEnrichi.css';

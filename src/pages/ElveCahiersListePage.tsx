@@ -13,7 +13,7 @@ import { getGroupesEleve } from '../services/profGroupeService';
 import { getCahiersPartagesForEleve } from '../services/cahierTextesService';
 import type { CahierTextes } from '../types/cahierTextes.types';
 import '../styles/CahierEnrichi.css';
-import '../ElveCahiersListe.css';
+import '../styles/ElveCahiersListe.css';
 
 const ElveCahiersListePage: React.FC = () => {
   const { currentUser } = useAuth();

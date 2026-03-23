@@ -19,8 +19,8 @@ import {
   getDownloadURL,
 } from 'firebase/storage';
 import { storage } from '../../firebase';
-import type { PieceJointe, MediaType } from '../types/cahierTextes.types';
-import '../styles/CahierEnrichi.css';
+import type { PieceJointe, MediaType } from '../../types/cahierTextes.types';
+import '../../styles/CahierEnrichi.css';
 
 // ─────────────────────────────────────────────────────────────
 // CONSTANTES

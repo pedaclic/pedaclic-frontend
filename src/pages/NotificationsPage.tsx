@@ -14,16 +14,16 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   getNotificationsUser,
   marquerCommeLue,
   marquerToutesCommeLues,
   archiverNotification,
   supprimerNotification,
-} from './notificationService';
-import type { Notification, StatutNotification, TypeNotification } from './notification_types';
-import { TEMPLATES_NOTIFICATION, LABELS_TYPE_NOTIFICATION } from './notification_types';
+} from '../services/notificationService';
+import type { Notification, StatutNotification, TypeNotification } from '../types/notification_types';
+import { TEMPLATES_NOTIFICATION, LABELS_TYPE_NOTIFICATION } from '../types/notification_types';
 
 // ─── Utilitaire : formatage de date ─────────────────────────
 

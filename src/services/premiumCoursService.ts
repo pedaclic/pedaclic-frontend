@@ -6,7 +6,7 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCoursPublies } from './coursService';
-import type { CoursEnLigne } from '../cours_types';
+import type { CoursEnLigne } from '../types/cours_types';
 import {
   estFormuleALaCarte,
   getNombreCoursMax,

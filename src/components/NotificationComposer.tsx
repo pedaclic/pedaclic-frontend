@@ -19,24 +19,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from './firebase';
-import { useAuth } from './contexts/AuthContext';
+import { db } from '../firebase';
+import { useAuth } from '../contexts/AuthContext';
 import {
   envoyerNotification,
   envoyerNotificationGroupe,
   envoyerNotificationRole,
-} from './notificationService';
+} from '../services/notificationService';
 import type {
   TypeNotification,
   CanalNotification,
   RoleDestinataire,
   CreateNotificationPayload,
-} from './notification_types';
+} from '../types/notification_types';
 import {
   TEMPLATES_NOTIFICATION,
   LABELS_TYPE_NOTIFICATION,
   LABELS_ROLE,
-} from './notification_types';
+} from '../types/notification_types';
 
 // ─── Types internes ──────────────────────────────────────────
 

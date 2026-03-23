@@ -8,7 +8,7 @@
 // ============================================================
 
 import { Timestamp } from 'firebase/firestore';
-import { CLASSES, Classe } from './types/cahierTextes.types';
+import { CLASSES, Classe } from './cahierTextes.types';
 
 // ------------------------------------------------------------
 // TYPES DE BLOCS DE CONTENU
@@ -349,7 +349,7 @@ export const CONFIG_ENCADRE: Record<TypeEncadre, { label: string; emoji: string;
  * Niveaux scolaires pour les Cours en ligne.
  * Réexport de CLASSES_OPTIONS (cahierTextes.types.ts) — source unique partagée.
  */
-export { CLASSES_OPTIONS as NIVEAUX_COURS } from './types/cahierTextes.types';
+export { CLASSES_OPTIONS as NIVEAUX_COURS } from './cahierTextes.types';
 
 /** Matières du programme sénégalais */
 export const MATIERES_COURS = [

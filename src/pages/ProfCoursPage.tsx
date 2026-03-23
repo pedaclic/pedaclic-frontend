@@ -16,8 +16,8 @@ import {
   publierCours,
 } from '../services/coursService';
 import { getProgressionsCours, calculerStatsProgression } from '../services/progressionCoursService';
-import type { CoursEnLigne } from '../cours_types';
-import { CONFIG_STATUT_COURS, NIVEAUX_COURS } from '../cours_types';
+import type { CoursEnLigne } from '../types/cours_types';
+import { CONFIG_STATUT_COURS, NIVEAUX_COURS } from '../types/cours_types';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────

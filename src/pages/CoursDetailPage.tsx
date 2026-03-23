@@ -32,8 +32,8 @@ import type {
   BlocQuiz,
   BlocExercice,
   ProgressionCours,
-} from '../cours_types';
-import { CONFIG_ENCADRE, NIVEAUX_COURS } from '../cours_types';
+} from '../types/cours_types';
+import { CONFIG_ENCADRE, NIVEAUX_COURS } from '../types/cours_types';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────

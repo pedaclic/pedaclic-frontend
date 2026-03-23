@@ -21,7 +21,7 @@
 
 import React, { useState, useRef, useCallback } from 'react';
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage } from './firebase';
+import { storage } from '../firebase';
 
 // ─── Types ────────────────────────────────────────────────────
 

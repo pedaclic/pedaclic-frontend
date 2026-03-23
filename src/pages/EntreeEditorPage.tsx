@@ -41,7 +41,7 @@ import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
 // Phase 23 — contenus IA
 import ContenuIASelector from '../components/prof/ContenuIASelector';
-import RichTextEditor from '../RichTextEditor';
+import RichTextEditor from '../components/RichTextEditor';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 

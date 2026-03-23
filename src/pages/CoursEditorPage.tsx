@@ -20,7 +20,7 @@ import { Timestamp, doc, collection } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 // Composant d'upload d'image vers Firebase Storage (cover + blocs image)
-import ImageUploader from '../ImageUploader';
+import ImageUploader from '../components/ImageUploader';
 import {
   getCoursById,
   getSectionsCours,
@@ -47,8 +47,8 @@ import type {
   TypeBloc,
   TypeEncadre,
   CoursFormData,
-} from '../cours_types';
-import { LABELS_TYPE_BLOC, CONFIG_ENCADRE } from '../cours_types';
+} from '../types/cours_types';
+import { LABELS_TYPE_BLOC, CONFIG_ENCADRE } from '../types/cours_types';
 import { CLASSES } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import '../styles/CoursEnLigne.css';

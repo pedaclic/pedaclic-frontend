@@ -12,14 +12,14 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import {
   ecouterNotificationsEtendues,
   marquerCommeLue,
   marquerToutesCommeLues,
-} from './notificationService';
-import type { Notification } from './notification_types';
-import { TEMPLATES_NOTIFICATION } from './notification_types';
+} from '../services/notificationService';
+import type { Notification } from '../types/notification_types';
+import { TEMPLATES_NOTIFICATION } from '../types/notification_types';
 
 // ─── Utilitaire : formater la date relative ──────────────────
 
