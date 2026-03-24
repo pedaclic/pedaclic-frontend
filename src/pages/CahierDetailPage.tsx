@@ -899,26 +899,28 @@ const CahierDetailPage: React.FC = () => {
                 )}
               </div>
             ) : (() => {
-              // Phase 31 — Groupement par jour si seancesParJour > 1
-              const seancesParJour = cahier.seancesParJour ?? 1;
-              const doitGrouper = seancesParJour > 1;
+              // Phase 31 — Groupement par jour : toujours construire la map,
+              // puis activer le mode groupé dès qu'un jour contient 2+ séances
+              // (ou si seancesParJour est explicitement > 1).
+              const map = new Map<string, { entree: EntreeCahier; globalIdx: number }[]>();
+              entreesFiltrees.forEach((entree, idx) => {
+                const d = entree.date.toDate();
+                const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                if (!map.has(cle)) map.set(cle, []);
+                map.get(cle)!.push({ entree, globalIdx: idx });
+              });
 
-              // Regrouper les entrées par clé de jour (YYYY-MM-DD)
               const groupesParJour: { cleJour: string; labelJour: string; entrees: { entree: EntreeCahier; globalIdx: number }[] }[] = [];
-              if (doitGrouper) {
-                const map = new Map<string, { entree: EntreeCahier; globalIdx: number }[]>();
-                entreesFiltrees.forEach((entree, idx) => {
-                  const d = entree.date.toDate();
-                  const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                  if (!map.has(cle)) map.set(cle, []);
-                  map.get(cle)!.push({ entree, globalIdx: idx });
-                });
-                map.forEach((items, cleJour) => {
-                  const d = items[0].entree.date.toDate();
-                  const labelJour = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-                  groupesParJour.push({ cleJour, labelJour, entrees: items });
-                });
-              }
+              map.forEach((items, cleJour) => {
+                const d = items[0].entree.date.toDate();
+                const labelJour = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                groupesParJour.push({ cleJour, labelJour, entrees: items });
+              });
+
+              // Activer le groupement si le cahier le demande OU si au moins un jour a 2+ entrées
+              const seancesParJourSetting = cahier.seancesParJour ?? 1;
+              const auMoinsUnJourMultiple = groupesParJour.some(g => g.entrees.length > 1);
+              const doitGrouper = seancesParJourSetting > 1 || auMoinsUnJourMultiple;
 
               const toggleJour = (cle: string) => {
                 setJoursReplies(prev => {
@@ -1045,10 +1047,18 @@ const CahierDetailPage: React.FC = () => {
               return doitGrouper ? (
                 <div className="entrees-list">
                   {groupesParJour.map(groupe => {
-                    const estReplie = joursReplies.has(groupe.cleJour);
                     const nbSeances = groupe.entrees.length;
+
+                    // Jour avec une seule séance → rendu normal (pas de header réductible)
+                    if (nbSeances === 1) {
+                      const { entree, globalIdx } = groupe.entrees[0];
+                      return <React.Fragment key={groupe.cleJour}>{renderEntreeCard(entree, globalIdx, true)}</React.Fragment>;
+                    }
+
+                    // Jour avec 2+ séances → header réductible
+                    const estReplie = joursReplies.has(groupe.cleJour);
                     return (
-                      <div key={groupe.cleJour} className="entrees-jour-groupe">
+                      <div key={groupe.cleJour} className="entrees-jour-groupe" style={{ marginBottom: '0.75rem' }}>
                         <button
                           type="button"
                           className="entrees-jour-header"
@@ -1074,6 +1084,7 @@ const CahierDetailPage: React.FC = () => {
                             display: 'inline-block',
                             transition: 'transform 0.2s',
                             transform: estReplie ? 'rotate(-90deg)' : 'rotate(0)',
+                            fontSize: '0.85rem',
                           }}>
                             ▾
                           </span>
@@ -1087,11 +1098,11 @@ const CahierDetailPage: React.FC = () => {
                             padding: '2px 8px',
                             borderRadius: 9999,
                           }}>
-                            {nbSeances} séance{nbSeances > 1 ? 's' : ''}
+                            {nbSeances} séances
                           </span>
                         </button>
                         {!estReplie && (
-                          <div style={{ borderLeft: '2px solid #e2e8f0', marginLeft: '0.5rem', paddingLeft: '0.5rem' }}>
+                          <div style={{ borderLeft: '2px solid #cbd5e1', marginLeft: '0.75rem', paddingLeft: '0.75rem', paddingTop: '0.25rem' }}>
                             {groupe.entrees.map(({ entree, globalIdx }) =>
                               renderEntreeCard(entree, globalIdx, false)
                             )}
