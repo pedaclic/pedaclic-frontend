@@ -39,11 +39,12 @@ import {
   getTravauxByGroupe,
   supprimerTravailAFaire,
 } from '../../services/travauxAFaireService';
-import { getCahiersForGroupe } from '../../services/cahierTextesService';
-import type { CahierTextes, RubriqueCahier } from '../../types/cahierTextes.types';
+import { getCahiersForGroupe, getEntreesCahier } from '../../services/cahierTextesService';
+import type { CahierTextes, RubriqueCahier, EntreeCahier } from '../../types/cahierTextes.types';
 import { useAuth } from '../../hooks/useAuth';
 import FeuillesNotesManager from './FeuillesNotesManager';
 import CahierGroupeWidget from './CahierGroupeWidget';
+import PlanificationWidget from './PlanificationWidget';
 import InscriptionDirecteModal from './InscriptionDirecteModal';
 import type {
   GroupeProf,
@@ -62,7 +63,7 @@ import '../../styles/CahierEnrichi.css';
 // ==================== TYPES LOCAUX ====================
 
 /** Onglets disponibles dans le détail du groupe */
-type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' | 'cahier' | 'alertes';
+type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' | 'cahier' | 'planification' | 'alertes';
 
 /** Options de tri pour la liste des élèves */
 type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count';
@@ -186,6 +187,11 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   // Phase 31 — Filtres travaux
   const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
   const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
+  // Phase 32 — Planification
+  const [planifCahierIdx, setPlanifCahierIdx] = useState(0);
+  const [planifEntrees, setPlanifEntrees] = useState<EntreeCahier[]>([]);
+  const [planifCahiers, setPlanifCahiers] = useState<CahierTextes[]>([]);
+  const [loadingPlanif, setLoadingPlanif] = useState(false);
 
   // ===== États : UI =====
   const [loading, setLoading] = useState<boolean>(true);
@@ -258,6 +264,29 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
         .catch(() => setCahiersGroupe([]));
     }
   }, [ongletActif, groupe.id, currentUser?.uid]);
+
+  /** Phase 32 — Charge les cahiers + entrées pour la planification */
+  useEffect(() => {
+    if (ongletActif !== 'planification' || !currentUser?.uid) return;
+    let cancelled = false;
+    setLoadingPlanif(true);
+    getCahiersForGroupe(groupe.id, currentUser.uid)
+      .then(async (cahiers) => {
+        if (cancelled) return;
+        setPlanifCahiers(cahiers);
+        if (cahiers.length > 0) {
+          const idx = Math.min(planifCahierIdx, cahiers.length - 1);
+          setPlanifCahierIdx(idx);
+          const entries = await getEntreesCahier(cahiers[idx].id);
+          if (!cancelled) setPlanifEntrees(entries);
+        } else {
+          setPlanifEntrees([]);
+        }
+      })
+      .catch(() => { if (!cancelled) { setPlanifCahiers([]); setPlanifEntrees([]); } })
+      .finally(() => { if (!cancelled) setLoadingPlanif(false); });
+    return () => { cancelled = true; };
+  }, [ongletActif, groupe.id, currentUser?.uid, planifCahierIdx]);
 
   /** Charge l'observation de l'élève sélectionné */
   useEffect(() => {
@@ -535,6 +564,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
           { id: 'notes' as OngletActif, label: '📝 Notes', count: null },
           { id: 'quiz' as OngletActif, label: '📝 Quiz', count: quizDisponibles.length },
           { id: 'cahier' as OngletActif, label: '📓 Cahier de textes', count: null },
+          { id: 'planification' as OngletActif, label: '📅 Planification', count: null },
           { id: 'alertes' as OngletActif, label: '🔔 Alertes', count: alertes.length }
         ].map(onglet => (
           <button
@@ -1297,6 +1327,50 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
               anneeScolaire: groupe.anneeScolaire,
             }}
           />
+        </div>
+      )}
+
+
+      {/* ============================================================ */}
+      {/* ONGLET PLANIFICATION (Phase 32)                               */}
+      {/* ============================================================ */}
+      {ongletActif === 'planification' && (
+        <div className="groupe-planification" style={{ padding: 'var(--spacing-lg)' }}>
+          {loadingPlanif ? (
+            <div className="prof-loading"><div className="spinner"></div><p>Chargement de la planification…</p></div>
+          ) : planifCahiers.length === 0 ? (
+            <div className="prof-empty-state">
+              <div className="prof-empty-icon">📅</div>
+              <h3>Aucun cahier de textes lié</h3>
+              <p>Créez ou liez un cahier de textes à ce groupe pour accéder à la planification.</p>
+            </div>
+          ) : (
+            <>
+              {/* Sélecteur de cahier si plusieurs */}
+              {planifCahiers.length > 1 && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151' }}>Cahier :</label>
+                  <select
+                    className="prof-input prof-input-sm"
+                    value={planifCahierIdx}
+                    onChange={e => setPlanifCahierIdx(Number(e.target.value))}
+                    style={{ width: 'auto', minWidth: '200px' }}
+                  >
+                    {planifCahiers.map((c, i) => (
+                      <option key={c.id} value={i}>{c.titre} ({c.matiere})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {planifCahiers[planifCahierIdx] && (
+                <PlanificationWidget
+                  cahier={planifCahiers[planifCahierIdx]}
+                  entrees={planifEntrees}
+                />
+              )}
+            </>
+          )}
         </div>
       )}
 

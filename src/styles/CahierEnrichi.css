@@ -1747,5 +1747,188 @@
   max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ============================================================
+   Phase 32 — PlanificationWidget
+   ============================================================ */
+.planif-widget {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.1rem;
+}
+.planif-widget--compact {
+  padding: 0.85rem;
+}
+.planif-widget-header {
+  margin-bottom: 0.6rem;
+}
+.planif-widget-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+.planif-widget--compact .planif-widget-title {
+  font-size: 0.88rem;
+}
+
+/* Filtres */
+.planif-filtres {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.planif-filtre-select {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.planif-filtre-select:focus {
+  outline: 2px solid #2563eb44;
+  border-color: #2563eb;
+}
+.planif-periode-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  margin-bottom: 0.6rem;
+  font-weight: 500;
+}
+
+/* Résumé global */
+.planif-global {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+.planif-global-bar-bg {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 0.4rem;
+}
+.planif-global-bar-fill {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+}
+.planif-global-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.planif-stat-main {
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+.planif-widget--compact .planif-stat-main {
+  font-size: 1.1rem;
+}
+.planif-stat-detail {
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+.planif-stat-restant {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* Rubriques */
+.planif-rubriques {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.planif-rubrique-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.planif-rubrique-info {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.76rem;
+}
+.planif-rubrique-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.planif-rubrique-nom {
+  color: #374151;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.planif-rubrique-count {
+  font-size: 0.7rem;
+  color: #6b7280;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.planif-rubrique-bar-bg {
+  height: 5px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.planif-rubrique-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+.planif-rubrique-meta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+}
+.planif-rubrique-restant {
+  color: #f59e0b;
+  font-weight: 600;
+}
+.planif-rubrique-done {
+  color: #10b981;
+  font-weight: 600;
+}
+.planif-rubrique-planif {
+  color: #6366f1;
+}
+
+/* Sans rubrique */
+.planif-sans-rubrique {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: #6b7280;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e5e7eb;
+}
+
+/* État vide */
+.planif-empty {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-align: center;
+  padding: 0.75rem 0;
+  margin: 0;
+  line-height: 1.4;
   white-space: nowrap;
 }

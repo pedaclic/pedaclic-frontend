@@ -38,6 +38,7 @@ import type {
 } from '../types/cahierTextes.types';
 import CahierCalendar from '../components/prof/CahierCalendar';
 import RappelWidget from '../components/prof/RappelWidget';
+import PlanificationWidget from '../components/prof/PlanificationWidget';
 import SignetFilter from '../components/prof/SignetFilter';
 import CahierStats from '../components/prof/CahierStats';
 import CahierProgressionWidget from '../components/prof/CahierProgressionWidget';
@@ -523,6 +524,23 @@ const CahierDetailPage: React.FC = () => {
             onClick={() => navigate(`/prof/cahiers/${cahierId}/nouvelle`)}
           >
             + Nouvelle séance
+          </button>
+          <button
+            className="btn-secondary"
+            onClick={() => navigate(`/prof/cahiers/${cahierId}/planification`)}
+            style={{
+              padding: '0.45rem 0.9rem',
+              borderRadius: 8,
+              border: '1px solid #d1d5db',
+              background: '#fff',
+              cursor: 'pointer',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              color: '#374151',
+            }}
+            title="Voir la planification complète"
+          >
+            📅 Planification
           </button>
         </div>
       </div>
@@ -1120,8 +1138,9 @@ const CahierDetailPage: React.FC = () => {
             })()}
           </div>
 
-          {/* ─── Colonne droite : rappels ─────────────────── */}
+          {/* ─── Colonne droite : planification + rappels ─── */}
           <div className="cahier-sidebar-right no-print">
+            <PlanificationWidget cahier={cahier} entrees={entrees} compact />
             <RappelWidget profId={currentUser!.uid} cahierId={cahier.id} />
           </div>
         </div>
