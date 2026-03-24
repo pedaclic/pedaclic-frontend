@@ -223,6 +223,14 @@
   font-weight: 400;
   color: #94a3b8;
 }
+.prog-count-titres {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6d28d9;
+  background: #ede9fe;
+  padding: 1px 6px;
+  border-radius: 8px;
+}
 
 .prog-legende {
   display: flex;

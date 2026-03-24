@@ -613,7 +613,8 @@ export async function ajouterRubrique(
   rubriquesActuelles: RubriqueCahier[],
   nom: string,
   couleur?: string,
-  nombreSeancesPrevu?: number
+  nombreSeancesPrevu?: number,
+  titres?: import('../types/cahierTextes.types').TitreRubrique[]
 ): Promise<RubriqueCahier[]> {
   const nouvelleRubrique: RubriqueCahier = {
     id: Date.now().toString(),
@@ -621,6 +622,7 @@ export async function ajouterRubrique(
     ordre: rubriquesActuelles.length,
     couleur: couleur ?? COULEURS_RUBRIQUES[rubriquesActuelles.length % COULEURS_RUBRIQUES.length],
     ...(nombreSeancesPrevu != null && nombreSeancesPrevu > 0 && { nombreSeancesPrevu }),
+    ...(titres && titres.length > 0 && { titres }),
   };
   const nouvelleListe = [...rubriquesActuelles, nouvelleRubrique];
   await updateCahier(cahierId, { rubriques: nouvelleListe });
@@ -631,7 +633,7 @@ export async function modifierRubrique(
   cahierId: string,
   rubriquesActuelles: RubriqueCahier[],
   rubriqueId: string,
-  modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur' | 'nombreSeancesPrevu'>>
+  modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur' | 'nombreSeancesPrevu' | 'titres'>>
 ): Promise<RubriqueCahier[]> {
   const nouvelleListe = rubriquesActuelles.map(r =>
     r.id === rubriqueId ? { ...r, ...modifications } : r

@@ -198,6 +198,24 @@ export interface LienContenuIA {
 // ─────────────────────────────────────────────────────────────
 // PHASE 29 — RUBRIQUE CAHIER (chapitre, unité thématique…)
 // ─────────────────────────────────────────────────────────────
+
+/** Statut d'avancement d'un titre (leçon) au sein d'une rubrique */
+export type StatutTitre = 'non_commence' | 'en_cours' | 'acheve';
+
+export const STATUT_TITRE_CONFIG: Record<StatutTitre, { label: string; emoji: string; color: string; bg: string }> = {
+  non_commence: { label: 'Non commencé', emoji: '⬜', color: '#6b7280', bg: '#f3f4f6' },
+  en_cours:     { label: 'En cours',     emoji: '🟡', color: '#d97706', bg: '#fef3c7' },
+  acheve:       { label: 'Achevé',       emoji: '✅', color: '#059669', bg: '#d1fae5' },
+};
+
+/** Titre (leçon) à traiter au sein d'une rubrique */
+export interface TitreRubrique {
+  id: string;
+  nom: string;
+  ordre: number;
+  statut: StatutTitre;
+}
+
 export interface RubriqueCahier {
   id: string;
   nom: string;
@@ -207,6 +225,8 @@ export interface RubriqueCahier {
   nombreSeancesPrevu?: number;
   /** Alias pour compatibilité avec données Firestore existantes */
   seancesPrevues?: number;
+  /** Phase 33 — Titres (leçons) organisés dans cette rubrique */
+  titres?: TitreRubrique[];
 }
 
 // ─────────────────────────────────────────────────────────────

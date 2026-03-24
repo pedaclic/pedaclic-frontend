@@ -5,6 +5,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { EntreeCahier, RubriqueCahier } from '../../types/cahierTextes.types';
+import { STATUT_TITRE_CONFIG } from '../../types/cahierTextes.types';
 import { calculerProgression, type ProgressionItem } from '../../services/cahierTextesService';
 import './CahierProgressionWidget.css';
 
@@ -18,7 +19,8 @@ interface CahierProgressionWidgetProps {
 const BarreProgression: React.FC<{
   item: ProgressionItem;
   isGlobal?: boolean;
-}> = ({ item, isGlobal = false }) => {
+  rubrique?: RubriqueCahier;
+}> = ({ item, isGlobal = false, rubrique }) => {
   const pct = Math.round(item.pourcentage);
   const denomVisuel = item.seancesPrevu != null && item.seancesPrevu > 0
     ? Math.max(item.seancesPrevu, item.total)
@@ -104,6 +106,18 @@ const BarreProgression: React.FC<{
             ? `${item.realise} / ${item.seancesPrevu} séances prévues`
             : `${item.total} séance${item.total > 1 ? 's' : ''} au total`}
         </span>
+        {/* Phase 33 — stats titres */}
+        {rubrique?.titres && rubrique.titres.length > 0 && (() => {
+          const titres = rubrique.titres!;
+          const acheves = titres.filter(t => t.statut === 'acheve').length;
+          const enCours = titres.filter(t => t.statut === 'en_cours').length;
+          const pctT = Math.round((acheves / titres.length) * 100);
+          return (
+            <span className="prog-count prog-count-titres" title={`${acheves} achevé(s), ${enCours} en cours sur ${titres.length} titre(s)`}>
+              📝 Titres : {acheves}/{titres.length} ({pctT}%)
+            </span>
+          );
+        })()}
       </div>
     </div>
   );
@@ -179,6 +193,7 @@ const CahierProgressionWidget: React.FC<CahierProgressionWidgetProps> = ({
                   <BarreProgression
                     key={item.rubriqueId ?? '__sans_rubrique__'}
                     item={item}
+                    rubrique={rubriques.find(r => r.id === item.rubriqueId)}
                   />
                 ))}
               </div>

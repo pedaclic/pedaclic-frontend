@@ -23,6 +23,7 @@ import {
   addPiecesJointes,
   deletePieceJointe,
   resoudreRubriqueIdPourEntree,
+  modifierRubrique,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -34,8 +35,9 @@ import type {
   EntreeFormData, TypeContenu, StatutSeance,
   TypeEvaluation, CahierTextes,
   EntreeCahier, PieceJointe,
-  LienExterne, LienEbook, LienContenuIA, RubriqueCahier,
+  LienExterne, LienEbook, LienContenuIA, RubriqueCahier, StatutTitre,
 } from '../types/cahierTextes.types';
+import { STATUT_TITRE_CONFIG } from '../types/cahierTextes.types';
 // Phase 22 — composants enrichis
 import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
@@ -91,6 +93,8 @@ const EntreeEditorPage: React.FC = () => {
   const [cahierRubriques, setCahierRubriques] = useState<string[]>([]);
   // Phase 29 — rubrique du cahier (RubriqueCahier)
   const [rubriqueId, setRubriqueId] = useState<string>('');
+  // Phase 33 — titre sélectionné dans la rubrique
+  const [titreId, setTitreId] = useState<string>('');
 
   const isEdit = !!entreeId;
 
@@ -270,6 +274,22 @@ const EntreeEditorPage: React.FC = () => {
       const nbRealise = toutesEntrees.filter(e => e.statut === 'realise').length;
       await updateCahier(cahierId, { nombreSeancesRealise: nbRealise });
 
+      // Phase 33 — Mettre à jour le statut du titre sélectionné
+      if (titreId && rubriqueId && cahier.rubriques) {
+        const rubrique = cahier.rubriques.find(r => r.id === rubriqueId);
+        if (rubrique?.titres) {
+          const nouveauStatut: import('../types/cahierTextes.types').StatutTitre =
+            form.statut === 'realise' ? 'acheve' : form.statut === 'planifie' ? 'en_cours' : 'non_commence';
+          const titreActuel = rubrique.titres.find(t => t.id === titreId);
+          if (titreActuel && titreActuel.statut !== nouveauStatut) {
+            const titresMaj = rubrique.titres.map(t =>
+              t.id === titreId ? { ...t, statut: nouveauStatut } : t
+            );
+            await modifierRubrique(cahierId, cahier.rubriques, rubriqueId, { titres: titresMaj });
+          }
+        }
+      }
+
       navigate(`/prof/cahiers/${cahierId}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -328,10 +348,47 @@ const EntreeEditorPage: React.FC = () => {
 
           <div className="form-group">
             <label className="form-label">Chapitre / Titre de la séance *</label>
-            <input className="form-input"
-              placeholder="Ex: Chapitre 3 — Les fonctions affines"
-              value={form.chapitre}
-              onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
+            {(() => {
+              const rubSel = cahier?.rubriques?.find(r => r.id === rubriqueId);
+              const titresDispos = rubSel?.titres ?? [];
+              if (titresDispos.length > 0) {
+                return (
+                  <>
+                    <select
+                      className="form-select"
+                      value={titreId}
+                      onChange={e => {
+                        const tid = e.target.value;
+                        setTitreId(tid);
+                        const titre = titresDispos.find(t => t.id === tid);
+                        if (titre) setForm(f => ({ ...f, chapitre: titre.nom }));
+                      }}
+                    >
+                      <option value="">— Sélectionner un titre —</option>
+                      {titresDispos.map(t => {
+                        const cfg = STATUT_TITRE_CONFIG[t.statut];
+                        return (
+                          <option key={t.id} value={t.id}>
+                            {cfg.emoji} {t.nom}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <input className="form-input" style={{ marginTop: '0.4rem' }}
+                      placeholder="Ou saisissez un titre libre"
+                      value={form.chapitre}
+                      onChange={e => { setForm(f => ({ ...f, chapitre: e.target.value })); setTitreId(''); }}
+                    />
+                  </>
+                );
+              }
+              return (
+                <input className="form-input"
+                  placeholder="Ex: Chapitre 3 — Les fonctions affines"
+                  value={form.chapitre}
+                  onChange={e => setForm(f => ({ ...f, chapitre: e.target.value }))} required />
+              );
+            })()}
           </div>
 
           {/* Phase 29 — Module du cahier (utilisé pour la progression par rubrique) */}

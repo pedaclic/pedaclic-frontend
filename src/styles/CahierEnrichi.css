@@ -1484,7 +1484,7 @@
 
 .cahier-rubriques-list-header {
   display: grid;
-  grid-template-columns: 1fr minmax(7rem, auto) auto;
+  grid-template-columns: 1fr minmax(6rem, auto) minmax(4rem, auto) auto;
   gap: 0.5rem;
   padding: 0.35rem 0;
   font-size: 0.72rem;
@@ -1495,13 +1495,13 @@
   border-bottom: 1px solid #e2e8f0;
 }
 
-.cahier-rubriques-col-nom { }
+.cahier-rubriques-col-nom { font-weight: 600; }
 .cahier-rubriques-col-seances { text-align: center; min-width: 6rem; }
 .cahier-rubriques-col-actions { width: 4.5rem; }
 
 .cahier-rubrique-item {
   display: grid;
-  grid-template-columns: 1fr minmax(7rem, auto) auto;
+  grid-template-columns: 1fr minmax(6rem, auto) minmax(4rem, auto) auto;
   align-items: center;
   gap: 0.5rem;
   padding: 0.4rem 0;
@@ -1931,4 +1931,182 @@
   margin: 0;
   line-height: 1.4;
   white-space: nowrap;
+}
+.planif-rubrique-titres {
+  color: #6366f1;
+  font-weight: 600;
+}
+
+/* ============================================================
+   Phase 33 — Rubriques collapsible + Organisateur de titres
+   ============================================================ */
+
+/* Toggle collapsible rubriques */
+.cahier-rubriques-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+}
+.cahier-rubriques-toggle:hover .cahier-rubriques-titre {
+  color: #2563eb;
+}
+.cahier-rubriques-chevron {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.cahier-rubriques-chevron.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* Colonne titres dans la liste des rubriques */
+.cahier-rubriques-col-titres {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  min-width: 60px;
+  text-align: center;
+}
+.cahier-rubrique-titres-count {
+  font-size: 0.78rem;
+  color: #6b7280;
+  text-align: center;
+  min-width: 60px;
+}
+.titres-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #ede9fe;
+  color: #6d28d9;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Rubrique item wrapper (pour contenir item + panel titres) */
+.cahier-rubrique-item-wrap {
+  border-bottom: 1px solid #f1f5f9;
+}
+.cahier-rubrique-item-wrap:last-child {
+  border-bottom: none;
+}
+
+/* Bouton expand titres */
+.cahier-rubrique-btn-expand {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #6b7280;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.cahier-rubrique-btn-expand:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+/* Panel des titres (leçons) sous une rubrique */
+.cahier-titres-panel {
+  background: #f8fafc;
+  border-left: 3px solid #e2e8f0;
+  margin: 0 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.cahier-titre-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+.cahier-titre-nom {
+  flex: 1;
+  min-width: 0;
+  color: #374151;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cahier-titre-statut-select {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid;
+  cursor: pointer;
+  min-width: 120px;
+  appearance: auto;
+  transition: background 0.15s;
+}
+
+/* Formulaire titres dans le formulaire rubrique */
+.cahier-titres-form-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.5rem;
+}
+.cahier-titre-form-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.cahier-titre-form-num {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #9ca3af;
+  min-width: 22px;
+  text-align: right;
+}
+.cahier-titre-form-input {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+.cahier-titre-form-delete {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ef4444;
+  font-size: 0.85rem;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s;
+}
+.cahier-titre-form-delete:hover {
+  background: #fee2e2;
+}
+.cahier-titre-form-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  align-self: flex-start;
+}
+.cahier-titre-form-add:hover {
+  background: #dbeafe;
 }
