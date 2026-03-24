@@ -222,12 +222,6 @@
   flex-wrap: wrap;
 }
 
-.cahiers-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
-  gap: 1.25rem;
-}
-
 /* Card d'un cahier */
 .cahier-card {
   background: white;
@@ -276,6 +270,231 @@
   justify-content: space-between;
 }
 .cahier-actions { display: flex; gap: 0.5rem; }
+
+/* ─── Vue Toggle (grille / liste) ────────────────────────────── */
+.cahier-vue-toggle {
+  display: flex;
+  gap: 2px;
+  margin-left: auto;
+  background: var(--ct-gray-100);
+  border-radius: 8px;
+  padding: 2px;
+}
+.vue-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ct-gray-400);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.vue-toggle-btn:hover { color: var(--ct-gray-600); background: rgba(255,255,255,0.5); }
+.vue-toggle-btn.active {
+  background: white;
+  color: var(--ct-blue);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* ─── Carte compacte (grille) ────────────────────────────────── */
+.cahier-card--compact {
+  display: flex;
+  flex-direction: column;
+}
+.cahier-card-color-bar {
+  height: 3px;
+  border-radius: 12px 12px 0 0;
+  flex-shrink: 0;
+}
+.cahier-card--compact .cahier-card-header {
+  padding: 0.75rem 1rem 0.5rem;
+}
+.cahier-card--compact .cahier-card-titre {
+  font-size: 0.88rem;
+  margin: 0 0 0.2rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cahier-card--compact .cahier-card-meta {
+  gap: 0.4rem;
+}
+.cahier-card-body--compact {
+  padding: 0 1rem 0.75rem;
+  flex: 1;
+}
+.cahier-card-desc-compact {
+  font-size: 0.76rem;
+  color: #6b7280;
+  margin: 0 0 0.5rem;
+  line-height: 1.4;
+}
+.cahier-card-footer--compact {
+  padding: 0.5rem 1rem;
+}
+.cahier-card-date {
+  font-size: 0.7rem;
+  color: #9ca3af;
+}
+.progression-seances-label {
+  font-size: 0.68rem;
+  color: #9ca3af;
+  margin-top: 0.2rem;
+}
+
+/* Bouton icône petit (compact) */
+.btn-icon-sm {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+  transition: background 0.15s;
+  padding: 0;
+}
+.btn-icon-sm:hover { background: var(--ct-gray-100); }
+.btn-icon-sm--danger:hover { background: #fef2f2; }
+
+/* ─── Grille compacte ────────────────────────────────────────── */
+.cahiers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 1rem;
+}
+
+/* ─── Vue Liste ──────────────────────────────────────────────── */
+.cahiers-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cahier-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: white;
+  border: 1px solid var(--ct-gray-100);
+  border-radius: 10px;
+  padding: 0.6rem 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s;
+  min-height: 56px;
+}
+.cahier-row:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transform: translateY(-1px);
+}
+.cahier-row--archived {
+  opacity: 0.8;
+  border-style: dashed;
+}
+.cahier-row-color {
+  width: 4px;
+  align-self: stretch;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.cahier-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.cahier-row-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.cahier-row-titre {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--ct-gray-800);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+.cahier-row-badges {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cahier-row-badges .badge-classe,
+.cahier-row-badges .badge-matiere,
+.cahier-row-badges .badge-annee,
+.cahier-row-badges .badge-archive,
+.cahier-row-badges .badge-partage {
+  font-size: 0.65rem;
+  padding: 0.12rem 0.5rem;
+}
+.cahier-row-desc {
+  font-size: 0.73rem;
+  color: #6b7280;
+  margin: 0.15rem 0 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cahier-row-progress {
+  width: 110px;
+  flex-shrink: 0;
+}
+.cahier-row-progress-bar-bg {
+  height: 5px;
+  background: var(--ct-gray-100);
+  border-radius: 5px;
+  overflow: hidden;
+}
+.cahier-row-progress-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s;
+}
+.cahier-row-progress-label {
+  font-size: 0.65rem;
+  color: #9ca3af;
+  margin-top: 2px;
+  display: block;
+  text-align: center;
+}
+.cahier-row-date {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  flex-shrink: 0;
+  width: 60px;
+  text-align: center;
+}
+.cahier-row-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ─── Responsive : liste → stack sur mobile ──────────────────── */
+@media (max-width: 700px) {
+  .cahier-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+  .cahier-row-progress { width: 100%; order: 10; }
+  .cahier-row-date { display: none; }
+  .cahier-row-titre { max-width: none; }
+  .cahiers-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ─── Badges ─────────────────────────────────────────────────── */
 .badge-classe, .badge-matiere, .badge-annee, .badge-partage {

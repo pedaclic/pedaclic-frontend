@@ -62,6 +62,7 @@ const CahierTextesPage: React.FC = () => {
   const [loading, setLoading]       = useState(true);
   const [filtreAnnee, setFiltreAnnee] = useState<string>('2025-2026');
   const [filtreArchive, setFiltreArchive] = useState<'actif' | 'archive' | 'tous'>('actif');
+  const [vueMode, setVueMode]       = useState<'grille' | 'liste'>('grille');
   const [showModal, setShowModal]   = useState(false);
   const [editCahier, setEditCahier] = useState<CahierTextes | null>(null);
   const [form, setForm]             = useState<CahierFormData>(emptyForm());
@@ -302,6 +303,27 @@ const CahierTextesPage: React.FC = () => {
             Tous ({cahiers.length})
           </button>
         </div>
+        {/* Toggle grille / liste */}
+        <div className="cahier-vue-toggle">
+          <button
+            type="button"
+            className={`vue-toggle-btn ${vueMode === 'grille' ? 'active' : ''}`}
+            onClick={() => setVueMode('grille')}
+            title="Vue grille"
+            aria-label="Vue grille"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+          </button>
+          <button
+            type="button"
+            className={`vue-toggle-btn ${vueMode === 'liste' ? 'active' : ''}`}
+            onClick={() => setVueMode('liste')}
+            title="Vue liste"
+            aria-label="Vue liste"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1.5" width="14" height="3" rx="1"/><rect x="1" y="6.5" width="14" height="3" rx="1"/><rect x="1" y="11.5" width="14" height="3" rx="1"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* ── Contenu ── */}
@@ -319,46 +341,91 @@ const CahierTextesPage: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="cahiers-grid">
+        <div className={vueMode === 'grille' ? 'cahiers-grid' : 'cahiers-liste'}>
           {cahiersFiltres.map(cahier => {
             const pct = progressionPct(cahier);
             const isArchived = cahier.isArchived ?? false;
+
+            /* ══════ Vue Liste ══════ */
+            if (vueMode === 'liste') {
+              return (
+                <div
+                  key={cahier.id}
+                  className={`cahier-row ${isArchived ? 'cahier-row--archived' : ''}`}
+                  onClick={() => navigate(`/prof/cahiers/${cahier.id}`)}
+                >
+                  <div className="cahier-row-color" style={{ background: cahier.couleur }} />
+                  <div className="cahier-row-main">
+                    <div className="cahier-row-top">
+                      <h3 className="cahier-row-titre">{cahier.titre}</h3>
+                      <div className="cahier-row-badges">
+                        <span className="badge-classe">{cahier.classe}</span>
+                        <span className="badge-matiere">{cahier.matiere}</span>
+                        <span className="badge-annee">{cahier.anneeScolaire}</span>
+                        {isArchived && <span className="badge-archive">📦 Archivé</span>}
+                        {(cahier.groupeIds?.length ?? 0) > 0 && (
+                          <span className={`badge-partage ${cahier.isPartage ? 'actif' : ''}`}>
+                            {cahier.isPartage ? '👁️' : '🔒'} {cahier.groupeIds.length} gr.
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {cahier.description && (
+                      <p className="cahier-row-desc">
+                        {cahier.description.substring(0, 100)}{cahier.description.length > 100 ? '…' : ''}
+                      </p>
+                    )}
+                  </div>
+                  <div className="cahier-row-progress">
+                    <div className="cahier-row-progress-bar-bg">
+                      <div className="cahier-row-progress-bar-fill" style={{ width: `${pct}%`, background: cahier.couleur }} />
+                    </div>
+                    <span className="cahier-row-progress-label">{pct}% · {cahier.nombreSeancesRealise}/{cahier.nombreSeancesPrevu}</span>
+                  </div>
+                  <div className="cahier-row-date">
+                    {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) || '—'}
+                  </div>
+                  <div className="cahier-row-actions" onClick={e => e.stopPropagation()}>
+                    <button className="btn-icon-sm" onClick={e => handleToggleArchive(cahier, e)} title={isArchived ? 'Restaurer' : 'Archiver'}>
+                      {isArchived ? '↩️' : '📦'}
+                    </button>
+                    <button className="btn-icon-sm" onClick={e => handleEditCahier(cahier, e)} title="Modifier">✏️</button>
+                    <button className="btn-icon-sm btn-icon-sm--danger" onClick={e => handleDelete(cahier, e)} title="Supprimer">🗑️</button>
+                  </div>
+                </div>
+              );
+            }
+
+            /* ══════ Vue Grille (compacte) ══════ */
             return (
               <div
                 key={cahier.id}
-                className={`cahier-card ${isArchived ? 'cahier-card-archived' : ''}`}
+                className={`cahier-card cahier-card--compact ${isArchived ? 'cahier-card-archived' : ''}`}
                 onClick={() => navigate(`/prof/cahiers/${cahier.id}`)}
               >
-                {/* Bande couleur */}
-                <div style={{ height: 4, background: cahier.couleur, borderRadius: '12px 12px 0 0' }} />
+                <div className="cahier-card-color-bar" style={{ background: cahier.couleur }} />
 
                 <div className="cahier-card-header">
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 className="cahier-card-titre">{cahier.titre}</h3>
                     <div className="cahier-card-meta">
-                      <span className="badge-classe" title="Classe liée">{cahier.classe}</span>
+                      <span className="badge-classe">{cahier.classe}</span>
                       <span className="badge-matiere">{cahier.matiere}</span>
                       <span className="badge-annee">{cahier.anneeScolaire}</span>
-                      {isArchived && <span className="badge-archive">📦 Archivé</span>}
+                      {isArchived && <span className="badge-archive">📦</span>}
                     </div>
-
-                    {/* ── Phase 22 : badge groupes liés ── */}
                     {(cahier.groupeIds?.length ?? 0) > 0 && (
-                      <span
-                        className={`badge-partage ${cahier.isPartage ? 'actif' : ''}`}
-                        style={{ marginTop: 6, display: 'inline-flex' }}
-                      >
-                        {cahier.isPartage ? '👁️ Partagé avec' : '🔒 Lié à'}{' '}
-                        {cahier.groupeIds.length} groupe{cahier.groupeIds.length > 1 ? 's' : ''}
+                      <span className={`badge-partage ${cahier.isPartage ? 'actif' : ''}`} style={{ marginTop: 4, display: 'inline-flex', fontSize: '0.68rem' }}>
+                        {cahier.isPartage ? '👁️' : '🔒'} {cahier.groupeIds.length} groupe{cahier.groupeIds.length > 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="cahier-card-body">
+                <div className="cahier-card-body cahier-card-body--compact">
                   {cahier.description && (
-                    <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
-                      {cahier.description.substring(0, 80)}{cahier.description.length > 80 ? '...' : ''}
+                    <p className="cahier-card-desc-compact">
+                      {cahier.description.substring(0, 60)}{cahier.description.length > 60 ? '…' : ''}
                     </p>
                   )}
                   <div className="progression-bar-wrap">
@@ -367,35 +434,24 @@ const CahierTextesPage: React.FC = () => {
                       <span style={{ fontWeight: 700, color: cahier.couleur }}>{pct}%</span>
                     </div>
                     <div className="progression-bar-bg">
-                      <div
-                        className="progression-bar-fill"
-                        style={{ width: `${pct}%`, background: cahier.couleur }}
-                      />
+                      <div className="progression-bar-fill" style={{ width: `${pct}%`, background: cahier.couleur }} />
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.3rem' }}>
-                      {cahier.nombreSeancesRealise} / {cahier.nombreSeancesPrevu} séances réalisées
+                    <div className="progression-seances-label">
+                      {cahier.nombreSeancesRealise} / {cahier.nombreSeancesPrevu} séances
                     </div>
                   </div>
                 </div>
 
-                <div className="cahier-card-footer">
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                    Mis à jour le {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR') || '—'}
+                <div className="cahier-card-footer cahier-card-footer--compact">
+                  <span className="cahier-card-date">
+                    {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
                   </span>
                   <div className="cahier-actions">
-                    <button
-                      className="btn-icon"
-                      onClick={e => handleToggleArchive(cahier, e)}
-                      title={isArchived ? 'Restaurer' : 'Archiver'}
-                    >
+                    <button className="btn-icon-sm" onClick={e => handleToggleArchive(cahier, e)} title={isArchived ? 'Restaurer' : 'Archiver'}>
                       {isArchived ? '↩️' : '📦'}
                     </button>
-                    <button className="btn-icon" onClick={e => handleEditCahier(cahier, e)} title="Modifier">
-                      ✏️
-                    </button>
-                    <button className="btn-icon" onClick={e => handleDelete(cahier, e)} title="Supprimer" style={{ color: '#ef4444' }}>
-                      🗑️
-                    </button>
+                    <button className="btn-icon-sm" onClick={e => handleEditCahier(cahier, e)} title="Modifier">✏️</button>
+                    <button className="btn-icon-sm btn-icon-sm--danger" onClick={e => handleDelete(cahier, e)} title="Supprimer">🗑️</button>
                   </div>
                 </div>
               </div>
