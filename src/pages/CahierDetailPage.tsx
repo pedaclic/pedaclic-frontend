@@ -104,6 +104,9 @@ const CahierDetailPage: React.FC = () => {
   const [filtreSemaine, setFiltreSemaine] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
 
+  // Phase 31 — Jours repliés (groupement séances par jour)
+  const [joursReplies, setJoursReplies] = useState<Set<string>>(new Set());
+
   // ── Export PDF (contrôlé par l'admin) ────────────────────
   const [pdfEnabled, setPdfEnabled] = useState(true);
   const [pdfExporting, setPdfExporting] = useState(false);
@@ -389,8 +392,18 @@ const CahierDetailPage: React.FC = () => {
   }
   if (!cahier) return null;
 
-  const progressionPct = cahier.nombreSeancesPrevu > 0
-    ? Math.round((entrees.filter(e => e.statut === 'realise').length / cahier.nombreSeancesPrevu) * 100)
+  // Phase 31 — Le nombre de séances globales est le cumul des séances par rubrique
+  // (si des rubriques ont un nombreSeancesPrevu défini, on utilise la somme ; sinon on utilise cahier.nombreSeancesPrevu)
+  const seancesPrevuesCumul = (() => {
+    const rubriquesAvecPrevu = (cahier.rubriques ?? []).filter(r => r.nombreSeancesPrevu != null && r.nombreSeancesPrevu > 0);
+    if (rubriquesAvecPrevu.length > 0) {
+      return rubriquesAvecPrevu.reduce((sum, r) => sum + (r.nombreSeancesPrevu ?? 0), 0);
+    }
+    return cahier.nombreSeancesPrevu;
+  })();
+
+  const progressionPct = seancesPrevuesCumul > 0
+    ? Math.round((entrees.filter(e => e.statut === 'realise').length / seancesPrevuesCumul) * 100)
     : 0;
 
   return (
@@ -439,7 +452,10 @@ const CahierDetailPage: React.FC = () => {
               />
             </div>
             <span className="progression-pct">
-              {entrees.filter(e => e.statut === 'realise').length} / {cahier.nombreSeancesPrevu} séances ({progressionPct}%)
+              {entrees.filter(e => e.statut === 'realise').length} / {seancesPrevuesCumul} séances ({progressionPct}%)
+              {seancesPrevuesCumul !== cahier.nombreSeancesPrevu && (
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af', marginLeft: 4 }}>(cumul rubriques)</span>
+              )}
             </span>
           </div>
         </div>
@@ -882,31 +898,59 @@ const CahierDetailPage: React.FC = () => {
                   </button>
                 )}
               </div>
-            ) : (
-              <div className="entrees-list">
-                {entreesFiltrees.map((entree, idx) => {
-                  const typeCfg = TYPE_CONTENU_CONFIG[entree.typeContenu];
-                  const statutCfg = STATUT_CONFIG[entree.statut];
-                  const dateSeance = entree.date.toDate();
+            ) : (() => {
+              // Phase 31 — Groupement par jour si seancesParJour > 1
+              const seancesParJour = cahier.seancesParJour ?? 1;
+              const doitGrouper = seancesParJour > 1;
 
-                  return (
-                    <div
-                      key={entree.id}
-                      className="entree-card"
-                      style={{ borderLeftColor: typeCfg.color }}
-                      onClick={() => navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`)}
-                    >
-                      {/* Numéro de séance */}
-                      <div className="entree-num">
-                        <span style={{ background: typeCfg.color }}>
-                          {sortDirection === 'asc' ? idx + 1 : entreesFiltrees.length - idx}
-                        </span>
-                      </div>
+              // Regrouper les entrées par clé de jour (YYYY-MM-DD)
+              const groupesParJour: { cleJour: string; labelJour: string; entrees: { entree: EntreeCahier; globalIdx: number }[] }[] = [];
+              if (doitGrouper) {
+                const map = new Map<string, { entree: EntreeCahier; globalIdx: number }[]>();
+                entreesFiltrees.forEach((entree, idx) => {
+                  const d = entree.date.toDate();
+                  const cle = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                  if (!map.has(cle)) map.set(cle, []);
+                  map.get(cle)!.push({ entree, globalIdx: idx });
+                });
+                map.forEach((items, cleJour) => {
+                  const d = items[0].entree.date.toDate();
+                  const labelJour = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+                  groupesParJour.push({ cleJour, labelJour, entrees: items });
+                });
+              }
 
-                      <div className="entree-card-inner">
-                        <div className="entree-card-top">
-                          <div className="entree-card-gauche">
-                            {/* Date + horaire */}
+              const toggleJour = (cle: string) => {
+                setJoursReplies(prev => {
+                  const next = new Set(prev);
+                  if (next.has(cle)) next.delete(cle); else next.add(cle);
+                  return next;
+                });
+              };
+
+              // Rendu d'une carte d'entrée (réutilisé dans les deux modes)
+              const renderEntreeCard = (entree: EntreeCahier, idx: number, showDate: boolean) => {
+                const typeCfg = TYPE_CONTENU_CONFIG[entree.typeContenu];
+                const statutCfg = STATUT_CONFIG[entree.statut];
+                const dateSeance = entree.date.toDate();
+
+                return (
+                  <div
+                    key={entree.id}
+                    className="entree-card"
+                    style={{ borderLeftColor: typeCfg.color }}
+                    onClick={() => navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`)}
+                  >
+                    <div className="entree-num">
+                      <span style={{ background: typeCfg.color }}>
+                        {sortDirection === 'asc' ? idx + 1 : entreesFiltrees.length - idx}
+                      </span>
+                    </div>
+
+                    <div className="entree-card-inner">
+                      <div className="entree-card-top">
+                        <div className="entree-card-gauche">
+                          {showDate && (
                             <div className="entree-date">
                               📅 {dateSeance.toLocaleDateString('fr-FR', {
                                 weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -917,121 +961,152 @@ const CahierDetailPage: React.FC = () => {
                                 </span>
                               )}
                             </div>
-                            {/* Titre séance */}
-                            <h3 className="entree-chapitre">{entree.chapitre}</h3>
-                            {/* Badges */}
-                            <div className="entree-badges">
-                              <span
-                                className="entree-type-badge"
-                                style={{ background: typeCfg.color }}
-                              >
-                                {typeCfg.emoji} {typeCfg.label}
-                              </span>
-                              <span
-                                className="entree-statut-badge"
-                                style={{ background: statutCfg.bg, color: statutCfg.color }}
-                              >
-                                {statutCfg.label}
-                              </span>
-                              {(() => {
-                                const rid = resoudreRubriqueIdPourEntree(entree, rubriques);
-                                const r = rid ? rubriques.find(x => x.id === rid) : null;
-                                if (r) {
-                                  return (
-                                    <span
-                                      className="entree-card-rubrique-badge"
-                                      style={{
-                                        backgroundColor: (r.couleur ?? '#64748b') + '1a',
-                                        borderColor: r.couleur ?? '#64748b',
-                                        color: r.couleur ?? '#64748b',
-                                      }}
-                                    >
-                                      {r.nom}
-                                    </span>
-                                  );
-                                }
-                                if (entree.rubrique?.trim()) {
-                                  return (
-                                    <span className="entree-rubrique-badge">{entree.rubrique}</span>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              {entree.isMarqueEvaluation && (
-                                <span className="signet-badge">📌 Évaluation</span>
-                              )}
-                              {entree.piecesJointes && entree.piecesJointes.length > 0 && (
-                                <span className="badge-pj">
-                                  📎 {entree.piecesJointes.length}
-                                </span>
-                              )}
+                          )}
+                          {!showDate && entree.heureDebut && (
+                            <div className="entree-date" style={{ fontSize: '0.78rem' }}>
+                              🕐 {entree.heureDebut}{entree.heureFin ? ` → ${entree.heureFin}` : ''}
                             </div>
-                          </div>
-
-                          {/* Actions (cachées en print) */}
-                          <div className="entree-actions no-print">
-                            <button
-                              className="btn-icon"
-                              onClick={e => { e.stopPropagation(); navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`); }}
-                              title="Modifier"
-                            >✏️</button>
-                            <button
-                              className="btn-icon btn-icon--danger"
-                              onClick={e => { e.stopPropagation(); handleDeleteEntree(entree); }}
-                              title="Supprimer"
-                            >🗑️</button>
+                          )}
+                          <h3 className="entree-chapitre">{entree.chapitre}</h3>
+                          <div className="entree-badges">
+                            <span className="entree-type-badge" style={{ background: typeCfg.color }}>
+                              {typeCfg.emoji} {typeCfg.label}
+                            </span>
+                            <span className="entree-statut-badge" style={{ background: statutCfg.bg, color: statutCfg.color }}>
+                              {statutCfg.label}
+                            </span>
+                            {(() => {
+                              const rid = resoudreRubriqueIdPourEntree(entree, rubriques);
+                              const r = rid ? rubriques.find(x => x.id === rid) : null;
+                              if (r) {
+                                return (
+                                  <span
+                                    className="entree-card-rubrique-badge"
+                                    style={{
+                                      backgroundColor: (r.couleur ?? '#64748b') + '1a',
+                                      borderColor: r.couleur ?? '#64748b',
+                                      color: r.couleur ?? '#64748b',
+                                    }}
+                                  >
+                                    {r.nom}
+                                  </span>
+                                );
+                              }
+                              if (entree.rubrique?.trim()) {
+                                return <span className="entree-rubrique-badge">{entree.rubrique}</span>;
+                              }
+                              return null;
+                            })()}
+                            {entree.isMarqueEvaluation && (
+                              <span className="signet-badge">📌 Évaluation</span>
+                            )}
+                            {entree.piecesJointes && entree.piecesJointes.length > 0 && (
+                              <span className="badge-pj">📎 {entree.piecesJointes.length}</span>
+                            )}
                           </div>
                         </div>
-
-                        {/* Contenu enrichi */}
-                        {entree.contenu && (
-                          <div
-                            className="entree-contenu-preview"
-                            dangerouslySetInnerHTML={{ __html: entree.contenu }}
-                          />
-                        )}
-
-                        {/* Objectifs */}
-                        {entree.objectifs && (
-                          <div className="entree-objectifs">
-                            🎯 <em>{entree.objectifs}</em>
-                          </div>
-                        )}
-
-                        {/* Footer statuts rapides */}
-                        <div className="entree-card-footer no-print">
-                          <div className="entree-statuts-rapides">
-                            {(['realise', 'planifie', 'annule'] as StatutSeance[]).map(s => {
-                              const cfg = STATUT_CONFIG[s];
-                              const isActive = entree.statut === s;
-                              return (
-                                <button
-                                  key={s}
-                                  className={`statut-quick-btn ${isActive ? 'active' : ''}`}
-                                  style={isActive ? {
-                                    borderColor: cfg.color,
-                                    background: cfg.bg,
-                                    color: cfg.color,
-                                  } : {}}
-                                  onClick={e => { e.stopPropagation(); handleStatutChange(entree, s); }}
-                                >
-                                  {cfg.label}
-                                </button>
-                              );
-                            })}
-                          </div>
-                          {entree.notesPrivees && (
-                            <span className="entree-has-notes" title="Contient des notes privées">
-                              🔒 Notes privées
-                            </span>
-                          )}
+                        <div className="entree-actions no-print">
+                          <button className="btn-icon" onClick={e => { e.stopPropagation(); navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`); }} title="Modifier">✏️</button>
+                          <button className="btn-icon btn-icon--danger" onClick={e => { e.stopPropagation(); handleDeleteEntree(entree); }} title="Supprimer">🗑️</button>
                         </div>
                       </div>
+                      {entree.contenu && (
+                        <div className="entree-contenu-preview" dangerouslySetInnerHTML={{ __html: entree.contenu }} />
+                      )}
+                      {entree.objectifs && (
+                        <div className="entree-objectifs">🎯 <em>{entree.objectifs}</em></div>
+                      )}
+                      <div className="entree-card-footer no-print">
+                        <div className="entree-statuts-rapides">
+                          {(['realise', 'planifie', 'annule'] as StatutSeance[]).map(s => {
+                            const cfg = STATUT_CONFIG[s];
+                            const isActive = entree.statut === s;
+                            return (
+                              <button
+                                key={s}
+                                className={`statut-quick-btn ${isActive ? 'active' : ''}`}
+                                style={isActive ? { borderColor: cfg.color, background: cfg.bg, color: cfg.color } : {}}
+                                onClick={e => { e.stopPropagation(); handleStatutChange(entree, s); }}
+                              >
+                                {cfg.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {entree.notesPrivees && (
+                          <span className="entree-has-notes" title="Contient des notes privées">🔒 Notes privées</span>
+                        )}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
+                  </div>
+                );
+              };
+
+              return doitGrouper ? (
+                <div className="entrees-list">
+                  {groupesParJour.map(groupe => {
+                    const estReplie = joursReplies.has(groupe.cleJour);
+                    const nbSeances = groupe.entrees.length;
+                    return (
+                      <div key={groupe.cleJour} className="entrees-jour-groupe">
+                        <button
+                          type="button"
+                          className="entrees-jour-header"
+                          onClick={() => toggleJour(groupe.cleJour)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            width: '100%',
+                            padding: '0.6rem 1rem',
+                            background: '#f1f5f9',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: estReplie ? '8px' : '8px 8px 0 0',
+                            cursor: 'pointer',
+                            fontWeight: 600,
+                            fontSize: '0.9rem',
+                            color: '#1e293b',
+                            textAlign: 'left',
+                          }}
+                          aria-expanded={!estReplie}
+                        >
+                          <span style={{
+                            display: 'inline-block',
+                            transition: 'transform 0.2s',
+                            transform: estReplie ? 'rotate(-90deg)' : 'rotate(0)',
+                          }}>
+                            ▾
+                          </span>
+                          <span>📅 {groupe.labelJour}</span>
+                          <span style={{
+                            marginLeft: 'auto',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                            color: '#6b7280',
+                            background: '#e2e8f0',
+                            padding: '2px 8px',
+                            borderRadius: 9999,
+                          }}>
+                            {nbSeances} séance{nbSeances > 1 ? 's' : ''}
+                          </span>
+                        </button>
+                        {!estReplie && (
+                          <div style={{ borderLeft: '2px solid #e2e8f0', marginLeft: '0.5rem', paddingLeft: '0.5rem' }}>
+                            {groupe.entrees.map(({ entree, globalIdx }) =>
+                              renderEntreeCard(entree, globalIdx, false)
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="entrees-list">
+                  {entreesFiltrees.map((entree, idx) => renderEntreeCard(entree, idx, true))}
+                </div>
+              );
+            })()}
           </div>
 
           {/* ─── Colonne droite : rappels ─────────────────── */}

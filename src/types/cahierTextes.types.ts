@@ -232,6 +232,8 @@ export interface CahierTextes {
   isPartage: boolean;
   // Phase 29 — rubriques définies par le prof
   rubriques?: RubriqueCahier[];
+  // Phase 31 — nombre de séances par jour (défaut 1)
+  seancesParJour?: number;
 }
 
 export interface CahierFormData {
@@ -246,6 +248,8 @@ export interface CahierFormData {
   groupeIds?: string[];
   groupeNoms?: string[];
   isPartage?: boolean;
+  // Phase 31 — nombre de séances par jour (défaut 1)
+  seancesParJour?: number;
 }
 
 // ─────────────────────────────────────────────────────────────

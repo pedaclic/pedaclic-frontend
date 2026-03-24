@@ -47,6 +47,8 @@ const emptyForm = (): CahierFormData => ({
   groupeIds:            [],
   groupeNoms:           [],
   isPartage:            false,
+  // Phase 31
+  seancesParJour:       1,
 });
 
 // ─── Composant principal ─────────────────────────────────────
@@ -170,6 +172,8 @@ const CahierTextesPage: React.FC = () => {
       groupeIds:            cahier.groupeIds  ?? [],
       groupeNoms:           cahier.groupeNoms ?? [],
       isPartage:            cahier.isPartage  ?? false,
+      // Phase 31
+      seancesParJour:       cahier.seancesParJour ?? 1,
     });
     setError('');
     setShowModal(true);
@@ -473,17 +477,35 @@ const CahierTextesPage: React.FC = () => {
                 />
               </div>
 
-              {/* Séances prévues */}
-              <div className="form-group">
-                <label className="form-label">Nombre de séances prévues</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  min="1"
-                  max="200"
-                  value={form.nombreSeancesPrevu}
-                  onChange={e => setForm(f => ({ ...f, nombreSeancesPrevu: Number(e.target.value) }))}
-                />
+              {/* Séances prévues + séances par jour */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Nombre de séances prévues</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min="1"
+                    max="200"
+                    value={form.nombreSeancesPrevu}
+                    onChange={e => setForm(f => ({ ...f, nombreSeancesPrevu: Number(e.target.value) }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Séances par jour</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min="1"
+                    max="6"
+                    value={form.seancesParJour ?? 1}
+                    onChange={e => setForm(f => ({ ...f, seancesParJour: Math.max(1, Math.min(6, Number(e.target.value))) }))}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 2 }}>
+                    {(form.seancesParJour ?? 1) > 1
+                      ? `${form.seancesParJour} séances par jour — les entrées seront regroupées`
+                      : '1 séance par jour (défaut)'}
+                  </span>
+                </div>
               </div>
 
               {/* Description */}

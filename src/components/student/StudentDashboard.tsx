@@ -122,7 +122,9 @@ const StudentDashboard: React.FC = () => {
   const [codeCopied, setCodeCopied] = useState(false);
 
   /* ── États Travaux de ma classe (onglet Travaux) ── */
-  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; groupeNom: string; matiere?: string }>>([]);
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string }>>([]);
+  const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
+  const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
 
   /* ── États Cahier de textes ── */
   const [cahiersCount, setCahiersCount] = useState(0);
@@ -202,8 +204,11 @@ const StudentDashboard: React.FC = () => {
           titre: t.titre,
           description: t.description,
           dateEcheance: t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance),
+          heureEcheance: t.heureEcheance,
           groupeNom: t.groupeNom,
           matiere: t.matiere,
+          rubriqueId: t.rubriqueId,
+          rubriqueNom: t.rubriqueNom,
         })));
       } catch (error) {
         console.error('Erreur chargement dashboard :', error);
@@ -435,44 +440,135 @@ const StudentDashboard: React.FC = () => {
         <h3 className="sd-section-title">
           <PenLine size={18} /> Travaux de ma classe
         </h3>
-        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
           Travaux assignés par votre professeur dans l&apos;onglet « Travaux » de votre classe.
         </p>
-        {travaux.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-            {travaux.slice(0, 8).map((t) => (
-              <div
-                key={t.id}
-                className="sd-travaux-item"
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  transition: 'background 0.2s, border-color 0.2s',
-                }}
+
+        {/* Phase 31 — Filtres travaux côté élève */}
+        {travaux.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+            <Filter size={14} style={{ color: '#6b7280' }} />
+            <select
+              style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
+              value={filtreTravailEcheance}
+              onChange={(e) => setFiltreTravailEcheance(e.target.value as any)}
+            >
+              <option value="tous">Toutes échéances</option>
+              <option value="aujourdhui">Aujourd&apos;hui</option>
+              <option value="semaine">Cette semaine</option>
+              <option value="mois">Ce mois</option>
+            </select>
+            {(() => {
+              const rubriquesUniques = new Map<string, string>();
+              travaux.forEach(t => { if (t.rubriqueId && t.rubriqueNom) rubriquesUniques.set(t.rubriqueId, t.rubriqueNom); });
+              if (rubriquesUniques.size === 0) return null;
+              return (
+                <select
+                  style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
+                  value={filtreTravailRubrique}
+                  onChange={(e) => setFiltreTravailRubrique(e.target.value)}
+                >
+                  <option value="tous">Toutes rubriques</option>
+                  {[...rubriquesUniques.entries()].map(([id, nom]) => (
+                    <option key={id} value={id}>{nom}</option>
+                  ))}
+                  <option value="__sans_rubrique__">Sans rubrique</option>
+                </select>
+              );
+            })()}
+            {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
+              <button
+                style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#f1f5f9', cursor: 'pointer', color: '#374151' }}
+                onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
               >
-                <strong style={{ fontSize: '0.95rem' }}>📋 {t.titre}</strong>
-                {t.description && (
-                  <div
-                    className="sd-travaux-desc sd-travaux-desc--html"
-                    style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}
-                    dangerouslySetInnerHTML={{ __html: t.description }}
-                  />
-                )}
-                <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
-                  📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}
-                  {t.matiere && ` • 📚 ${t.matiere}`}
-                  {` • 👥 ${t.groupeNom}`}
-                </span>
-              </div>
-            ))}
+                ✕ Réinitialiser
+              </button>
+            )}
           </div>
-        ) : (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-            Aucun travail assigné pour le moment. Votre professeur peut en ajouter dans l&apos;onglet « Travaux » de la classe.
-          </p>
         )}
+
+        {(() => {
+          const travauxFiltres = travaux.filter(t => {
+            if (filtreTravailRubrique !== 'tous') {
+              if (filtreTravailRubrique === '__sans_rubrique__') {
+                if (t.rubriqueId) return false;
+              } else if (t.rubriqueId !== filtreTravailRubrique) {
+                return false;
+              }
+            }
+            if (filtreTravailEcheance !== 'tous') {
+              const now = new Date();
+              const echeance = t.dateEcheance;
+              if (filtreTravailEcheance === 'aujourdhui') {
+                if (echeance.toDateString() !== now.toDateString()) return false;
+              } else if (filtreTravailEcheance === 'semaine') {
+                const dans7j = new Date(now); dans7j.setDate(dans7j.getDate() + 7);
+                if (echeance > dans7j) return false;
+              } else if (filtreTravailEcheance === 'mois') {
+                const dans30j = new Date(now); dans30j.setDate(dans30j.getDate() + 30);
+                if (echeance > dans30j) return false;
+              }
+            }
+            return true;
+          });
+
+          if (travauxFiltres.length === 0) {
+            return (
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                {travaux.length === 0
+                  ? <>Aucun travail assigné pour le moment. Votre professeur peut en ajouter dans l&apos;onglet « Travaux » de la classe.</>
+                  : 'Aucun travail ne correspond aux filtres.'}
+              </p>
+            );
+          }
+
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+              {travauxFiltres.slice(0, 8).map((t) => (
+                <div
+                  key={t.id}
+                  className="sd-travaux-item"
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    transition: 'background 0.2s, border-color 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: '0.95rem' }}>📋 {t.titre}</strong>
+                    {t.rubriqueNom && (
+                      <span style={{
+                        fontSize: '0.7rem',
+                        background: '#eff6ff',
+                        color: '#2563eb',
+                        padding: '2px 8px',
+                        borderRadius: 9999,
+                        fontWeight: 600,
+                      }}>
+                        📂 {t.rubriqueNom}
+                      </span>
+                    )}
+                  </div>
+                  {t.description && (
+                    <div
+                      className="sd-travaux-desc sd-travaux-desc--html"
+                      style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}
+                      dangerouslySetInnerHTML={{ __html: t.description }}
+                    />
+                  )}
+                  <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
+                    📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}
+                    {t.heureEcheance && ` à ${t.heureEcheance}`}
+                    {t.matiere && ` • 📚 ${t.matiere}`}
+                    {` • 👥 ${t.groupeNom}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ══════════════════════════════════════════════

@@ -31,7 +31,15 @@ export interface TravailAFaire {
   titre: string;
   description?: string;
   dateEcheance: Date;
+  /** Heure d'échéance (format HH:mm), optionnel — Phase 31 */
+  heureEcheance?: string;
   matiere?: string;
+  /** ID du cahier de textes lié (Phase 31) */
+  cahierId?: string;
+  /** ID de la rubrique du cahier à laquelle ce travail est rattaché (Phase 31) */
+  rubriqueId?: string;
+  /** Nom de la rubrique (dénormalisé pour affichage rapide) */
+  rubriqueNom?: string;
   profId: string;
   profNom?: string;
   createdAt: Date;

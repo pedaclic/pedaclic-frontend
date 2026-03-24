@@ -39,6 +39,8 @@ import {
   getTravauxByGroupe,
   supprimerTravailAFaire,
 } from '../../services/travauxAFaireService';
+import { getCahiersForGroupe } from '../../services/cahierTextesService';
+import type { CahierTextes, RubriqueCahier } from '../../types/cahierTextes.types';
 import { useAuth } from '../../hooks/useAuth';
 import FeuillesNotesManager from './FeuillesNotesManager';
 import CahierGroupeWidget from './CahierGroupeWidget';
@@ -175,7 +177,15 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [nouveauTravailTitre, setNouveauTravailTitre] = useState('');
   const [nouveauTravailDesc, setNouveauTravailDesc] = useState('');
   const [nouveauTravailEcheance, setNouveauTravailEcheance] = useState('');
+  const [nouveauTravailHeure, setNouveauTravailHeure] = useState('');
+  const [nouveauTravailRubriqueId, setNouveauTravailRubriqueId] = useState('');
   const [savingTravail, setSavingTravail] = useState(false);
+  // Phase 31 — Cahiers liés au groupe (pour sélecteur rubrique)
+  const [cahiersGroupe, setCahiersGroupe] = useState<CahierTextes[]>([]);
+  const [cahierSelectionne, setCahierSelectionne] = useState('');
+  // Phase 31 — Filtres travaux
+  const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
+  const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
 
   // ===== États : UI =====
   const [loading, setLoading] = useState<boolean>(true);
@@ -235,11 +245,19 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     getAbsencesByDate(groupe.id, dateAppel).then(setAbsentsIds).catch(() => setAbsentsIds([]));
   }, [ongletActif, groupe.id, dateAppel]);
 
-  /** Charge les travaux à faire */
+  /** Charge les travaux à faire + cahiers liés au groupe (rubriques) */
   useEffect(() => {
     if (ongletActif !== 'travaux') return;
     getTravauxByGroupe(groupe.id).then(setTravaux).catch(() => setTravaux([]));
-  }, [ongletActif, groupe.id]);
+    if (currentUser?.uid) {
+      getCahiersForGroupe(groupe.id, currentUser.uid)
+        .then((cahiers) => {
+          setCahiersGroupe(cahiers);
+          if (cahiers.length === 1) setCahierSelectionne(cahiers[0].id);
+        })
+        .catch(() => setCahiersGroupe([]));
+    }
+  }, [ongletActif, groupe.id, currentUser?.uid]);
 
   /** Charge l'observation de l'élève sélectionné */
   useEffect(() => {
@@ -329,10 +347,57 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     }
   };
 
+  /** Rubriques disponibles (issues du cahier sélectionné) */
+  const rubriquesDisponibles: RubriqueCahier[] = (() => {
+    if (!cahierSelectionne) return [];
+    const c = cahiersGroupe.find(c => c.id === cahierSelectionne);
+    return c?.rubriques ?? [];
+  })();
+
+  /** Filtrage des travaux côté prof (Phase 31) */
+  const travauxFiltres = travaux.filter(t => {
+    // Filtre par rubrique
+    if (filtreTravailRubrique !== 'tous') {
+      if (filtreTravailRubrique === '__sans_rubrique__') {
+        if (t.rubriqueId) return false;
+      } else if (t.rubriqueId !== filtreTravailRubrique) {
+        return false;
+      }
+    }
+    // Filtre par échéance
+    if (filtreTravailEcheance !== 'tous') {
+      const now = new Date();
+      const echeance = t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance);
+      if (filtreTravailEcheance === 'aujourdhui') {
+        if (echeance.toDateString() !== now.toDateString()) return false;
+      } else if (filtreTravailEcheance === 'semaine') {
+        const dans7j = new Date(now);
+        dans7j.setDate(dans7j.getDate() + 7);
+        if (echeance > dans7j) return false;
+      } else if (filtreTravailEcheance === 'mois') {
+        const dans30j = new Date(now);
+        dans30j.setDate(dans30j.getDate() + 30);
+        if (echeance > dans30j) return false;
+      }
+    }
+    return true;
+  });
+
+  /** Toutes les rubriques uniques présentes dans les travaux (pour le filtre) */
+  const rubriquesTravauxUniques = (() => {
+    const map = new Map<string, string>();
+    travaux.forEach(t => {
+      if (t.rubriqueId && t.rubriqueNom) map.set(t.rubriqueId, t.rubriqueNom);
+    });
+    return [...map.entries()].map(([id, nom]) => ({ id, nom }));
+  })();
+
   /** Ajoute un travail à faire */
   const handleAjouterTravail = async () => {
     if (!currentUser?.uid || !nouveauTravailTitre.trim()) return;
     const echeance = nouveauTravailEcheance ? new Date(nouveauTravailEcheance) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Phase 31 — Résolution de la rubrique sélectionnée
+    const rubrique = rubriquesDisponibles.find(r => r.id === nouveauTravailRubriqueId);
     try {
       setSavingTravail(true);
       await creerTravailAFaire({
@@ -341,12 +406,18 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
         titre: nouveauTravailTitre.trim(),
         description: nouveauTravailDesc.trim() || undefined,
         dateEcheance: echeance,
+        heureEcheance: nouveauTravailHeure || undefined,
         matiere: groupe.matiereNom,
+        cahierId: cahierSelectionne || undefined,
+        rubriqueId: rubrique?.id ?? undefined,
+        rubriqueNom: rubrique?.nom ?? undefined,
         profId: currentUser.uid,
       });
       setNouveauTravailTitre('');
       setNouveauTravailDesc('');
       setNouveauTravailEcheance('');
+      setNouveauTravailHeure('');
+      setNouveauTravailRubriqueId('');
       const liste = await getTravauxByGroupe(groupe.id);
       setTravaux(liste);
     } catch (err: any) {
@@ -922,11 +993,62 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                 value={nouveauTravailEcheance}
                 onChange={(e) => setNouveauTravailEcheance(e.target.value)}
               />
+              <label style={{ marginLeft: '0.75rem' }}>Heure :</label>
+              <input
+                type="time"
+                className="prof-input prof-input-sm"
+                value={nouveauTravailHeure}
+                onChange={(e) => setNouveauTravailHeure(e.target.value)}
+                style={{ width: '120px' }}
+              />
             </div>
+
+            {/* Phase 31 — Sélecteur cahier + rubrique */}
+            {cahiersGroupe.length > 0 && (
+              <div className="groupe-travaux-rubrique" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {cahiersGroupe.length > 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>Cahier :</label>
+                    <select
+                      className="prof-input prof-input-sm"
+                      value={cahierSelectionne}
+                      onChange={(e) => {
+                        setCahierSelectionne(e.target.value);
+                        setNouveauTravailRubriqueId('');
+                      }}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">— Aucun cahier —</option>
+                      {cahiersGroupe.map((c) => (
+                        <option key={c.id} value={c.id}>{c.titre} ({c.matiere})</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {rubriquesDisponibles.length > 0 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>Rubrique :</label>
+                    <select
+                      className="prof-input prof-input-sm"
+                      value={nouveauTravailRubriqueId}
+                      onChange={(e) => setNouveauTravailRubriqueId(e.target.value)}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">— Sans rubrique —</option>
+                      {rubriquesDisponibles.map((r) => (
+                        <option key={r.id} value={r.id}>{r.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+
             <button
               className="prof-btn prof-btn-primary"
               onClick={handleAjouterTravail}
               disabled={savingTravail || !nouveauTravailTitre.trim()}
+              style={{ marginTop: '0.75rem' }}
             >
               {savingTravail ? 'Ajout...' : 'Ajouter le travail'}
             </button>
@@ -934,14 +1056,73 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
 
           <div className="groupe-travaux-liste">
             <h4>📋 Travaux en cours</h4>
-            {travaux.length === 0 ? (
-              <p className="text-muted">Aucun travail à faire pour l'instant.</p>
+
+            {/* Phase 31 — Filtres travaux */}
+            {travaux.length > 0 && (
+              <div className="groupe-travaux-filtres" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6b7280' }}>Filtrer :</span>
+                <select
+                  className="prof-input prof-input-sm"
+                  value={filtreTravailEcheance}
+                  onChange={(e) => setFiltreTravailEcheance(e.target.value as any)}
+                  style={{ width: 'auto', minWidth: '130px' }}
+                >
+                  <option value="tous">Toutes échéances</option>
+                  <option value="aujourdhui">Aujourd'hui</option>
+                  <option value="semaine">Cette semaine</option>
+                  <option value="mois">Ce mois</option>
+                </select>
+                {rubriquesTravauxUniques.length > 0 && (
+                  <select
+                    className="prof-input prof-input-sm"
+                    value={filtreTravailRubrique}
+                    onChange={(e) => setFiltreTravailRubrique(e.target.value)}
+                    style={{ width: 'auto', minWidth: '150px' }}
+                  >
+                    <option value="tous">Toutes rubriques</option>
+                    {rubriquesTravauxUniques.map((r) => (
+                      <option key={r.id} value={r.id}>{r.nom}</option>
+                    ))}
+                    <option value="__sans_rubrique__">Sans rubrique</option>
+                  </select>
+                )}
+                {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
+                  <button
+                    className="prof-btn prof-btn-sm prof-btn-secondary"
+                    onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
+                    style={{ fontSize: '0.75rem' }}
+                  >
+                    ✕ Réinitialiser
+                  </button>
+                )}
+              </div>
+            )}
+
+            {travauxFiltres.length === 0 ? (
+              <p className="text-muted">
+                {travaux.length === 0
+                  ? 'Aucun travail à faire pour l\'instant.'
+                  : 'Aucun travail ne correspond aux filtres.'}
+              </p>
             ) : (
               <ul className="groupe-travaux-items">
-                {travaux.map((t) => (
+                {travauxFiltres.map((t) => (
                   <li key={t.id} className="groupe-travaux-item">
                     <div>
                       <strong>{t.titre}</strong>
+                      {t.rubriqueNom && (
+                        <span style={{
+                          fontSize: '0.72rem',
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          marginLeft: '0.5rem',
+                          fontWeight: 600,
+                        }}>
+                          📂 {t.rubriqueNom}
+                        </span>
+                      )}
                       {t.description && (
                         <div
                           className="groupe-travaux-desc groupe-travaux-desc--html"
@@ -950,6 +1131,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                       )}
                       <span className="groupe-travaux-date">
                         📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
+                        {t.heureEcheance && ` à ${t.heureEcheance}`}
                       </span>
                     </div>
                     <button

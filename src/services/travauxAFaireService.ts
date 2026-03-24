@@ -59,7 +59,7 @@ export async function creerTravailAFaire(
  */
 export async function modifierTravailAFaire(
   id: string,
-  updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere'>>
+  updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance' | 'cahierId' | 'rubriqueId' | 'rubriqueNom'>>
 ): Promise<void> {
   const ref = doc(db, COL_TRAVAUX, id);
   const data: Record<string, unknown> = { ...updates };
