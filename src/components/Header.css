@@ -839,6 +839,41 @@
   cursor: not-allowed;
 }
 
+/* ==================== THEME TOGGLE ==================== */
+
+.header__theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-light);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s, border-color 0.2s, transform 0.2s;
+}
+
+.header__theme-toggle:hover {
+  background: var(--color-bg-tertiary);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  transform: rotate(15deg);
+}
+
+[data-theme="dark"] .header__theme-toggle {
+  background: #1e293b;
+  border-color: #475569;
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .header__theme-toggle:hover {
+  background: #334155;
+  border-color: #fbbf24;
+}
+
 /* ==================== COMPENSATION HEADER FIXED ==================== */
 
 /**

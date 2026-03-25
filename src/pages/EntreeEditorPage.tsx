@@ -44,6 +44,8 @@ import EbookSelector from '../components/prof/EbookSelector';
 // Phase 23 — contenus IA
 import ContenuIASelector from '../components/prof/ContenuIASelector';
 import RichTextEditor from '../components/RichTextEditor';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
+import { SkeletonDashboard } from '../components/shared/Skeleton';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -300,11 +302,18 @@ const EntreeEditorPage: React.FC = () => {
   };
 
   // ─────────────────────────────────────────────────────────
-  if (loading) return <div className="loading-spinner"><div className="spinner-circle" /></div>;
+  if (loading) return <SkeletonDashboard />;
   if (!cahier) return null;
 
   return (
     <div className="entree-editor-page">
+      {/* ── Fil d'Ariane ── */}
+      <Breadcrumbs items={[
+        { label: 'Cahiers de textes', path: '/prof/cahiers' },
+        { label: cahier.titre || 'Cahier', path: `/prof/cahiers/${cahierId}` },
+        { label: isEdit ? 'Modifier la séance' : 'Nouvelle séance' },
+      ]} />
+
       {/* ── En-tête ── */}
       <div className="editor-header">
         <button

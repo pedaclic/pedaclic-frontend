@@ -41,6 +41,8 @@ import {
 import '../styles/SequencesPedagogiques.css';
 import '../styles/CahierEnrichi.css';
 import RichTextEditor from '../components/RichTextEditor';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
+import { SkeletonDashboard } from '../components/shared/Skeleton';
 
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES
@@ -816,26 +818,18 @@ const SequenceEditorPage: React.FC = () => {
   // ────────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="sequence-editor">
-        <div className="skeleton" style={{ height: 30, width: '50%', marginBottom: 20 }} />
-        <div className="skeleton" style={{ height: 200, borderRadius: 12 }} />
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   return (
     <div className="sequence-editor">
 
       {/* ── Fil d'Ariane + Titre ── */}
+      <Breadcrumbs items={[
+        { label: 'Séquences', path: '/prof/sequences' },
+        { label: isEditMode ? 'Modifier' : 'Nouvelle séquence' },
+      ]} />
       <div className="sequence-editor__header">
-        <p className="sequence-editor__breadcrumb">
-          <a onClick={() => navigate('/prof/sequences')} style={{ cursor: 'pointer' }}>
-            📚 Séquences
-          </a>
-          {' / '}
-          {isEditMode ? 'Modifier' : 'Nouvelle séquence'}
-        </p>
         <h1 className="sequence-editor__title">
           {isEditMode ? '✏️ Modifier la séquence' : '➕ Nouvelle séquence'}
         </h1>

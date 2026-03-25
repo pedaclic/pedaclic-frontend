@@ -16,6 +16,7 @@
  */
 
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
 import './Layout.css';
@@ -41,13 +42,24 @@ const Layout: React.FC<LayoutProps> = ({
   hideFooter = false,
   className = ''
 }) => {
+  const location = useLocation();
+
   return (
     <div className="layout">
+      {/* ===== SKIP TO CONTENT (Accessibilité) ===== */}
+      <a href="#main-content" className="skip-to-content">
+        Passer au contenu principal
+      </a>
+
       {/* ===== HEADER ===== */}
       {!hideHeader && <Header />}
 
       {/* ===== CONTENU PRINCIPAL ===== */}
-      <main className={`layout__main ${!hideHeader ? 'layout__main--with-header' : ''} ${className}`}>
+      <main
+        id="main-content"
+        key={location.pathname}
+        className={`layout__main page-enter ${!hideHeader ? 'layout__main--with-header' : ''} ${className}`}
+      >
         {children}
       </main>
 

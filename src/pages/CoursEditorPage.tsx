@@ -51,6 +51,8 @@ import type {
 import { LABELS_TYPE_BLOC, CONFIG_ENCADRE } from '../types/cours_types';
 import { CLASSES } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
+import { SkeletonDashboard } from '../components/shared/Skeleton';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -831,12 +833,7 @@ export default function CoursEditorPage() {
   // ─────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="cours-editor__loading" aria-busy="true">
-        <div className="spinner spinner--blue" />
-        <p>Chargement de l'éditeur...</p>
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   return (
@@ -845,16 +842,11 @@ export default function CoursEditorPage() {
       {/* ══════════════════════════════════════════════════════
           EN-TÊTE DE L'ÉDITEUR
       ══════════════════════════════════════════════════════ */}
+      <Breadcrumbs items={[
+        { label: 'Mes cours', path: '/prof/cours' },
+        { label: isEdition ? 'Modifier le cours' : 'Nouveau cours' },
+      ]} />
       <header className="cours-editor__header">
-        {/* Fil d'Ariane */}
-        <p className="cours-editor__breadcrumb">
-          <button className="btn-link" onClick={() => navigate('/prof/cours')}>
-            📚 Mes cours
-          </button>
-          {' / '}
-          {isEdition ? 'Modifier le cours' : 'Nouveau cours'}
-        </p>
-
         <div className="cours-editor__header-actions">
           <h1 className="cours-editor__titre">
             {isEdition ? '✏️ Modifier le cours' : '✨ Nouveau cours'}

@@ -33,8 +33,11 @@ import {
   Star,
   Film,
   Radio,
+  Moon,
+  Sun,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 import './Header.css';
 import NotificationBell from './NotificationBell';
 
@@ -60,6 +63,7 @@ const Header: React.FC = () => {
   const { currentUser, logout, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
   
   // ===== ÉTATS LOCAUX =====
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -347,6 +351,16 @@ const Header: React.FC = () => {
 
         {/* ----- ACTIONS UTILISATEUR ----- */}
         <div className="header__actions">
+
+          {/* Bouton dark mode */}
+          <button
+            className="header__theme-toggle"
+            onClick={toggleTheme}
+            aria-label={theme === 'dark' ? 'Activer le mode clair' : 'Activer le mode sombre'}
+            title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
 
           {/* Bouton d'installation PWA — visible quand le navigateur le permet */}
           {installPrompt && (

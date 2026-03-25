@@ -18,6 +18,8 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AdminRoute, ProfRoute, EleveRoute, ProtectedRoute } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 /* ==================== LAYOUT (Header + Footer) ==================== */
 import Layout from './components/Layout';
@@ -148,6 +150,8 @@ const App: React.FC = () => {
   }, []);
 
   return (
+    <ThemeProvider>
+    <ToastProvider>
     <AuthProvider>
       <MaintenanceGate>
         <InstallPrompt />
@@ -378,6 +382,8 @@ const App: React.FC = () => {
       </Routes>
       </MaintenanceGate>
     </AuthProvider>
+    </ToastProvider>
+    </ThemeProvider>
   );
 };
 

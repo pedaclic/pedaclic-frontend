@@ -43,6 +43,8 @@ import PlanificationWidget from '../components/prof/PlanificationWidget';
 import SignetFilter from '../components/prof/SignetFilter';
 import CahierStats from '../components/prof/CahierStats';
 import CahierProgressionWidget from '../components/prof/CahierProgressionWidget';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
+import { SkeletonDashboard } from '../components/shared/Skeleton';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -426,11 +428,7 @@ const CahierDetailPage: React.FC = () => {
 
   // ─────────────────────────────────────────────────────────
   if (loadingCahier) {
-    return (
-      <div className="loading-spinner">
-        <div className="spinner-circle" />
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
   if (!cahier) return null;
 
@@ -450,6 +448,15 @@ const CahierDetailPage: React.FC = () => {
 
   return (
     <div className="cahier-detail-page" id="cahier-detail-print-zone">
+
+      {/* ── Fil d'Ariane ── */}
+      <Breadcrumbs
+        className="no-print"
+        items={[
+          { label: 'Cahiers de textes', path: '/prof/cahiers' },
+          { label: cahier.titre || 'Cahier' },
+        ]}
+      />
 
       {/* ── En-tête ── */}
       <div className="cahier-detail-header">

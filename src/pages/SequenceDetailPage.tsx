@@ -33,6 +33,8 @@ import {
   CONFIG_STATUT,
   NIVEAUX_SCOLAIRES,
 }                                      from '../types/sequencePedagogique.types';
+import Breadcrumbs from '../components/shared/Breadcrumbs';
+import { SkeletonDashboard } from '../components/shared/Skeleton';
 import '../styles/SequencesPedagogiques.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -347,13 +349,7 @@ const SequenceDetailPage: React.FC = () => {
   // ────────────────────────────────────────────────────────────
 
   if (loading) {
-    return (
-      <div className="sequence-detail">
-        <div className="skeleton" style={{ height: 28, width: '50%', marginBottom: 20 }} />
-        <div className="skeleton" style={{ height: 180, borderRadius: 12, marginBottom: 20 }} />
-        <div className="skeleton" style={{ height: 400, borderRadius: 12 }} />
-      </div>
-    );
+    return <SkeletonDashboard />;
   }
 
   if (error || !sequence) {
@@ -371,6 +367,12 @@ const SequenceDetailPage: React.FC = () => {
 
   return (
     <div className="sequence-detail">
+
+      {/* ── Fil d'Ariane ── */}
+      <Breadcrumbs items={[
+        { label: 'Séquences', path: '/prof/sequences' },
+        { label: sequence.titre || 'Séquence' },
+      ]} />
 
       {/* ── Modal export ── */}
       {showExport && (
