@@ -154,6 +154,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    match /quiz_results_v2/{resultId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isProf() || isParent();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
     match /seances/{seanceId} {
       allow read: if isSignedIn();
       allow create: if isProf() || isAdmin();
