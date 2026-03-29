@@ -105,7 +105,7 @@ const QuizAdvancedList: React.FC = () => {
           </p>
         </div>
         <button
-          onClick={() => navigate('/admin/quiz/nouveau')}
+          onClick={() => navigate('/admin/quiz-avance/nouveau')}
           style={{
             padding: '0.7rem 1.5rem', background: '#2563eb', color: '#fff',
             border: 'none', borderRadius: '8px', cursor: 'pointer',
@@ -152,7 +152,7 @@ const QuizAdvancedList: React.FC = () => {
             Créez votre premier quiz multi-types avec l'éditeur riche !
           </p>
           <button
-            onClick={() => navigate('/admin/quiz/nouveau')}
+            onClick={() => navigate('/admin/quiz-avance/nouveau')}
             style={{
               padding: '0.7rem 1.5rem', background: '#2563eb', color: '#fff',
               border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 600
@@ -245,7 +245,7 @@ const QuizAdvancedList: React.FC = () => {
 
                   {/* Modifier */}
                   <button
-                    onClick={() => navigate(`/admin/quiz/modifier/${quiz.id}`)}
+                    onClick={() => navigate(`/admin/quiz-avance/modifier/${quiz.id}`)}
                     title="Modifier le quiz"
                     style={{
                       padding: '0.5rem 0.9rem', background: '#eff6ff', color: '#1d4ed8',

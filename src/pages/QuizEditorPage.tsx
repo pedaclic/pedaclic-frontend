@@ -1,8 +1,8 @@
 /**
  * ============================================================
  * PEDACLIC — Phase 12 : Page Éditeur de Quiz
- * Wrapper pour le composant QuizEditor
- * Route: /admin/quiz/nouveau | /admin/quiz/modifier/:quizId
+ * Wrapper pour le composant QuizEditor (Quiz Avancé)
+ * Route: /admin/quiz-avance/nouveau | /admin/quiz-avance/modifier/:quizId
  * ============================================================
  */
 
@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { QuizEditor } from '../components/quiz/QuizEditor';
 import { getQuizAvance } from '../services/quizAdvancedService';
 import DisciplineService from '../services/disciplineService';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 import type { QuizAvance } from '../types/quiz-advanced';
 import { useToast } from '../contexts/ToastContext';
 
@@ -22,6 +24,7 @@ const QuizEditorPage: React.FC = () => {
   const { toast } = useToast();
 
   const [disciplines, setDisciplines] = useState<{ id: string; nom: string; classe: string }[]>([]);
+  const [groupes, setGroupes] = useState<{ id: string; nom: string }[]>([]);
   const [existingQuiz, setExistingQuiz] = useState<(QuizAvance) | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,14 +34,22 @@ const QuizEditorPage: React.FC = () => {
       try {
         setLoading(true);
 
-        // Charger les disciplines
-        const allDisciplines = await DisciplineService.getAll();
+        // Charger disciplines + groupes en parallèle
+        const [allDisciplines, groupesSnap] = await Promise.all([
+          DisciplineService.getAll(),
+          getDocs(query(collection(db, 'groupes_prof'), orderBy('dateCreation', 'desc'))),
+        ]);
         setDisciplines(
           allDisciplines.map((d: any) => ({
             id: d.id,
             nom: d.nom,
             classe: d.classe || '',
           }))
+        );
+        setGroupes(
+          groupesSnap.docs
+            .filter((d) => !d.data().statut || d.data().statut === 'actif')
+            .map((d) => ({ id: d.id, nom: d.data().nom }))
         );
 
         // Si modification, charger le quiz existant
@@ -84,18 +95,19 @@ const QuizEditorPage: React.FC = () => {
     <QuizEditor
       existingQuiz={existingQuiz ? { ...existingQuiz, id: existingQuiz.id } : undefined}
       disciplines={disciplines}
+      groupes={groupes}
       auteurId={currentUser?.uid || ''}
       onSave={(savedId) => {
-        toast.success('Quiz sauvegardé avec succès !');
-        navigate('/admin/quiz');
+        toast.success('Quiz avancé sauvegardé avec succès !');
+        navigate('/admin/quiz-avance');
       }}
       onSaveDraft={(savedId, isNew) => {
         if (isNew) {
-          navigate(`/admin/quiz/modifier/${savedId}`);
+          navigate(`/admin/quiz-avance/modifier/${savedId}`);
         }
         toast.success('Brouillon enregistré. Vous pouvez continuer plus tard.');
       }}
-      onCancel={() => navigate(-1)}
+      onCancel={() => navigate('/admin/quiz-avance')}
     />
   );
 };

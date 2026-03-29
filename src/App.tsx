@@ -338,6 +338,12 @@ const App: React.FC = () => {
         <Route path="/admin/quiz-avance" element={
           <AdminRoute><AdminLayout><QuizAdvancedList /></AdminLayout></AdminRoute>
         } />
+        <Route path="/admin/quiz-avance/nouveau" element={
+          <AdminRoute><AdminLayout><QuizEditorPage /></AdminLayout></AdminRoute>
+        } />
+        <Route path="/admin/quiz-avance/modifier/:quizId" element={
+          <AdminRoute><AdminLayout><QuizEditorPage /></AdminLayout></AdminRoute>
+        } />
         <Route path="/admin/utilisateurs" element={
           <AdminRoute><AdminLayout><UserManager /></AdminLayout></AdminRoute>
         } />
