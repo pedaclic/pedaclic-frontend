@@ -26,6 +26,20 @@ const TABS: {
   bgLight: string;
 }[] = [
   {
+    niveau: 'maternelle',
+    icon: '🧒',
+    label: 'Maternelle',
+    color: '#9d174d',
+    bgLight: '#fce7f3',
+  },
+  {
+    niveau: 'elementaire',
+    icon: '📖',
+    label: 'Élémentaire',
+    color: '#5b21b6',
+    bgLight: '#ede9fe',
+  },
+  {
     niveau: 'college',
     icon: '🏫',
     label: 'Collège',

@@ -145,7 +145,13 @@ const QuizPlayerPage: React.FC = () => {
       onComplete={(result) => {
         console.log('✅ Quiz terminé — Note:', result.note20, '/20');
       }}
-      onQuit={() => navigate('/dashboard')}
+      onQuit={() => {
+        const dash = currentUser?.role === 'eleve' ? '/eleve/dashboard'
+          : currentUser?.role === 'prof' ? '/prof/dashboard'
+          : currentUser?.role === 'parent' ? '/parent/dashboard'
+          : '/admin';
+        navigate(dash);
+      }}
     />
   );
 };

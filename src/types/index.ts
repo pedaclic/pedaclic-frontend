@@ -44,6 +44,10 @@ export interface User {
   subscriptionPlan?: FormulePremium;
   /** IDs des cours choisis (formule à la carte uniquement) */
   coursChoisis?: string[];
+  /** Niveau souscrit par l'élève (restreint l'accès aux cours) */
+  niveauSouscrit?: Niveau;
+  /** Classe souscrite par l'élève */
+  classeSouscrite?: Classe;
   /** Compteur des ressources consommées (générations + téléchargements + séquences) — pour limite 30 */
   usageRessources?: number;
   photoURL?: string;              // URL de la photo de profil (optionnel)
@@ -76,16 +80,30 @@ export interface LoginFormData {
  * Niveaux scolaires dans le système éducatif sénégalais
  * ✅ Phase 13 : ajout de 'formation_libre'
  */
-export type Niveau = 'college' | 'lycee' | 'formation_libre';
+export type Niveau = 'maternelle' | 'elementaire' | 'college' | 'lycee' | 'formation_libre';
 
 /**
  * Classes disponibles par niveau
  * ✅ Phase 13 : ajout des niveaux de formation libre
  */
 export type Classe = 
+  | 'PS' | 'MS' | 'GS'                           // Maternelle
+  | 'CI' | 'CP' | 'CE1' | 'CE2' | 'CM1' | 'CM2' // Élémentaire
   | '6eme' | '5eme' | '4eme' | '3eme'           // Collège
   | '2nde' | '1ere' | 'Terminale'                // Lycée
   | 'debutant' | 'intermediaire' | 'avance';     // Formation libre
+
+/** Séries disponibles au Lycée */
+export type SerieLycee = 'L' | 'S1' | 'S2' | 'S3' | 'STEG' | 'T';
+
+export const SERIES_LYCEE: { value: SerieLycee; label: string }[] = [
+  { value: 'L', label: 'Série L' },
+  { value: 'S1', label: 'Série S1' },
+  { value: 'S2', label: 'Série S2' },
+  { value: 'S3', label: 'Série S3' },
+  { value: 'STEG', label: 'Série STEG' },
+  { value: 'T', label: 'Série T' },
+];
 
 // ==================== CONSTANTES PHASE 13 ====================
 
@@ -93,6 +111,21 @@ export type Classe =
  * Labels lisibles des classes par niveau
  * Utilisés dans les formulaires et l'affichage
  */
+export const CLASSES_MATERNELLE: { value: Classe; label: string }[] = [
+  { value: 'PS', label: 'Petite Section' },
+  { value: 'MS', label: 'Moyenne Section' },
+  { value: 'GS', label: 'Grande Section' },
+];
+
+export const CLASSES_ELEMENTAIRE: { value: Classe; label: string }[] = [
+  { value: 'CI', label: 'CI' },
+  { value: 'CP', label: 'CP' },
+  { value: 'CE1', label: 'CE1' },
+  { value: 'CE2', label: 'CE2' },
+  { value: 'CM1', label: 'CM1' },
+  { value: 'CM2', label: 'CM2' },
+];
+
 export const CLASSES_COLLEGE: { value: Classe; label: string }[] = [
   { value: '6eme', label: '6ème' },
   { value: '5eme', label: '5ème' },
@@ -116,6 +149,8 @@ export const CLASSES_FORMATION_LIBRE: { value: Classe; label: string }[] = [
  * Labels des niveaux pour l'affichage UI
  */
 export const NIVEAUX_LABELS: Record<Niveau, string> = {
+  maternelle: 'Maternelle',
+  elementaire: 'Élémentaire',
   college: 'Collège',
   lycee: 'Lycée',
   formation_libre: 'Formation libre',
@@ -127,6 +162,10 @@ export const NIVEAUX_LABELS: Record<Niveau, string> = {
  */
 export function getClassesByNiveau(niveau: Niveau): { value: Classe; label: string }[] {
   switch (niveau) {
+    case 'maternelle':
+      return CLASSES_MATERNELLE;
+    case 'elementaire':
+      return CLASSES_ELEMENTAIRE;
     case 'college':
       return CLASSES_COLLEGE;
     case 'lycee':
@@ -142,7 +181,7 @@ export function getClassesByNiveau(niveau: Niveau): { value: Classe; label: stri
  * Retourne le label lisible d'une classe
  */
 export function getClasseLabel(classe: Classe): string {
-  const all = [...CLASSES_COLLEGE, ...CLASSES_LYCEE, ...CLASSES_FORMATION_LIBRE];
+  const all = [...CLASSES_MATERNELLE, ...CLASSES_ELEMENTAIRE, ...CLASSES_COLLEGE, ...CLASSES_LYCEE, ...CLASSES_FORMATION_LIBRE];
   return all.find((c) => c.value === classe)?.label || classe;
 }
 

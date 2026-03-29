@@ -5,16 +5,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, File } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Trash2, Pencil, Check, X, Plus, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import {
   getFeuilleById,
   updateNoteBulk,
   updateEvaluationsFeuille,
+  updateCompetencesDefFeuille,
+  updateCompetenceEleve,
   buildLignesNotes,
 } from '../services/feuillesNotesService';
 import { getElevesGroupe } from '../services/profGroupeService';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
-import type { FeuilleDeNotes, LigneNotes } from '../types/feuillesNotes.types';
+import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus } from '../types/feuillesNotes.types';
+import { COMPETENCES_PAR_DEFAUT, COMPETENCE_STATUS_LABELS, COMPETENCE_STATUS_COLORS } from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/prof.css';
@@ -32,6 +35,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [editCell, setEditCell] = useState<{ eleveId: string; evalId: string } | null>(null);
   const [draftNote, setDraftNote] = useState<string>('');
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [overIdx, setOverIdx] = useState<number | null>(null);
+  const [editEvalId, setEditEvalId] = useState<string | null>(null);
+  const [draftLibelle, setDraftLibelle] = useState<string>('');
+  const [showCompPanel, setShowCompPanel] = useState(false);
+  const [newCompLib, setNewCompLib] = useState('');
 
   const load = useCallback(async () => {
     if (!feuilleId) return;
@@ -109,6 +118,78 @@ const FeuilleNotesEditorPage: React.FC = () => {
     });
   };
 
+  const handleDragStart = (idx: number) => setDragIdx(idx);
+  const handleDragOver = (e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setOverIdx(idx);
+  };
+  const handleDrop = (idx: number) => {
+    if (dragIdx === null || dragIdx === idx || !feuille) { setDragIdx(null); setOverIdx(null); return; }
+    const evals = [...(feuille.evaluations || [])];
+    const [moved] = evals.splice(dragIdx, 1);
+    evals.splice(idx, 0, moved);
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateEvaluationsFeuille(feuille.id, evals).catch(console.error);
+    setDragIdx(null);
+    setOverIdx(null);
+  };
+  const handleDragEnd = () => { setDragIdx(null); setOverIdx(null); };
+
+  const renommerEval = (evalId: string) => {
+    if (!feuille || !draftLibelle.trim()) { setEditEvalId(null); return; }
+    const evals = feuille.evaluations.map((e) => e.id === evalId ? { ...e, libelle: draftLibelle.trim() } : e);
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateEvaluationsFeuille(feuille.id, evals).catch(console.error);
+    setEditEvalId(null);
+  };
+
+  const supprimerEval = (evalId: string) => {
+    if (!feuille) return;
+    const evals = feuille.evaluations.filter((e) => e.id !== evalId);
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateEvaluationsFeuille(feuille.id, evals).catch(console.error);
+  };
+
+  // ── Compétences ──
+  const compDefs: CompetenceDef[] = feuille?.competencesDef ?? [];
+
+  const initCompDefaults = () => {
+    if (!feuille) return;
+    const defs = COMPETENCES_PAR_DEFAUT;
+    setFeuille((f) => (f ? { ...f, competencesDef: defs } : null));
+    updateCompetencesDefFeuille(feuille.id, defs).catch(console.error);
+    toast.success('Compétences par défaut ajoutées');
+  };
+
+  const ajouterComp = () => {
+    if (!feuille || !newCompLib.trim()) return;
+    const id = 'comp_' + Date.now();
+    const defs = [...compDefs, { id, libelle: newCompLib.trim() }];
+    setFeuille((f) => (f ? { ...f, competencesDef: defs } : null));
+    updateCompetencesDefFeuille(feuille.id, defs).catch(console.error);
+    setNewCompLib('');
+  };
+
+  const supprimerComp = (compId: string) => {
+    if (!feuille) return;
+    const defs = compDefs.filter((c) => c.id !== compId);
+    setFeuille((f) => (f ? { ...f, competencesDef: defs } : null));
+    updateCompetencesDefFeuille(feuille.id, defs).catch(console.error);
+  };
+
+  const cycleCompStatus = (eleveId: string, evalId: string, compId: string) => {
+    if (!feuille || !feuilleId) return;
+    const current = feuille.competences?.[eleveId]?.[evalId]?.[compId];
+    const order: CompetenceStatus[] = ['non_acquis', 'en_cours', 'acquis'];
+    const next = order[(order.indexOf(current || 'non_acquis') + 1) % 3];
+    const updated = JSON.parse(JSON.stringify(feuille.competences || {}));
+    if (!updated[eleveId]) updated[eleveId] = {};
+    if (!updated[eleveId][evalId]) updated[eleveId][evalId] = {};
+    updated[eleveId][evalId][compId] = next;
+    setFeuille((f) => (f ? { ...f, competences: updated } : null));
+    updateCompetenceEleve(feuilleId, eleveId, evalId, compId, next).catch(console.error);
+  };
+
   if (loading || !feuille) {
     return (
       <div className="feuille-editor-page">
@@ -158,21 +239,91 @@ const FeuilleNotesEditorPage: React.FC = () => {
 
       <div className="feuille-editor-toolbar">
         <button className="prof-btn prof-btn-primary prof-btn-sm" onClick={ajouterEvaluation}>
-          + Ajouter une évaluation
+          <Plus size={14} /> Ajouter une évaluation
+        </button>
+        <button
+          className={`prof-btn prof-btn-sm ${showCompPanel ? 'prof-btn-primary' : 'prof-btn-secondary'}`}
+          onClick={() => setShowCompPanel((v) => !v)}
+          style={{ marginLeft: 8 }}
+        >
+          <BookOpen size={14} /> Compétences {showCompPanel ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
       </div>
+
+      {showCompPanel && (
+        <div className="comp-panel">
+          <div className="comp-panel-header">
+            <h3>Compétences évaluées</h3>
+            {compDefs.length === 0 && (
+              <button className="prof-btn prof-btn-secondary prof-btn-sm" onClick={initCompDefaults}>
+                Charger les compétences par défaut
+              </button>
+            )}
+          </div>
+          <div className="comp-list">
+            {compDefs.map((c) => (
+              <span key={c.id} className="comp-tag">
+                {c.libelle}
+                <button className="comp-tag-remove" onClick={() => supprimerComp(c.id)}><X size={12} /></button>
+              </span>
+            ))}
+          </div>
+          <div className="comp-add">
+            <input
+              type="text" placeholder="Nouvelle compétence…" className="comp-add-input"
+              value={newCompLib} onChange={(e) => setNewCompLib(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') ajouterComp(); }}
+            />
+            <button className="prof-btn prof-btn-primary prof-btn-sm" onClick={ajouterComp} disabled={!newCompLib.trim()}>Ajouter</button>
+          </div>
+        </div>
+      )}
 
       <div className="feuille-editor-table-wrapper">
         <table className="feuille-editor-table">
           <thead>
             <tr>
               <th className="col-eleve">Élève</th>
-              {evals.map((e) => (
-                <th key={e.id} className="col-note">
-                  {e.libelle}
-                  {e.coefficient && e.coefficient !== 1 && (
-                    <span className="coef"> (coef. {e.coefficient})</span>
-                  )}
+              {evals.map((e, idx) => (
+                <th
+                  key={e.id}
+                  className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}`}
+                  draggable
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(ev) => handleDragOver(ev, idx)}
+                  onDrop={() => handleDrop(idx)}
+                  onDragEnd={handleDragEnd}
+                >
+                  <div className="eval-header">
+                    <span className="eval-grip" title="Glisser pour réordonner"><GripVertical size={14} /></span>
+                    {editEvalId === e.id ? (
+                      <span className="eval-rename">
+                        <input
+                          type="text" className="eval-rename-input" autoFocus
+                          value={draftLibelle}
+                          onChange={(ev) => setDraftLibelle(ev.target.value)}
+                          onKeyDown={(ev) => { if (ev.key === 'Enter') renommerEval(e.id); if (ev.key === 'Escape') setEditEvalId(null); }}
+                        />
+                        <button className="eval-action-btn eval-ok" onClick={() => renommerEval(e.id)}><Check size={12} /></button>
+                        <button className="eval-action-btn eval-cancel" onClick={() => setEditEvalId(null)}><X size={12} /></button>
+                      </span>
+                    ) : (
+                      <span className="eval-label">
+                        {e.libelle}
+                        {e.coefficient && e.coefficient !== 1 && (
+                          <span className="coef"> (coef. {e.coefficient})</span>
+                        )}
+                      </span>
+                    )}
+                    {editEvalId !== e.id && (
+                      <span className="eval-actions">
+                        <button className="eval-action-btn" title="Renommer" onClick={() => { setEditEvalId(e.id); setDraftLibelle(e.libelle); }}><Pencil size={12} /></button>
+                        {evals.length > 1 && (
+                          <button className="eval-action-btn eval-delete" title="Supprimer" onClick={() => supprimerEval(e.id)}><Trash2 size={12} /></button>
+                        )}
+                      </span>
+                    )}
+                  </div>
                 </th>
               ))}
               <th className="col-moyenne">Moyenne</th>
@@ -211,6 +362,24 @@ const FeuilleNotesEditorPage: React.FC = () => {
                         >
                           {val != null ? val : '—'}
                         </span>
+                      )}
+                      {compDefs.length > 0 && (
+                        <div className="comp-cell-list">
+                          {compDefs.map((c) => {
+                            const st = feuille.competences?.[ligne.eleveId]?.[e.id]?.[c.id] || 'non_acquis';
+                            return (
+                              <button
+                                key={c.id}
+                                className="comp-dot"
+                                title={`${c.libelle} : ${COMPETENCE_STATUS_LABELS[st]}`}
+                                style={{ background: COMPETENCE_STATUS_COLORS[st] }}
+                                onClick={() => cycleCompStatus(ligne.eleveId, e.id, c.id)}
+                              >
+                                {c.libelle.charAt(0)}
+                              </button>
+                            );
+                          })}
+                        </div>
                       )}
                     </td>
                   );

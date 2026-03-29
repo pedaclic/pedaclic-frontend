@@ -235,6 +235,173 @@
   opacity: 0.9;
 }
 
+/* ── Drag & Drop évaluations ── */
+.feuille-editor-table th.col-note {
+  cursor: grab;
+  user-select: none;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.feuille-editor-table th.col-note:active { cursor: grabbing; }
+.feuille-editor-table th.eval-dragging {
+  opacity: 0.4;
+}
+.feuille-editor-table th.eval-drag-over {
+  box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 4px #60a5fa;
+}
+.eval-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: center;
+  min-height: 28px;
+}
+.eval-grip {
+  opacity: 0.5;
+  cursor: grab;
+  flex-shrink: 0;
+}
+.eval-grip:hover { opacity: 1; }
+.eval-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.eval-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+th.col-note:hover .eval-actions { opacity: 1; }
+.eval-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.2);
+  color: white;
+  cursor: pointer;
+  padding: 0;
+}
+.eval-action-btn:hover { background: rgba(255,255,255,0.35); }
+.eval-action-btn.eval-delete:hover { background: #ef4444; }
+.eval-action-btn.eval-ok { background: #22c55e; }
+.eval-action-btn.eval-cancel { background: rgba(255,255,255,0.25); }
+.eval-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.eval-rename-input {
+  width: 90px;
+  padding: 2px 6px;
+  border: 1px solid rgba(255,255,255,0.6);
+  border-radius: 4px;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  font-size: var(--text-xs);
+}
+.eval-rename-input::placeholder { color: rgba(255,255,255,0.5); }
+
+/* ── Panneau Compétences ── */
+.comp-panel {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+.comp-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+}
+.comp-panel-header h3 {
+  font-size: var(--text-base);
+  margin: 0;
+  color: var(--color-primary);
+}
+.comp-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: var(--spacing-sm);
+}
+.comp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: color-mix(in srgb, var(--color-primary) 10%, white);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 25%, white);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-primary);
+}
+.comp-tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-light);
+  cursor: pointer;
+  padding: 0;
+}
+.comp-tag-remove:hover { background: #fee2e2; color: #ef4444; }
+.comp-add {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+.comp-add-input {
+  flex: 1;
+  max-width: 250px;
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+.comp-add-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
+}
+
+/* ── Compétences dans cellules ── */
+.comp-cell-list {
+  display: flex;
+  gap: 2px;
+  justify-content: center;
+  margin-top: 3px;
+}
+.comp-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.1s;
+  padding: 0;
+}
+.comp-dot:hover { transform: scale(1.2); }
+
 .feuille-moyenne-classe {
   background: color-mix(in srgb, var(--color-primary) 10%, white) !important;
   font-weight: var(--font-semibold);

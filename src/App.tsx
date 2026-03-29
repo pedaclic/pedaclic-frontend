@@ -101,6 +101,11 @@ import ProfCoursPage   from './pages/ProfCoursPage';
 import EbooksPage  from './pages/EbooksPage';
 import AdminEbooks from './pages/AdminEbooks';
 
+/* ==================== PAGES NIVEAUX ==================== */
+import NiveauPage       from './pages/NiveauPage';
+import NiveauSeriesPage from './pages/NiveauSeriesPage';
+import NiveauCoursPage  from './pages/NiveauCoursPage';
+
 /* ==================== PAGES LÉGALES ==================== */
 import MentionsLegalesPage from './pages/MentionsLegalesPage';
 import ConfidentialitePage from './pages/ConfidentialitePage';
@@ -168,6 +173,12 @@ const App: React.FC = () => {
         <Route path="/ressources/:id" element={<Layout><ResourceView /></Layout>} />
         <Route path="/quiz-gratuits" element={<Layout><QuizGratuitsPage /></Layout>} />
         <Route path="/ebooks"        element={<Layout><EbooksPage /></Layout>} />
+
+        {/* ========== NIVEAUX SCOLAIRES (public) ========== */}
+        <Route path="/niveaux/lycee/:classeValue/:serie/cours" element={<Layout><NiveauCoursPage /></Layout>} />
+        <Route path="/niveaux/lycee/:classeValue" element={<Layout><NiveauSeriesPage /></Layout>} />
+        <Route path="/niveaux/:niveauSlug/:classeValue/cours" element={<Layout><NiveauCoursPage /></Layout>} />
+        <Route path="/niveaux/:niveauSlug" element={<Layout><NiveauPage /></Layout>} />
         <Route path="/mediatheque"   element={<Layout><MediathequePage /></Layout>} />
         <Route path="/live"         element={
           <ProtectedRoute allowedRoles={['eleve', 'prof', 'admin', 'parent']}>

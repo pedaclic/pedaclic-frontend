@@ -108,6 +108,16 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* ===== BANDEAU INFO DÉVELOPPEMENT ===== */}
+      <div className="home-page__dev-banner">
+        <div className="home-page__container">
+          <p>
+            Ce site est en cours de développement ; certains contenus affichés sont fournis
+            à titre purement indicatif et peuvent être modifiés lors de mises à jour ultérieures.
+          </p>
+        </div>
+      </div>
+
       {/* ===== SECTION NIVEAUX ===== */}
       <section className="home-page__levels">
         <div className="home-page__container">
@@ -115,20 +125,51 @@ const Home: React.FC = () => {
             Tous les niveaux, toutes les matières
           </h2>
           <p className="home-page__section-subtitle">
-            Du collège au lycée, prépare tes examens avec confiance
+            De la maternelle au lycée, accompagnons chaque élève vers la réussite
           </p>
 
-          <div className="home-page__levels-grid">
+          <div className="home-page__levels-grid home-page__levels-grid--5">
+            {/* Maternelle */}
+            <Link to="/niveaux/maternelle" className="home-page__level-card">
+              <div className="home-page__level-icon home-page__level-icon--maternelle">
+                🧒
+              </div>
+              <h3>Maternelle</h3>
+              <p>PS · MS · GS</p>
+              <ul>
+                <li><CheckCircle size={16} /> Éveil et découverte</li>
+                <li><CheckCircle size={16} /> Activités ludiques</li>
+              </ul>
+              <span className="home-page__level-link">
+                Découvrir <ArrowRight size={16} />
+              </span>
+            </Link>
+
+            {/* Élémentaire */}
+            <Link to="/niveaux/elementaire" className="home-page__level-card">
+              <div className="home-page__level-icon home-page__level-icon--elementaire">
+                📖
+              </div>
+              <h3>Élémentaire</h3>
+              <p>CI · CP · CE1 · CE2 · CM1 · CM2</p>
+              <ul>
+                <li><CheckCircle size={16} /> Fondamentaux solides</li>
+                <li><CheckCircle size={16} /> Exercices progressifs</li>
+              </ul>
+              <span className="home-page__level-link">
+                Découvrir <ArrowRight size={16} />
+              </span>
+            </Link>
+
             {/* Collège */}
-            <Link to="/disciplines?niveau=college" className="home-page__level-card">
+            <Link to="/niveaux/college" className="home-page__level-card">
               <div className="home-page__level-icon home-page__level-icon--college">
                 🏫
               </div>
               <h3>Collège</h3>
-              <p>6ème à 3ème</p>
+              <p>6ème · 5ème · 4ème · 3ème</p>
               <ul>
                 <li><CheckCircle size={16} /> Préparation au BFEM</li>
-                <li><CheckCircle size={16} /> 9 matières disponibles</li>
                 <li><CheckCircle size={16} /> Exercices corrigés</li>
               </ul>
               <span className="home-page__level-link">
@@ -137,19 +178,34 @@ const Home: React.FC = () => {
             </Link>
 
             {/* Lycée */}
-            <Link to="/disciplines?niveau=lycee" className="home-page__level-card">
+            <Link to="/niveaux/lycee" className="home-page__level-card">
               <div className="home-page__level-icon home-page__level-icon--lycee">
                 🎓
               </div>
               <h3>Lycée</h3>
-              <p>2nde à Terminale</p>
+              <p>2nde · 1ère · Terminale</p>
               <ul>
+                <li><CheckCircle size={16} /> Séries L, S, STEG, T</li>
                 <li><CheckCircle size={16} /> Préparation au BAC</li>
-                <li><CheckCircle size={16} /> 12 matières disponibles</li>
-                <li><CheckCircle size={16} /> Annales d'examens</li>
               </ul>
               <span className="home-page__level-link">
                 Voir les cours <ArrowRight size={16} />
+              </span>
+            </Link>
+
+            {/* Formation libre */}
+            <Link to="/niveaux/formation-libre" className="home-page__level-card">
+              <div className="home-page__level-icon home-page__level-icon--formation">
+                🌍
+              </div>
+              <h3>Formation libre</h3>
+              <p>Tous publics</p>
+              <ul>
+                <li><CheckCircle size={16} /> Apprentissage autonome</li>
+                <li><CheckCircle size={16} /> Contenus variés</li>
+              </ul>
+              <span className="home-page__level-link">
+                Découvrir <ArrowRight size={16} />
               </span>
             </Link>
           </div>

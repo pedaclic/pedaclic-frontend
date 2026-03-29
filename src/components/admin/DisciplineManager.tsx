@@ -201,6 +201,8 @@ const styles = {
   } as React.CSSProperties,
 
   /* Couleurs des badges par niveau */
+  badgeMaternelle: { background: '#fce7f3', color: '#9d174d' } as React.CSSProperties,
+  badgeElementaire: { background: '#ede9fe', color: '#5b21b6' } as React.CSSProperties,
   badgeCollege: { background: '#ebf8ff', color: '#2b6cb0' } as React.CSSProperties,
   badgeLycee: { background: '#fefcbf', color: '#975a16' } as React.CSSProperties,
   badgeFormationLibre: { background: '#f0fff4', color: '#276749' } as React.CSSProperties,
@@ -368,6 +370,8 @@ const DisciplineManager: React.FC = () => {
   // --- Fonction utilitaire : style du badge selon le niveau ---
   const getBadgeStyle = (niveau: Niveau): React.CSSProperties => ({
     ...styles.badge,
+    ...(niveau === 'maternelle' ? styles.badgeMaternelle : {}),
+    ...(niveau === 'elementaire' ? styles.badgeElementaire : {}),
     ...(niveau === 'college' ? styles.badgeCollege : {}),
     ...(niveau === 'lycee' ? styles.badgeLycee : {}),
     ...(niveau === 'formation_libre' ? styles.badgeFormationLibre : {}),
@@ -408,6 +412,8 @@ const DisciplineManager: React.FC = () => {
               value={formData.niveau}
               onChange={(e) => handleNiveauChange(e.target.value as Niveau)}
             >
+              <option value="maternelle">🧒 Maternelle</option>
+              <option value="elementaire">📖 Élémentaire</option>
               <option value="college">🏫 Collège</option>
               <option value="lycee">🎓 Lycée</option>
               <option value="formation_libre">🌍 Formation libre</option>
@@ -544,6 +550,18 @@ const DisciplineManager: React.FC = () => {
             onClick={() => setFilterNiveau('all')}
           >
             Toutes
+          </button>
+          <button
+            style={{ ...styles.tab, ...(filterNiveau === 'maternelle' ? styles.tabActive : {}) }}
+            onClick={() => setFilterNiveau('maternelle')}
+          >
+            🧒 Maternelle
+          </button>
+          <button
+            style={{ ...styles.tab, ...(filterNiveau === 'elementaire' ? styles.tabActive : {}) }}
+            onClick={() => setFilterNiveau('elementaire')}
+          >
+            📖 Élémentaire
           </button>
           <button
             style={{ ...styles.tab, ...(filterNiveau === 'college' ? styles.tabActive : {}) }}

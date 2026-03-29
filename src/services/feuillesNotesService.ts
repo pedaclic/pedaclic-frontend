@@ -24,6 +24,8 @@ import type {
   NotesEleve,
   LigneNotes,
   PeriodeType,
+  CompetenceDef,
+  CompetenceStatus,
 } from '../types/feuillesNotes.types';
 
 const COL = 'feuilles_notes';
@@ -216,6 +218,36 @@ export function buildLignesNotes(feuille: FeuilleDeNotes, inscriptions: { eleveI
   }
 
   return lignes;
+}
+
+/** Met à jour les compétences définies pour une feuille */
+export async function updateCompetencesDefFeuille(
+  feuilleId: string,
+  competencesDef: CompetenceDef[]
+): Promise<void> {
+  await updateDoc(doc(db, COL, feuilleId), {
+    competencesDef,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/** Met à jour le statut d'une compétence pour un élève */
+export async function updateCompetenceEleve(
+  feuilleId: string,
+  eleveId: string,
+  evaluationId: string,
+  competenceId: string,
+  status: CompetenceStatus
+): Promise<void> {
+  const ref = doc(db, COL, feuilleId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Feuille introuvable');
+  const data = snap.data();
+  const competences = JSON.parse(JSON.stringify(data.competences || {}));
+  if (!competences[eleveId]) competences[eleveId] = {};
+  if (!competences[eleveId][evaluationId]) competences[eleveId][evaluationId] = {};
+  competences[eleveId][evaluationId][competenceId] = status;
+  await updateDoc(ref, { competences, updatedAt: Timestamp.now() });
 }
 
 /** Feuilles pour un élève (tous ses groupes) */
