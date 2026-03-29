@@ -13,6 +13,7 @@
 // ============================================================
 
 import React, { useState, useRef } from 'react';
+import { useToast } from '../../contexts/ToastContext';
 import {
   ref as storageRef,
   uploadBytesResumable,
@@ -152,6 +153,7 @@ const PieceJointeItem: React.FC<PieceJointeItemProps> = ({
   onSupprimer,
   readonly = false,
 }) => {
+  const { toast } = useToast();
   // Contrôle le plein écran pour les images
   const [fullscreen, setFullscreen] = useState(false);
 
@@ -246,7 +248,7 @@ const PieceJointeItem: React.FC<PieceJointeItemProps> = ({
             // Si l'URL est vide, empêcher la navigation et signaler
             if (!pj.url) {
               e.preventDefault();
-              alert('Ce fichier n\'est pas disponible. Contactez votre professeur.');
+              toast.warning('Ce fichier n\'est pas disponible. Contactez votre professeur.');
             }
           }}
           style={{

@@ -13,6 +13,8 @@ import {
 } from '../../services/feuillesNotesService';
 import type { FeuilleDeNotes, PeriodeType } from '../../types/feuillesNotes.types';
 import { PERIODE_LABELS } from '../../types/feuillesNotes.types';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import type { GroupeProf } from '../../types/prof';
 import '../../styles/prof.css';
 
@@ -50,6 +52,8 @@ function getPeriodeDates(type: PeriodeType, annee: number, index: number): { deb
 
 const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, currentUser }) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const confirmDlg = useConfirm();
   const [feuilles, setFeuilles] = useState<FeuilleDeNotes[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -84,19 +88,19 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
       setFeuilles((prev) => [f, ...prev]);
       navigate(`/prof/feuilles/${f.id}`);
     } catch (err: any) {
-      alert(err?.message || 'Erreur création');
+      toast.error(err?.message || 'Erreur lors de la création.');
     } finally {
       setCreating(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Supprimer cette feuille de notes ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer cette feuille de notes ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await supprimerFeuille(id);
       setFeuilles((prev) => prev.filter((f) => f.id !== id));
     } catch (err: any) {
-      alert(err?.message || 'Erreur suppression');
+      toast.error(err?.message || 'Erreur lors de la suppression.');
     }
   };
 

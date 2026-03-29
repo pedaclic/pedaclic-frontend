@@ -75,6 +75,8 @@ import {
 } from '../../services/progressionService';
 import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ Phase 14
 import { getQuizzesForEleve, Quiz } from '../../services/quizService';
+import { getQuizzesAvanceForEleve } from '../../services/quizAdvancedService';
+import type { QuizAvance } from '../../types/quiz-advanced';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
@@ -106,6 +108,7 @@ const StudentDashboard: React.FC = () => {
   const [chartData, setChartData] = useState<ProgressionTemporelle[]>([]);
   const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
   const [availableQuizzes, setAvailableQuizzes] = useState<Quiz[]>([]);
+  const [availableQuizzesAvances, setAvailableQuizzesAvances] = useState<QuizAvance[]>([]);
 
   /* ── États Phase 14 (NOUVEAU) ── */
   const [progressionGlobale, setProgressionGlobale] = useState<ProgressionGlobale | null>(null);
@@ -170,6 +173,7 @@ const StudentDashboard: React.FC = () => {
           temporal,
           history,
           quizzes,
+          quizzesAvances,
           progGlobale,           // ★ Phase 14
         ] = await Promise.all([
           getStudentProgress(currentUser.uid),
@@ -177,6 +181,7 @@ const StudentDashboard: React.FC = () => {
           getProgressionTemporelle(currentUser.uid, 20),
           getQuizHistory(currentUser.uid, 10),
           getQuizzesForEleve(currentUser.uid, currentUser?.isPremium ?? false).catch(() => []),
+          getQuizzesAvanceForEleve(currentUser.uid, currentUser?.isPremium ?? false).catch(() => [] as QuizAvance[]),
           getProgressionGlobale(currentUser.uid),  // ★ Phase 14
         ]);
 
@@ -185,6 +190,7 @@ const StudentDashboard: React.FC = () => {
         setChartData(temporal);
         setRecentResults(history);
         setAvailableQuizzes(quizzes);
+        setAvailableQuizzesAvances(quizzesAvances);
         setProgressionGlobale(progGlobale);        // ★ Phase 14
 
         /* ── Calculer les badges (Phase 14 enrichi) ── */
@@ -729,12 +735,46 @@ const StudentDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Quiz disponibles */}
-          {availableQuizzes.length > 0 && (
+          {/* Quiz disponibles (classiques + avancés) */}
+          {(availableQuizzes.length > 0 || availableQuizzesAvances.length > 0) && (
             <div className="sd-chart-card">
               <h3 className="sd-section-title"><Play size={18} /> Quiz disponibles</h3>
               <div className="sd-quiz-grid">
-                {availableQuizzes.slice(0, 6).map((quiz) => {
+                {/* ── Quiz avancés (liés à la classe) ── */}
+                {availableQuizzesAvances.slice(0, 6).map((quiz) => {
+                  const isLocked = quiz.isPremium && !currentUser?.isPremium;
+                  return (
+                    <div key={`av-${quiz.id}`}
+                      className={`sd-quiz-card ${isLocked ? 'locked' : ''}`}
+                      onClick={() => !isLocked && navigate(`/quiz-avance/${quiz.id}`)}
+                    >
+                      <span className="sd-quiz-badge-avance">
+                        <Star size={10} /> Quiz avancé
+                      </span>
+                      {quiz.isPremium && (
+                        <span className="sd-quiz-badge-premium">
+                          {isLocked ? <Lock size={10} /> : <Star size={10} />} Premium
+                        </span>
+                      )}
+                      <h4 className="sd-quiz-title">{quiz.titre}</h4>
+                      <div className="sd-quiz-meta">
+                        <span><BookOpen size={12} /> {quiz.questions?.length ?? 0} questions</span>
+                        <span><Clock size={12} /> {quiz.duree} min</span>
+                      </div>
+                      {!isLocked && (
+                        <button className="sd-quiz-play-btn"><Play size={14} /> Commencer</button>
+                      )}
+                      {isLocked && (
+                        <button className="sd-quiz-unlock-btn"
+                          onClick={(e) => { e.stopPropagation(); navigate('/premium'); }}>
+                          <Lock size={14} /> Débloquer
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* ── Quiz classiques ── */}
+                {availableQuizzes.slice(0, Math.max(0, 6 - availableQuizzesAvances.length)).map((quiz) => {
                   const isLocked = quiz.isPremium && !currentUser?.isPremium;
                   return (
                     <div key={quiz.id}
@@ -764,6 +804,13 @@ const StudentDashboard: React.FC = () => {
                   );
                 })}
               </div>
+              {availableQuizzesAvances.length > 6 && (
+                <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
+                  <button className="sd-btn sd-btn-secondary" onClick={() => navigate('/quiz-gratuits')}>
+                    Voir tous les quiz →
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -773,12 +820,17 @@ const StudentDashboard: React.FC = () => {
               <Target size={48} />
               <h3>Commencez votre parcours !</h3>
               <p>Consultez une ressource ou passez un quiz pour voir votre progression.</p>
-              {availableQuizzes.length > 0 && (
+              {availableQuizzesAvances.length > 0 ? (
+                <button className="sd-btn sd-btn-primary"
+                  onClick={() => navigate(`/quiz-avance/${availableQuizzesAvances[0].id}`)}>
+                  <Play size={18} /> Passer un quiz
+                </button>
+              ) : availableQuizzes.length > 0 ? (
                 <button className="sd-btn sd-btn-primary"
                   onClick={() => navigate(`/quiz/${availableQuizzes[0].id}`)}>
                   <Play size={18} /> Passer un quiz
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

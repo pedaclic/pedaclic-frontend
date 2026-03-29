@@ -36,6 +36,7 @@ import {
   generateId,
 } from '../../types/quiz-advanced';
 import { createQuizAvance, updateQuizAvance } from '../../services/quizAdvancedService';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/quiz-advanced.css';
 
 // ==================== INTERFACES PROPS ====================
@@ -68,6 +69,8 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   onSaveDraft,
   onCancel,
 }) => {
+  const confirmDlg = useConfirm();
+
   // ---- États du formulaire ----
   const [titre, setTitre] = useState(existingQuiz?.titre || '');
   const [description, setDescription] = useState(existingQuiz?.description || '');
@@ -99,15 +102,15 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   }, [questions.length]);
 
   /** Supprimer une question */
-  const supprimerQuestion = useCallback((index: number) => {
-    if (!confirm('Supprimer cette question ?')) return;
+  const supprimerQuestion = useCallback(async (index: number) => {
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer cette question ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     setQuestions((prev) => {
       const updated = prev.filter((_, i) => i !== index);
       // Recalculer l'ordre
       return updated.map((q, i) => ({ ...q, ordre: i + 1 }));
     });
     setActiveQuestionIndex(null);
-  }, []);
+  }, [confirmDlg]);
 
   /** Dupliquer une question */
   const dupliquerQuestion = useCallback((index: number) => {

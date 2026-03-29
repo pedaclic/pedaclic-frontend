@@ -9,6 +9,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 import {
   subscribeToCahiers,
@@ -55,6 +57,8 @@ const emptyForm = (): CahierFormData => ({
 const CahierTextesPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const confirmDialog = useConfirm();
   const [searchParams] = useSearchParams(); // Phase 22 — pré-remplissage depuis widget groupe
 
   // ── États principaux ─────────────────────────────────────
@@ -219,12 +223,13 @@ const CahierTextesPage: React.FC = () => {
   // ── Supprimer un cahier ───────────────────────────────────
   const handleDelete = async (cahier: CahierTextes, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm(`Supprimer le cahier "${cahier.titre}" et toutes ses entrées ?`)) return;
+    const ok = await confirmDialog({ title: 'Supprimer le cahier ?', message: `Supprimer le cahier "${cahier.titre}" et toutes ses entrées ?`, confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       await deleteCahier(cahier.id);
       setCahiers(prev => prev.filter(c => c.id !== cahier.id));
     } catch {
-      alert('Erreur lors de la suppression.');
+      toast.error('Erreur lors de la suppression.');
     }
   };
 
@@ -237,7 +242,7 @@ const CahierTextesPage: React.FC = () => {
         c.id === cahier.id ? { ...c, isArchived: nouvelEtat } : c
       ));
     } catch {
-      alert('Erreur lors de l\'opération.');
+      toast.error('Erreur lors de l\'opération.');
     }
   };
 

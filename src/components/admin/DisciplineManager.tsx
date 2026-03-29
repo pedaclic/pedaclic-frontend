@@ -19,6 +19,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   Discipline,
   DisciplineFormData,
@@ -242,6 +244,9 @@ const defaultFormData: DisciplineFormData = {
 };
 
 const DisciplineManager: React.FC = () => {
+  const { toast } = useToast();
+  const confirmDlg = useConfirm();
+
   // --- États ---
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [formData, setFormData] = useState<DisciplineFormData>(defaultFormData);
@@ -313,7 +318,7 @@ const DisciplineManager: React.FC = () => {
       setEditingId(null);
     } catch (error) {
       console.error('Erreur lors de la sauvegarde :', error);
-      alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      toast.error('Erreur lors de la sauvegarde. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -336,9 +341,8 @@ const DisciplineManager: React.FC = () => {
 
   // --- Supprimer une discipline ---
   const handleDelete = async (id: string, nom: string) => {
-    if (!window.confirm(`Supprimer la discipline "${nom}" ? Cette action est irréversible.`)) {
-      return;
-    }
+    const ok = await confirmDlg({ title: 'Supprimer la discipline ?', message: `Supprimer la discipline "${nom}" ? Cette action est irréversible.`, confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       await deleteDoc(doc(db, 'disciplines', id));
     } catch (error) {

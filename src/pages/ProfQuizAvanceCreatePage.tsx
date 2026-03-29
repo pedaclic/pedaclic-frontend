@@ -13,10 +13,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { QuizEditor } from '../components/quiz/QuizEditor';
 import { getGroupesProf } from '../services/cahierTextesService';
 import DisciplineService from '../services/disciplineService';
+import { useToast } from '../contexts/ToastContext';
 
 const ProfQuizAvanceCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   const [disciplines, setDisciplines] = useState<{ id: string; nom: string; classe: string }[]>([]);
   const [groupes, setGroupes] = useState<{ id: string; nom: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +66,7 @@ const ProfQuizAvanceCreatePage: React.FC = () => {
         if (isNew) {
           navigate(`/prof/quiz/avance/${savedId}/modifier`);
         }
-        alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+        toast.success('Brouillon enregistré. Vous pouvez continuer plus tard.');
       }}
       onCancel={() => navigate('/prof/quiz')}
     />

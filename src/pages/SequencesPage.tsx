@@ -10,6 +10,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate }                              from 'react-router-dom';
 import { useAuth }                                  from '../hooks/useAuth'; // Adapter selon votre config
+import { useConfirm } from '../contexts/ConfirmContext';
 import {
   getSequencesProf,
   deleteSequence,
@@ -153,6 +154,7 @@ const SequenceCard: React.FC<SequenceCardProps> = ({
 const SequencesPage: React.FC = () => {
   const navigate            = useNavigate();
   const { currentUser }     = useAuth();
+  const confirmDlg          = useConfirm();
   const { matieres: matieresFirestore } = useDisciplinesOptions();
 
   // ── État des données ────────────────────────────────────────
@@ -219,9 +221,7 @@ const SequencesPage: React.FC = () => {
 
   /** Supprime une séquence après confirmation */
   const handleDelete = async (seq: SequencePedagogique) => {
-    const confirme = window.confirm(
-      `Supprimer la séquence "${seq.titre}" ?\n\nCette action est irréversible.`
-    );
+    const confirme = await confirmDlg({ title: 'Supprimer la séquence ?', message: `Supprimer la séquence "${seq.titre}" ? Cette action est irréversible.`, confirmLabel: 'Supprimer', variant: 'danger' });
     if (!confirme) return;
 
     setActionLoading(seq.id);

@@ -45,6 +45,8 @@ import CahierStats from '../components/prof/CahierStats';
 import CahierProgressionWidget from '../components/prof/CahierProgressionWidget';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -86,6 +88,8 @@ const CahierDetailPage: React.FC = () => {
   const { cahierId } = useParams<{ cahierId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const confirm = useConfirm();
 
   const [cahier, setCahier] = useState<CahierTextes | null>(null);
   const [entrees, setEntrees] = useState<EntreeCahier[]>([]);
@@ -172,7 +176,8 @@ const CahierDetailPage: React.FC = () => {
 
   // ── Supprimer une entrée ──────────────────────────────────
   const handleDeleteEntree = async (entree: EntreeCahier) => {
-    if (!confirm(`Supprimer la séance "${entree.chapitre}" ?`)) return;
+    const ok = await confirm({ title: 'Supprimer la séance ?', message: `Supprimer la séance "${entree.chapitre}" ?`, confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       await deleteEntree(entree.id);
       const nouvellesEntrees = entrees.filter(e => e.id !== entree.id);
@@ -181,7 +186,7 @@ const CahierDetailPage: React.FC = () => {
       await updateCahier(cahierId!, { nombreSeancesRealise: nbRealise });
       setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
     } catch {
-      alert('Erreur lors de la suppression.');
+      toast.error('Erreur lors de la suppression.');
     }
   };
 
@@ -197,7 +202,7 @@ const CahierDetailPage: React.FC = () => {
       await updateCahier(cahierId!, { nombreSeancesRealise: nbRealise });
       setCahier(prev => prev ? { ...prev, nombreSeancesRealise: nbRealise } : prev);
     } catch {
-      alert('Erreur mise à jour statut.');
+      toast.error('Erreur lors de la mise à jour du statut.');
     }
   };
 
@@ -310,14 +315,15 @@ const CahierDetailPage: React.FC = () => {
 
   const handleSupprimerRubrique = async (rubriqueId: string, rubriqueNom: string) => {
     if (!cahierId) return;
-    if (!window.confirm(`Supprimer la rubrique "${rubriqueNom}" ?\nLes séances liées passeront dans "Sans rubrique".`)) return;
+    const ok = await confirm({ title: 'Supprimer la rubrique ?', message: `Supprimer la rubrique "${rubriqueNom}" ? Les séances liées passeront dans "Sans rubrique".`, confirmLabel: 'Supprimer', variant: 'danger' });
+    if (!ok) return;
     try {
       const nouvelleListe = await supprimerRubrique(cahierId, rubriques, rubriqueId);
       setRubriques(nouvelleListe);
       setCahier(prev => prev ? { ...prev, rubriques: nouvelleListe } : prev);
     } catch (err) {
       console.error('[CahierDetailPage] Erreur suppression rubrique :', err);
-      alert('Erreur lors de la suppression.');
+      toast.error('Erreur lors de la suppression.');
     }
   };
 
@@ -349,7 +355,7 @@ const CahierDetailPage: React.FC = () => {
       await exportCahierPDF(cahier, entreesFiltrees, filename, periodeLabel);
     } catch (err) {
       console.error(err);
-      alert('Erreur lors de l\'export PDF.');
+      toast.error('Erreur lors de l\'export PDF.');
     } finally {
       setPdfExporting(false);
     }
@@ -518,7 +524,7 @@ const CahierDetailPage: React.FC = () => {
               try {
                 await toggleArchiveCahier(cahier.id, nouvelEtat);
                 setCahier(prev => prev ? { ...prev, isArchived: nouvelEtat } : null);
-              } catch { alert('Erreur lors de l\'opération.'); }
+              } catch { toast.error('Erreur lors de l\'opération.'); }
             }}
             title={(cahier.isArchived ?? false) ? 'Restaurer le cahier' : 'Archiver le cahier'}
           >

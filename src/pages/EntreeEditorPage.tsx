@@ -46,6 +46,7 @@ import ContenuIASelector from '../components/prof/ContenuIASelector';
 import RichTextEditor from '../components/RichTextEditor';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
+import { useToast } from '../contexts/ToastContext';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -76,6 +77,7 @@ const EntreeEditorPage: React.FC = () => {
   const { cahierId, entreeId } = useParams<{ cahierId: string; entreeId?: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // États Phase 21
   const [cahier, setCahier]                   = useState<CahierTextes | null>(null);
@@ -187,7 +189,7 @@ const EntreeEditorPage: React.FC = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !currentUser?.uid || !cahierId) return;
     const file = e.target.files[0];
-    if (file.size > 10 * 1024 * 1024) { alert('Fichier trop volumineux (max 10 Mo)'); return; }
+    if (file.size > 10 * 1024 * 1024) { toast.warning('Fichier trop volumineux (max 10 Mo)'); return; }
     setUploadingFile(true);
     try {
       const piece = await uploadPieceJointe(currentUser.uid, cahierId, file);
@@ -199,7 +201,7 @@ const EntreeEditorPage: React.FC = () => {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       const isNetworkErr = /réseau|network|timeout|quic|failed|err_/i.test(msg);
-      alert(isNetworkErr
+      toast.error(isNetworkErr
         ? 'Impossible d\'importer le fichier. Vérifiez votre connexion et réessayez.'
         : 'Erreur lors de l\'import du fichier. Réessayez.');
     } finally {
@@ -218,7 +220,7 @@ const EntreeEditorPage: React.FC = () => {
       await deletePieceJointe(entreeId, piecesJointes, url);
       setPiecesJointes(prev => prev.filter(p => p.url !== url));
     } catch {
-      alert('Erreur suppression fichier.');
+      toast.error('Erreur lors de la suppression du fichier.');
     }
   };
 

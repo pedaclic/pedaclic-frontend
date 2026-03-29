@@ -45,6 +45,8 @@ import {
   LABELS_ACCES_LIVE,
   OPTIONS_DUREE,
 } from '../types/live_types';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/Live.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -483,6 +485,8 @@ function ProfLiveCard({
 
 export default function ProfLivePage() {
   const { currentUser: user } = useAuth();
+  const { toast } = useToast();
+  const confirmAction = useConfirm();
 
   // ── État ──────────────────────────────────────────────────
   const [sessions, setSessions]     = useState<LiveSession[]>([]);
@@ -564,7 +568,7 @@ export default function ProfLivePage() {
 
   // ── Démarrer un live ──────────────────────────────────────
   async function handleDemarrer(sessionId: string) {
-    if (!confirm('Passer cette session en "En direct" ?')) return;
+    if (!await confirmAction({ title: 'Démarrer la session ?', message: 'Passer cette session en "En direct" ?', confirmLabel: 'Démarrer', variant: 'info' })) return;
     try {
       await changerStatutSession(sessionId, 'en_direct');
       setSessions(prev => prev.map(s =>
@@ -578,7 +582,7 @@ export default function ProfLivePage() {
 
   // ── Terminer un live ──────────────────────────────────────
   async function handleTerminer(sessionId: string) {
-    if (!confirm('Terminer la session ? Le replay sera automatiquement disponible.')) return;
+    if (!await confirmAction({ title: 'Terminer la session ?', message: 'Terminer la session ? Le replay sera automatiquement disponible.', confirmLabel: 'Terminer', variant: 'warning' })) return;
     try {
       await changerStatutSession(sessionId, 'termine');
       setSessions(prev => prev.map(s =>
@@ -607,7 +611,7 @@ export default function ProfLivePage() {
 
   // ── Supprimer une session ─────────────────────────────────
   async function handleSupprimer(sessionId: string) {
-    if (!confirm('Supprimer définitivement cette session ?')) return;
+    if (!await confirmAction({ title: 'Supprimer la session ?', message: 'Supprimer définitivement cette session ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await supprimerSession(sessionId);
       setSessions(prev => prev.filter(s => s.id !== sessionId));
@@ -620,7 +624,7 @@ export default function ProfLivePage() {
   // ── Notifier manuellement ─────────────────────────────────
   async function handleNotifier(session: LiveSession) {
     if (!user) return;
-    if (!confirm('Envoyer une notification de rappel aux élèves ?')) return;
+    if (!await confirmAction({ title: 'Envoyer une notification ?', message: 'Envoyer une notification de rappel aux élèves ?', confirmLabel: 'Envoyer', variant: 'info' })) return;
     try {
       await envoyerNotifSession(session, user.uid, profNom);
       setSessions(prev => prev.map(s =>

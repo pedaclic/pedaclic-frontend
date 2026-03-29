@@ -53,6 +53,8 @@ import {
 } from '../../services/compiledEbookService';
 import { CLASSES } from '../../types/cahierTextes.types';
 import { extractTextFromFile } from '../../utils/extractTextFromFile';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // ==================== CONSTANTES ====================
 
@@ -77,6 +79,8 @@ type WizardStep = 1 | 2 | 3 | 4 | 5;
 const AIGenerator: React.FC = () => {
   // ---- Auth context ----
   const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const confirmDlg = useConfirm();
 
   // ---- États du wizard ----
   const [step, setStep] = useState<WizardStep>(1);
@@ -579,7 +583,7 @@ const AIGenerator: React.FC = () => {
 
   /** Supprime un élément de l'historique */
   const handleDeleteHistory = async (contentId: string) => {
-    if (!window.confirm('Supprimer ce contenu généré ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer ce contenu généré ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await deleteGeneratedContent(contentId);
       setHistory((prev) => prev.filter((item) => item.id !== contentId));
@@ -605,7 +609,7 @@ const AIGenerator: React.FC = () => {
 
   /** Supprime un ebook compilé */
   const handleDeleteCompiledEbook = async (id: string) => {
-    if (!window.confirm('Supprimer cet ebook ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer cet ebook ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await deleteCompiledEbook(id);
       setMyEbooks(prev => prev.filter(e => e.id !== id));
@@ -1346,7 +1350,7 @@ const AIGenerator: React.FC = () => {
                           ? JSON.stringify(generationResult.data.questions, null, 2)
                           : generationResult.data.content || '';
                       navigator.clipboard.writeText(text);
-                      alert('Contenu copié dans le presse-papier !');
+                      toast.success('Contenu copié dans le presse-papier !');
                     }}
                   >
                     📋 Copier

@@ -18,6 +18,8 @@ import {
 import { getProgressionsCours, calculerStatsProgression } from '../services/progressionCoursService';
 import type { CoursEnLigne } from '../types/cours_types';
 import { CONFIG_STATUT_COURS, NIVEAUX_COURS } from '../types/cours_types';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -221,6 +223,8 @@ function StatsModal({ cours, onClose }: StatsModalProps) {
 export default function ProfCoursPage() {
   const navigate = useNavigate();
   const { currentUser: user } = useAuth();
+  const { toast } = useToast();
+  const confirmDlg = useConfirm();
 
   // ── État ──────────────────────────────────────────────────
   const [cours, setCours] = useState<CoursEnLigne[]>([]);
@@ -262,7 +266,7 @@ export default function ProfCoursPage() {
   // ── Actions ───────────────────────────────────────────────
 
   async function handlePublier(coursId: string) {
-    if (!confirm('Publier ce cours dans le catalogue ?')) return;
+    if (!await confirmDlg({ title: 'Publier le cours ?', message: 'Publier ce cours dans le catalogue ?', confirmLabel: 'Publier', variant: 'info' })) return;
     try {
       await publierCours(coursId);
       setCours(prev => prev.map(c => c.id === coursId ? { ...c, statut: 'publie' } : c));
@@ -274,7 +278,7 @@ export default function ProfCoursPage() {
   }
 
   async function handleArchiver(coursId: string) {
-    if (!confirm('Archiver ce cours ? Il ne sera plus visible dans le catalogue.')) return;
+    if (!await confirmDlg({ title: 'Archiver le cours ?', message: 'Archiver ce cours ? Il ne sera plus visible dans le catalogue.', confirmLabel: 'Archiver', variant: 'warning' })) return;
     try {
       await archiverCours(coursId);
       setCours(prev => prev.map(c => c.id === coursId ? { ...c, statut: 'archive' } : c));
@@ -286,7 +290,7 @@ export default function ProfCoursPage() {
   }
 
   async function handleSupprimer(coursId: string, titreCours: string) {
-    if (!confirm(`Supprimer définitivement le cours "${titreCours}" et tout son contenu ? Cette action est irréversible.`)) return;
+    if (!await confirmDlg({ title: 'Supprimer le cours ?', message: `Supprimer définitivement le cours "${titreCours}" et tout son contenu ? Cette action est irréversible.`, confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await deleteCours(coursId);
       const filtered = cours.filter(c => c.id !== coursId);

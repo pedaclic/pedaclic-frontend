@@ -35,6 +35,7 @@ import {
 }                                      from '../types/sequencePedagogique.types';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
+import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/SequencesPedagogiques.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -279,6 +280,7 @@ const SequenceDetailPage: React.FC = () => {
   const navigate        = useNavigate();
   const { id }          = useParams<{ id: string }>();
   const { currentUser } = useAuth();
+  const confirmDlg      = useConfirm();
 
   // ── État ────────────────────────────────────────────────────
   const [sequence,     setSequence]     = useState<SequencePedagogique | null>(null);
@@ -316,7 +318,7 @@ const SequenceDetailPage: React.FC = () => {
 
   const handleDelete = async () => {
     if (!sequence) return;
-    const ok = window.confirm(`Supprimer "${sequence.titre}" ?\nCette action est irréversible.`);
+    const ok = await confirmDlg({ title: 'Supprimer la séquence ?', message: `Supprimer "${sequence.titre}" ? Cette action est irréversible.`, confirmLabel: 'Supprimer', variant: 'danger' });
     if (!ok) return;
     try {
       await deleteSequence(sequence.id);

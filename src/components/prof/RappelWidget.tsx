@@ -13,6 +13,7 @@ import {
   ANNEES_SCOLAIRES,
 } from '../../types/cahierTextes.types';
 import type { RappelProf, RappelFormData, TypeRappel, Recurrence, Priorite } from '../../types/cahierTextes.types';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/CahierTextes.css';
 
 // ─── Props ───────────────────────────────────────────────────
@@ -33,6 +34,7 @@ const emptyForm = (): RappelFormData => ({
 
 // ─── Composant ───────────────────────────────────────────────
 const RappelWidget: React.FC<RappelWidgetProps> = ({ profId, cahierId }) => {
+  const confirmDlg = useConfirm();
   const [rappels, setRappels] = useState<RappelProf[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -79,7 +81,7 @@ const RappelWidget: React.FC<RappelWidgetProps> = ({ profId, cahierId }) => {
 
   // Supprimer
   const handleDelete = async (rappelId: string) => {
-    if (!confirm('Supprimer ce rappel ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer ce rappel ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     await deleteRappel(rappelId);
     setRappels(prev => prev.filter(r => r.id !== rappelId));
   };

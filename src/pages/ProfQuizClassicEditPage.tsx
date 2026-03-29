@@ -19,11 +19,13 @@ import type { Question } from '../services/quizService';
 import DisciplineService from '../services/disciplineService';
 import { getGroupesProf } from '../services/cahierTextesService';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 const ProfQuizClassicEditPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
   const [disciplines, setDisciplines] = useState<{ id: string; nom: string }[]>([]);
   const [groupes, setGroupes] = useState<{ id: string; nom: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +133,7 @@ const ProfQuizClassicEditPage: React.FC = () => {
         { asDraft: true }
       );
       setIsDraft(true);
-      alert('📝 Brouillon enregistré. Vous pouvez continuer ou publier quand vous serez prêt.');
+      toast.success('Brouillon enregistré. Vous pouvez continuer ou publier quand vous serez prêt.');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'enregistrement');
     } finally {
@@ -168,7 +170,7 @@ const ProfQuizClassicEditPage: React.FC = () => {
         { asDraft: false }
       );
       setIsDraft(false);
-      alert('✅ Quiz publié ! Il est maintenant visible par vos élèves.');
+      toast.success('Quiz publié ! Il est maintenant visible par vos élèves.');
       navigate('/prof/quiz');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la publication');
@@ -202,7 +204,7 @@ const ProfQuizClassicEditPage: React.FC = () => {
         },
         { asDraft: true }
       );
-      alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+      toast.success('Brouillon enregistré. Vous pouvez continuer plus tard.');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'enregistrement du brouillon');
     } finally {

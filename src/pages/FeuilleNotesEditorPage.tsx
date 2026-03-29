@@ -16,6 +16,7 @@ import { getElevesGroupe } from '../services/profGroupeService';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
 import type { FeuilleDeNotes, LigneNotes } from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../contexts/ToastContext';
 import '../styles/prof.css';
 import '../styles/feuillesNotes.css';
 
@@ -23,6 +24,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const { feuilleId } = useParams<{ feuilleId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [feuille, setFeuille] = useState<FeuilleDeNotes | null>(null);
   const [lignes, setLignes] = useState<LigneNotes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +95,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
       else if (format === 'pdf') await exportFeuillePDF(feuille, lignes, name);
       else exportFeuilleWord(feuille, lignes, name);
     } catch (err) {
-      alert('Erreur export : ' + (err as Error)?.message);
+      toast.error('Erreur export : ' + (err as Error)?.message);
     }
   };
 

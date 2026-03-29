@@ -53,6 +53,7 @@ import { CLASSES } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
+import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -423,6 +424,7 @@ export default function CoursEditorPage() {
   const { coursId } = useParams<{ coursId: string }>();
   const navigate = useNavigate();
   const { currentUser: user } = useAuth();
+  const confirmDlg = useConfirm();
   const isEdition = !!coursId;
   const { matieres } = useDisciplinesOptions();
 
@@ -669,7 +671,7 @@ export default function CoursEditorPage() {
 
   async function supprimerSection(sectionId: string) {
     if (!coursId) return;
-    if (!confirm('Supprimer cette section et tous ses blocs ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer la section ?', message: 'Supprimer cette section et tous ses blocs ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     try {
       await deleteSection(sectionId, coursId);
       const nouvellesSections = sections

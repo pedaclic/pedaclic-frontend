@@ -15,6 +15,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import {
   getNotificationsUser,
   marquerCommeLue,
@@ -154,6 +155,7 @@ const NotifItem: React.FC<NotifItemProps> = ({
 const NotificationsPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const confirmDlg = useConfirm();
 
   // ── États ──
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -211,7 +213,7 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleSupprimer = async (id: string) => {
-    if (!window.confirm('Supprimer cette notification ?')) return;
+    if (!await confirmDlg({ title: 'Supprimer ?', message: 'Supprimer cette notification ?', confirmLabel: 'Supprimer', variant: 'danger' })) return;
     await supprimerNotification(id);
     setNotifications(prev => prev.filter(n => n.id !== id));
   };

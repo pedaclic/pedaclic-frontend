@@ -12,10 +12,12 @@ import { useAuth } from '../contexts/AuthContext';
 import { getAllQuizzes, deleteQuizAvance } from '../services/quizAdvancedService';
 import type { QuizAvance } from '../types/quiz-advanced';
 import { TYPE_QUESTION_LABELS } from '../types/quiz-advanced';
+import { useToast } from '../contexts/ToastContext';
 
 const QuizAdvancedList: React.FC = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   const [quizzes, setQuizzes] = useState<QuizAvance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ const QuizAdvancedList: React.FC = () => {
       setDeleteConfirm(null);
     } catch (err: any) {
       console.error('Erreur suppression:', err);
-      alert('Erreur lors de la suppression : ' + err.message);
+      toast.error('Erreur lors de la suppression : ' + err.message);
     }
   };
 
@@ -259,7 +261,7 @@ const QuizAdvancedList: React.FC = () => {
                     onClick={() => {
                       const url = `${window.location.origin}/quiz-avance/${quiz.id}`;
                       navigator.clipboard.writeText(url).then(() => {
-                        alert('✅ Lien copié !\n\n' + url + '\n\nPartagez ce lien aux élèves.');
+                        toast.success('Lien copié ! Partagez-le aux élèves.');
                       });
                     }}
                     title="Copier le lien pour les élèves"

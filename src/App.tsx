@@ -20,6 +20,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, AdminRoute, ProfRoute, EleveRoute, ProtectedRoute } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 
 /* ==================== LAYOUT (Header + Footer) ==================== */
 import Layout from './components/Layout';
@@ -152,6 +153,7 @@ const App: React.FC = () => {
   return (
     <ThemeProvider>
     <ToastProvider>
+    <ConfirmProvider>
     <AuthProvider>
       <MaintenanceGate>
         <InstallPrompt />
@@ -382,6 +384,7 @@ const App: React.FC = () => {
       </Routes>
       </MaintenanceGate>
     </AuthProvider>
+    </ConfirmProvider>
     </ToastProvider>
     </ThemeProvider>
   );

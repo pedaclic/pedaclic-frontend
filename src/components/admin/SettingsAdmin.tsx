@@ -24,6 +24,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 // ==================== INTERFACES ====================
 
@@ -79,6 +80,8 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 // ==================== COMPOSANT PRINCIPAL ====================
 
 const SettingsAdmin: React.FC = () => {
+  const confirmDlg = useConfirm();
+
   // ==================== ÉTAT ====================
 
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
@@ -191,10 +194,9 @@ const SettingsAdmin: React.FC = () => {
   };
 
   /** Réinitialiser aux valeurs par défaut */
-  const handleReset = () => {
-    if (window.confirm('Réinitialiser tous les paramètres aux valeurs par défaut ?')) {
-      setSettings(DEFAULT_SETTINGS);
-    }
+  const handleReset = async () => {
+    const ok = await confirmDlg({ title: 'Réinitialiser ?', message: 'Réinitialiser tous les paramètres aux valeurs par défaut ?', confirmLabel: 'Réinitialiser', variant: 'warning' });
+    if (ok) setSettings(DEFAULT_SETTINGS);
   };
 
   // ==================== RENDU ====================

@@ -16,10 +16,12 @@ import { getQuizzesAvanceByProf, deleteQuizAvance } from '../services/quizAdvanc
 import type { Quiz } from '../services/quizService';
 import type { QuizAvance } from '../types/quiz-advanced';
 import { Plus, FileQuestion, Layers, Lock, Pencil, Trash2, Play } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 
 const ProfQuizPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [quizzesClassiques, setQuizzesClassiques] = useState<Quiz[]>([]);
   const [quizzesAvances, setQuizzesAvances] = useState<QuizAvance[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,7 @@ const ProfQuizPage: React.FC = () => {
       setQuizzesClassiques((prev) => prev.filter((q) => q.id !== quizId));
       setDeleteConfirm(null);
     } catch (err: any) {
-      alert('Erreur : ' + (err.message || 'Impossible de supprimer'));
+      toast.error('Erreur : ' + (err.message || 'Impossible de supprimer'));
     }
   };
 
@@ -43,7 +45,7 @@ const ProfQuizPage: React.FC = () => {
       setQuizzesAvances((prev) => prev.filter((q) => q.id !== quizId));
       setDeleteConfirm(null);
     } catch (err: any) {
-      alert('Erreur : ' + (err.message || 'Impossible de supprimer'));
+      toast.error('Erreur : ' + (err.message || 'Impossible de supprimer'));
     }
   };
   const isAdmin = currentUser?.role === 'admin';

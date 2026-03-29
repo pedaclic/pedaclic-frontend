@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import {
   getEnfantsLies,
   lierEnfant,
@@ -50,6 +51,7 @@ import type {
 const ParentDashboard: React.FC = () => {
   // ===== AUTH =====
   const { currentUser } = useAuth();
+  const confirmDlg = useConfirm();
   const parentId = currentUser?.uid || '';
   const parentNom = currentUser?.displayName || 'Parent';
 
@@ -196,10 +198,8 @@ const ParentDashboard: React.FC = () => {
    * Révoque le lien avec un enfant (après confirmation)
    */
   const handleRevoquerLien = async (lien: LienParentEnfant) => {
-    const confirm = window.confirm(
-      `Êtes-vous sûr de vouloir retirer ${lien.enfantNom} de votre suivi ? Cette action est irréversible.`
-    );
-    if (!confirm) return;
+    const ok = await confirmDlg({ title: 'Retirer cet enfant ?', message: `Êtes-vous sûr de vouloir retirer ${lien.enfantNom} de votre suivi ? Cette action est irréversible.`, confirmLabel: 'Retirer', variant: 'danger' });
+    if (!ok) return;
 
     try {
       await revoquerLien(lien.id, parentId);

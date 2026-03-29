@@ -15,6 +15,7 @@ import {
   type EleveResultat,
   type InscriptionGroupe,
 } from '../../services/inscriptionDirecteService';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/InscriptionDirecte.css'; // Styles du modal
 
 // ─────────────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   onClose,
   onSuccess,
 }) => {
+  const confirmDlg = useConfirm();
   const [onglet, setOnglet] = useState<'recherche' | 'liste'>('recherche');
   const [termeRecherche, setTermeRecherche] = useState('');
   const [resultats, setResultats] = useState<EleveResultat[]>([]);
@@ -125,9 +127,7 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
 
   const handleDesinscrire = async (inscription: InscriptionGroupe) => {
     if (actionEnCours) return;
-    const confirme = window.confirm(
-      `Retirer ${inscription.eleveNom} du groupe "${groupeNom}" ?\n\nSon historique sera conservé.`
-    );
+    const confirme = await confirmDlg({ title: 'Retirer l\'\u00e9l\u00e8ve ?', message: `Retirer ${inscription.eleveNom} du groupe "${groupeNom}" ? Son historique sera conservé.`, confirmLabel: 'Retirer', variant: 'warning' });
     if (!confirme) return;
 
     setActionEnCours(inscription.id);

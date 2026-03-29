@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useToast } from '../../contexts/ToastContext';
 import {
   QuizAvance,
   QuestionAvancee,
@@ -52,6 +53,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   onComplete,
   onQuit,
 }) => {
+  const { toast } = useToast();
   // ---- Préparer les questions (mélanger si demandé) ----
   const questionsFinales = useMemo(() => {
     let qs = [...quiz.questions];
@@ -132,7 +134,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       setResult(resultat);
       onComplete?.(resultat);
     } catch (error: any) {
-      alert('Erreur lors de la soumission : ' + error.message);
+      toast.error('Erreur lors de la soumission : ' + error.message);
     } finally {
       setIsSubmitting(false);
     }

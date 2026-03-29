@@ -13,11 +13,13 @@ import { QuizEditor } from '../components/quiz/QuizEditor';
 import { getQuizAvance } from '../services/quizAdvancedService';
 import DisciplineService from '../services/disciplineService';
 import type { QuizAvance } from '../types/quiz-advanced';
+import { useToast } from '../contexts/ToastContext';
 
 const QuizEditorPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  const { toast } = useToast();
 
   const [disciplines, setDisciplines] = useState<{ id: string; nom: string; classe: string }[]>([]);
   const [existingQuiz, setExistingQuiz] = useState<(QuizAvance) | undefined>(undefined);
@@ -84,14 +86,14 @@ const QuizEditorPage: React.FC = () => {
       disciplines={disciplines}
       auteurId={currentUser?.uid || ''}
       onSave={(savedId) => {
-        alert('✅ Quiz sauvegardé avec succès !');
+        toast.success('Quiz sauvegardé avec succès !');
         navigate('/admin/quiz');
       }}
       onSaveDraft={(savedId, isNew) => {
         if (isNew) {
           navigate(`/admin/quiz/modifier/${savedId}`);
         }
-        alert('📝 Brouillon enregistré. Vous pouvez continuer plus tard.');
+        toast.success('Brouillon enregistré. Vous pouvez continuer plus tard.');
       }}
       onCancel={() => navigate(-1)}
     />

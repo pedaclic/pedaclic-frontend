@@ -3560,6 +3560,21 @@
   transform: none;
 }
 
+.sd-quiz-badge-avance {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.5rem;
+  background: #eff6ff;
+  color: #2563eb;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
 .sd-quiz-badge-premium {
   position: absolute;
   top: 0.6rem;
