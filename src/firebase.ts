@@ -12,6 +12,7 @@ import {
   persistentMultipleTabManager
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // --- Configuration Firebase (variables d'environnement) ---
 const firebaseConfig = {
@@ -24,21 +25,28 @@ const firebaseConfig = {
 };
 
 // --- Initialisation de l'app Firebase ---
+// IMPORTANT : doit être appelé avant tout autre service Firebase
 const app = initializeApp(firebaseConfig);
 
 // ============================================
 // PHASE 28 — Firebase App Check (reCAPTCHA v3)
-// TEMPORAIREMENT COMMENTÉ POUR TEST
+// Vérifie que les requêtes proviennent uniquement
+// de l'application PedaClic (pedaclic.sn)
 // ============================================
-// if (import.meta.env.DEV) {
-//   (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-// }
-// initializeAppCheck(app, {
-//   provider: new ReCaptchaV3Provider(
-//     import.meta.env.VITE_RECAPTCHA_SITE_KEY
-//   ),
-//   isTokenAutoRefreshEnabled: true,
-// });
+
+// En développement local : affiche le token de debug dans la console
+// Ce token doit être ajouté dans Firebase Console > App Check > Applications
+if (import.meta.env.DEV) {
+  (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
+// La clé de site reCAPTCHA est publique par conception (liée au domaine pedaclic.sn)
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider(
+    import.meta.env.VITE_RECAPTCHA_SITE_KEY
+  ),
+  isTokenAutoRefreshEnabled: true, // Renouvelle le token automatiquement
+});
 
 // --- Auth (inchangé) ---
 export const auth = getAuth(app);
