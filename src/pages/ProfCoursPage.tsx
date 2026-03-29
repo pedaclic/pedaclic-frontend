@@ -18,6 +18,7 @@ import {
 import { getProgressionsCours, calculerStatsProgression } from '../services/progressionCoursService';
 import type { CoursEnLigne } from '../types/cours_types';
 import { CONFIG_STATUT_COURS, NIVEAUX_COURS } from '../types/cours_types';
+import { NIVEAUX_LABELS } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
 import '../styles/CoursEnLigne.css';
@@ -101,10 +102,16 @@ function ProfCoursCard({
         <h3 className="prof-cours-card__titre">{cours.titre}</h3>
         <p className="prof-cours-card__description">{cours.description}</p>
 
-        {/* Tags matière / niveau */}
+        {/* Tags matière / niveau / cycle */}
         <div className="prof-cours-card__meta">
           <span className="badge badge--matiere">{cours.matiere}</span>
+          {cours.niveauScolaire && (
+            <span className="badge badge--cycle">
+              {NIVEAUX_LABELS[cours.niveauScolaire] ?? cours.niveauScolaire}
+            </span>
+          )}
           <span className="badge badge--niveau">{niveauLabel}</span>
+          {cours.serie && <span className="badge badge--serie">{cours.serie}</span>}
           {cours.classe && <span className="badge badge--classe">{cours.classe}</span>}
         </div>
       </div>

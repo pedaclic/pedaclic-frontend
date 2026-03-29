@@ -44,7 +44,7 @@ const MatieresNiveauxSelector: React.FC<MatieresNiveauxSelectorProps> = ({
   compact = false,
 }) => {
   const maxCours = formule ? getNombreCoursMax(formule) : null;
-  /** Source unique : CLASSES_OPTIONS (cahierTextes) — 6ème, 5ème, 4ème, 3ème, 2nde, 1ère, Terminale */
+  /** Source unique : CLASSES_OPTIONS (cahierTextes) — PS…GS, CI…CM2, 6ème…3ème, 2nde…Terminale */
   const niveauxOptions = CLASSES_OPTIONS;
 
   return (

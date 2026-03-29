@@ -58,6 +58,18 @@
   color: #7c3aed;
 }
 
+/* Badge cycle (niveau scolaire) — rose */
+.badge--cycle {
+  background: #fce7f3;
+  color: #9d174d;
+}
+
+/* Badge série lycée — ambre */
+.badge--serie {
+  background: #fefce8;
+  color: #854d0e;
+}
+
 /* Badge Premium — or */
 .badge--premium {
   background: #fef3c7;

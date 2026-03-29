@@ -8,7 +8,7 @@
 // ============================================================
 
 import { Timestamp } from 'firebase/firestore';
-import { CLASSES, Classe } from './cahierTextes.types';
+import { CLASSES, Classe, NiveauScolaire } from './cahierTextes.types';
 
 // ------------------------------------------------------------
 // TYPES DE BLOCS DE CONTENU
@@ -183,7 +183,7 @@ export interface CoursEnLigne {
   /** ID Firestore (généré automatiquement) */
   id: string;
 
-  // ── Informations pédagogiques ──────────────────────────────
+  // ── Informations pédagogiques ──────────────────────────
 
   /** Titre du cours (ex: "Les fonctions affines — Terminale") */
   titre: string;
@@ -191,10 +191,16 @@ export interface CoursEnLigne {
   description: string;
   /** Matière (ex: "Mathématiques") */
   matiere: string;
-  /** Niveau scolaire */
+  /** Cycle / niveau scolaire (maternelle, elementaire, college, lycee) */
+  niveauScolaire?: NiveauScolaire;
+  /** Niveau scolaire (classe : PS, 6ème, Terminale…) */
   niveau: NiveauCours | string;
   /** Classe optionnelle (ex: "TS", "3ème A") */
   classe?: string;
+  /** Discipline liée (ID Firestore de la discipline) */
+  disciplineId?: string;
+  /** Série lycée (L, S1, S2, S3, STEG, T) — uniquement si niveauScolaire=lycee */
+  serie?: string;
 
   // ── Auteur ─────────────────────────────────────────────────
 
@@ -349,7 +355,7 @@ export const CONFIG_ENCADRE: Record<TypeEncadre, { label: string; emoji: string;
  * Niveaux scolaires pour les Cours en ligne.
  * Réexport de CLASSES_OPTIONS (cahierTextes.types.ts) — source unique partagée.
  */
-export { CLASSES_OPTIONS as NIVEAUX_COURS } from './cahierTextes.types';
+export { CLASSES_OPTIONS as NIVEAUX_COURS, CLASSES_PAR_NIVEAU, NIVEAUX_SCOLAIRES, type NiveauScolaire } from './cahierTextes.types';
 
 /** Matières du programme sénégalais */
 export const MATIERES_COURS = [

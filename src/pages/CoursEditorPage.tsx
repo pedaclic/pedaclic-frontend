@@ -49,7 +49,11 @@ import type {
   CoursFormData,
 } from '../types/cours_types';
 import { LABELS_TYPE_BLOC, CONFIG_ENCADRE } from '../types/cours_types';
-import { CLASSES } from '../types/cahierTextes.types';
+import {
+  Niveau, NIVEAUX_LABELS, getClassesByNiveau,
+  SERIES_LYCEE, type SerieLycee,
+} from '../types';
+import { NiveauScolaire, NIVEAUX_SCOLAIRES, CLASSES_PAR_NIVEAU } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
@@ -445,8 +449,11 @@ export default function CoursEditorPage() {
     titre: '',
     description: '',
     matiere: 'Mathématiques',
-    niveau: '3ème',
+    niveauScolaire: undefined,
+    niveau: '',
     classe: '',
+    disciplineId: '',
+    serie: '',
     isPremium: false,
     statut: 'brouillon',
     couvertureUrl: '',
@@ -456,6 +463,9 @@ export default function CoursEditorPage() {
     tags: [],
     cahierTextesId: '',
   });
+
+  // ── État local pour le sélecteur Niveau scolaire (cascade) ──
+  const [selectedNiveau, setSelectedNiveau] = useState<Niveau | ''>('');
 
   // ── État des sections ─────────────────────────────────────
   const [sections, setSections] = useState<SectionCours[]>([]);
@@ -517,8 +527,11 @@ export default function CoursEditorPage() {
           titre: coursData.titre,
           description: coursData.description,
           matiere: coursData.matiere,
+          niveauScolaire: coursData.niveauScolaire,
           niveau: coursData.niveau,
           classe: coursData.classe ?? '',
+          disciplineId: coursData.disciplineId ?? '',
+          serie: coursData.serie ?? '',
           cahierTextesId: coursData.cahierTextesId ?? '',
           isPremium: coursData.isPremium,
           statut: coursData.statut,
@@ -528,6 +541,10 @@ export default function CoursEditorPage() {
           prerequis: coursData.prerequis ?? '',
           tags: coursData.tags,
         });
+        // Restaurer le sélecteur de niveau scolaire
+        if (coursData.niveauScolaire) {
+          setSelectedNiveau(coursData.niveauScolaire as Niveau);
+        }
       }
       setSections(sectionsData);
       if (sectionsData.length > 0) {
@@ -955,29 +972,74 @@ export default function CoursEditorPage() {
                   ))}
                 </select>
               </div>
-              {/* Niveau */}
+              {/* Niveau scolaire (cycle) */}
               <div className="cours-editor__field">
-                <label htmlFor="niveau">Niveau *</label>
+                <label htmlFor="niveauScolaire">Niveau scolaire *</label>
                 <select
-                  id="niveau"
-                  value={formCours.niveau}
-                  onChange={e => updateFormField('niveau', e.target.value)}
+                  id="niveauScolaire"
+                  value={selectedNiveau}
+                  onChange={e => {
+                    const niv = e.target.value as Niveau | '';
+                    setSelectedNiveau(niv);
+                    if (niv) {
+                      updateFormField('niveauScolaire', niv as any);
+                    } else {
+                      updateFormField('niveauScolaire', undefined);
+                    }
+                    updateFormField('niveau', '');
+                    updateFormField('serie', '');
+                  }}
                   className="cours-editor__select"
                 >
-                  {CLASSES.map(c => (
-                    <option key={c} value={c}>{c}</option>
+                  <option value="">— Choisir un niveau —</option>
+                  {(['maternelle', 'elementaire', 'college', 'lycee', 'formation_libre'] as Niveau[]).map(niv => (
+                    <option key={niv} value={niv}>{NIVEAUX_LABELS[niv]}</option>
                   ))}
                 </select>
               </div>
-              {/* Classe optionnelle */}
+              {/* Classe (dépend du niveau scolaire) */}
+              {selectedNiveau && (
+                <div className="cours-editor__field">
+                  <label htmlFor="niveau">Classe *</label>
+                  <select
+                    id="niveau"
+                    value={formCours.niveau}
+                    onChange={e => updateFormField('niveau', e.target.value)}
+                    className="cours-editor__select"
+                  >
+                    <option value="">— Choisir une classe —</option>
+                    {getClassesByNiveau(selectedNiveau).map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Série lycée (uniquement si niveau = lycee) */}
+              {selectedNiveau === 'lycee' && (
+                <div className="cours-editor__field">
+                  <label htmlFor="serie">Série</label>
+                  <select
+                    id="serie"
+                    value={formCours.serie ?? ''}
+                    onChange={e => updateFormField('serie', e.target.value)}
+                    className="cours-editor__select"
+                  >
+                    <option value="">— Toutes séries —</option>
+                    {SERIES_LYCEE.map(s => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {/* Groupe-classe optionnel (ex: 3ème A, TS2) */}
               <div className="cours-editor__field">
-                <label htmlFor="classe">Classe (optionnelle)</label>
+                <label htmlFor="classe">Groupe-classe (optionnel)</label>
                 <input
                   id="classe"
                   type="text"
                   value={formCours.classe ?? ''}
                   onChange={e => updateFormField('classe', e.target.value)}
-                  placeholder="Ex : 3ème A, TS, L2"
+                  placeholder="Ex : 3ème A, TS2, L2-B"
                   className="cours-editor__input"
                 />
               </div>

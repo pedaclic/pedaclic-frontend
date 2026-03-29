@@ -9,12 +9,20 @@ import { Timestamp } from 'firebase/firestore';
 // CLASSES
 // ─────────────────────────────────────────────────────────────
 export type Classe =
+  | 'PS' | 'MS' | 'GS'
+  | 'CI' | 'CP' | 'CE1' | 'CE2' | 'CM1' | 'CM2'
   | '6ème' | '5ème' | '4ème' | '3ème'
   | '2nde' | '1ère' | 'Terminale';
 
 export const CLASSES: Classe[] = [
-  '6ème', '5ème', '4ème', '3ème', '2nde', '1ère', 'Terminale',
+  'PS', 'MS', 'GS',
+  'CI', 'CP', 'CE1', 'CE2', 'CM1', 'CM2',
+  '6ème', '5ème', '4ème', '3ème',
+  '2nde', '1ère', 'Terminale',
 ];
+
+export const CLASSES_MATERNELLE: Classe[] = ['PS', 'MS', 'GS'];
+export const CLASSES_ELEMENTAIRE: Classe[] = ['CI', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'];
 
 /**
  * Options pour sélecteurs (valeur + label) — source unique Cahier, Médiathèque, Premium, Cours.
@@ -38,13 +46,36 @@ export function normaliserClassePourComparaison(classe: string | undefined): str
   return m[classe] || classe;
 }
 
-/** Classes collège (6ème→3ème) et lycée (2nde→Terminale) pour Disciplines */
+/** Groupes par cycle */
+export const CLASSES_MATERNELLE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
+  ['PS', 'MS', 'GS'].includes(c.valeur)
+);
+export const CLASSES_ELEMENTAIRE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
+  ['CI', 'CP', 'CE1', 'CE2', 'CM1', 'CM2'].includes(c.valeur)
+);
 export const CLASSES_COLLEGE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
   ['6ème', '5ème', '4ème', '3ème'].includes(c.valeur)
 );
 export const CLASSES_LYCEE_OPTIONS = CLASSES_OPTIONS.filter((c) =>
   ['2nde', '1ère', 'Terminale'].includes(c.valeur)
 );
+
+/** Mapping NiveauScolaire → classes correspondantes (pour sélecteurs en cascade) */
+export type NiveauScolaire = 'maternelle' | 'elementaire' | 'college' | 'lycee';
+
+export const CLASSES_PAR_NIVEAU: Record<NiveauScolaire, Array<{ valeur: Classe; label: string }>> = {
+  maternelle: CLASSES_MATERNELLE_OPTIONS,
+  elementaire: CLASSES_ELEMENTAIRE_OPTIONS,
+  college: CLASSES_COLLEGE_OPTIONS,
+  lycee: CLASSES_LYCEE_OPTIONS,
+};
+
+export const NIVEAUX_SCOLAIRES: Array<{ valeur: NiveauScolaire; label: string; emoji: string }> = [
+  { valeur: 'maternelle', label: 'Maternelle', emoji: '🧒' },
+  { valeur: 'elementaire', label: 'Élémentaire', emoji: '📖' },
+  { valeur: 'college', label: 'Collège', emoji: '🏫' },
+  { valeur: 'lycee', label: 'Lycée', emoji: '🎓' },
+];
 
 // ─────────────────────────────────────────────────────────────
 // MATIÈRES
