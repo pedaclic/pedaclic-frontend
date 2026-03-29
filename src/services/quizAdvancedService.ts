@@ -214,6 +214,9 @@ export async function getQuizzesAvanceByProf(profId: string): Promise<QuizAvance
 
 /**
  * Récupérer les quiz avancés accessibles par un élève (globaux + ceux de ses groupes)
+ *
+ * Requête ciblée status == 'published' pour respecter les règles Firestore
+ * (les élèves n'ont accès qu'aux quiz publiés).
  */
 export async function getQuizzesAvanceForEleve(
   eleveId: string,
@@ -221,15 +224,31 @@ export async function getQuizzesAvanceForEleve(
 ): Promise<QuizAvance[]> {
   try {
     const { getGroupesEleve } = await import('./profGroupeService');
-    const [groupes, allQuizzes] = await Promise.all([
-      getGroupesEleve(eleveId),
-      getAllQuizzes(),
-    ]);
+
+    // 1. Récupérer les groupes de l'élève
+    const groupes = await getGroupesEleve(eleveId);
     const groupeIds = groupes.map((g) => g.id);
 
-    return allQuizzes.filter((q) => {
-      if (q.status === 'draft') return false;
-      // Premium : accessible si élève Premium OU si élève dans la classe liée au quiz
+    // 2. Requête Firestore : quiz publiés uniquement (conforme aux règles de sécurité)
+    const q = query(
+      collection(db, QUIZZES_COLLECTION),
+      where('status', '==', 'published'),
+      orderBy('createdAt', 'desc'),
+    );
+    const snapshot = await getDocs(q);
+    const publishedQuizzes = snapshot.docs.map((docSnap) => {
+      const data = docSnap.data() as Record<string, any>;
+      return {
+        id: docSnap.id,
+        ...data,
+        createdAt: data.createdAt?.toDate() || new Date(),
+        updatedAt: data.updatedAt?.toDate() || undefined,
+      } as QuizAvance;
+    });
+
+    // 3. Filtrage côté client : Premium + Groupe
+    return publishedQuizzes.filter((q) => {
+      // Premium : accessible si non-premium OU élève Premium OU élève dans la classe liée
       const premiumOk = !q.isPremium || isPremium || (q.groupeId && groupeIds.includes(q.groupeId));
       if (!premiumOk) return false;
       // Groupe : quiz global ou élève dans la classe cible

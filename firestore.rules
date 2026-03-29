@@ -135,7 +135,10 @@ service cloud.firestore {
     }
 
     match /quizzes_v2/{quizId} {
-      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+      // Admin / Prof : lecture de tous les quiz (y compris brouillons)
+      // Élève / Parent : lecture des quiz publiés uniquement
+      allow read: if isAdmin() || isProf()
+                  || (isSignedIn() && resource.data.status == 'published');
       allow create: if isAdmin() || isProf();
       allow update: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
       allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
