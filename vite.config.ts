@@ -86,38 +86,17 @@ export default defineConfig({
             },
           },
 
-          // 2. Firebase/Firestore — Network First
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firestore-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-              networkTimeoutSeconds: 5,
-            },
-          },
+          // 2. Firebase/Firestore — NE PAS intercepter
+          // Firestore utilise sa propre persistance IndexedDB (persistentLocalCache).
+          // Intercepter les requêtes Firestore via le SW :
+          //   - corrompt les headers App Check (token non transmis)
+          //   - casse le long-polling (erreurs 400)
+          //   - crée un double cache redondant
+          // → On laisse le SDK Firebase gérer seul ses requêtes.
 
-          // 3. Firebase Auth — Network First
-          {
-            urlPattern: /^https:\/\/identitytoolkit\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firebase-auth-cache',
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
+          // 3. Firebase Auth — NE PAS intercepter
+          // Les requêtes Auth (identitytoolkit, securetoken) transportent
+          // des tokens sensibles que le SW ne doit pas mettre en cache.
 
           // 4. API Railway (IA Generator) — Network First
           {
