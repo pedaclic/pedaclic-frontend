@@ -1,3 +1,7 @@
+// IMPORTANT : importer firebase.ts en tout premier pour que App Check
+// soit initialisé AVANT tout appel Firebase (Auth, Firestore, Storage).
+import './firebase';
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

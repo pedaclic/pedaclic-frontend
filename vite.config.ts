@@ -14,7 +14,6 @@ export default defineConfig({
       strategies: 'generateSW',
       injectRegister: 'auto',
       registerType: 'autoUpdate',
-      minimizeSW: false,
 
       // --- Assets à inclure dans le précache ---
       includeAssets: [
@@ -29,6 +28,10 @@ export default defineConfig({
       // --- Configuration Workbox ---
       workbox: {
         mode: 'development',
+
+        // Limite de taille des fichiers précachés (défaut Workbox : 2 MiB)
+        // Augmentée à 3 MiB pour couvrir le bundle principal de PedaClic
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 
         // Types de fichiers à précacher
         skipWaiting: true,
@@ -188,8 +191,8 @@ export default defineConfig({
         manualChunks: {
           // Séparer React et ses dépendances
           'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Séparer Firebase (lourd)
-          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          // Séparer Firebase (lourd) — app-check inclus (Phase 28)
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage', 'firebase/app-check'],
           // Séparer les icônes Lucide
           'vendor-icons': ['lucide-react'],
         },

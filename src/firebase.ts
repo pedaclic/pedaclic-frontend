@@ -41,12 +41,21 @@ if (import.meta.env.DEV) {
 }
 
 // La clé de site reCAPTCHA est publique par conception (liée au domaine pedaclic.sn)
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider(
-    import.meta.env.VITE_RECAPTCHA_SITE_KEY
-  ),
-  isTokenAutoRefreshEnabled: true, // Renouvelle le token automatiquement
-});
+const recaptchaKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+if (!recaptchaKey) {
+  console.error('[App Check] VITE_RECAPTCHA_SITE_KEY manquante — App Check désactivé.');
+} else {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(recaptchaKey),
+      isTokenAutoRefreshEnabled: true, // Renouvelle le token automatiquement
+    });
+    console.info('[App Check] Initialisé avec reCAPTCHA v3.');
+  } catch (err) {
+    console.error('[App Check] Échec d\'initialisation :', err);
+  }
+}
 
 // --- Auth (inchangé) ---
 export const auth = getAuth(app);
