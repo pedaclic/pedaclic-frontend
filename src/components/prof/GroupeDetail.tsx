@@ -79,6 +79,7 @@ interface AppelSuiviTableProps {
 
 function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProps) {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -103,13 +104,17 @@ function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProp
       try {
         const absences = await getAbsencesByPeriod(groupeId, debut, fin);
         const c: Record<string, number> = {};
-        statsEleves.forEach(e => { c[e.eleveId] = 0; });
+        const sm: Record<string, string[]> = {};
+        statsEleves.forEach(e => { c[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
           (a.eleveIdsAbsents || []).forEach((id: string) => {
             if (c[id] !== undefined) c[id]++;
+            if (a.entreeTitre && sm[id]) {
+              sm[id].push(a.entreeTitre);
+            }
           });
         });
-        if (!cancelled) setCounts(c);
+        if (!cancelled) { setCounts(c); setSeancesManquees(sm); }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -127,6 +132,7 @@ function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProp
         <tr>
           <th>Élève</th>
           <th>Absences ({periode})</th>
+          <th>Séances manquées</th>
         </tr>
       </thead>
       <tbody>
@@ -135,6 +141,14 @@ function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProp
             <td>{e.eleveNom}</td>
             <td className={counts[e.eleveId] > 0 ? 'prof-note-critique' : ''}>
               {counts[e.eleveId] || 0}
+            </td>
+            <td className="groupe-appel-seances-manquees">
+              {(seancesManquees[e.eleveId] || []).length > 0
+                ? seancesManquees[e.eleveId].map((titre, i) => (
+                    <span key={i} className="groupe-appel-seance-tag">{titre}</span>
+                  ))
+                : <span className="text-muted">—</span>
+              }
             </td>
           </tr>
         ))}
@@ -173,6 +187,11 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [absentsIds, setAbsentsIds] = useState<string[]>([]);
   const [loadingAppel, setLoadingAppel] = useState(false);
   const [periodeSuivi, setPeriodeSuivi] = useState<'jour' | 'semaine' | 'mois'>('semaine');
+  // Liaison absence ↔ séance
+  const [appelCahiers, setAppelCahiers] = useState<CahierTextes[]>([]);
+  const [appelCahierId, setAppelCahierId] = useState('');
+  const [appelEntrees, setAppelEntrees] = useState<EntreeCahier[]>([]);
+  const [appelEntreeId, setAppelEntreeId] = useState('');
 
   // ===== États : Travaux à faire =====
   const [nouveauTravailTitre, setNouveauTravailTitre] = useState('');
@@ -245,11 +264,30 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     chargerDonneesGroupe();
   }, [chargerDonneesGroupe]);
 
-  /** Charge les absences du jour pour l'appel */
+  /** Charge les absences du jour + cahiers pour l'appel */
   useEffect(() => {
     if (ongletActif !== 'appel') return;
     getAbsencesByDate(groupe.id, dateAppel).then(setAbsentsIds).catch(() => setAbsentsIds([]));
-  }, [ongletActif, groupe.id, dateAppel]);
+    if (currentUser?.uid) {
+      getCahiersForGroupe(groupe.id, currentUser.uid)
+        .then(c => { setAppelCahiers(c); if (c.length === 1) setAppelCahierId(c[0].id); })
+        .catch(() => setAppelCahiers([]));
+    }
+  }, [ongletActif, groupe.id, dateAppel, currentUser?.uid]);
+
+  /** Charge les entrées du cahier sélectionné pour l'appel (filtrées par date) */
+  useEffect(() => {
+    if (!appelCahierId) { setAppelEntrees([]); setAppelEntreeId(''); return; }
+    getEntreesCahier(appelCahierId).then(entries => {
+      const filtered = entries.filter(e => {
+        const d = e.date?.toDate?.();
+        return d && d.toISOString().slice(0, 10) === dateAppel;
+      });
+      // Si aucune séance ce jour, montrer toutes les séances pour sélection libre
+      setAppelEntrees(filtered.length > 0 ? filtered : entries);
+      setAppelEntreeId('');
+    }).catch(() => setAppelEntrees([]));
+  }, [appelCahierId, dateAppel]);
 
   /** Charge les travaux à faire + cahiers liés au groupe (rubriques) */
   useEffect(() => {
@@ -347,12 +385,20 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     }
   };
 
-  /** Marque les absences pour la date d'appel */
+  /** Marque les absences pour la date d'appel (avec séance liée) */
   const handleMarquerAbsences = async () => {
     if (!currentUser?.uid) return;
     try {
       setLoadingAppel(true);
-      await marquerAbsences(groupe.id, dateAppel, absentsIds, currentUser.uid);
+      const entreeSelectionnee = appelEntrees.find(e => e.id === appelEntreeId);
+      await marquerAbsences(
+        groupe.id,
+        dateAppel,
+        absentsIds,
+        currentUser.uid,
+        entreeSelectionnee?.id,
+        entreeSelectionnee?.chapitre,
+      );
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -933,6 +979,55 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
               className="prof-input prof-input-sm"
             />
           </div>
+
+          {/* Liaison absence ↔ séance */}
+          {appelCahiers.length > 0 && (
+            <div className="groupe-appel-seance">
+              <label className="groupe-appel-seance-label">📓 Lier à une séance :</label>
+              <div className="groupe-appel-seance-selects">
+                {appelCahiers.length > 1 && (
+                  <select
+                    className="prof-select prof-select-sm"
+                    value={appelCahierId}
+                    onChange={e => setAppelCahierId(e.target.value)}
+                  >
+                    <option value="">— Cahier —</option>
+                    {appelCahiers.map(c => (
+                      <option key={c.id} value={c.id}>{c.titre} ({c.matiere})</option>
+                    ))}
+                  </select>
+                )}
+                {appelCahierId && appelEntrees.length > 0 && (
+                  <select
+                    className="prof-select prof-select-sm"
+                    value={appelEntreeId}
+                    onChange={e => setAppelEntreeId(e.target.value)}
+                  >
+                    <option value="">— Séance (optionnel) —</option>
+                    {appelEntrees.map(e => {
+                      const d = e.date?.toDate?.();
+                      const dateLabel = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+                      return (
+                        <option key={e.id} value={e.id}>
+                          {dateLabel} — {e.chapitre}
+                        </option>
+                      );
+                    })}
+                  </select>
+                )}
+              </div>
+              {appelEntreeId && (() => {
+                const sel = appelEntrees.find(e => e.id === appelEntreeId);
+                if (!sel) return null;
+                return (
+                  <div className="groupe-appel-seance-info">
+                    📌 <strong>{sel.chapitre}</strong>
+                    {sel.heureDebut && <span> • 🕐 {sel.heureDebut}{sel.heureFin ? ` → ${sel.heureFin}` : ''}</span>}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
 
           {statsEleves.length === 0 ? (
             <div className="prof-empty-state">

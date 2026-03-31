@@ -2110,3 +2110,291 @@
 .cahier-titre-form-add:hover {
   background: #dbeafe;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   FEATURE 1 — APERÇU LIVE DE LA SÉANCE (EntreeEditorPage)
+   ───────────────────────────────────────────────────────────── */
+
+.editor-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+}
+
+.seance-preview {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+}
+
+.seance-preview__date {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 0.5rem;
+}
+
+.seance-preview__heure {
+  margin-left: 0.75rem;
+  color: #4b5563;
+}
+
+.seance-preview__titre {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 0.6rem;
+  line-height: 1.35;
+}
+
+.seance-preview__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0.75rem;
+}
+
+.seance-preview__contenu {
+  font-size: 0.88rem;
+  color: #374151;
+  line-height: 1.7;
+  padding: 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.seance-preview__contenu h1,
+.seance-preview__contenu h2,
+.seance-preview__contenu h3,
+.seance-preview__contenu p {
+  margin: 0.4em 0;
+}
+.seance-preview__contenu h1:first-child,
+.seance-preview__contenu h2:first-child,
+.seance-preview__contenu h3:first-child,
+.seance-preview__contenu p:first-child {
+  margin-top: 0;
+}
+
+.seance-preview__objectifs {
+  font-size: 0.85rem;
+  color: #374151;
+  margin-bottom: 0.4rem;
+}
+
+.seance-preview__competences {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.seance-preview__pj {
+  font-size: 0.82rem;
+  color: #4b5563;
+  margin-bottom: 0.3rem;
+}
+
+.seance-preview__notes-privees {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e5e7eb;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   FEATURE 3 — NAVIGATEUR DE SÉANCES EXISTANTES
+   ───────────────────────────────────────────────────────────── */
+
+.seances-browser {
+  margin-top: 0.75rem;
+  max-height: 420px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.seances-browser__item {
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #9ca3af;
+  border-radius: 8px;
+  background: #fff;
+  transition: box-shadow 0.15s;
+  overflow: hidden;
+}
+
+.seances-browser__item:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.seances-browser__item--current {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.seances-browser__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+}
+
+.seances-browser__meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.seances-browser__date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  min-width: 50px;
+}
+
+.seances-browser__titre {
+  flex: 1;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.seances-browser__detail {
+  padding: 8px 12px 10px;
+  border-top: 1px solid #f3f4f6;
+  background: #f9fafb;
+}
+
+.seances-browser__contenu {
+  font-size: 0.82rem;
+  color: #374151;
+  line-height: 1.6;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.seances-browser__contenu h1,
+.seances-browser__contenu h2,
+.seances-browser__contenu h3,
+.seances-browser__contenu p {
+  margin: 0.3em 0;
+}
+.seances-browser__contenu h1:first-child,
+.seances-browser__contenu h2:first-child,
+.seances-browser__contenu h3:first-child,
+.seances-browser__contenu p:first-child {
+  margin-top: 0;
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   FEATURE 2 — LIAISON ABSENCE ↔ SÉANCE (GroupeDetail)
+   ───────────────────────────────────────────────────────────── */
+
+.groupe-appel-seance {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 1rem;
+}
+
+.groupe-appel-seance-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1d4ed8;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.groupe-appel-seance-selects {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.groupe-appel-seance-selects select {
+  flex: 1;
+  min-width: 180px;
+}
+
+.groupe-appel-seance-info {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #374151;
+  padding: 6px 10px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+.groupe-appel-seances-manquees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.groupe-appel-seance-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #1d4ed8;
+  background: #dbeafe;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+
+/* ─── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  .seances-browser__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .seances-browser__titre {
+    white-space: normal;
+  }
+
+  .groupe-appel-seance-selects {
+    flex-direction: column;
+  }
+
+  .groupe-appel-seance-selects select {
+    min-width: 100%;
+  }
+
+  .seance-preview__badges {
+    gap: 4px;
+  }
+}

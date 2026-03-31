@@ -36,21 +36,30 @@ function docId(groupeId: string, date: string) {
 
 /**
  * Marque les absences pour une date (remplace l'appel du jour).
+ * @param entreeId  — ID de la séance (entrée cahier) liée (optionnel)
+ * @param entreeTitre — Titre de la séance liée (optionnel, dénormalisé)
  */
 export async function marquerAbsences(
   groupeId: string,
   date: string,
   eleveIdsAbsents: string[],
-  profId: string
+  profId: string,
+  entreeId?: string,
+  entreeTitre?: string,
 ): Promise<void> {
   const ref = doc(db, COL_ABSENCES, docId(groupeId, date));
-  await setDoc(ref, {
+  const payload: Record<string, unknown> = {
     groupeId,
     date,
     eleveIdsAbsents,
     profId,
     updatedAt: Timestamp.now(),
-  });
+  };
+  if (entreeId) {
+    payload.entreeId = entreeId;
+    if (entreeTitre) payload.entreeTitre = entreeTitre;
+  }
+  await setDoc(ref, payload);
 }
 
 /**

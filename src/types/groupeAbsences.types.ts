@@ -9,6 +9,10 @@ export interface AbsenceGroupe {
   groupeId: string;
   date: string; // YYYY-MM-DD
   eleveIdsAbsents: string[];
+  /** ID de la séance (entrée cahier) liée à cet appel (optionnel) */
+  entreeId?: string;
+  /** Titre de la séance liée (dénormalisé pour affichage rapide) */
+  entreeTitre?: string;
   profId: string;
   updatedAt: Date;
 }

@@ -7,7 +7,7 @@
 // PedaClic — www.pedaclic.sn
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -100,6 +100,13 @@ const EntreeEditorPage: React.FC = () => {
   // Phase 33 — titre sélectionné dans la rubrique
   const [titreId, setTitreId] = useState<string>('');
 
+  // Feature 3 — Séances existantes (consultation sans quitter l'éditeur)
+  const [autresEntrees, setAutresEntrees] = useState<EntreeCahier[]>([]);
+  const [showSeances, setShowSeances] = useState(false);
+  const [seanceOuverteId, setSeanceOuverteId] = useState<string | null>(null);
+  // Feature 1 — Aperçu live
+  const [showPreview, setShowPreview] = useState(false);
+
   const isEdit = !!entreeId;
 
   // Charger les sous-rubriques configurables (admin) — lisible par tout utilisateur authentifié
@@ -174,6 +181,28 @@ const EntreeEditorPage: React.FC = () => {
     };
     fetch();
   }, [cahierId, entreeId]);
+
+  // ── Feature 3 : Charger les séances existantes du cahier ──
+  useEffect(() => {
+    if (!cahierId) return;
+    getEntreesByCahier(cahierId).then(entries => {
+      // Trier par date décroissante
+      const sorted = [...entries].sort((a, b) => {
+        const da = a.date?.toDate?.() ?? new Date(0);
+        const db = b.date?.toDate?.() ?? new Date(0);
+        return db.getTime() - da.getTime();
+      });
+      setAutresEntrees(sorted);
+    }).catch(() => setAutresEntrees([]));
+  }, [cahierId]);
+
+  // ── Feature 1 : Données de l'aperçu (mémoïsées) ──
+  const previewData = useMemo(() => {
+    const typeCfg = TYPE_CONTENU_CONFIG[form.typeContenu];
+    const statutCfg = STATUT_CONFIG[form.statut];
+    const rubrique = cahier?.rubriques?.find(r => r.id === rubriqueId);
+    return { typeCfg, statutCfg, rubrique };
+  }, [form.typeContenu, form.statut, rubriqueId, cahier?.rubriques]);
 
   // ── Toggle compétence (Phase 21) ──────────────────────────
   const toggleCompetence = (comp: string) => {
@@ -633,6 +662,197 @@ const EntreeEditorPage: React.FC = () => {
           <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
             Ces notes sont uniquement visibles par vous.
           </div>
+        </div>
+
+        {/* ── Feature 1 : Aperçu live de la séance ── */}
+        <div className="editor-card">
+          <button
+            type="button"
+            className="editor-toggle-btn"
+            onClick={() => setShowPreview(v => !v)}
+          >
+            <span className="editor-section-title" style={{ margin: 0 }}>
+              👁️ Aperçu de la séance
+            </span>
+            <span style={{ fontSize: '1.1rem' }}>{showPreview ? '▲' : '▼'}</span>
+          </button>
+
+          {showPreview && (
+            <div className="seance-preview">
+              {/* Date + horaires */}
+              <div className="seance-preview__date">
+                📅 {form.date
+                  ? new Date(form.date + 'T00:00:00').toLocaleDateString('fr-FR', {
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                    })
+                  : '—'}
+                {form.heureDebut && (
+                  <span className="seance-preview__heure">
+                    🕐 {form.heureDebut}{form.heureFin ? ` → ${form.heureFin}` : ''}
+                  </span>
+                )}
+              </div>
+
+              {/* Titre */}
+              <h3 className="seance-preview__titre">
+                {form.chapitre || <em style={{ color: '#9ca3af' }}>Titre de la séance…</em>}
+              </h3>
+
+              {/* Badges */}
+              <div className="seance-preview__badges">
+                <span className="entree-type-badge" style={{ background: previewData.typeCfg.color }}>
+                  {previewData.typeCfg.emoji} {previewData.typeCfg.label}
+                </span>
+                <span className="entree-statut-badge" style={{ background: previewData.statutCfg.bg, color: previewData.statutCfg.color }}>
+                  {previewData.statutCfg.label}
+                </span>
+                {previewData.rubrique && (
+                  <span
+                    className="entree-card-rubrique-badge"
+                    style={{
+                      backgroundColor: (previewData.rubrique.couleur ?? '#64748b') + '1a',
+                      borderColor: previewData.rubrique.couleur ?? '#64748b',
+                      color: previewData.rubrique.couleur ?? '#64748b',
+                    }}
+                  >
+                    {previewData.rubrique.nom}
+                  </span>
+                )}
+                {form.isMarqueEvaluation && <span className="signet-badge">📌 Évaluation</span>}
+              </div>
+
+              {/* Contenu */}
+              {form.contenu && (
+                <div className="seance-preview__contenu" dangerouslySetInnerHTML={{ __html: form.contenu }} />
+              )}
+
+              {/* Objectifs */}
+              {form.objectifs && (
+                <div className="seance-preview__objectifs">
+                  🎯 <em>{form.objectifs}</em>
+                </div>
+              )}
+
+              {/* Compétences */}
+              {form.competences.length > 0 && (
+                <div className="seance-preview__competences">
+                  {form.competences.map(c => (
+                    <span key={c} className="competence-tag selected">{c}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Pièces jointes */}
+              {piecesJointes.length > 0 && (
+                <div className="seance-preview__pj">
+                  📎 {piecesJointes.length} pièce{piecesJointes.length > 1 ? 's' : ''} jointe{piecesJointes.length > 1 ? 's' : ''}
+                </div>
+              )}
+
+              {/* Liens */}
+              {liens.length > 0 && (
+                <div className="seance-preview__pj">
+                  🌐 {liens.length} lien{liens.length > 1 ? 's' : ''} externe{liens.length > 1 ? 's' : ''}
+                </div>
+              )}
+
+              {/* Notes privées */}
+              {form.notesPrivees && (
+                <div className="seance-preview__notes-privees">
+                  🔒 <em>Notes privées : {form.notesPrivees}</em>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ── Feature 3 : Séances existantes du cahier ── */}
+        <div className="editor-card">
+          <button
+            type="button"
+            className="editor-toggle-btn"
+            onClick={() => setShowSeances(v => !v)}
+          >
+            <span className="editor-section-title" style={{ margin: 0 }}>
+              📚 Séances existantes ({autresEntrees.length})
+            </span>
+            <span style={{ fontSize: '1.1rem' }}>{showSeances ? '▲' : '▼'}</span>
+          </button>
+          <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '0.25rem 0 0' }}>
+            Consultez les séances déjà saisies pour assurer la cohérence.
+          </p>
+
+          {showSeances && (
+            <div className="seances-browser">
+              {autresEntrees.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#9ca3af', padding: '1rem 0' }}>Aucune séance enregistrée.</p>
+              ) : (
+                autresEntrees.map(e => {
+                  const isCurrentEntry = e.id === entreeId;
+                  const typeCfg = TYPE_CONTENU_CONFIG[e.typeContenu];
+                  const statutCfg = STATUT_CONFIG[e.statut];
+                  const dateSeance = e.date?.toDate?.() ?? new Date(0);
+                  const isOpen = seanceOuverteId === e.id;
+
+                  return (
+                    <div
+                      key={e.id}
+                      className={`seances-browser__item${isCurrentEntry ? ' seances-browser__item--current' : ''}`}
+                      style={{ borderLeftColor: typeCfg.color }}
+                    >
+                      <button
+                        type="button"
+                        className="seances-browser__header"
+                        onClick={() => setSeanceOuverteId(isOpen ? null : e.id)}
+                      >
+                        <div className="seances-browser__meta">
+                          <span className="seances-browser__date">
+                            {dateSeance.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                          </span>
+                          <span className="entree-type-badge" style={{ background: typeCfg.color, fontSize: '0.7rem', padding: '1px 6px' }}>
+                            {typeCfg.emoji} {typeCfg.label}
+                          </span>
+                          <span className="entree-statut-badge" style={{ background: statutCfg.bg, color: statutCfg.color, fontSize: '0.7rem', padding: '1px 6px' }}>
+                            {statutCfg.label}
+                          </span>
+                          {isCurrentEntry && <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 600 }}>✎ en cours</span>}
+                        </div>
+                        <div className="seances-browser__titre">
+                          {e.chapitre}
+                        </div>
+                        <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{isOpen ? '▲' : '▼'}</span>
+                      </button>
+
+                      {isOpen && (
+                        <div className="seances-browser__detail">
+                          {e.heureDebut && (
+                            <div style={{ fontSize: '0.78rem', color: '#6b7280', marginBottom: '0.4rem' }}>
+                              🕐 {e.heureDebut}{e.heureFin ? ` → ${e.heureFin}` : ''}
+                            </div>
+                          )}
+                          {e.contenu && (
+                            <div className="seances-browser__contenu" dangerouslySetInnerHTML={{ __html: e.contenu }} />
+                          )}
+                          {e.objectifs && (
+                            <div style={{ fontSize: '0.82rem', color: '#374151', marginTop: '0.4rem' }}>
+                              🎯 <em>{e.objectifs}</em>
+                            </div>
+                          )}
+                          {e.competences && e.competences.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '0.4rem' }}>
+                              {e.competences.map(c => (
+                                <span key={c} className="competence-tag selected" style={{ fontSize: '0.7rem', padding: '1px 6px' }}>{c}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Erreur + Boutons ── */}
