@@ -776,12 +776,12 @@
 }
 
 .rte-toolbar {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 10px 0;
-  padding: 10px 12px;
-  background: #f8fafc;
-  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1.5px solid #e2e8f0;
   border-radius: 10px 10px 0 0;
   overflow: visible;
 }
@@ -791,9 +791,8 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-evenly;
-  gap: 8px 16px;
-  min-height: 34px;
+  gap: 4px;
+  min-height: 32px;
   width: 100%;
   overflow: visible;
 }
@@ -801,49 +800,62 @@
 .rte-toolbar__group {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 1px;
   flex-shrink: 0;
+  background: rgba(255,255,255,0.5);
+  border-radius: 6px;
+  padding: 2px;
 }
-
-.rte-toolbar__group--listes { gap: 2px; }
 
 .rte-toolbar__sep {
   width: 1px;
-  height: 20px;
-  background: #e5e7eb;
-  margin: 0 2px;
+  height: 22px;
+  background: #cbd5e1;
+  margin: 0 4px;
   flex-shrink: 0;
   align-self: center;
+  opacity: 0.6;
 }
 
 .rte-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 26px;
+  min-width: 30px;
+  height: 30px;
   padding: 0 5px;
   gap: 3px;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
   font-size: 0.82rem;
   font-family: inherit;
-  color: #374151;
+  color: #475569;
   line-height: 1;
   white-space: nowrap;
-  transition: background 0.12s, border-color 0.12s, color 0.12s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   user-select: none;
 }
 
 .rte-btn:hover {
-  background: #eff6ff;
+  background: #fff;
   border-color: #bfdbfe;
   color: #1d4ed8;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.1);
 }
 
-.rte-btn:active { background: #dbeafe; }
+.rte-btn:active {
+  background: #dbeafe;
+  box-shadow: none;
+}
+
+.rte-btn--danger:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #dc2626;
+  box-shadow: 0 1px 3px rgba(220, 38, 38, 0.1);
+}
 
 .rte-btn--avec-caret { padding: 0 4px 0 6px; }
 
@@ -871,6 +883,14 @@
   position: relative;
 }
 
+.rte-btn--couleur-preview {
+  font-weight: 800;
+  font-size: 0.88rem;
+  border-bottom: 3px solid #111827;
+  line-height: 1;
+  padding-bottom: 1px;
+}
+
 .rte-color-input {
   position: absolute;
   opacity: 0;
@@ -879,26 +899,8 @@
   pointer-events: none;
 }
 
-.rte-icone-liste-puces {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 14px;
-}
-
-.rte-icone-liste-puces span {
-  display: block;
-  height: 1.5px;
-  background: currentColor;
-  border-radius: 1px;
-  width: 100%;
-}
-
-.rte-icone-liste-puces span:first-child { width: 100%; }
-.rte-icone-liste-puces span:nth-child(2) { width: 85%; }
-.rte-icone-liste-puces span:last-child { width: 85%; }
-
-.rte-icone-liste-ordonnee { font-size: 0.88rem; font-weight: 700; line-height: 1; }
+/* Legacy icon classes kept for backward compat — no longer rendered */
+.rte-icone-liste-puces, .rte-icone-liste-ordonnee { display: none; }
 
 .rte-select {
   height: 26px;
@@ -969,6 +971,7 @@
 }
 
 .rte-select--font { min-width: 100px; }
+.rte-select--size { min-width: 80px; width: 80px; }
 
 .rte-dropdown {
   position: absolute;
@@ -1086,6 +1089,26 @@
 }
 
 .rte-content p { margin: 0 0 0.6em; }
+
+.rte-content hr {
+  border: none;
+  border-top: 2px solid #e2e8f0;
+  margin: 1.2em 0;
+}
+
+.rte-content a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+.rte-content a:hover {
+  color: #1d4ed8;
+}
+
+.rte-content sub { font-size: 0.75em; }
+.rte-content sup { font-size: 0.75em; }
 
 .rte-content blockquote {
   border-left: 4px solid #2563eb;
@@ -1331,6 +1354,34 @@
 .rte-modale__hint {
   margin: 0;
   font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.rte-modale__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rte-modale__input {
+  height: 38px;
+  padding: 0 12px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 0.88rem;
+  font-family: inherit;
+  color: #111827;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rte-modale__input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.rte-modale__input::placeholder {
   color: #9ca3af;
 }
 
