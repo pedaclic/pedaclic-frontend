@@ -121,13 +121,11 @@ export default defineConfig({
             handler: 'NetworkOnly',
           },
 
-          // 5. Firebase Storage (vidéo/audio) — Network Only
-          // Les flux vidéo/audio utilisent des requêtes Range (206 Partial Content).
-          // Ne jamais cacher pour éviter les problèmes de lecture.
-          {
-            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-            handler: 'NetworkOnly',
-          },
+          // 5. Firebase Storage — NE PAS intercepter
+          // Même en NetworkOnly, le SW intercepte la requête et peut
+          // altérer les headers App Check sur les requêtes cross-origin.
+          // Sans règle → le navigateur fait la requête directement,
+          // tous les headers (App Check, Range, Auth) sont préservés.
 
           // 6. Images — Stale While Revalidate
           {
