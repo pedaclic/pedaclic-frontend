@@ -1151,11 +1151,58 @@
 /* Sidebar droite */
 .cahier-sidebar-right { min-width: 0; }
 
-/* ─── Éditeur d'entrée ───────────────────────────────────────── */
+/* ─── Éditeur d'entrée ───────────────────────────────────────────── */
 .entree-editor-page {
-  max-width: 900px;
+  max-width: 1360px;
   margin: 0 auto;
   padding: 1.5rem;
+}
+
+/* ---- Layout 2 colonnes : form + sidebar flottante ---- */
+.editor-layout {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+.editor-layout__form {
+  flex: 1;
+  min-width: 0;
+}
+.editor-layout__sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.25rem;
+  max-height: calc(100vh - 2.5rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  /* subtle scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.editor-layout__sidebar::-webkit-scrollbar {
+  width: 5px;
+}
+.editor-layout__sidebar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+.editor-layout__sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Sidebar panel cards: slightly smaller padding */
+.sidebar-panel {
+  padding: 1rem 1.15rem;
+  margin-bottom: 0;
+}
+.sidebar-panel .editor-section-title {
+  font-size: 0.88rem;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
 }
 .editor-header {
   display: flex;
@@ -1593,6 +1640,22 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* ─── Responsive : sidebar → empilé sous 1024px ─────────────── */
+@media (max-width: 1024px) {
+  .entree-editor-page {
+    max-width: 900px;
+  }
+  .editor-layout {
+    flex-direction: column;
+  }
+  .editor-layout__sidebar {
+    width: 100%;
+    position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
 }
 
 /* ─── Responsive mobile ──────────────────────────────────────── */

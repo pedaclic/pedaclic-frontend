@@ -2127,6 +2127,44 @@
   color: inherit;
   font-family: inherit;
 }
+.editor-toggle-chevron {
+  font-size: 1.1rem;
+  color: #9ca3af;
+  transition: color 0.15s;
+  flex-shrink: 0;
+}
+.editor-toggle-btn:hover .editor-toggle-chevron {
+  color: #2563eb;
+}
+
+/* ── Sidebar-specific: compact preview ── */
+.sidebar-panel .seance-preview {
+  margin-top: 0.75rem;
+  padding: 0.85rem;
+}
+.sidebar-panel .seance-preview__titre {
+  font-size: 0.95rem;
+}
+.sidebar-panel .seance-preview__date {
+  font-size: 0.78rem;
+}
+.sidebar-panel .seance-preview__heure {
+  display: block;
+  margin-left: 0;
+  margin-top: 2px;
+}
+.sidebar-panel .seance-preview__contenu {
+  font-size: 0.82rem;
+  padding: 0.6rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* ── Sidebar-specific: compact browser ── */
+.sidebar-panel .seances-browser {
+  margin-top: 0.5rem;
+  max-height: calc(100vh - 20rem);
+}
 
 .seance-preview {
   margin-top: 1rem;

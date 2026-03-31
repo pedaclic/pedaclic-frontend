@@ -363,7 +363,8 @@ const EntreeEditorPage: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <div className="editor-layout">
+      <form onSubmit={handleSubmit} className="editor-layout__form">
         {/* ── Informations de base (Phase 21 — inchangé) ── */}
         <div className="editor-card">
           <div className="editor-section-title">📋 Informations de la séance</div>
@@ -664,8 +665,29 @@ const EntreeEditorPage: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Feature 1 : Aperçu live de la séance ── */}
-        <div className="editor-card">
+        {/* ── Erreur + Boutons ── */}
+        {error && (
+          <div style={{ color: '#dc2626', background: '#fee2e2', padding: '0.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '0.85rem' }}>
+            {error}
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingBottom: '2rem' }}>
+          <button type="button" className="btn-secondary"
+            onClick={() => navigate(`/prof/cahiers/${cahierId}`)}>
+            Annuler
+          </button>
+          <button type="submit" className="btn-primary" disabled={saving} style={{ minWidth: 160 }}>
+            {saving ? 'Enregistrement...' : isEdit ? '💾 Mettre à jour' : '✅ Enregistrer la séance'}
+          </button>
+        </div>
+      </form>
+
+      {/* ── Sidebar flottante : Aperçu + Séances existantes ── */}
+      <aside className="editor-layout__sidebar">
+
+        {/* Feature 1 : Aperçu live de la séance */}
+        <div className="editor-card sidebar-panel">
           <button
             type="button"
             className="editor-toggle-btn"
@@ -674,12 +696,11 @@ const EntreeEditorPage: React.FC = () => {
             <span className="editor-section-title" style={{ margin: 0 }}>
               👁️ Aperçu de la séance
             </span>
-            <span style={{ fontSize: '1.1rem' }}>{showPreview ? '▲' : '▼'}</span>
+            <span className="editor-toggle-chevron">{showPreview ? '▲' : '▼'}</span>
           </button>
 
           {showPreview && (
             <div className="seance-preview">
-              {/* Date + horaires */}
               <div className="seance-preview__date">
                 📅 {form.date
                   ? new Date(form.date + 'T00:00:00').toLocaleDateString('fr-FR', {
@@ -693,12 +714,10 @@ const EntreeEditorPage: React.FC = () => {
                 )}
               </div>
 
-              {/* Titre */}
               <h3 className="seance-preview__titre">
                 {form.chapitre || <em style={{ color: '#9ca3af' }}>Titre de la séance…</em>}
               </h3>
 
-              {/* Badges */}
               <div className="seance-preview__badges">
                 <span className="entree-type-badge" style={{ background: previewData.typeCfg.color }}>
                   {previewData.typeCfg.emoji} {previewData.typeCfg.label}
@@ -721,19 +740,16 @@ const EntreeEditorPage: React.FC = () => {
                 {form.isMarqueEvaluation && <span className="signet-badge">📌 Évaluation</span>}
               </div>
 
-              {/* Contenu */}
               {form.contenu && (
                 <div className="seance-preview__contenu" dangerouslySetInnerHTML={{ __html: form.contenu }} />
               )}
 
-              {/* Objectifs */}
               {form.objectifs && (
                 <div className="seance-preview__objectifs">
                   🎯 <em>{form.objectifs}</em>
                 </div>
               )}
 
-              {/* Compétences */}
               {form.competences.length > 0 && (
                 <div className="seance-preview__competences">
                   {form.competences.map(c => (
@@ -742,21 +758,18 @@ const EntreeEditorPage: React.FC = () => {
                 </div>
               )}
 
-              {/* Pièces jointes */}
               {piecesJointes.length > 0 && (
                 <div className="seance-preview__pj">
                   📎 {piecesJointes.length} pièce{piecesJointes.length > 1 ? 's' : ''} jointe{piecesJointes.length > 1 ? 's' : ''}
                 </div>
               )}
 
-              {/* Liens */}
               {liens.length > 0 && (
                 <div className="seance-preview__pj">
                   🌐 {liens.length} lien{liens.length > 1 ? 's' : ''} externe{liens.length > 1 ? 's' : ''}
                 </div>
               )}
 
-              {/* Notes privées */}
               {form.notesPrivees && (
                 <div className="seance-preview__notes-privees">
                   🔒 <em>Notes privées : {form.notesPrivees}</em>
@@ -766,8 +779,8 @@ const EntreeEditorPage: React.FC = () => {
           )}
         </div>
 
-        {/* ── Feature 3 : Séances existantes du cahier ── */}
-        <div className="editor-card">
+        {/* Feature 3 : Séances existantes du cahier */}
+        <div className="editor-card sidebar-panel">
           <button
             type="button"
             className="editor-toggle-btn"
@@ -776,7 +789,7 @@ const EntreeEditorPage: React.FC = () => {
             <span className="editor-section-title" style={{ margin: 0 }}>
               📚 Séances existantes ({autresEntrees.length})
             </span>
-            <span style={{ fontSize: '1.1rem' }}>{showSeances ? '▲' : '▼'}</span>
+            <span className="editor-toggle-chevron">{showSeances ? '▲' : '▼'}</span>
           </button>
           <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '0.25rem 0 0' }}>
             Consultez les séances déjà saisies pour assurer la cohérence.
@@ -854,24 +867,8 @@ const EntreeEditorPage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {/* ── Erreur + Boutons ── */}
-        {error && (
-          <div style={{ color: '#dc2626', background: '#fee2e2', padding: '0.75rem 1rem', borderRadius: 8, marginBottom: '1rem', fontSize: '0.85rem' }}>
-            {error}
-          </div>
-        )}
-
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingBottom: '2rem' }}>
-          <button type="button" className="btn-secondary"
-            onClick={() => navigate(`/prof/cahiers/${cahierId}`)}>
-            Annuler
-          </button>
-          <button type="submit" className="btn-primary" disabled={saving} style={{ minWidth: 160 }}>
-            {saving ? 'Enregistrement...' : isEdit ? '💾 Mettre à jour' : '✅ Enregistrer la séance'}
-          </button>
-        </div>
-      </form>
+      </aside>
+      </div>
     </div>
   );
 };
