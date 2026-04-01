@@ -369,6 +369,9 @@ interface IAPanelProps {
     prerequis: string;
     competences: string[];
     seances: Omit<SeancePedagogique, 'id' | 'exporterVersCahier' | 'entreesCahierIds'>[];
+    matiere: string;
+    niveau: string;
+    theme: string;
   }) => void;
   defaultMatiere?: string;
   defaultNiveau?:  string;
@@ -419,6 +422,9 @@ const IAPanel: React.FC<IAPanelProps> = ({ onSequenceGeneree, defaultMatiere, de
         prerequis:       resultat.prerequis,
         competences:     resultat.competences,
         seances:         seancesAdaptees,
+        matiere,
+        niveau,
+        theme,
       });
 
       setStatus({ type: 'success', message: `✅ Séquence générée avec ${seancesAdaptees.length} séances ! Vérifiez et complétez les informations.` });
@@ -593,9 +599,16 @@ const SequenceEditorPage: React.FC = () => {
 
       // Charger cahiers et groupes en parallèle
       const [cahiersData, groupesData] = await Promise.all([
-        getCahiersProf(currentUser.uid).catch(() => []),
-        getGroupesProf(currentUser.uid).catch(() => []),
+        getCahiersProf(currentUser.uid).catch((err) => {
+          console.error('[SequenceEditor] Erreur chargement cahiers:', err);
+          return [] as CahierTextes[];
+        }),
+        getGroupesProf(currentUser.uid).catch((err) => {
+          console.error('[SequenceEditor] Erreur chargement groupes:', err);
+          return [] as GroupeProf[];
+        }),
       ]);
+      console.log('[SequenceEditor] Cahiers chargés:', cahiersData.length, '| Groupes:', groupesData.length);
       setCahiers(cahiersData);
       setGroupes(groupesData);
 
@@ -710,6 +723,9 @@ const SequenceEditorPage: React.FC = () => {
     prerequis: string;
     competences: string[];
     seances: Omit<SeancePedagogique, 'id' | 'exporterVersCahier' | 'entreesCahierIds'>[];
+    matiere: string;
+    niveau: string;
+    theme: string;
   }) => {
     setForm((f) => ({
       ...f,
@@ -719,6 +735,9 @@ const SequenceEditorPage: React.FC = () => {
       prerequis:       data.prerequis,
       competences:     data.competences,
       genereeParIA:    true,
+      matiere:         data.matiere  || f.matiere,
+      niveau:          data.niveau   || f.niveau,
+      theme:           data.theme    || f.theme,
     }));
 
     // Convertir les séances IA en séances complètes
@@ -1052,11 +1071,9 @@ const SequenceEditorPage: React.FC = () => {
     <option value="">— Aucun cahier —</option>
     {cahiers
       .filter((c) => {
-        if (form.matiere && form.niveau)
-          return c.matiere === form.matiere && c.classe === form.niveau;
-        if (form.matiere) return c.matiere === form.matiere;
-        if (form.niveau)  return c.classe  === form.niveau;
-        return true;
+        const matchMatiere = !form.matiere || c.matiere?.toLowerCase().trim() === form.matiere.toLowerCase().trim();
+        const matchClasse  = !form.niveau  || c.classe?.toLowerCase().trim()  === form.niveau.toLowerCase().trim();
+        return matchMatiere && matchClasse;
       })
       .map((c) => (
         <option key={c.id} value={c.id}>
@@ -1065,7 +1082,7 @@ const SequenceEditorPage: React.FC = () => {
       ))}
   </select>
   {form.niveau && form.matiere &&
-    cahiers.filter((c) => c.classe === form.niveau && c.matiere === form.matiere).length === 0 && (
+    cahiers.filter((c) => c.classe?.toLowerCase().trim() === form.niveau?.toLowerCase().trim() && c.matiere?.toLowerCase().trim() === form.matiere?.toLowerCase().trim()).length === 0 && (
     <p style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: 6 }}>
       ⚠️ Aucun cahier pour {form.matiere} – {form.niveau}.{' '}
       <a href="/prof/cahiers" style={{ color: '#2563eb', textDecoration: 'underline' }}>

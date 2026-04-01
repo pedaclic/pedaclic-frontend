@@ -175,26 +175,32 @@ Règles :
 // ─────────────────────────────────────────────────────────────
 // APPEL BACKEND — Timeout + Retry + Parsing robuste
 // Aligné sur aiGeneratorService pour fiabilité identique
+// Le backend attend : { type, discipline, classe, chapitre, options }
 // ─────────────────────────────────────────────────────────────
 
 interface AppelBackendOptions {
-  systemPrompt: string;
-  userPrompt:   string;
-  maxTokens:    number;
+  discipline: string;
+  classe:     string;
+  chapitre:   string;
+  consignes:  string;
 }
 
 /**
  * Appelle le backend IA avec timeout (AbortController) et retry automatique.
- * Gère les formats de réponse : { data: { content } } (GenerationResponse)
- * et { content | result | text } (format brut).
+ * Envoie le format attendu par le backend : { type, discipline, classe, chapitre, options }.
+ * Les consignes spéciales contiennent les instructions de formatage JSON pour la séquence.
  */
 async function appelBackendIA(options: AppelBackendOptions): Promise<string> {
   const url = `${API_BASE_URL}/api/generate`;
 
   const body = JSON.stringify({
-    systemPrompt: options.systemPrompt,
-    userPrompt:   options.userPrompt,
-    maxTokens:    options.maxTokens,
+    type:       'cours_complet',
+    discipline: options.discipline,
+    classe:     options.classe,
+    chapitre:   options.chapitre,
+    options: {
+      consignesSpeciales: options.consignes,
+    },
   });
 
   const fetchOptions: RequestInit = {
@@ -302,26 +308,27 @@ async function appelBackendIA(options: AppelBackendOptions): Promise<string> {
 export async function genererSequenceAvecIA(
   contexte: ContexteGenerationSequence
 ): Promise<SequenceIAResponse> {
-  // Construction du prompt utilisateur
-  const promptUtilisateur = `
-Génère une séquence pédagogique complète pour :
-- Matière : ${contexte.matiere}
-- Niveau : ${contexte.niveau}
-- Thème/Chapitre : ${contexte.theme}
-- Nombre de séances : ${contexte.nombreSeances}
-- Durée par séance : ${contexte.dureeSeanceMinutes} minutes
-${contexte.trimestre ? `- Trimestre : ${contexte.trimestre}ème trimestre` : ''}
-${contexte.instructionsSupplementaires ? `- Instructions supplémentaires : ${contexte.instructionsSupplementaires}` : ''}
-
-Distribue intelligemment les séances : cours → TD/TP → révision → évaluation.
-Assure-toi que les objectifs spécifiques sont progressifs et mesurables.
-  `.trim();
+  // Construction des consignes spéciales pour la génération de séquence
+  const consignes = [
+    construirePromptSysteme(),
+    '',
+    `Nombre de séances : ${contexte.nombreSeances}`,
+    `Durée par séance : ${contexte.dureeSeanceMinutes} minutes`,
+    contexte.trimestre ? `Trimestre : ${contexte.trimestre}ème trimestre` : '',
+    contexte.instructionsSupplementaires
+      ? `Instructions supplémentaires du professeur : ${contexte.instructionsSupplementaires}`
+      : '',
+    '',
+    'Distribue intelligemment les séances : cours → TD/TP → révision → évaluation.',
+    'Assure-toi que les objectifs spécifiques sont progressifs et mesurables.',
+  ].filter(Boolean).join('\n');
 
   // Appel au backend avec timeout + retry
   const rawText = await appelBackendIA({
-    systemPrompt: construirePromptSysteme(),
-    userPrompt:   promptUtilisateur,
-    maxTokens:    4000,
+    discipline: contexte.matiere,
+    classe:     String(contexte.niveau),
+    chapitre:   contexte.theme,
+    consignes,
   });
 
   // Nettoyage des backticks markdown éventuels
@@ -366,27 +373,22 @@ export interface ContexteGenerationSeance {
 export async function genererSeanceAvecIA(
   contexte: ContexteGenerationSeance
 ): Promise<{ objectifSpecifique: string; contenu: string; ressources: string[] }> {
-  const prompt = `
-Génère le contenu d'une séance pédagogique :
-- Matière : ${contexte.matiere}
-- Niveau : ${contexte.niveau}
-- Titre de la séance : ${contexte.titreSeance}
-- Type : ${contexte.typeActivite}
-- Durée : ${contexte.dureeMinutes} min
-- Contexte de la séquence : ${contexte.contexteSequence}
-
-Réponds UNIQUEMENT en JSON :
-{
-  "objectifSpecifique": "string",
-  "contenu": "string (déroulement détaillé)",
-  "ressources": ["string", ...]
-}
-  `.trim();
+  const consignes = [
+    `Génère le contenu détaillé d'une séance pédagogique.`,
+    `Titre de la séance : ${contexte.titreSeance}`,
+    `Type d'activité : ${contexte.typeActivite}`,
+    `Durée : ${contexte.dureeMinutes} min`,
+    `Contexte de la séquence : ${contexte.contexteSequence}`,
+    '',
+    'RÉPONDRE UNIQUEMENT EN JSON valide, sans backticks :',
+    '{ "objectifSpecifique": "string", "contenu": "string (déroulement détaillé)", "ressources": ["string", ...] }',
+  ].join('\n');
 
   const rawText = await appelBackendIA({
-    systemPrompt: construirePromptSysteme(),
-    userPrompt:   prompt,
-    maxTokens:    1000,
+    discipline: contexte.matiere,
+    classe:     contexte.niveau,
+    chapitre:   contexte.titreSeance,
+    consignes,
   });
 
   const jsonTexte = rawText
