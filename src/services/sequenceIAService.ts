@@ -15,11 +15,17 @@ import type {
 
 // ─────────────────────────────────────────────────────────────
 // CONFIGURATION
-// Adapter RAILWAY_URL selon votre environnement
+// Même URL que aiGeneratorService — backend Railway / api.pedaclic.sn
 // ─────────────────────────────────────────────────────────────
 
-const RAILWAY_URL =
-  import.meta.env.VITE_RAILWAY_URL ?? 'https://votre-app.railway.app';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'https://api.pedaclic.sn';
+
+/** Timeout global en ms (180 s — identique à aiGeneratorService) */
+const AI_TIMEOUT_MS = 180_000;
+
+/** Nombre de ré-essais en cas d'échec réseau */
+const MAX_RETRIES = 1;
 
 // ─────────────────────────────────────────────────────────────
 // TYPES DU CONTEXTE DE GÉNÉRATION
@@ -167,6 +173,122 @@ Règles :
 }
 
 // ─────────────────────────────────────────────────────────────
+// APPEL BACKEND — Timeout + Retry + Parsing robuste
+// Aligné sur aiGeneratorService pour fiabilité identique
+// ─────────────────────────────────────────────────────────────
+
+interface AppelBackendOptions {
+  systemPrompt: string;
+  userPrompt:   string;
+  maxTokens:    number;
+}
+
+/**
+ * Appelle le backend IA avec timeout (AbortController) et retry automatique.
+ * Gère les formats de réponse : { data: { content } } (GenerationResponse)
+ * et { content | result | text } (format brut).
+ */
+async function appelBackendIA(options: AppelBackendOptions): Promise<string> {
+  const url = `${API_BASE_URL}/api/generate`;
+
+  const body = JSON.stringify({
+    systemPrompt: options.systemPrompt,
+    userPrompt:   options.userPrompt,
+    maxTokens:    options.maxTokens,
+  });
+
+  const fetchOptions: RequestInit = {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  };
+
+  // Fonction interne : un seul appel avec AbortController
+  async function faireAppel(): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { ...fetchOptions, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if ((err as Error).name === 'AbortError') {
+        throw new Error(
+          `La génération a pris trop de temps (>${AI_TIMEOUT_MS / 1000}s). ` +
+          'Le serveur est peut-être surchargé. Réessayez dans quelques instants.'
+        );
+      }
+      throw err;
+    }
+  }
+
+  // Retry wrapper
+  let lastError: Error | null = null;
+  for (let tentative = 0; tentative <= MAX_RETRIES; tentative++) {
+    try {
+      if (tentative > 0) {
+        console.warn(`[sequenceIAService] Nouvelle tentative (${tentative}/${MAX_RETRIES})…`);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+
+      const response = await faireAppel();
+
+      // Gestion des erreurs gateway (502/503/504)
+      if (response.status === 502 || response.status === 503 || response.status === 504) {
+        if (tentative < MAX_RETRIES) {
+          console.warn(`[sequenceIAService] HTTP ${response.status} — retry dans 6s…`);
+          await new Promise(r => setTimeout(r, 6000));
+          continue;
+        }
+        throw new Error(
+          'Le serveur a mis trop de temps à répondre (délai dépassé côté hébergement). ' +
+          'Réessayez dans une minute ou simplifiez la requête.'
+        );
+      }
+
+      if (!response.ok) {
+        const detail = await response.text().catch(() => 'Erreur inconnue');
+        throw new Error(`Erreur serveur IA (${response.status}) : ${detail}`);
+      }
+
+      const responseData = await response.json();
+
+      // Format GenerationResponse : { success, data: { content } }
+      // Format brut             : { content | result | text }
+      const rawText: string =
+        (responseData.data?.content) ??
+        responseData.content ??
+        responseData.result  ??
+        responseData.text    ??
+        '';
+
+      if (!rawText) {
+        throw new Error('Réponse IA vide — le serveur a renvoyé un contenu vide.');
+      }
+
+      return rawText;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+
+      // Erreur réseau pure (fetch a échoué) → retry si possible
+      if (err instanceof TypeError && (err as TypeError).message.includes('fetch')) {
+        if (tentative < MAX_RETRIES) continue;
+        throw new Error(
+          'Impossible de contacter le serveur IA. Vérifiez votre connexion Internet ' +
+          'ou réessayez dans quelques instants.'
+        );
+      }
+
+      // Autres erreurs → propager immédiatement
+      if (tentative >= MAX_RETRIES) throw lastError;
+    }
+  }
+
+  throw lastError ?? new Error('La génération a échoué.');
+}
+
+// ─────────────────────────────────────────────────────────────
 // GÉNÉRATION PRINCIPALE
 // ─────────────────────────────────────────────────────────────
 
@@ -195,41 +317,12 @@ Distribue intelligemment les séances : cours → TD/TP → révision → évalu
 Assure-toi que les objectifs spécifiques sont progressifs et mesurables.
   `.trim();
 
-  // Appel au backend Railway
-  let response: Response;
-  try {
-    response = await fetch(`${RAILWAY_URL}/api/generate`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        systemPrompt: construirePromptSysteme(),
-        userPrompt:   promptUtilisateur,
-        maxTokens:    4000,
-      }),
-    });
-  } catch (networkErr) {
-    throw new Error(
-      'Impossible de contacter le serveur IA. Vérifiez votre connexion Internet.'
-    );
-  }
-
-  if (!response.ok) {
-    const detail = await response.text().catch(() => 'Erreur inconnue');
-    throw new Error(`Erreur serveur IA (${response.status}) : ${detail}`);
-  }
-
-  const responseData = await response.json();
-
-  // Le backend retourne { content: string } ou { result: string } selon la config
-  const rawText: string =
-    responseData.content ??
-    responseData.result  ??
-    responseData.text    ??
-    '';
-
-  if (!rawText) {
-    throw new Error('Réponse IA vide — le serveur a renvoyé un contenu vide.');
-  }
+  // Appel au backend avec timeout + retry
+  const rawText = await appelBackendIA({
+    systemPrompt: construirePromptSysteme(),
+    userPrompt:   promptUtilisateur,
+    maxTokens:    4000,
+  });
 
   // Nettoyage des backticks markdown éventuels
   const jsonTexte = rawText
@@ -290,25 +383,11 @@ Réponds UNIQUEMENT en JSON :
 }
   `.trim();
 
-  let response: Response;
-  try {
-    response = await fetch(`${RAILWAY_URL}/api/generate`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        systemPrompt: construirePromptSysteme(),
-        userPrompt:   prompt,
-        maxTokens:    1000,
-      }),
-    });
-  } catch {
-    throw new Error('Impossible de contacter le serveur IA.');
-  }
-
-  if (!response.ok) throw new Error(`Erreur serveur IA (${response.status})`);
-
-  const responseData = await response.json();
-  const rawText: string = responseData.content ?? responseData.result ?? '';
+  const rawText = await appelBackendIA({
+    systemPrompt: construirePromptSysteme(),
+    userPrompt:   prompt,
+    maxTokens:    1000,
+  });
 
   const jsonTexte = rawText
     .replace(/^```json\s*/i, '')
