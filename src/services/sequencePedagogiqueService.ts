@@ -136,6 +136,30 @@ export async function getSequenceById(
 }
 
 // ─────────────────────────────────────────────────────────────
+// UTILITAIRE — Nettoyer les valeurs undefined (Firestore les rejette)
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Supprime récursivement les clés dont la valeur est `undefined`.
+ * Firestore n'accepte pas `undefined` — seulement `null`, string, number, etc.
+ * Les Timestamps Firestore et Date sont préservés tels quels.
+ */
+function stripUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
+  if (typeof obj === 'object' && obj.constructor === Object) {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      if (value !== undefined) {
+        cleaned[key] = stripUndefined(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
+
+// ─────────────────────────────────────────────────────────────
 // ÉCRITURE — Création et mise à jour
 // ─────────────────────────────────────────────────────────────
 
@@ -162,7 +186,7 @@ export async function createSequence(
   // Recalculer les évaluations prévues
   const evaluationsPrevues = calcEvaluationsPrevues(seancesAvecIds);
 
-  const ref = await addDoc(collection(db, COL_SEQUENCES), {
+  const docData = stripUndefined({
     ...data,
     profId,
     seances:             seancesAvecIds,
@@ -173,6 +197,8 @@ export async function createSequence(
     createdAt:           now,
     updatedAt:           now,
   });
+
+  const ref = await addDoc(collection(db, COL_SEQUENCES), docData);
 
   return ref.id;
 }
@@ -195,7 +221,7 @@ export async function updateSequence(
     updateData.evaluationsPrevues = calcEvaluationsPrevues(data.seances);
   }
 
-  await updateDoc(doc(db, COL_SEQUENCES, sequenceId), updateData);
+  await updateDoc(doc(db, COL_SEQUENCES, sequenceId), stripUndefined(updateData));
 }
 
 /**

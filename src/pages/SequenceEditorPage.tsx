@@ -38,6 +38,7 @@ import {
   LABELS_TYPE_EVALUATION,
   DUREES_SEANCE,
 }                                                   from '../types/sequencePedagogique.types';
+
 import '../styles/SequencesPedagogiques.css';
 import '../styles/CahierEnrichi.css';
 import RichTextEditor from '../components/RichTextEditor';
@@ -47,6 +48,10 @@ import { SkeletonDashboard } from '../components/shared/Skeleton';
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES
 // ─────────────────────────────────────────────────────────────
+
+/** Normalise un nom de classe pour comparaison robuste (6ème ↔ 6eme) */
+const normalizeClasse = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 /** Génère un ID local unique pour les séances embarquées */
 function genId(): string {
@@ -1071,8 +1076,8 @@ const SequenceEditorPage: React.FC = () => {
     <option value="">— Aucun cahier —</option>
     {cahiers
       .filter((c) => {
-        const matchMatiere = !form.matiere || c.matiere?.toLowerCase().trim() === form.matiere.toLowerCase().trim();
-        const matchClasse  = !form.niveau  || c.classe?.toLowerCase().trim()  === form.niveau.toLowerCase().trim();
+        const matchMatiere = !form.matiere || normalizeClasse(c.matiere ?? '') === normalizeClasse(form.matiere);
+        const matchClasse  = !form.niveau  || normalizeClasse(c.classe ?? '')  === normalizeClasse(form.niveau);
         return matchMatiere && matchClasse;
       })
       .map((c) => (
@@ -1082,7 +1087,7 @@ const SequenceEditorPage: React.FC = () => {
       ))}
   </select>
   {form.niveau && form.matiere &&
-    cahiers.filter((c) => c.classe?.toLowerCase().trim() === form.niveau?.toLowerCase().trim() && c.matiere?.toLowerCase().trim() === form.matiere?.toLowerCase().trim()).length === 0 && (
+    cahiers.filter((c) => normalizeClasse(c.classe ?? '') === normalizeClasse(form.niveau!) && normalizeClasse(c.matiere ?? '') === normalizeClasse(form.matiere!)).length === 0 && (
     <p style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: 6 }}>
       ⚠️ Aucun cahier pour {form.matiere} – {form.niveau}.{' '}
       <a href="/prof/cahiers" style={{ color: '#2563eb', textDecoration: 'underline' }}>
