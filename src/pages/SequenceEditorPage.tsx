@@ -1074,26 +1074,42 @@ const SequenceEditorPage: React.FC = () => {
     onChange={(e) => setForm((f) => ({ ...f, cahierDeTextesId: e.target.value || undefined }))}
   >
     <option value="">— Aucun cahier —</option>
-    {cahiers
-      .filter((c) => {
-        const matchMatiere = !form.matiere || normalizeClasse(c.matiere ?? '') === normalizeClasse(form.matiere);
+    {(() => {
+      const filtered = cahiers.filter((c) => {
         const matchClasse  = !form.niveau  || normalizeClasse(c.classe ?? '')  === normalizeClasse(form.niveau);
-        return matchMatiere && matchClasse;
-      })
-      .map((c) => (
+        const matchMatiere = !form.matiere || normalizeClasse(c.matiere ?? '') === normalizeClasse(form.matiere);
+        return matchClasse && matchMatiere;
+      });
+      if (filtered.length === 0 && form.niveau && cahiers.length > 0) {
+        console.warn('[SequenceEditor] Aucun cahier filtré.', {
+          'form.niveau': form.niveau,
+          'form.matiere': form.matiere,
+          cahiers: cahiers.map(c => ({ id: c.id, classe: c.classe, matiere: c.matiere })),
+        });
+      }
+      return filtered.map((c) => (
         <option key={c.id} value={c.id}>
-          {c.titre} · {c.classe} · {c.anneeScolaire}
+          {c.titre} · {c.classe} · {c.matiere} · {c.anneeScolaire}
         </option>
-      ))}
+      ));
+    })()}
   </select>
   {form.niveau && form.matiere &&
     cahiers.filter((c) => normalizeClasse(c.classe ?? '') === normalizeClasse(form.niveau!) && normalizeClasse(c.matiere ?? '') === normalizeClasse(form.matiere!)).length === 0 && (
+    <>
     <p style={{ fontSize: '0.8rem', color: '#f59e0b', marginTop: 6 }}>
       ⚠️ Aucun cahier pour {form.matiere} – {form.niveau}.{' '}
       <a href="/prof/cahiers" style={{ color: '#2563eb', textDecoration: 'underline' }}>
         Créer un cahier
       </a>
     </p>
+    {cahiers.filter((c) => normalizeClasse(c.classe ?? '') === normalizeClasse(form.niveau!)).length > 0 && (
+      <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 2 }}>
+        💡 {cahiers.filter((c) => normalizeClasse(c.classe ?? '') === normalizeClasse(form.niveau!)).length} cahier(s)
+        disponible(s) pour {form.niveau} dans d'autres matières.
+      </p>
+    )}
+    </>
   )}
   {(!form.niveau || !form.matiere) && cahiers.length > 0 && (
     <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: 6 }}>

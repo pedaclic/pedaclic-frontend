@@ -228,6 +228,24 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "statut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entrees_cahier",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cahierId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "profId",
           "order": "ASCENDING"
         },
