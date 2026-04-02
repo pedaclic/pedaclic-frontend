@@ -4929,6 +4929,137 @@
   line-height: 1.5;
 }
 
+/* ==================== TYPES "DOCUMENT REQUIS" — Phase 17 ==================== */
+
+/*
+ * Carte de type avec style "amber" pour signaler qu'un document source est nécessaire.
+ * S'applique aux types : correction_sujet, sujet_avec_corrige.
+ */
+.ai-generator__type-card--document {
+  border-color: #f59e0b;                          /* bordure amber */
+  background: linear-gradient(135deg, #fffbeb, var(--color-bg-card));
+}
+
+.ai-generator__type-card--document:hover {
+  border-color: #d97706;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.18);
+}
+
+/* Badge "📎 Document source requis" affiché sur la carte */
+.ai-generator__type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #92400e;                                 /* texte marron foncé */
+  background: #fef3c7;                            /* fond jaune pâle */
+  border: 1px solid #fcd34d;
+  border-radius: 99px;
+  padding: 2px 10px;
+  margin-top: var(--spacing-xs);
+  white-space: nowrap;
+}
+
+/* ---- Section séparée "À partir d'un document" (étape 3) ---- */
+.ai-generator__type-section {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-lg);
+  border-top: 2px dashed #fcd34d;                /* bordure dashed amber */
+}
+
+/* En-tête de la section document */
+.ai-generator__type-section-header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: linear-gradient(135deg, #fffbeb, #fff7ed);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-lg);
+}
+
+.ai-generator__type-section-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+/* Titre de la section */
+.ai-generator__type-section-title {
+  font-weight: var(--font-semibold);
+  color: #92400e;
+  font-size: 0.95rem;
+  margin: 0 0 4px;
+}
+
+/* Texte d'aide de la section */
+.ai-generator__type-section-hint {
+  font-size: 0.83rem;
+  color: #78350f;
+  line-height: 1.45;
+  margin: 0;
+  opacity: 0.85;
+}
+
+/* Grille spécifique de la section document (espacement identique) */
+.ai-generator__type-grid--document {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+/* ---- Zone document source obligatoire (étape 4) ---- */
+
+/*
+ * Bloc affiché en haut de l'étape 4 pour les types nécessitant un document source.
+ * Deux états : "requis" (orange/amber) et "ok" (vert) selon que le texte est fourni.
+ */
+.ai-generator__source-required {
+  background: linear-gradient(135deg, #fffbeb, #fff7ed);
+  border: 2px solid #f59e0b;                      /* amber — document manquant */
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+/* État "document chargé" → vert */
+.ai-generator__source-required--ok {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-color: #22c55e;
+}
+
+/* En-tête du bloc (icône + titre) */
+.ai-generator__source-required-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: var(--font-semibold);
+  font-size: 0.95rem;
+  color: #92400e;                                 /* marron pour état "manquant" */
+  margin-bottom: var(--spacing-md);
+}
+
+/* En-tête en vert quand document chargé */
+.ai-generator__source-required--ok .ai-generator__source-required-header {
+  color: #166534;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Nom du fichier importé (état "ok") */
+.ai-generator__source-required-file {
+  font-size: 0.82rem;
+  color: #166534;
+  margin: 0 0 var(--spacing-xs);
+}
+
+/* Texte d'aide dans le bloc "requis" */
+.ai-generator__source-required-hint {
+  font-size: 0.85rem;
+  color: #78350f;
+  line-height: 1.5;
+  margin: 0 0 var(--spacing-md);
+}
+
 /* ==================== NAVIGATION ==================== */
 
 .ai-generator__nav {

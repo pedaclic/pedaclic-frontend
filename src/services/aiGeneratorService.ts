@@ -38,7 +38,13 @@ export type GenerationType =
   | 'exercices_corriges'
   | 'quiz_auto'
   | 'sujet_examen'
-  | 'evaluation_personnalisee';
+  | 'evaluation_personnalisee'
+  /**
+   * Nouveaux types — Phase 17 : génération à partir d'un document source.
+   * Ces deux types exigent un texte source (collé ou importé depuis PDF/DOCX/TXT).
+   */
+  | 'correction_sujet'      // Correction détaillée d'un sujet ou exercice fourni
+  | 'sujet_avec_corrige';   // Sujet d'évaluation complet + corrigé intégré
 
 /** Options supplémentaires pour la génération */
 export interface GenerationOptions {
@@ -220,6 +226,9 @@ export const GENERATION_TYPE_LABELS: Record<GenerationType, string> = {
   quiz_auto: 'Quiz auto-généré',
   sujet_examen: 'Sujet type examen',
   evaluation_personnalisee: 'Évaluation personnalisée',
+  // --- Types nécessitant un document source ---
+  correction_sujet: 'Correction de sujets / exercices',
+  sujet_avec_corrige: 'Sujet avec corrigé',
 };
 
 /** Descriptions pour chaque type de contenu */
@@ -236,6 +245,11 @@ export const GENERATION_TYPE_DESCRIPTIONS: Record<GenerationType, string> = {
     'Sujet conforme au format officiel BFEM ou BAC avec barème.',
   evaluation_personnalisee:
     'Évaluation sur mesure avec barème /20 et corrigé-type.',
+  // --- Types nécessitant un document source ---
+  correction_sujet:
+    "Génère une correction détaillée et méthodique d'un sujet ou d'exercices fournis (PDF, Word ou texte collé).",
+  sujet_avec_corrige:
+    "Crée un sujet d'évaluation complet accompagné de son corrigé intégré, à partir des indications ou du document fourni.",
 };
 
 /** Icônes pour chaque type (emoji) */
@@ -246,6 +260,9 @@ export const GENERATION_TYPE_ICONS: Record<GenerationType, string> = {
   quiz_auto: '🎯',
   sujet_examen: '📋',
   evaluation_personnalisee: '📊',
+  // --- Types nécessitant un document source ---
+  correction_sujet: '🔍',
+  sujet_avec_corrige: '📄',
 };
 
 // ==================== UTILITAIRES INTERNES ====================

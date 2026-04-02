@@ -61,6 +61,22 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 /** Options de durée prédéfinies (en minutes) */
 const DUREE_OPTIONS = [30, 45, 60, 90, 120];
 
+/**
+ * Types de génération qui nécessitent obligatoirement un texte source
+ * (sujet/exercice importé depuis PDF, DOCX, TXT ou collé manuellement).
+ * Pour ces types, la génération est bloquée tant que sourceText est vide.
+ */
+const TYPES_AVEC_SOURCE_REQUISE: GenerationType[] = [
+  'correction_sujet',
+  'sujet_avec_corrige',
+];
+
+/** Formats de fichier acceptés pour l'import de sujet source */
+const ACCEPT_SOURCE_FICHIERS =
+  '.txt,.pdf,.docx,application/pdf,' +
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document,' +
+  'text/plain';
+
 // ==================== INTERFACES LOCALES ====================
 
 /** Discipline récupérée depuis Firestore */
@@ -95,6 +111,8 @@ const AIGenerator: React.FC = () => {
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const sourceFileInputRef = useRef<HTMLInputElement>(null);
+  /** Ref pour le file input dédié à l'étape 4 (types nécessitant un document source) */
+  const sourceFileInputStep4Ref = useRef<HTMLInputElement>(null);
 
   /** Options de structure (étape 4) */
   const [includeExercices, setIncludeExercices] = useState(true);
@@ -274,6 +292,15 @@ const AIGenerator: React.FC = () => {
   const handleGenerate = async () => {
     if (!selectedDiscipline || !selectedType || !chapitre.trim() || !selectedClasse) {
       setError('Paramètres incomplets. Veuillez reprendre depuis le début.');
+      return;
+    }
+
+    // Validation spécifique aux types nécessitant un document source
+    if (TYPES_AVEC_SOURCE_REQUISE.includes(selectedType) && !sourceText.trim()) {
+      setError(
+        'Ce type de génération nécessite un document source. ' +
+        'Veuillez coller le texte du sujet/exercice ou importer un fichier (PDF, DOCX, TXT) ci-dessous.'
+      );
       return;
     }
 
@@ -1076,10 +1103,12 @@ const AIGenerator: React.FC = () => {
               <span className="ai-generator__recap-value">{chapitre}</span>
             </div>
 
-            {/* Grille des types */}
+            {/* ---- Grille des types standards (sans document source) ---- */}
             <div className="ai-generator__type-grid">
-              {(Object.keys(GENERATION_TYPE_LABELS) as GenerationType[]).map(
-                (type) => (
+              {(Object.keys(GENERATION_TYPE_LABELS) as GenerationType[])
+                /* Exclure les types "document requis" de la grille principale */
+                .filter((type) => !TYPES_AVEC_SOURCE_REQUISE.includes(type))
+                .map((type) => (
                   <button
                     key={type}
                     className="ai-generator__type-card"
@@ -1095,8 +1124,52 @@ const AIGenerator: React.FC = () => {
                       {GENERATION_TYPE_DESCRIPTIONS[type]}
                     </span>
                   </button>
-                )
-              )}
+                ))}
+            </div>
+
+            {/* ---- Section : types nécessitant un document source ---- */}
+            <div className="ai-generator__type-section">
+              {/* En-tête de la section */}
+              <div className="ai-generator__type-section-header">
+                <span className="ai-generator__type-section-icon">📎</span>
+                <div>
+                  <p className="ai-generator__type-section-title">
+                    À partir d'un document (sujet ou exercice)
+                  </p>
+                  <p className="ai-generator__type-section-hint">
+                    Importez un fichier PDF, DOCX ou TXT, ou collez le texte directement — l'IA
+                    analyse votre document et génère le contenu demandé.
+                  </p>
+                </div>
+              </div>
+
+              {/* Grille des deux nouvelles cartes */}
+              <div className="ai-generator__type-grid ai-generator__type-grid--document">
+                {(Object.keys(GENERATION_TYPE_LABELS) as GenerationType[])
+                  .filter((type) => TYPES_AVEC_SOURCE_REQUISE.includes(type))
+                  .map((type) => (
+                    <button
+                      key={type}
+                      /* Classe spécifique pour le style "document requis" */
+                      className="ai-generator__type-card ai-generator__type-card--document"
+                      onClick={() => handleSelectType(type)}
+                    >
+                      <span className="ai-generator__type-icon">
+                        {GENERATION_TYPE_ICONS[type]}
+                      </span>
+                      <span className="ai-generator__type-name">
+                        {GENERATION_TYPE_LABELS[type]}
+                      </span>
+                      <span className="ai-generator__type-desc">
+                        {GENERATION_TYPE_DESCRIPTIONS[type]}
+                      </span>
+                      {/* Badge indiquant que le document source est obligatoire */}
+                      <span className="ai-generator__type-badge">
+                        📎 Document source requis
+                      </span>
+                    </button>
+                  ))}
+              </div>
             </div>
 
             {/* Bouton retour */}
@@ -1137,6 +1210,121 @@ const AIGenerator: React.FC = () => {
                 {selectedType && GENERATION_TYPE_LABELS[selectedType]}
               </span>
             </div>
+
+            {/* ============================================================
+                ZONE DOCUMENT SOURCE — affichée uniquement pour les types
+                'correction_sujet' et 'sujet_avec_corrige'.
+                Positionnée AVANT les autres options pour attirer l'attention.
+                ============================================================ */}
+            {selectedType && TYPES_AVEC_SOURCE_REQUISE.includes(selectedType) && (
+              <div className={
+                sourceText.trim()
+                  ? 'ai-generator__source-required ai-generator__source-required--ok'
+                  : 'ai-generator__source-required'
+              }>
+                {sourceText.trim() ? (
+                  /* ---- Document source déjà présent ---- */
+                  <>
+                    <div className="ai-generator__source-required-header">
+                      <span>✅</span>
+                      <span>Document source chargé ({sourceText.length.toLocaleString('fr-FR')} caractères)</span>
+                    </div>
+                    {sourceFileLabel && (
+                      <p className="ai-generator__source-required-file">
+                        📎 {sourceFileLabel}
+                      </p>
+                    )}
+                    <div className="ai-generator__source-actions" style={{ marginTop: '0.5rem' }}>
+                      {/* Input caché partagé avec l'étape 2 */}
+                      <input
+                        ref={sourceFileInputStep4Ref}
+                        type="file"
+                        accept={ACCEPT_SOURCE_FICHIERS}
+                        className="ai-generator__file-input"
+                        onChange={handleSourceFileUpload}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn--outline btn--sm"
+                        disabled={uploadBusy}
+                        onClick={() => sourceFileInputStep4Ref.current?.click()}
+                      >
+                        {uploadBusy ? '⏳ Lecture…' : '📎 Remplacer le fichier'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn--outline btn--sm"
+                        onClick={() => { setSourceText(''); setSourceFileLabel(null); }}
+                      >
+                        🗑️ Effacer
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* ---- Aucun document source — zone d'upload/saisie ---- */
+                  <>
+                    <div className="ai-generator__source-required-header">
+                      <span>⚠️</span>
+                      <span>Document source requis pour ce type de génération</span>
+                    </div>
+                    <p className="ai-generator__source-required-hint">
+                      Importez le sujet ou les exercices à traiter (PDF, DOCX, TXT) ou
+                      collez le texte directement ci-dessous.
+                    </p>
+
+                    {/* Textarea de saisie directe */}
+                    <textarea
+                      className="ai-generator__textarea ai-generator__textarea--source"
+                      rows={8}
+                      placeholder="Collez ici le texte du sujet ou des exercices à corriger / à enrichir…"
+                      value={sourceText}
+                      onChange={(e) => {
+                        setSourceText(e.target.value);
+                        setUploadError(null);
+                        setError(null);
+                      }}
+                    />
+
+                    {/* Compteur de caractères */}
+                    {sourceText.length > 0 && (
+                      <p style={{
+                        fontSize: '0.75rem',
+                        marginTop: 4,
+                        color: sourceText.length > 25_000 ? '#dc2626' : '#6b7280',
+                      }}>
+                        {sourceText.length.toLocaleString('fr-FR')} caractères
+                        {sourceText.length > 25_000 ? ' — ⚠️ Le texte sera tronqué intelligemment.' : ''}
+                      </p>
+                    )}
+
+                    {/* Bouton d'import de fichier */}
+                    <div className="ai-generator__source-actions">
+                      <input
+                        ref={sourceFileInputStep4Ref}
+                        type="file"
+                        accept={ACCEPT_SOURCE_FICHIERS}
+                        className="ai-generator__file-input"
+                        onChange={handleSourceFileUpload}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn--outline btn--sm"
+                        disabled={uploadBusy}
+                        onClick={() => sourceFileInputStep4Ref.current?.click()}
+                      >
+                        {uploadBusy ? '⏳ Lecture…' : '📎 Importer un fichier (PDF, DOCX, TXT)'}
+                      </button>
+                      {sourceFileLabel && (
+                        <span className="ai-generator__source-filename">· {sourceFileLabel}</span>
+                      )}
+                    </div>
+                    {uploadError && (
+                      <p className="ai-generator__source-error" role="alert">{uploadError}</p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
 
             {/* Options selon le type */}
             <div className="ai-generator__options">
