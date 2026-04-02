@@ -21,11 +21,11 @@ import type {
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || 'https://api.pedaclic.sn';
 
-/** Timeout global en ms (180 s — identique à aiGeneratorService) */
-const AI_TIMEOUT_MS = 180_000;
+/** Timeout global en ms (240 s — aligné sur aiGeneratorService pour gros volumes) */
+const AI_TIMEOUT_MS = 240_000;
 
 /** Nombre de ré-essais en cas d'échec réseau */
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 2;
 
 // ─────────────────────────────────────────────────────────────
 // TYPES DU CONTEXTE DE GÉNÉRATION

@@ -120,22 +120,29 @@ const API_BASE_URL =
 
 /**
  * Timeout global pour chaque appel IA (en millisecondes).
- * 180 s : le client doit rester ouvert plus longtemps que le cold start + génération ;
- * le proxy (Railway / CDN) peut tout de même répondre 504 avant la fin — d’où les retries.
+ * 240 s : marge large pour les gros documents (sujets d'examen, cours longs) ;
+ * le proxy (Railway / CDN) peut tout de même répondre 504 avant la fin — d'où les retries.
  */
-const AI_TIMEOUT_MS = 180_000;
+const AI_TIMEOUT_MS = 240_000;
 
 /**
  * Nombre maximum de tentatives en cas d'échec réseau.
  * La 2ème tentative profite du serveur déjà "chaud".
  */
-const MAX_RETRIES = 1;
+const MAX_RETRIES = 2;
 
-/** Taille max du texte source injecté dans le prompt (caractères). */
-const MAX_SOURCE_IN_PROMPT = 7_000;
+/**
+ * Taille max du texte source injecté dans le prompt (caractères).
+ * 25 000 ≈ 10-15 pages de texte — suffisant pour la plupart des sujets d'examen
+ * (BAC, BFEM) et des cours longs. Au-delà le texte est tronqué intelligemment.
+ */
+const MAX_SOURCE_IN_PROMPT = 25_000;
 
-/** Plafond total des consignes fusionnées (évite des requêtes trop lourdes). */
-const MAX_CONSIGNES_TOTAL_CHARS = 16_000;
+/**
+ * Plafond total des consignes fusionnées (source + instructions + options).
+ * 40 000 caractères laisse de la place pour un gros document source + consignes détaillées.
+ */
+const MAX_CONSIGNES_TOTAL_CHARS = 40_000;
 
 /**
  * Fusionne le texte source et les options de structure dans `consignesSpeciales`
@@ -152,12 +159,26 @@ function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
 
   const st = o.sourceText?.trim();
   if (st) {
-    const cap = st.slice(0, MAX_SOURCE_IN_PROMPT);
-    const truncated = st.length > MAX_SOURCE_IN_PROMPT;
+    let cap: string;
+    let truncated = false;
+
+    if (st.length <= MAX_SOURCE_IN_PROMPT) {
+      cap = st;
+    } else {
+      truncated = true;
+      // Troncature intelligente : garder début (consignes) + fin (barème / corrigé)
+      const keepEnd = Math.min(3_000, Math.floor(MAX_SOURCE_IN_PROMPT * 0.15));
+      const keepStart = MAX_SOURCE_IN_PROMPT - keepEnd - 120; // 120 chars pour le marqueur
+      cap =
+        st.slice(0, keepStart) +
+        `\n\n[… ${st.length - keepStart - keepEnd} caractères omis au milieu …]\n\n` +
+        st.slice(st.length - keepEnd);
+    }
+
     parts.push(
       `[CONTENU SOURCE FOURNI PAR L'ENSEIGNANT — À RÉORGANISER, ENRICHIR ET ADAPTER AU PROGRAMME SÉNÉGALAIS]\n${cap}` +
         (truncated
-          ? `\n\n[… Texte tronqué : ${st.length} caractères au total ; raccourcissez la source si besoin.]`
+          ? `\n\n[Texte source : ${st.length} caractères au total, tronqué intelligemment — début et fin conservés.]`
           : '')
     );
   }
@@ -337,7 +358,7 @@ export async function generateContent(
   };
 
   const url = `${API_BASE_URL}/api/generate`;
-  const MAX_TENTATIVES_GATEWAY = 2;
+  const MAX_TENTATIVES_GATEWAY = 3;
 
   for (let t = 0; t < MAX_TENTATIVES_GATEWAY; t++) {
     try {
@@ -347,16 +368,17 @@ export async function generateContent(
 
       if (status === 504 || status === 502 || status === 503) {
         if (t < MAX_TENTATIVES_GATEWAY - 1) {
+          const delai = 8_000 + t * 4_000; // 8s, 12s — backoff progressif
           console.warn(
-            `[aiGeneratorService] HTTP ${status} sur /api/generate — nouvelle tentative dans 6s…`
+            `[aiGeneratorService] HTTP ${status} sur /api/generate — tentative ${t + 2}/${MAX_TENTATIVES_GATEWAY} dans ${delai / 1000}s…`
           );
-          await new Promise((r) => setTimeout(r, 6000));
+          await new Promise((r) => setTimeout(r, delai));
           continue;
         }
         throw new Error(
           'Le serveur a mis trop de temps à répondre (délai dépassé côté hébergement). ' +
-            'Réessayez dans une minute, ou allégez la requête : moins de texte dans les objectifs, ' +
-            'les consignes ou le contenu source (fichier importé).'
+            'Réessayez dans une minute. Si le texte source est très long, essayez de le raccourcir ' +
+            'ou de ne garder que les parties essentielles du document.'
         );
       }
 

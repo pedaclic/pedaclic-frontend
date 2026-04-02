@@ -985,14 +985,29 @@ const AIGenerator: React.FC = () => {
               <textarea
                 id="sourceText"
                 className="ai-generator__textarea ai-generator__textarea--source"
-                rows={6}
-                placeholder="Notes, extrait de cours, synthèse, copie de document…"
+                rows={8}
+                placeholder="Notes, extrait de cours, synthèse, copie de document, sujet d'examen…"
                 value={sourceText}
                 onChange={(e) => {
                   setSourceText(e.target.value);
                   setUploadError(null);
                 }}
               />
+              {sourceText.length > 0 && (
+                <p style={{
+                  fontSize: '0.75rem',
+                  marginTop: 4,
+                  marginBottom: 2,
+                  color: sourceText.length > 25_000 ? '#dc2626' : sourceText.length > 15_000 ? '#d97706' : '#6b7280',
+                }}>
+                  {sourceText.length.toLocaleString('fr-FR')} caractères
+                  {sourceText.length > 25_000
+                    ? ' — ⚠️ Le texte sera tronqué intelligemment (début + fin conservés).'
+                    : sourceText.length > 15_000
+                      ? ' — Volume important, la génération sera plus longue.'
+                      : ''}
+                </p>
+              )}
               <div className="ai-generator__source-actions">
                 <input
                   ref={sourceFileInputRef}
