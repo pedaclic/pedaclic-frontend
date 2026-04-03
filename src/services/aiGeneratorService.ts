@@ -155,6 +155,37 @@ const MAX_CONSIGNES_TOTAL_CHARS = 40_000;
  * pour compatibilité avec l'API existante, et retire `sourceText` du corps envoyé.
  */
 function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
+  // ── Mapping des types frontend non supportés par le backend Railway ────────
+  // 'correction_sujet' et 'sujet_avec_corrige' sont des types frontend uniquement.
+  // On les convertit vers les types backend acceptés et on enrichit les consignes.
+  if (req.type === 'correction_sujet' || req.type === 'sujet_avec_corrige') {
+    const existingConsignes = req.options?.consignesSpeciales?.trim() || '';
+    const [backendType, instruction] =
+      req.type === 'correction_sujet'
+        ? [
+            'exercices_corriges' as const,
+            'TÂCHE PRINCIPALE : Produire une CORRECTION DÉTAILLÉE du sujet ou exercice fourni.\n' +
+              'Reprendre chaque question/exercice, donner la démarche complète et la réponse attendue avec justification.',
+          ]
+        : [
+            'sujet_examen' as const,
+            "TÂCHE PRINCIPALE : Générer un SUJET D'ÉVALUATION COMPLET suivi de son CORRIGÉ INTÉGRAL.\n" +
+              'Structure obligatoire : Partie 1) Énoncé complet du sujet avec toutes les questions numérotées. ' +
+              'Partie 2) Corrigé détaillé question par question avec barème indicatif.',
+          ];
+
+    req = {
+      ...req,
+      type: backendType,
+      options: {
+        ...req.options,
+        consignesSpeciales: [instruction, existingConsignes]
+          .filter(Boolean)
+          .join('\n\n'),
+      },
+    };
+  }
+
   const o = req.options;
   if (!o) return req;
 
