@@ -279,7 +279,7 @@ export async function dupliquerSequence(
     datePrevue:         undefined,
   }));
 
-  const ref = await addDoc(collection(db, COL_SEQUENCES), {
+  const ref = await addDoc(collection(db, COL_SEQUENCES), stripUndefined({
     // Copier toutes les données pédagogiques
     titre:            `[Copie] ${original.titre}`,
     description:      original.description,
@@ -304,7 +304,7 @@ export async function dupliquerSequence(
     cahierDeTextesNom: undefined,
     createdAt:        now,
     updatedAt:        now,
-  });
+  }));
 
   return ref.id;
 }
@@ -423,11 +423,11 @@ export async function exporterVersCahier(
       };
 
       // 4. Créer l'entrée dans Firestore
-      const ref = await addDoc(collection(db, COL_ENTREES), {
+      const ref = await addDoc(collection(db, COL_ENTREES), stripUndefined({
         ...entreeData,
         createdAt: now,
         updatedAt: now,
-      });
+      }));
 
       idsEntrees.push(ref.id);
 
@@ -448,14 +448,14 @@ export async function exporterVersCahier(
 
   // 6. Mettre à jour la séquence : séances + exporteAt + cahierDeTextesId
   if (idsEntrees.length > 0) {
-    await updateDoc(doc(db, COL_SEQUENCES, sequenceId), {
+    await updateDoc(doc(db, COL_SEQUENCES, sequenceId), stripUndefined({
       seances:            seancesMaj,
       evaluationsPrevues: calcEvaluationsPrevues(seancesMaj),
       cahierDeTextesId,
       cahierDeTextesNom:  sequence.cahierDeTextesNom ?? '',
       exporteAt:          now,
       updatedAt:          now,
-    });
+    }));
   }
 
   return {
