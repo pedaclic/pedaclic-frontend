@@ -483,7 +483,9 @@ export async function saveGeneratedContent(
       classe: request.classe,
       chapitre: request.chapitre,
       content,
-      options: request.options || null,
+      options: request.options
+        ? JSON.parse(JSON.stringify(request.options))
+        : null,
       createdAt: Timestamp.now(),
     });
 
