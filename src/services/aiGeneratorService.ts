@@ -131,11 +131,7 @@ const API_BASE_URL =
  */
 const AI_TIMEOUT_MS = 240_000;
 
-/**
- * Nombre maximum de tentatives en cas d'échec réseau.
- * La 2ème tentative profite du serveur déjà "chaud".
- */
-const MAX_RETRIES = 2;
+
 
 /**
  * Taille max du texte source injecté dans le prompt (caractères).
@@ -335,30 +331,6 @@ async function fetchAvecTimeout(
   }
 }
 
-/**
- * Exécute un appel avec retry automatique.
- * Attend 3 secondes entre chaque tentative (laisser Railway se réveiller).
- *
- * @param fn       - Fonction async à exécuter
- * @param retries  - Nombre de ré-essais après le premier échec
- */
-async function avecRetry<T>(
-  fn: () => Promise<T>,
-  retries: number = MAX_RETRIES
-): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    if (retries <= 0) throw err;
-
-    console.warn(
-      `[aiGeneratorService] Échec, nouvelle tentative dans 3s... (${retries} restante(s))`
-    );
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    return avecRetry(fn, retries - 1);
-  }
-}
-
 // ==================== KEEP-ALIVE ====================
 
 /**
@@ -391,7 +363,8 @@ export async function pingServeurIA(): Promise<void> {
 
 /**
  * Appelle le backend Railway pour générer du contenu IA.
- * — Timeout 180 s ; retry réseau via `avecRetry` ; 2ᵉ essai sur 502/503/504 (gateway)
+ * — Timeout 240 s ; boucle unique de retry (3 tentatives) avec ping de réveil.
+ * — Pas de retry imbriqué pour éviter de surcharger un serveur déjà lent.
  */
 export async function generateContent(
   request: GenerationRequest
@@ -406,20 +379,31 @@ export async function generateContent(
   };
 
   const url = `${API_BASE_URL}/api/generate`;
-  const MAX_TENTATIVES_GATEWAY = 3;
+  const MAX_TENTATIVES = 3;
 
-  for (let t = 0; t < MAX_TENTATIVES_GATEWAY; t++) {
+  // Ping de réveil — s'assurer que Railway est chaud avant la requête lourde
+  try {
+    await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' });
+  } catch {
+    // Silencieux — le ping est un bonus, pas un pré-requis
+  }
+
+  let lastError: Error = new Error('La génération a échoué.');
+
+  for (let t = 0; t < MAX_TENTATIVES; t++) {
     try {
-      const response = await avecRetry(() => fetchAvecTimeout(url, fetchOptions));
-
+      const response = await fetchAvecTimeout(url, fetchOptions);
       const status = response.status;
 
+      // ── Gateway timeout : le serveur est trop lent ──
       if (status === 504 || status === 502 || status === 503) {
-        if (t < MAX_TENTATIVES_GATEWAY - 1) {
-          const delai = 8_000 + t * 4_000; // 8s, 12s — backoff progressif
+        if (t < MAX_TENTATIVES - 1) {
+          const delai = 10_000 + t * 5_000; // 10s, 15s — backoff progressif
           console.warn(
-            `[aiGeneratorService] HTTP ${status} sur /api/generate — tentative ${t + 2}/${MAX_TENTATIVES_GATEWAY} dans ${delai / 1000}s…`
+            `[aiGeneratorService] HTTP ${status} sur /api/generate — tentative ${t + 2}/${MAX_TENTATIVES} dans ${delai / 1000}s…`
           );
+          // Re-ping pour garder Railway éveillé entre les tentatives
+          try { await fetch(`${API_BASE_URL}/api/health`, { method: 'GET' }); } catch {}
           await new Promise((r) => setTimeout(r, delai));
           continue;
         }
@@ -430,6 +414,7 @@ export async function generateContent(
         );
       }
 
+      // ── Autre erreur HTTP ──
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const message =
@@ -438,6 +423,7 @@ export async function generateContent(
         throw new Error(message);
       }
 
+      // ── Succès ──
       const data: GenerationResponse = await response.json();
 
       if (!data.success) {
@@ -446,17 +432,28 @@ export async function generateContent(
 
       return data;
     } catch (err) {
-      console.error('[aiGeneratorService] Erreur génération:', err);
+      lastError = err instanceof Error ? err : new Error(String(err));
+      console.error(`[aiGeneratorService] Erreur génération (tentative ${t + 1}/${MAX_TENTATIVES}):`, lastError.message);
+
+      // Erreur réseau (pas de connexion) — laisser la boucle réessayer
       if (err instanceof TypeError && err.message.includes('fetch')) {
-        throw new Error(
+        if (t < MAX_TENTATIVES - 1) {
+          const delai = 5_000 + t * 3_000; // 5s, 8s
+          console.warn(`[aiGeneratorService] Erreur réseau — nouvelle tentative dans ${delai / 1000}s…`);
+          await new Promise((r) => setTimeout(r, delai));
+          continue;
+        }
+        lastError = new Error(
           'Impossible de contacter le serveur. Vérifiez votre connexion internet.'
         );
       }
-      throw err instanceof Error ? err : new Error(String(err));
+
+      // Erreur non-retriable (400, 401, erreur de parsing…) — sortie immédiate
+      throw lastError;
     }
   }
 
-  throw new Error('La génération a échoué.');
+  throw lastError;
 }
 
 /**
