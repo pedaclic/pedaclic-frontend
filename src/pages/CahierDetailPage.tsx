@@ -23,6 +23,7 @@ import {
   modifierRubrique,
   supprimerRubrique,
   resoudreRubriqueIdPourEntree,
+  getNombreSeancesEffectif,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -221,7 +222,7 @@ const CahierDetailPage: React.FC = () => {
     setRubriqueEnEdition(r);
     setFormRubriqueNom(r.nom);
     setFormRubriqueCouleur(r.couleur ?? COULEURS_RUBRIQUES[0]);
-    setFormRubriqueSeancesPrevu(r.nombreSeancesPrevu ?? 0);
+    setFormRubriqueSeancesPrevu(getNombreSeancesEffectif(r));
     setFormTitres(r.titres ?? []);
     setErrorRubrique('');
     setAfficherFormRubrique(true);
@@ -237,13 +238,35 @@ const CahierDetailPage: React.FC = () => {
 
   // ── Gestion des titres dans le formulaire rubrique ───────
   const ajouterTitreForm = () => {
-    setFormTitres(prev => [
-      ...prev,
-      { id: Date.now().toString(), nom: '', ordre: prev.length, statut: 'non_commence' as StatutTitre },
-    ]);
+    setFormTitres(prev => {
+      const next = [
+        ...prev,
+        { id: Date.now().toString(), nom: '', ordre: prev.length, statut: 'non_commence' as StatutTitre },
+      ];
+      // Auto-sync : si nbSeances < nbTitres, aligner
+      const nbNonVides = next.filter(t => t.nom.trim()).length + 1; // +1 car le nouveau est vide mais sera probablement rempli
+      setFormRubriqueSeancesPrevu(prev2 => {
+        const cur = typeof prev2 === 'number' ? prev2 : 0;
+        return cur < nbNonVides ? nbNonVides : cur;
+      });
+      return next;
+    });
   };
   const supprimerTitreForm = (titreId: string) => {
-    setFormTitres(prev => prev.filter(t => t.id !== titreId).map((t, i) => ({ ...t, ordre: i })));
+    setFormTitres(prev => {
+      const next = prev.filter(t => t.id !== titreId).map((t, i) => ({ ...t, ordre: i }));
+      // Auto-sync : réduire nbSeances si > nbTitres et pas de saisie manuelle supérieure
+      const nbNonVides = next.filter(t => t.nom.trim()).length;
+      setFormRubriqueSeancesPrevu(prev2 => {
+        const cur = typeof prev2 === 'number' ? prev2 : 0;
+        // Si le nb de séances correspondait exactement à l'ancien nb de titres, réduire
+        if (cur > 0 && nbNonVides >= 0 && cur > nbNonVides && cur === prev.filter(t => t.nom.trim()).length) {
+          return nbNonVides > 0 ? nbNonVides : '';
+        }
+        return prev2;
+      });
+      return next;
+    });
   };
   const modifierTitreNomForm = (titreId: string, nom: string) => {
     setFormTitres(prev => prev.map(t => t.id === titreId ? { ...t, nom } : t));
@@ -272,14 +295,21 @@ const CahierDetailPage: React.FC = () => {
       return;
     }
     if (!cahier || !cahierId) return;
+    const titresClean = formTitres.filter(t => t.nom.trim()).map((t, i) => ({ ...t, nom: t.nom.trim(), ordre: i }));
+    const nbPrevu = typeof formRubriqueSeancesPrevu === 'number'
+      ? formRubriqueSeancesPrevu
+      : parseInt(String(formRubriqueSeancesPrevu), 10) || 0;
+    // Validation : nbSeances ne peut pas être inférieur au nombre de titres
+    if (titresClean.length > 0 && nbPrevu > 0 && nbPrevu < titresClean.length) {
+      setErrorRubrique(`Le nombre de séances prévues (${nbPrevu}) ne peut pas être inférieur au nombre de titres (${titresClean.length}).`);
+      return;
+    }
     setSavingRubrique(true);
     setErrorRubrique('');
     try {
       let nouvelleListe: RubriqueCahier[];
-      const nbPrevu = typeof formRubriqueSeancesPrevu === 'number'
-        ? formRubriqueSeancesPrevu
-        : parseInt(String(formRubriqueSeancesPrevu), 10) || 0;
-      const titresClean = formTitres.filter(t => t.nom.trim()).map((t, i) => ({ ...t, nom: t.nom.trim(), ordre: i }));
+      // Si pas de saisie manuelle, le service utilisera le nb de titres
+      const seancesEffectif = nbPrevu > 0 ? nbPrevu : (titresClean.length > 0 ? titresClean.length : undefined);
       if (rubriqueEnEdition) {
         nouvelleListe = await modifierRubrique(
           cahierId,
@@ -288,7 +318,7 @@ const CahierDetailPage: React.FC = () => {
           {
             nom: formRubriqueNom.trim(),
             couleur: formRubriqueCouleur,
-            nombreSeancesPrevu: nbPrevu > 0 ? nbPrevu : undefined,
+            nombreSeancesPrevu: seancesEffectif,
             titres: titresClean.length > 0 ? titresClean : undefined,
           }
         );
@@ -298,7 +328,7 @@ const CahierDetailPage: React.FC = () => {
           rubriques,
           formRubriqueNom.trim(),
           formRubriqueCouleur,
-          nbPrevu > 0 ? nbPrevu : undefined,
+          seancesEffectif,
           titresClean.length > 0 ? titresClean : undefined
         );
       }
@@ -441,9 +471,9 @@ const CahierDetailPage: React.FC = () => {
   // Phase 31 — Le nombre de séances globales est le cumul des séances par rubrique
   // (si des rubriques ont un nombreSeancesPrevu défini, on utilise la somme ; sinon on utilise cahier.nombreSeancesPrevu)
   const seancesPrevuesCumul = (() => {
-    const rubriquesAvecPrevu = (cahier.rubriques ?? []).filter(r => r.nombreSeancesPrevu != null && r.nombreSeancesPrevu > 0);
+    const rubriquesAvecPrevu = (cahier.rubriques ?? []).filter(r => getNombreSeancesEffectif(r) > 0);
     if (rubriquesAvecPrevu.length > 0) {
-      return rubriquesAvecPrevu.reduce((sum, r) => sum + (r.nombreSeancesPrevu ?? 0), 0);
+      return rubriquesAvecPrevu.reduce((sum, r) => sum + getNombreSeancesEffectif(r), 0);
     }
     return cahier.nombreSeancesPrevu;
   })();
@@ -508,7 +538,7 @@ const CahierDetailPage: React.FC = () => {
             </div>
             <span className="progression-pct">
               {entrees.filter(e => e.statut === 'realise').length} / {seancesPrevuesCumul} séances ({progressionPct}%)
-              {seancesPrevuesCumul !== cahier.nombreSeancesPrevu && (
+              {seancesPrevuesCumul > 0 && seancesPrevuesCumul !== cahier.nombreSeancesPrevu && (
                 <span style={{ fontSize: '0.7rem', color: '#9ca3af', marginLeft: 4 }}>(cumul rubriques)</span>
               )}
             </span>
@@ -665,8 +695,8 @@ const CahierDetailPage: React.FC = () => {
                             {r.nom}
                           </span>
                           <span className="cahier-rubrique-seances-prevu">
-                            {r.nombreSeancesPrevu != null && r.nombreSeancesPrevu > 0
-                              ? `${r.nombreSeancesPrevu}`
+                            {getNombreSeancesEffectif(r) > 0
+                              ? `${getNombreSeancesEffectif(r)}`
                               : '—'}
                           </span>
                           <span className="cahier-rubrique-titres-count">
@@ -761,17 +791,26 @@ const CahierDetailPage: React.FC = () => {
                   <input
                     id="rubrique-seances"
                     type="number"
-                    min={0}
+                    min={formTitres.filter(t => t.nom.trim()).length || 0}
                     max={200}
                     className="cahier-rubrique-form-input cahier-rubrique-form-input-narrow"
-                    placeholder="Ex : 8"
+                    placeholder={formTitres.filter(t => t.nom.trim()).length > 0
+                      ? `Min : ${formTitres.filter(t => t.nom.trim()).length}`
+                      : 'Ex : 8'}
                     value={formRubriqueSeancesPrevu === '' ? '' : formRubriqueSeancesPrevu}
                     onChange={e => {
                       const v = e.target.value;
-                      setFormRubriqueSeancesPrevu(v === '' ? '' : Math.max(0, parseInt(v, 10) || 0));
+                      if (v === '') { setFormRubriqueSeancesPrevu(''); return; }
+                      const parsed = Math.max(0, parseInt(v, 10) || 0);
+                      const nbTitresNonVides = formTitres.filter(t => t.nom.trim()).length;
+                      setFormRubriqueSeancesPrevu(nbTitresNonVides > 0 && parsed > 0 && parsed < nbTitresNonVides ? nbTitresNonVides : parsed);
                     }}
                   />
-                  <span className="cahier-rubrique-form-hint">Optionnel — le pourcentage sera calculé par rapport à ce nombre</span>
+                  <span className="cahier-rubrique-form-hint">
+                    {formTitres.filter(t => t.nom.trim()).length > 0
+                      ? `Auto-calculé selon les titres (${formTitres.filter(t => t.nom.trim()).length}) si non renseigné`
+                      : 'Optionnel — sera déduit du nombre de titres si non renseigné'}
+                  </span>
                 </div>
               </div>
               <div className="cahier-rubrique-form-field">

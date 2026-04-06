@@ -520,7 +520,7 @@ export function calculerProgression(
   const map = new Map<string | null, ProgressionItem>();
 
   rubriques.forEach((r, idx) => {
-    const seancesPrevu = r.nombreSeancesPrevu ?? r.seancesPrevues ?? 0;
+    const seancesPrevu = getNombreSeancesEffectif(r);
     map.set(r.id, {
       rubriqueId: r.id,
       rubriqueNom: r.nom,
@@ -558,8 +558,8 @@ export function calculerProgression(
 
   map.forEach(item => {
     const r = item.rubriqueId ? rubriques.find(x => x.id === item.rubriqueId) : null;
-    const seancesPrevu = r?.nombreSeancesPrevu ?? r?.seancesPrevues;
-    if (seancesPrevu != null && seancesPrevu > 0) {
+    const seancesPrevu = r ? getNombreSeancesEffectif(r) : 0;
+    if (seancesPrevu > 0) {
       item.seancesPrevu = seancesPrevu;
       item.pourcentage = Math.min(100, (item.realise / seancesPrevu) * 100);
     } else {
@@ -573,9 +573,8 @@ export function calculerProgression(
   const totalPlanifie = allItems.reduce((s, i) => s + i.planifie, 0);
   const totalAnnule = allItems.reduce((s, i) => s + i.annule, 0);
 
-  const getPrevues = (r: RubriqueCahier) => r.nombreSeancesPrevu ?? r.seancesPrevues ?? 0;
-  const totalPrevues = rubriques.length > 0 && rubriques.every(r => getPrevues(r) > 0)
-    ? rubriques.reduce((s, r) => s + getPrevues(r), 0)
+  const totalPrevues = rubriques.length > 0 && rubriques.every(r => getNombreSeancesEffectif(r) > 0)
+    ? rubriques.reduce((s, r) => s + getNombreSeancesEffectif(r), 0)
     : undefined;
 
   const baseGlobal = totalPrevues ?? (totalRealise + totalPlanifie);
@@ -608,6 +607,18 @@ export function calculerProgression(
   return { global, parRubrique };
 }
 
+/**
+ * Retourne le nombre effectif de séances pour une rubrique :
+ * — nombreSeancesPrevu si renseigné et > 0
+ * — sinon le nombre de titres non-vides
+ * — sinon 0
+ */
+export function getNombreSeancesEffectif(r: RubriqueCahier): number {
+  const manuel = r.nombreSeancesPrevu ?? r.seancesPrevues ?? 0;
+  const nbTitres = (r.titres ?? []).length;
+  return manuel > 0 ? manuel : nbTitres;
+}
+
 export async function ajouterRubrique(
   cahierId: string,
   rubriquesActuelles: RubriqueCahier[],
@@ -621,9 +632,16 @@ export async function ajouterRubrique(
     nom: nom.trim(),
     ordre: rubriquesActuelles.length,
     couleur: couleur ?? COULEURS_RUBRIQUES[rubriquesActuelles.length % COULEURS_RUBRIQUES.length],
-    ...(nombreSeancesPrevu != null && nombreSeancesPrevu > 0 && { nombreSeancesPrevu }),
     ...(titres && titres.length > 0 && { titres }),
   };
+  // Auto-sync : si pas de nb manuel, utiliser le nb de titres
+  const nbTitres = (titres ?? []).length;
+  const effectif = (nombreSeancesPrevu != null && nombreSeancesPrevu > 0)
+    ? Math.max(nombreSeancesPrevu, nbTitres)
+    : (nbTitres > 0 ? nbTitres : undefined);
+  if (effectif != null && effectif > 0) {
+    nouvelleRubrique.nombreSeancesPrevu = effectif;
+  }
   const nouvelleListe = [...rubriquesActuelles, nouvelleRubrique];
   await updateCahier(cahierId, { rubriques: nouvelleListe });
   return nouvelleListe;
@@ -635,9 +653,19 @@ export async function modifierRubrique(
   rubriqueId: string,
   modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur' | 'nombreSeancesPrevu' | 'titres'>>
 ): Promise<RubriqueCahier[]> {
-  const nouvelleListe = rubriquesActuelles.map(r =>
-    r.id === rubriqueId ? { ...r, ...modifications } : r
-  );
+  const nouvelleListe = rubriquesActuelles.map(r => {
+    if (r.id !== rubriqueId) return r;
+    const merged = { ...r, ...modifications };
+    // Auto-sync : harmoniser nombreSeancesPrevu avec les titres
+    const nbTitres = (merged.titres ?? []).length;
+    const manuel = merged.nombreSeancesPrevu ?? 0;
+    if (nbTitres > 0 && manuel < nbTitres) {
+      merged.nombreSeancesPrevu = nbTitres;
+    } else if (manuel === 0 && nbTitres > 0) {
+      merged.nombreSeancesPrevu = nbTitres;
+    }
+    return merged;
+  });
   await updateCahier(cahierId, { rubriques: nouvelleListe });
   return nouvelleListe;
 }
