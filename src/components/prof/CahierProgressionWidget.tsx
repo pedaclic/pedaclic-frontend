@@ -129,7 +129,7 @@ const CahierProgressionWidget: React.FC<CahierProgressionWidgetProps> = ({
   showDetails = true,
   titre = 'Progression',
 }) => {
-  const [expanded, setExpanded] = useState<boolean>(true);
+  const [expanded, setExpanded] = useState<boolean>(false);
 
   const { progGlobal, parRubrique } = useMemo(() => {
     const { global, parRubrique: parR } = calculerProgression(entrees, rubriques);

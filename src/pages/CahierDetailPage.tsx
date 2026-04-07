@@ -102,7 +102,7 @@ const CahierDetailPage: React.FC = () => {
   const [formRubriqueSeancesPrevu, setFormRubriqueSeancesPrevu] = useState<number | ''>(0);
   const [savingRubrique, setSavingRubrique] = useState(false);
   const [errorRubrique, setErrorRubrique] = useState('');
-  const [rubriquesRepliees, setRubriquesRepliees] = useState(false);
+  const [rubriquesRepliees, setRubriquesRepliees] = useState(true);
   const [formTitres, setFormTitres] = useState<TitreRubrique[]>([]);
   const [rubriqueOuverteId, setRubriqueOuverteId] = useState<string | null>(null);
   const [loadingCahier, setLoadingCahier] = useState(true);
@@ -112,6 +112,7 @@ const CahierDetailPage: React.FC = () => {
   // ── Filtres + tri ─────────────────────────────────────────
   const [filtreStatut, setFiltreStatut] = useState<StatutSeance | 'tous'>('tous');
   const [filtreType, setFiltreType] = useState<string>('tous');
+  const [filtreRubrique, setFiltreRubrique] = useState<string>('tous');
   const [filtreMois, setFiltreMois] = useState<string>('tous');
   const [filtreSemaine, setFiltreSemaine] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -454,13 +455,23 @@ const CahierDetailPage: React.FC = () => {
           okSemaine = weekStartKey === filtreSemaine;
         }
 
-        return okStatut && okType && okMois && okSemaine;
+        let okRubrique = true;
+        if (filtreRubrique !== 'tous') {
+          const resolved = resoudreRubriqueIdPourEntree(e, rubriques);
+          if (filtreRubrique === '__sans_rubrique__') {
+            okRubrique = resolved === null;
+          } else {
+            okRubrique = resolved === filtreRubrique;
+          }
+        }
+
+        return okStatut && okType && okMois && okSemaine && okRubrique;
       })
       .sort((a, b) => {
         const diff = a.date.toMillis() - b.date.toMillis();
         return sortDirection === 'asc' ? diff : -diff;
       });
-  }, [entrees, filtreStatut, filtreType, filtreMois, filtreSemaine, sortDirection]);
+  }, [entrees, filtreStatut, filtreType, filtreRubrique, filtreMois, filtreSemaine, sortDirection, rubriques]);
 
   // ─────────────────────────────────────────────────────────
   if (loadingCahier) {
@@ -1045,7 +1056,7 @@ const CahierDetailPage: React.FC = () => {
                 })}
               </div>
 
-              {/* Filtre type + sort */}
+              {/* Filtre type + rubrique + sort */}
               <div className="entrees-right-controls">
                 <select
                   className="filtre-select"
@@ -1057,6 +1068,20 @@ const CahierDetailPage: React.FC = () => {
                     <option key={k} value={k}>{cfg.emoji} {cfg.label}</option>
                   ))}
                 </select>
+
+                {rubriques.length > 0 && (
+                  <select
+                    className="filtre-select"
+                    value={filtreRubrique}
+                    onChange={e => setFiltreRubrique(e.target.value)}
+                  >
+                    <option value="tous">Toutes rubriques</option>
+                    {rubriques.map(r => (
+                      <option key={r.id} value={r.id}>📂 {r.nom}</option>
+                    ))}
+                    <option value="__sans_rubrique__">— Sans rubrique</option>
+                  </select>
+                )}
 
                 {/* Bouton tri chronologique */}
                 <button
