@@ -48,7 +48,7 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
-import { getTravauxByCahier, toggleCorrigeTravail } from '../services/travauxAFaireService';
+import { getTravauxByGroupe, toggleCorrigeTravail } from '../services/travauxAFaireService';
 import type { TravailAFaire } from '../types/groupeAbsences.types';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
@@ -184,16 +184,24 @@ const CahierDetailPage: React.FC = () => {
     return () => unsub();
   }, [cahierId]);
 
-  // ── Charger les travaux liés au cahier ───────────────────
+  // ── Charger les travaux liés au cahier (via groupeIds) ──
   useEffect(() => {
-    if (!cahierId) return;
-    // Charger au montage pour afficher le compteur dans l'onglet, et recharger quand on active l'onglet
+    if (!cahier) return;
+    const gIds = cahier.groupeIds ?? [];
+    if (gIds.length === 0) { setTravauxCahier([]); return; }
     setLoadingTravaux(true);
-    getTravauxByCahier(cahierId)
-      .then(setTravauxCahier)
+    Promise.all(gIds.map(gid => getTravauxByGroupe(gid)))
+      .then(results => {
+        const all = results.flat();
+        // Dédupliquer au cas où un travail serait lié à plusieurs groupes
+        const map = new Map<string, TravailAFaire>();
+        all.forEach(t => map.set(t.id, t));
+        const sorted = [...map.values()].sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());
+        setTravauxCahier(sorted);
+      })
       .catch(() => setTravauxCahier([]))
       .finally(() => setLoadingTravaux(false));
-  }, [cahierId, vue]);
+  }, [cahier, vue]);
 
   // ── Supprimer une entrée ──────────────────────────────────
   const handleDeleteEntree = async (entree: EntreeCahier) => {
