@@ -44,6 +44,8 @@ export interface TravailAFaire {
   rubriqueId?: string;
   /** Nom de la rubrique (dénormalisé pour affichage rapide) */
   rubriqueNom?: string;
+  /** Indique si l'exercice a été fait et corrigé */
+  corrige?: boolean;
   profId: string;
   profNom?: string;
   createdAt: Date;

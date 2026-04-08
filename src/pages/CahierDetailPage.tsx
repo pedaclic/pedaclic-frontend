@@ -48,11 +48,13 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+import { getTravauxByCahier, toggleCorrigeTravail } from '../services/travauxAFaireService';
+import type { TravailAFaire } from '../types/groupeAbsences.types';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
 // ─── Types ───────────────────────────────────────────────────
-type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats';
+type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats' | 'travaux';
 type SortDirection = 'asc' | 'desc';
 
 // ─── Utilitaires semaine ──────────────────────────────────────
@@ -109,7 +111,13 @@ const CahierDetailPage: React.FC = () => {
   const [loadingEntrees, setLoadingEntrees] = useState(true);
   const [vue, setVue] = useState<VueActive>('liste');
 
-  // ── Filtres + tri ─────────────────────────────────────────
+  // ── Travaux liés au cahier ─────────────────────────────────
+  const [travauxCahier, setTravauxCahier] = useState<TravailAFaire[]>([]);
+  const [loadingTravaux, setLoadingTravaux] = useState(false);
+  const [filtreTravCorrige, setFiltreTravCorrige] = useState<'tous' | 'corrige' | 'non_corrige'>('tous');
+  const [filtreTravRubrique, setFiltreTravRubrique] = useState<string>('tous');
+
+  // ── Filtres + tri ─────────────────────────────────────────────
   const [filtreStatut, setFiltreStatut] = useState<StatutSeance | 'tous'>('tous');
   const [filtreType, setFiltreType] = useState<string>('tous');
   const [filtreRubrique, setFiltreRubrique] = useState<string>('tous');
@@ -175,6 +183,17 @@ const CahierDetailPage: React.FC = () => {
     );
     return () => unsub();
   }, [cahierId]);
+
+  // ── Charger les travaux liés au cahier ───────────────────
+  useEffect(() => {
+    if (!cahierId) return;
+    // Charger au montage pour afficher le compteur dans l'onglet, et recharger quand on active l'onglet
+    setLoadingTravaux(true);
+    getTravauxByCahier(cahierId)
+      .then(setTravauxCahier)
+      .catch(() => setTravauxCahier([]))
+      .finally(() => setLoadingTravaux(false));
+  }, [cahierId, vue]);
 
   // ── Supprimer une entrée ──────────────────────────────────
   const handleDeleteEntree = async (entree: EntreeCahier) => {
@@ -921,6 +940,7 @@ const CahierDetailPage: React.FC = () => {
         {([
           { id: 'liste', label: '📋 Liste' },
           { id: 'calendrier', label: '📅 Calendrier' },
+          { id: 'travaux', label: `📝 Travaux${travauxCahier.length > 0 ? ` (${travauxCahier.length})` : ''}` },
           { id: 'signets', label: '📌 Signets' },
           { id: 'stats', label: '📊 Statistiques' },
         ] as { id: VueActive; label: string }[]).map(tab => (
@@ -949,6 +969,130 @@ const CahierDetailPage: React.FC = () => {
           <RappelWidget profId={currentUser!.uid} cahierId={cahier.id} />
         </div>
       )}
+
+      {/* ── Vue Travaux ── */}
+      {vue === 'travaux' && (() => {
+        const travauxFiltres = travauxCahier.filter(t => {
+          if (filtreTravCorrige !== 'tous') {
+            if (filtreTravCorrige === 'corrige' && !t.corrige) return false;
+            if (filtreTravCorrige === 'non_corrige' && t.corrige) return false;
+          }
+          if (filtreTravRubrique !== 'tous') {
+            if (filtreTravRubrique === '__sans_rubrique__') {
+              if (t.rubriqueId) return false;
+            } else if (t.rubriqueId !== filtreTravRubrique) return false;
+          }
+          return true;
+        });
+        const rubriquesUniques = new Map<string, string>();
+        travauxCahier.forEach(t => { if (t.rubriqueId && t.rubriqueNom) rubriquesUniques.set(t.rubriqueId, t.rubriqueNom); });
+        return (
+          <div className="cahier-detail-layout" style={{ maxWidth: 800, margin: '0 auto' }}>
+            <div style={{ width: '100%' }}>
+              {loadingTravaux ? (
+                <p style={{ color: '#6b7280', padding: '2rem', textAlign: 'center' }}>Chargement des travaux…</p>
+              ) : travauxCahier.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#6b7280' }}>
+                  <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>📝 Aucun travail lié à ce cahier</p>
+                  <p style={{ fontSize: '0.85rem' }}>Les travaux assignés depuis l’onglet « Travaux » d’un groupe-classe apparaissent ici lorsqu’ils sont rattachés à ce cahier.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Filtres */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#6b7280' }}>Filtrer :</span>
+                    <select
+                      className="filtre-select"
+                      value={filtreTravCorrige}
+                      onChange={e => setFiltreTravCorrige(e.target.value as any)}
+                    >
+                      <option value="tous">Tous statuts</option>
+                      <option value="corrige">✅ Fait & corrigé</option>
+                      <option value="non_corrige">⏳ Non corrigé</option>
+                    </select>
+                    {rubriquesUniques.size > 0 && (
+                      <select
+                        className="filtre-select"
+                        value={filtreTravRubrique}
+                        onChange={e => setFiltreTravRubrique(e.target.value)}
+                      >
+                        <option value="tous">Toutes rubriques</option>
+                        {[...rubriquesUniques.entries()].map(([id, nom]) => (
+                          <option key={id} value={id}>📂 {nom}</option>
+                        ))}
+                        <option value="__sans_rubrique__">— Sans rubrique</option>
+                      </select>
+                    )}
+                    {(filtreTravCorrige !== 'tous' || filtreTravRubrique !== 'tous') && (
+                      <button
+                        className="btn-secondary"
+                        onClick={() => { setFiltreTravCorrige('tous'); setFiltreTravRubrique('tous'); }}
+                        style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                      >
+                        ✕ Réinitialiser
+                      </button>
+                    )}
+                  </div>
+                  {/* Liste */}
+                  {travauxFiltres.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>Aucun travail ne correspond aux filtres.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {travauxFiltres.map(t => (
+                        <div
+                          key={t.id}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.6rem',
+                            padding: '0.75rem 1rem',
+                            background: t.corrige ? '#f0fdf4' : '#f8fafc',
+                            border: `1px solid ${t.corrige ? '#bbf7d0' : '#e2e8f0'}`,
+                            borderRadius: 8,
+                            transition: 'background 0.2s',
+                            opacity: t.corrige ? 0.75 : 1,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={!!t.corrige}
+                            onChange={async () => {
+                              const newVal = !t.corrige;
+                              try {
+                                await toggleCorrigeTravail(t.id, newVal);
+                                setTravauxCahier(prev => prev.map(x => x.id === t.id ? { ...x, corrige: newVal } : x));
+                              } catch { /* silencieux */ }
+                            }}
+                            title={t.corrige ? 'Marquer comme non corrigé' : 'Marquer comme fait & corrigé'}
+                            style={{ marginTop: '0.25rem', width: 18, height: 18, accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <strong style={t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : { color: '#1e293b' }}>{t.titre}</strong>
+                              {t.rubriqueNom && (
+                                <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 9999, fontWeight: 600 }}>📂 {t.rubriqueNom}</span>
+                              )}
+                              {t.corrige && <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>✅ Fait & corrigé</span>}
+                            </div>
+                            {t.description && (
+                              <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem', lineHeight: 1.4 }} dangerouslySetInnerHTML={{ __html: t.description }} />
+                            )}
+                            <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
+                              📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
+                              {t.heureEcheance && ` à ${t.heureEcheance}`}
+                              {t.groupeNom && ` • 👥 ${t.groupeNom}`}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── Vue Statistiques ── */}
       {vue === 'stats' && (

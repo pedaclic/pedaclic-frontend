@@ -59,7 +59,7 @@ export async function creerTravailAFaire(
  */
 export async function modifierTravailAFaire(
   id: string,
-  updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance' | 'cahierId' | 'rubriqueId' | 'rubriqueNom'>>
+  updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance' | 'cahierId' | 'rubriqueId' | 'rubriqueNom' | 'corrige'>>
 ): Promise<void> {
   const ref = doc(db, COL_TRAVAUX, id);
   const data: Record<string, unknown> = { ...updates };
@@ -69,6 +69,14 @@ export async function modifierTravailAFaire(
       : updates.dateEcheance;
   }
   await updateDoc(ref, data);
+}
+
+/**
+ * Bascule le statut corrigé d'un travail.
+ */
+export async function toggleCorrigeTravail(id: string, corrige: boolean): Promise<void> {
+  const ref = doc(db, COL_TRAVAUX, id);
+  await updateDoc(ref, { corrige });
 }
 
 /**
@@ -125,6 +133,24 @@ export async function getTravauxForEleve(groupeIds: string[]): Promise<TravailAF
   }
   all.sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());
   return all;
+}
+
+/**
+ * Récupère les travaux à faire liés à un cahier de textes.
+ */
+export async function getTravauxByCahier(cahierId: string): Promise<TravailAFaire[]> {
+  const q = query(
+    collection(db, COL_TRAVAUX),
+    where('cahierId', '==', cahierId),
+    orderBy('dateEcheance', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+    dateEcheance: toDate(d.data().dateEcheance),
+    createdAt: toDate(d.data().createdAt),
+  })) as TravailAFaire[];
 }
 
 /**

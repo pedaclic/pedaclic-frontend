@@ -38,6 +38,7 @@ import {
   creerTravailAFaire,
   getTravauxByGroupe,
   supprimerTravailAFaire,
+  toggleCorrigeTravail,
 } from '../../services/travauxAFaireService';
 import { getCahiersForGroupe, getEntreesCahier } from '../../services/cahierTextesService';
 import type { CahierTextes, RubriqueCahier, EntreeCahier } from '../../types/cahierTextes.types';
@@ -206,6 +207,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   // Phase 31 — Filtres travaux
   const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
   const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
+  const [filtreTravailCorrige, setFiltreTravailCorrige] = useState<'tous' | 'corrige' | 'non_corrige'>('tous');
   // Phase 32 — Planification
   const [planifCahierIdx, setPlanifCahierIdx] = useState(0);
   const [planifEntrees, setPlanifEntrees] = useState<EntreeCahier[]>([]);
@@ -438,6 +440,11 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
       } else if (t.rubriqueId !== filtreTravailRubrique) {
         return false;
       }
+    }
+    // Filtre par statut corrigé
+    if (filtreTravailCorrige !== 'tous') {
+      if (filtreTravailCorrige === 'corrige' && !t.corrige) return false;
+      if (filtreTravailCorrige === 'non_corrige' && t.corrige) return false;
     }
     // Filtre par échéance
     if (filtreTravailEcheance !== 'tous') {
@@ -1211,10 +1218,20 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                     <option value="__sans_rubrique__">Sans rubrique</option>
                   </select>
                 )}
-                {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
+                <select
+                  className="prof-input prof-input-sm"
+                  value={filtreTravailCorrige}
+                  onChange={(e) => setFiltreTravailCorrige(e.target.value as any)}
+                  style={{ width: 'auto', minWidth: '140px' }}
+                >
+                  <option value="tous">Tous statuts</option>
+                  <option value="corrige">✅ Fait & corrigé</option>
+                  <option value="non_corrige">⏳ Non corrigé</option>
+                </select>
+                {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous' || filtreTravailCorrige !== 'tous') && (
                   <button
                     className="prof-btn prof-btn-sm prof-btn-secondary"
-                    onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
+                    onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); setFiltreTravailCorrige('tous'); }}
                     style={{ fontSize: '0.75rem' }}
                   >
                     ✕ Réinitialiser
@@ -1232,9 +1249,23 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
             ) : (
               <ul className="groupe-travaux-items">
                 {travauxFiltres.map((t) => (
-                  <li key={t.id} className="groupe-travaux-item">
+                  <li key={t.id} className="groupe-travaux-item" style={t.corrige ? { opacity: 0.7, background: '#f0fdf4' } : {}}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={!!t.corrige}
+                        onChange={async () => {
+                          const newVal = !t.corrige;
+                          try {
+                            await toggleCorrigeTravail(t.id, newVal);
+                            setTravaux(prev => prev.map(x => x.id === t.id ? { ...x, corrige: newVal } : x));
+                          } catch { /* silencieux */ }
+                        }}
+                        title={t.corrige ? 'Marquer comme non corrigé' : 'Marquer comme fait & corrigé'}
+                        style={{ marginTop: '0.3rem', width: 18, height: 18, accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
+                      />
                     <div>
-                      <strong>{t.titre}</strong>
+                      <strong style={t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : {}}>{t.titre}</strong>
                       {t.rubriqueNom && (
                         <span style={{
                           fontSize: '0.72rem',
@@ -1257,7 +1288,9 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                       <span className="groupe-travaux-date">
                         📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
                         {t.heureEcheance && ` à ${t.heureEcheance}`}
+                        {t.corrige && <span style={{ marginLeft: '0.5rem', color: '#16a34a', fontWeight: 600, fontSize: '0.75rem' }}>✅ Fait & corrigé</span>}
                       </span>
+                    </div>
                     </div>
                     <button
                       className="prof-btn-icon prof-btn-icon-danger"

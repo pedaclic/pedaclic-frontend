@@ -125,7 +125,7 @@ const StudentDashboard: React.FC = () => {
   const [codeCopied, setCodeCopied] = useState(false);
 
   /* ── États Travaux de ma classe (onglet Travaux) ── */
-  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string }>>([]);
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string; corrige?: boolean }>>([]);
   const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
   const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
 
@@ -543,7 +543,7 @@ const StudentDashboard: React.FC = () => {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: '0.95rem' }}>📋 {t.titre}</strong>
+                    <strong style={{ fontSize: '0.95rem', ...(t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : {}) }}>📋 {t.titre}</strong>
                     {t.rubriqueNom && (
                       <span style={{
                         fontSize: '0.7rem',
@@ -555,6 +555,9 @@ const StudentDashboard: React.FC = () => {
                       }}>
                         📂 {t.rubriqueNom}
                       </span>
+                    )}
+                    {t.corrige && (
+                      <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>✅ Fait & corrigé</span>
                     )}
                   </div>
                   {t.description && (
