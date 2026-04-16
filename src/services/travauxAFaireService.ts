@@ -38,13 +38,21 @@ function toDate(val: unknown): Date {
 export async function creerTravailAFaire(
   data: Omit<TravailAFaire, 'id' | 'createdAt'>
 ): Promise<TravailAFaire> {
-  const ref = await addDoc(collection(db, COL_TRAVAUX), {
-    ...data,
-    dateEcheance: data.dateEcheance instanceof Date
-      ? Timestamp.fromDate(data.dateEcheance)
-      : data.dateEcheance,
-    createdAt: Timestamp.now(),
-  });
+  // Construire le payload en excluant les champs undefined
+  // (Firestore rejette les valeurs undefined — ex. rubriqueId, rubriqueNom)
+  const payload: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      payload[key] = value;
+    }
+  }
+  // Convertir la date d'échéance en Timestamp Firestore
+  if (payload.dateEcheance instanceof Date) {
+    payload.dateEcheance = Timestamp.fromDate(payload.dateEcheance as Date);
+  }
+  payload.createdAt = Timestamp.now();
+
+  const ref = await addDoc(collection(db, COL_TRAVAUX), payload);
   const snap = await getDoc(ref);
   return {
     id: ref.id,
@@ -62,11 +70,15 @@ export async function modifierTravailAFaire(
   updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance' | 'cahierId' | 'rubriqueId' | 'rubriqueNom' | 'corrige'>>
 ): Promise<void> {
   const ref = doc(db, COL_TRAVAUX, id);
-  const data: Record<string, unknown> = { ...updates };
-  if (updates.dateEcheance) {
-    data.dateEcheance = updates.dateEcheance instanceof Date
-      ? Timestamp.fromDate(updates.dateEcheance)
-      : updates.dateEcheance;
+  // Exclure les champs undefined pour éviter le rejet Firestore
+  const data: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined) {
+      data[key] = value;
+    }
+  }
+  if (data.dateEcheance instanceof Date) {
+    data.dateEcheance = Timestamp.fromDate(data.dateEcheance as Date);
   }
   await updateDoc(ref, data);
 }
