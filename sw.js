@@ -85,7 +85,7 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "revision": "9e820a797a6c7f5cd34a106890bd0752"
   }, {
     "url": "index.html",
-    "revision": "e783268d367c863f61e52c19ec1ac1b2"
+    "revision": "1286680c91ceff29b3d30637133d9aa8"
   }, {
     "url": "404.html",
     "revision": "6a70d336d00aecab451233c19c009113"
@@ -204,16 +204,16 @@ define(['./workbox-79eeca62'], (function (workbox) { 'use strict';
     "url": "assets/jspdf.plugin.autotable-CBbcTuFj.js",
     "revision": null
   }, {
-    "url": "assets/jspdf.es.min-CCzpvHYH.js",
+    "url": "assets/jspdf.es.min-CH4iZJ5l.js",
     "revision": null
   }, {
-    "url": "assets/index.es-4r3uifZr.js",
+    "url": "assets/index.es-DPC86Ksk.js",
     "revision": null
   }, {
     "url": "assets/index-DYOuOtiW.css",
     "revision": null
   }, {
-    "url": "assets/index-BhUV6c2-.js",
+    "url": "assets/index-BPWCLZ1M.js",
     "revision": null
   }, {
     "url": "assets/html2canvas.esm-DXEQVQnt.js",
