@@ -352,6 +352,49 @@ const ElveCahierPage: React.FC = () => {
               />
             )}
 
+            {/* Phase 34 — Exercices liés à la leçon (côté élève, lecture seule) */}
+            {entree.exerciceJour && (
+              <section
+                style={{
+                  background: '#eef2ff',
+                  border: '1px solid #c7d2fe',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginTop: 12,
+                }}
+                aria-label="Exercice du jour"
+              >
+                <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#4338ca', fontWeight: 700 }}>
+                  🎯 Exercice du jour (application)
+                </h4>
+                <div
+                  className="rte-content rte-content--lecture"
+                  dangerouslySetInnerHTML={{ __html: entree.exerciceJour }}
+                />
+              </section>
+            )}
+
+            {entree.exerciceDomicile && (
+              <section
+                style={{
+                  background: '#fff7ed',
+                  border: '1px solid #fed7aa',
+                  borderRadius: 8,
+                  padding: 12,
+                  marginTop: 12,
+                }}
+                aria-label="Exercice à domicile"
+              >
+                <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#9a3412', fontWeight: 700 }}>
+                  🏠 Exercice à domicile
+                </h4>
+                <div
+                  className="rte-content rte-content--lecture"
+                  dangerouslySetInnerHTML={{ __html: entree.exerciceDomicile }}
+                />
+              </section>
+            )}
+
             {aLiens && (
               <LienExterneEditor liens={entree.liens ?? []} onChange={() => {}} readonly />
             )}

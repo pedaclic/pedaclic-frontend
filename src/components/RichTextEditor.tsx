@@ -207,6 +207,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [lienUrl, setLienUrl] = useState('');
   /** Texte du lien à insérer */
   const [lienTexte, setLienTexte] = useState('');
+  /** Cellule <td>/<th> actuellement sous le curseur (active la barre d'édition de tableau) */
+  const [celluleActive, setCelluleActive] = useState<HTMLElement | null>(null);
 
   // ── Synchronisation value → DOM (montage uniquement) ────────
   useEffect(() => {
@@ -363,6 +365,120 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     execCmd('insertHTML', '<hr><p><br></p>');
     emettrChangement();
   }, [emettrChangement]);
+
+  // ══════════════════════════════════════════════════════════════
+  // PHASE 34 — Édition contextuelle de tableau
+  //   La barre d'édition de tableau apparaît quand le curseur se trouve
+  //   dans une cellule <td> ou <th>. On track la cellule active pour
+  //   manipuler sa ligne/colonne sans se baser sur execCommand.
+  // ══════════════════════════════════════════════════════════════
+
+  /** Détecte quand le curseur entre/sort d'un tableau pour afficher la barre */
+  const detecterCelluleActive = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) { setCelluleActive(null); return; }
+    const cellule = trouverAncetre(sel.anchorNode, 'td') || trouverAncetre(sel.anchorNode, 'th');
+    setCelluleActive(cellule);
+  }, []);
+
+  /** Retourne le <tr> parent de la cellule active, ou null */
+  const getLigneActive = useCallback((): HTMLTableRowElement | null => {
+    if (!celluleActive) return null;
+    return (trouverAncetre(celluleActive, 'tr') as HTMLTableRowElement | null);
+  }, [celluleActive]);
+
+  /** Retourne le <table> parent, ou null */
+  const getTableActif = useCallback((): HTMLTableElement | null => {
+    if (!celluleActive) return null;
+    return (trouverAncetre(celluleActive, 'table') as HTMLTableElement | null);
+  }, [celluleActive]);
+
+  /** Insère une ligne au-dessus ou en-dessous de la ligne active */
+  const tableauInsererLigne = useCallback((position: 'avant' | 'apres') => {
+    const ligne = getLigneActive();
+    const table = getTableActif();
+    if (!ligne || !table) return;
+    const nbCols = ligne.cells.length;
+    const nouvelle = table.insertRow(ligne.rowIndex + (position === 'avant' ? 0 : 1));
+    for (let i = 0; i < nbCols; i++) {
+      const td = nouvelle.insertCell(i);
+      td.innerHTML = '&#8203;'; // zero-width space → permet de placer le curseur
+    }
+    emettrChangement();
+  }, [getLigneActive, getTableActif, emettrChangement]);
+
+  /** Insère une colonne à gauche ou à droite de la cellule active */
+  const tableauInsererColonne = useCallback((position: 'avant' | 'apres') => {
+    const table = getTableActif();
+    if (!table || !celluleActive) return;
+    const colIdx = (celluleActive as HTMLTableCellElement).cellIndex + (position === 'avant' ? 0 : 1);
+    // Parcourt toutes les lignes (thead + tbody)
+    Array.from(table.rows).forEach(tr => {
+      const nouvelleCellule = tr.insertCell(Math.min(colIdx, tr.cells.length));
+      // Si la ligne est dans <thead>, c'est une en-tête → mettre à jour tagName
+      const isHeader = tr.parentElement?.tagName.toLowerCase() === 'thead' || tr.cells[0]?.tagName.toLowerCase() === 'th';
+      if (isHeader) {
+        const th = document.createElement('th');
+        th.innerHTML = 'Colonne';
+        tr.replaceChild(th, nouvelleCellule);
+      } else {
+        nouvelleCellule.innerHTML = '&#8203;';
+      }
+    });
+    emettrChangement();
+  }, [getTableActif, celluleActive, emettrChangement]);
+
+  /** Supprime la ligne active (préserve la ligne d'en-tête si c'est la seule restante) */
+  const tableauSupprimerLigne = useCallback(() => {
+    const ligne = getLigneActive();
+    const table = getTableActif();
+    if (!ligne || !table) return;
+    if (table.rows.length <= 1) return; // Ne pas vider le tableau
+    ligne.remove();
+    setCelluleActive(null);
+    emettrChangement();
+  }, [getLigneActive, getTableActif, emettrChangement]);
+
+  /** Supprime la colonne dans laquelle se trouve la cellule active */
+  const tableauSupprimerColonne = useCallback(() => {
+    const table = getTableActif();
+    if (!table || !celluleActive) return;
+    const colIdx = (celluleActive as HTMLTableCellElement).cellIndex;
+    // Si c'est la dernière colonne → ne pas la supprimer (sinon tableau vide)
+    const nbCols = table.rows[0]?.cells.length ?? 0;
+    if (nbCols <= 1) return;
+    Array.from(table.rows).forEach(tr => {
+      if (tr.cells[colIdx]) tr.deleteCell(colIdx);
+    });
+    setCelluleActive(null);
+    emettrChangement();
+  }, [getTableActif, celluleActive, emettrChangement]);
+
+  /** Supprime entièrement le tableau sous le curseur */
+  const tableauSupprimer = useCallback(() => {
+    const table = getTableActif();
+    if (!table) return;
+    table.remove();
+    setCelluleActive(null);
+    emettrChangement();
+  }, [getTableActif, emettrChangement]);
+
+  /** Redimensionne la largeur d'une colonne (incrément / décrément) */
+  const tableauRedimensionnerColonne = useCallback((delta: number) => {
+    const table = getTableActif();
+    if (!table || !celluleActive) return;
+    const colIdx = (celluleActive as HTMLTableCellElement).cellIndex;
+    // Applique à toutes les cellules de la même colonne (première ligne sert de référence)
+    Array.from(table.rows).forEach(tr => {
+      const c = tr.cells[colIdx] as HTMLElement | undefined;
+      if (!c) return;
+      const largeurActuelle = c.offsetWidth || 100;
+      const nouvelle = Math.max(40, largeurActuelle + delta);
+      c.style.width = `${nouvelle}px`;
+      c.style.minWidth = `${nouvelle}px`;
+    });
+    emettrChangement();
+  }, [getTableActif, celluleActive, emettrChangement]);
 
   // ── Fermeture des dropdowns au clic extérieur ──────────────────
   useEffect(() => {
@@ -560,13 +676,82 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       </div>
 
+      {/* ══════════════════════════════════════════════════════
+          Barre contextuelle d'édition de tableau
+          S'affiche quand le curseur est positionné dans une cellule
+          (<td>/<th>) et permet : ajout/suppression ligne/colonne,
+          redimensionnement, suppression du tableau.
+          ══════════════════════════════════════════════════════ */}
+      {celluleActive && (
+        <div
+          className="rte-table-toolbar"
+          role="toolbar"
+          aria-label="Édition du tableau"
+          onMouseDown={e => e.preventDefault() /* évite la perte de sélection */}
+        >
+          <span className="rte-table-toolbar__label">⊞ Tableau</span>
+
+          <div className="rte-table-toolbar__group" aria-label="Lignes">
+            <button type="button" className="rte-btn" title="Insérer une ligne au-dessus" onClick={() => tableauInsererLigne('avant')}>
+              ↑+ Ligne
+            </button>
+            <button type="button" className="rte-btn" title="Insérer une ligne en-dessous" onClick={() => tableauInsererLigne('apres')}>
+              ↓+ Ligne
+            </button>
+            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la ligne" onClick={tableauSupprimerLigne}>
+              🗑️ Ligne
+            </button>
+          </div>
+
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+
+          <div className="rte-table-toolbar__group" aria-label="Colonnes">
+            <button type="button" className="rte-btn" title="Insérer une colonne à gauche" onClick={() => tableauInsererColonne('avant')}>
+              ←+ Col.
+            </button>
+            <button type="button" className="rte-btn" title="Insérer une colonne à droite" onClick={() => tableauInsererColonne('apres')}>
+              →+ Col.
+            </button>
+            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la colonne" onClick={tableauSupprimerColonne}>
+              🗑️ Col.
+            </button>
+          </div>
+
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+
+          <div className="rte-table-toolbar__group" aria-label="Largeur de la colonne">
+            <button type="button" className="rte-btn" title="Diminuer la largeur de la colonne" onClick={() => tableauRedimensionnerColonne(-20)}>
+              ⇠
+            </button>
+            <span className="rte-table-toolbar__hint">Largeur</span>
+            <button type="button" className="rte-btn" title="Augmenter la largeur de la colonne" onClick={() => tableauRedimensionnerColonne(20)}>
+              ⇢
+            </button>
+          </div>
+
+          <div className="rte-toolbar__sep" aria-hidden="true" />
+
+          <button
+            type="button"
+            className="rte-btn rte-btn--danger"
+            title="Supprimer le tableau en entier"
+            onClick={tableauSupprimer}
+          >
+            ✕ Supprimer le tableau
+          </button>
+        </div>
+      )}
+
       <div
         ref={zoneRef}
         className="rte-content"
         contentEditable={!disabled}
         suppressContentEditableWarning
-        onInput={emettrChangement}
+        onInput={() => { emettrChangement(); detecterCelluleActive(); }}
         onKeyDown={handleKeyDown}
+        onKeyUp={detecterCelluleActive}
+        onMouseUp={detecterCelluleActive}
+        onFocus={detecterCelluleActive}
         data-placeholder={placeholder}
         style={{ minHeight: `${minHeight}px` }}
         role="textbox"

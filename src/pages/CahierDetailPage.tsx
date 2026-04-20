@@ -24,6 +24,8 @@ import {
   supprimerRubrique,
   resoudreRubriqueIdPourEntree,
   getNombreSeancesEffectif,
+  // Phase 34 — duplication rapide d'une séance (raccourci de mise à jour)
+  duplicateEntree,
 } from '../services/cahierTextesService';
 import {
   TYPE_CONTENU_CONFIG,
@@ -218,6 +220,27 @@ const CahierDetailPage: React.FC = () => {
       toast.error('Erreur lors de la suppression.');
     }
   };
+
+  // ── Phase 34 : dupliquer une séance ──────────────────────
+  // Clone la séance avec un nouveau titre "(copie)" et le statut "planifie".
+  // On redirige directement vers l'édition pour que le prof puisse ajuster
+  // date, chapitre ou contenu avant de sauvegarder définitivement.
+  const handleDuplicateEntree = useCallback(async (entree: EntreeCahier, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!cahierId) return;
+    try {
+      const nouveauId = await duplicateEntree(entree, {
+        nouvelleDate: new Date(),    // date du jour par défaut
+        nouveauStatut: 'planifie',   // la copie est à relire/ajuster
+      });
+      toast.success('Séance dupliquée — prête à être ajustée.');
+      // Ouvre l'éditeur sur la copie pour personnalisation
+      navigate(`/prof/cahiers/${cahierId}/modifier/${nouveauId}`);
+    } catch (err) {
+      console.error('[CahierDetailPage] Erreur duplication séance :', err);
+      toast.error('Erreur lors de la duplication.');
+    }
+  }, [cahierId, navigate, toast]);
 
   // ── Changer statut rapide ─────────────────────────────────
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
@@ -1397,10 +1420,27 @@ const CahierDetailPage: React.FC = () => {
                               <span className="badge-pj">📎 {entree.piecesJointes.length}</span>
                             )}
                           </div>
+                          {/* Phase 34 — pastilles "Exercices liés" (jour / domicile) */}
+                          {(entree.exerciceJour || entree.exerciceDomicile) && (
+                            <div className="entree-exos-inline" aria-label="Exercices liés à la leçon">
+                              {entree.exerciceJour && (
+                                <span className="entree-exos-inline__badge" title="Exercice du jour renseigné">
+                                  🎯 Exercice du jour
+                                </span>
+                              )}
+                              {entree.exerciceDomicile && (
+                                <span className="entree-exos-inline__badge entree-exos-inline__badge--domicile" title="Exercice à domicile renseigné">
+                                  🏠 Exercice à domicile
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="entree-actions no-print">
-                          <button className="btn-icon" onClick={e => { e.stopPropagation(); navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`); }} title="Modifier">✏️</button>
-                          <button className="btn-icon btn-icon--danger" onClick={e => { e.stopPropagation(); handleDeleteEntree(entree); }} title="Supprimer">🗑️</button>
+                          <button className="btn-icon" onClick={e => { e.stopPropagation(); navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`); }} title="Modifier la séance">✏️</button>
+                          {/* Phase 34 — Dupliquer : raccourci pour créer une séance similaire */}
+                          <button className="btn-icon btn-icon--duplicate" onClick={e => handleDuplicateEntree(entree, e)} title="Dupliquer la séance (raccourci de mise à jour)">🗐</button>
+                          <button className="btn-icon btn-icon--danger" onClick={e => { e.stopPropagation(); handleDeleteEntree(entree); }} title="Supprimer la séance">🗑️</button>
                         </div>
                       </div>
                       {entree.contenu && (

@@ -23,6 +23,20 @@ import type { TravailAFaire } from '../types/groupeAbsences.types';
 
 const COL_TRAVAUX = 'travaux_a_faire';
 
+/** Supprime récursivement toute valeur `undefined` (Firestore les rejette). */
+function stripUndefined(obj: Record<string, unknown>): Record<string, unknown> {
+  const cleaned: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v === undefined) continue;
+    if (v !== null && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Timestamp) && !(v instanceof Date)) {
+      cleaned[k] = stripUndefined(v as Record<string, unknown>);
+    } else {
+      cleaned[k] = v;
+    }
+  }
+  return cleaned;
+}
+
 function toDate(val: unknown): Date {
   if (val instanceof Timestamp) return val.toDate();
   if (val instanceof Date) return val;
@@ -52,7 +66,7 @@ export async function creerTravailAFaire(
   }
   payload.createdAt = Timestamp.now();
 
-  const ref = await addDoc(collection(db, COL_TRAVAUX), payload);
+  const ref = await addDoc(collection(db, COL_TRAVAUX), stripUndefined(payload));
   const snap = await getDoc(ref);
   return {
     id: ref.id,
@@ -80,7 +94,7 @@ export async function modifierTravailAFaire(
   if (data.dateEcheance instanceof Date) {
     data.dateEcheance = Timestamp.fromDate(data.dateEcheance as Date);
   }
-  await updateDoc(ref, data);
+  await updateDoc(ref, stripUndefined(data));
 }
 
 /**

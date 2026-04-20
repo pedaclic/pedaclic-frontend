@@ -1,11 +1,23 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
+/**
+ * Variante visuelle du bouton de confirmation. Permet d'adapter la couleur
+ * et l'icône de la modale au type d'action :
+ *   - 'danger'  : suppression, désinscription (rouge)
+ *   - 'warning' : action potentiellement risquée (orange)
+ *   - 'info'    : action neutre (bleu)
+ *   - 'success' : validation (vert)
+ */
+export type ConfirmVariant = 'danger' | 'warning' | 'info' | 'success';
+
 export interface ConfirmOptions {
   title?: string;
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Phase 34 — variante du bouton de confirmation (rouge / orange / bleu / vert) */
+  variant?: ConfirmVariant;
 }
 
 type ConfirmFunction = (options: ConfirmOptions | string) => Promise<boolean>;
@@ -70,7 +82,13 @@ export const ConfirmProvider: React.FC<{ children: ReactNode }> = ({ children })
                 onClick={() => handleClose(true)}
                 style={{
                   padding: '0.5rem 1.25rem', borderRadius: '0.5rem',
-                  border: 'none', backgroundColor: '#3b82f6',
+                  border: 'none',
+                  // Phase 34 — couleur adaptée à la variante
+                  backgroundColor:
+                    dialog.options.variant === 'danger'  ? '#dc2626' :
+                    dialog.options.variant === 'warning' ? '#d97706' :
+                    dialog.options.variant === 'success' ? '#16a34a' :
+                                                           '#3b82f6',
                   color: 'white', cursor: 'pointer', fontWeight: 500
                 }}
               >

@@ -162,14 +162,44 @@ export function estPremiumPro(formule: FormulePremium | string | undefined): boo
   return (FORMULES_PREMIUM_PRO as string[]).includes(formule);
 }
 
-/** Limite de ressources pour les formules non-Pro (générations + téléchargements + séquences) */
-export const LIMITE_RESSOURCES_NON_PRO = 30;
+/**
+ * Limites de ressources MENSUELLES (générations IA + téléchargements + séquences)
+ *
+ * ÉVOLUTION (avril 2026) :
+ * - Avant : 30/mois pour toutes les formules non-Pro
+ * - Désormais :
+ *   • Premium Pro (illimite_1an, a_la_carte_tous) → illimité (null)
+ *   • Premium annuel legacy ("annuel") → 70/mois
+ *   • Toutes les autres formules Premium (mensuel, illimite_3m, illimite_6m,
+ *     a_la_carte_1/3/7) → 50/mois
+ *
+ * La limite constante historique LIMITE_RESSOURCES_NON_PRO est conservée
+ * comme alias de compatibilité (= 50) pour ne casser aucun import externe.
+ */
+export const LIMITE_RESSOURCES_STANDARD = 50; // mensuel, 3m, 6m, à la carte 1/3/7
+export const LIMITE_RESSOURCES_ANNUEL = 70;   // formule "annuel" legacy
+
+/** @deprecated Utiliser LIMITE_RESSOURCES_STANDARD. Conservé pour compat ascendante. */
+export const LIMITE_RESSOURCES_NON_PRO = LIMITE_RESSOURCES_STANDARD;
+
+/** Liste des identifiants de formule annuelle NON-Pro (legacy) */
+const FORMULES_ANNUELLES_NON_PRO = ['annuel'];
 
 /**
- * Retourne la limite de ressources pour une formule (null = illimité)
- * Premium Pro → null | Autres formules Premium → 30
+ * Retourne la limite MENSUELLE de ressources pour une formule.
+ * - null  → accès illimité (Premium Pro)
+ * - 70    → formule annuelle non-Pro ('annuel' legacy)
+ * - 50    → toutes les autres formules premium / par défaut
  */
 export function getLimiteRessources(formule: FormulePremium | string | undefined): number | null {
-  if (!formule) return LIMITE_RESSOURCES_NON_PRO;
-  return estPremiumPro(formule) ? null : LIMITE_RESSOURCES_NON_PRO;
+  // Premium Pro → illimité (comportement inchangé)
+  if (estPremiumPro(formule)) return null;
+
+  // Formule annuelle non-Pro (legacy) → 70/mois
+  if (typeof formule === 'string' && FORMULES_ANNUELLES_NON_PRO.includes(formule)) {
+    return LIMITE_RESSOURCES_ANNUEL;
+  }
+
+  // Toutes les autres formules (y compris undefined) → 50/mois
+  return LIMITE_RESSOURCES_STANDARD;
 }

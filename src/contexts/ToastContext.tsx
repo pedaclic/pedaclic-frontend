@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -13,8 +13,23 @@ interface ToastMessage extends ToastOptions {
   id: string;
 }
 
+/**
+ * Le `toast` du contexte est à la fois une fonction (appel direct avec des
+ * options ou une chaîne) ET un objet pourvu de raccourcis typés :
+ * `toast.success('…')`, `toast.error('…')`, `toast.warning('…')`,
+ * `toast.info('…')`. Cette surcharge correspond au pattern utilisé à
+ * travers toute l'application PedaClic.
+ */
+export interface ToastApi {
+  (options: ToastOptions | string): void;
+  success: (message: string, duration?: number) => void;
+  error:   (message: string, duration?: number) => void;
+  warning: (message: string, duration?: number) => void;
+  info:    (message: string, duration?: number) => void;
+}
+
 interface ToastContextType {
-  toast: (options: ToastOptions | string) => void;
+  toast: ToastApi;
   toasts: ToastMessage[];
   removeToast: (id: string) => void;
 }
@@ -26,17 +41,31 @@ const ToastContext = createContext<ToastContextType | undefined>(undefined);
 export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
-  // Ajoute un toast et le supprime automatiquement après la durée définie
-  const toast = useCallback((options: ToastOptions | string) => {
+  // Fonction "brute" qui empile un toast selon un type donné
+  const pushToast = useCallback((options: ToastOptions | string) => {
     const opts = typeof options === 'string'
       ? { message: options, type: 'info' as ToastType }
       : options;
-    const id = Date.now().toString();
+    const id = Date.now().toString() + Math.random().toString(36).slice(2, 5);
     const duration = opts.duration ?? 3000;
 
     setToasts(prev => [...prev, { ...opts, id, type: opts.type ?? 'info' }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration);
   }, []);
+
+  /**
+   * `toast` est un objet-fonction : on le fabrique avec useMemo pour lui
+   * attacher les raccourcis `.success/.error/.warning/.info` tout en
+   * restant appelable directement (`toast('message')`).
+   */
+  const toast = useMemo<ToastApi>(() => {
+    const fn = ((options: ToastOptions | string) => pushToast(options)) as ToastApi;
+    fn.success = (message, duration) => pushToast({ message, type: 'success', duration });
+    fn.error   = (message, duration) => pushToast({ message, type: 'error',   duration });
+    fn.warning = (message, duration) => pushToast({ message, type: 'warning', duration });
+    fn.info    = (message, duration) => pushToast({ message, type: 'info',    duration });
+    return fn;
+  }, [pushToast]);
 
   const removeToast = useCallback((id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));

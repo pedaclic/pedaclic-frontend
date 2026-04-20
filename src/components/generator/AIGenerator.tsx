@@ -131,7 +131,11 @@ const AIGenerator: React.FC = () => {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
 
-  // ---- Quota (limite 30 pour non-Pro) ----
+  // ---- Quota MENSUEL ressources ----
+  // Limites : Pro (illimite_1an, a_la_carte_tous) = illimité ;
+  //           annuel legacy                        = 70 / mois ;
+  //           autres formules Premium              = 50 / mois ;
+  // Reset automatique au 1er de chaque mois calendaire (cf. premiumProService).
   const [quotaInfo, setQuotaInfo] = useState<{ usage: number; limite: number | null } | null>(null);
 
   // ---- Historique ----
@@ -341,7 +345,7 @@ const AIGenerator: React.FC = () => {
   const handleSave = async () => {
     if (!currentUser || !generationResult || !selectedDiscipline || !selectedType) return;
 
-    // Vérifier le quota ressources (limite 30 pour formules non-Pro)
+    // Vérifier le quota MENSUEL ressources (50 ou 70 selon la formule ; illimité pour Pro)
     const { autorise, usage, limite } = await verifierQuotaRessources(
       currentUser.uid,
       currentUser.subscriptionPlan

@@ -48,8 +48,14 @@ export interface User {
   niveauSouscrit?: Niveau;
   /** Classe souscrite par l'élève */
   classeSouscrite?: Classe;
-  /** Compteur des ressources consommées (générations + téléchargements + séquences) — pour limite 30 */
+  /** Compteur des ressources consommées (générations + téléchargements + séquences) — legacy, conservé pour compat */
   usageRessources?: number;
+  /** Cumul historique des ressources consommées (jamais réinitialisé) */
+  usageRessourcesTotal?: number;
+  /** Compteur MENSUEL de ressources consommées (reset à chaque changement de mois calendaire) */
+  usageMois?: number;
+  /** Mois de référence du compteur mensuel, au format ISO "YYYY-MM" */
+  moisUsage?: string;
   photoURL?: string;              // URL de la photo de profil (optionnel)
   createdAt: Date;                // Date de création du compte
   lastLogin?: Date;               // Dernière connexion

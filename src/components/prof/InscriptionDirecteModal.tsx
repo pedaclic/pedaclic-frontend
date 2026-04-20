@@ -12,6 +12,8 @@ import {
   desinscrireEleve,
   getAllInscriptionsGroupe,
   toggleStatutInscription,
+  // Phase 34 — élève sans compte PedaClic
+  inscrireEleveOffline,
   type EleveResultat,
   type InscriptionGroupe,
 } from '../../services/inscriptionDirecteService';
@@ -55,6 +57,12 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   const [actionEnCours, setActionEnCours] = useState<string | null>(null);
   const [messageSucces, setMessageSucces] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Phase 34 — Formulaire d'inscription d'un élève sans compte PedaClic ──
+  const [offlineNom, setOfflineNom] = useState('');
+  const [offlineRemarque, setOfflineRemarque] = useState('');
+  const [offlineEnCours, setOfflineEnCours] = useState(false);
+  const [offlineErreur, setOfflineErreur] = useState<string | null>(null);
 
   const chargerInscrits = useCallback(async () => {
     setChargementListe(true);
@@ -148,6 +156,35 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
       setErreurListe('Erreur lors de la désinscription.');
     } finally {
       setActionEnCours(null);
+    }
+  };
+
+  // ── Phase 34 — Ajout d'un élève "offline" (sans compte PedaClic) ──
+  //   Permet au prof de tenir à jour absences et notes même si l'élève
+  //   n'a pas encore créé son compte. Crée une inscription virtuelle
+  //   dans inscriptions_groupe avec un id synthétique.
+  const handleInscrireOffline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (offlineEnCours) return;
+    setOfflineErreur(null);
+    const nomPropre = offlineNom.trim();
+    if (nomPropre.length < 2) {
+      setOfflineErreur('Le nom doit contenir au moins 2 caractères.');
+      return;
+    }
+    setOfflineEnCours(true);
+    try {
+      await inscrireEleveOffline(groupeId, nomPropre, profId, offlineRemarque || undefined);
+      setMessageSucces(`✅ ${nomPropre} a été ajouté dans ${groupeNom} (sans compte PedaClic).`);
+      setOfflineNom('');
+      setOfflineRemarque('');
+      await chargerInscrits();
+      onSuccess?.();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erreur lors de l\'ajout.';
+      setOfflineErreur(message);
+    } finally {
+      setOfflineEnCours(false);
     }
   };
 
@@ -326,6 +363,50 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                   <p>Saisissez au moins 2 caractères pour lancer la recherche.</p>
                 </div>
               )}
+
+              {/* ══════════════════════════════════════════════════════
+                  Phase 34 — Élève sans compte PedaClic (inscription offline)
+                  Permet de tenir absences & notes à jour même si l'élève
+                  n'a pas encore créé son compte.
+                  ══════════════════════════════════════════════════════ */}
+              <div className="idm-offline-card">
+                <div className="idm-offline-card__titre">
+                  <span aria-hidden="true">📝</span>
+                  L'élève n'a pas (encore) de compte PedaClic ?
+                </div>
+                <p className="idm-offline-card__desc">
+                  Inscrivez-le manuellement pour continuer à suivre ses <strong>absences</strong> et
+                  ses <strong>notes</strong>. Vous pourrez relier son compte plus tard, dès qu'il
+                  l'aura créé, via la recherche ci-dessus.
+                </p>
+                <form className="idm-offline-card__form" onSubmit={handleInscrireOffline}>
+                  <input
+                    type="text"
+                    placeholder="Nom complet de l'élève *"
+                    value={offlineNom}
+                    onChange={e => setOfflineNom(e.target.value)}
+                    maxLength={80}
+                    required
+                    aria-label="Nom complet de l'élève"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Remarque (tuteur, téléphone — facultatif)"
+                    value={offlineRemarque}
+                    onChange={e => setOfflineRemarque(e.target.value)}
+                    maxLength={120}
+                    aria-label="Remarque facultative"
+                  />
+                  {offlineErreur && (
+                    <p style={{ gridColumn: '1 / -1', margin: 0, color: '#b91c1c', fontSize: '0.78rem' }} role="alert">
+                      ⚠️ {offlineErreur}
+                    </p>
+                  )}
+                  <button type="submit" disabled={offlineEnCours || offlineNom.trim().length < 2}>
+                    {offlineEnCours ? '⏳ Ajout en cours…' : '➕ Ajouter cet élève (sans compte)'}
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 
@@ -369,14 +450,34 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                           </span>
                         </div>
                         <div className="idm-carte-eleve__infos">
-                          <span className="idm-carte-eleve__nom">{inscription.eleveNom}</span>
-                          <span className="idm-carte-eleve__email">{inscription.eleveEmail}</span>
+                          <span className="idm-carte-eleve__nom">
+                            {inscription.eleveNom}
+                            {/* Phase 34 — marqueur "sans compte" */}
+                            {inscription.isOffline && (
+                              <span
+                                className="idm-badge idm-badge--offline"
+                                style={{ marginLeft: 8, fontSize: '0.68rem' }}
+                                title="Élève sans compte PedaClic"
+                              >
+                                📝 Sans compte
+                              </span>
+                            )}
+                          </span>
+                          <span className="idm-carte-eleve__email">
+                            {inscription.eleveEmail
+                              ? inscription.eleveEmail
+                              : (inscription.remarque ? `📌 ${inscription.remarque}` : <em style={{ color: '#9ca3af' }}>Aucun email enregistré</em>)}
+                          </span>
                           <div className="idm-ligne-inscrit__meta">
                             <span className={`idm-badge ${inscription.statut === 'actif' ? 'idm-badge--actif' : 'idm-badge--suspendu'}`}>
                               {inscription.statut === 'actif' ? '✓ Actif' : '⏸ Suspendu'}
                             </span>
                             <span className="idm-badge idm-badge--source">
-                              {inscription.sourceInscription === 'direct' ? '👨‍🏫 Prof' : '🔑 Code'}
+                              {inscription.sourceInscription === 'direct'
+                                ? '👨‍🏫 Prof'
+                                : inscription.sourceInscription === 'offline'
+                                  ? '📝 Hors-ligne'
+                                  : '🔑 Code'}
                             </span>
                             <span className="idm-date">
                               Inscrit le {formatDate(inscription.dateInscription as { toDate?: () => Date })}

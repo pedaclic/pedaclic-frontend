@@ -115,6 +115,13 @@ export interface GeneratedContent {
   chapitre: string;
   content: string;
   options?: GenerationOptions;
+  /**
+   * Pour les entrées historiques correspondant à un quiz IA :
+   * ID du document associé dans la collection `quizzes`
+   * (permet de relier l'entrée d'historique au quiz jouable / éditable).
+   * Optionnel — absent pour les contenus textuels.
+   */
+  quizId?: string;
   createdAt: Timestamp;
 }
 
@@ -537,11 +544,77 @@ export async function saveGeneratedQuiz(
     const docRef = await addDoc(collection(db, 'quizzes'), quizDoc);
 
     console.log('[aiGeneratorService] Quiz sauvegardé:', docRef.id);
+
+    // ────────────────────────────────────────────────────────────
+    // Miroir dans `generated_content` pour qu'un quiz IA apparaisse
+    // dans l'onglet « Historique » (qui ne lit que cette collection).
+    // Cette écriture secondaire est non-bloquante : si elle échoue,
+    // le quiz reste sauvegardé dans `quizzes` et jouable normalement
+    // — on n'annule rien et on ne lève pas d'exception côté appelant.
+    // ────────────────────────────────────────────────────────────
+    try {
+      await addDoc(collection(db, 'generated_content'), {
+        userId,
+        type: request.type, // 'quiz_auto'
+        discipline: request.discipline,
+        disciplineId,
+        classe: request.classe,
+        chapitre: request.chapitre,
+        // Rendu Markdown des questions pour aperçu dans le modal « Lire »
+        content: formatQuizQuestionsAsMarkdown(questions),
+        options: request.options
+          ? JSON.parse(JSON.stringify(request.options))
+          : null,
+        quizId: docRef.id, // lien vers le quiz jouable
+        createdAt: Timestamp.now(),
+      });
+    } catch (histError) {
+      // Volontairement silencieux : l'historique est un bonus d'UX,
+      // pas une garantie contractuelle de la sauvegarde du quiz.
+      console.warn(
+        '[aiGeneratorService] Entrée historique quiz non créée (non bloquant):',
+        histError
+      );
+    }
+
     return docRef.id;
   } catch (error) {
     console.error('[aiGeneratorService] Erreur sauvegarde quiz:', error);
     throw new Error('Erreur lors de la sauvegarde du quiz généré.');
   }
+}
+
+/**
+ * Convertit une liste de questions QCM en aperçu Markdown lisible.
+ * Utilisé pour peupler `content` dans l'entrée `generated_content`
+ * d'un quiz IA — permet à l'utilisateur de relire les questions
+ * depuis le modal « Lire » de l'historique.
+ */
+function formatQuizQuestionsAsMarkdown(questions: QuizQuestion[]): string {
+  if (!questions || questions.length === 0) return '';
+  const lignes: string[] = [
+    `# Quiz auto-généré`,
+    '',
+    `**${questions.length} question${questions.length > 1 ? 's' : ''}**`,
+    '',
+  ];
+  questions.forEach((q, i) => {
+    lignes.push(`## Question ${i + 1}`);
+    lignes.push('');
+    lignes.push(q.question);
+    lignes.push('');
+    const letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+    q.options.forEach((opt, idx) => {
+      const marque = idx === q.reponseCorrecte ? '**' : '';
+      lignes.push(`- ${marque}${letters[idx] ?? idx + 1}. ${opt}${marque}`);
+    });
+    if (q.explication) {
+      lignes.push('');
+      lignes.push(`> **Explication :** ${q.explication}`);
+    }
+    lignes.push('');
+  });
+  return lignes.join('\n');
 }
 
 /**

@@ -154,15 +154,35 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentPage = 'dash
    * Détermine si un lien de navigation est actif
    * Utilise le pathname actuel pour une détection automatique
    * Le prop currentPage est utilisé comme fallback
+   *
+   * CORRECTION BUG (sélection multiple sidebar) :
+   * Auparavant on utilisait `pathname.startsWith(item.href)`.
+   * Problème : `/admin/quiz-avance` commence par `/admin/quiz`,
+   * donc les deux items « Quiz » et « Quiz Avancés » étaient
+   * marqués actifs en même temps.
+   *
+   * Solution : on exige que le caractère qui suit le préfixe
+   * soit la fin de la chaîne OU un « / » (séparateur de segment).
+   * Ainsi `/admin/quiz` ne matche que `/admin/quiz` et
+   * `/admin/quiz/...`, mais pas `/admin/quiz-avance`.
    */
   const isLinkActive = (item: NavItem): boolean => {
-    /* Détection automatique via l'URL */
-    if (item.href === '/admin') {
-      /* Pour le dashboard, on vérifie que le path est exactement /admin */
-      return location.pathname === '/admin' || location.pathname === '/admin/';
+    const pathname = location.pathname;
+    const href = item.href;
+
+    /* Cas spécial : le dashboard ne doit être actif que sur /admin
+       exactement, sinon il le serait pour toutes les pages /admin/* */
+    if (href === '/admin') {
+      return pathname === '/admin' || pathname === '/admin/';
     }
-    /* Pour les autres liens, on vérifie si le path commence par le href */
-    return location.pathname.startsWith(item.href);
+
+    /* Match exact */
+    if (pathname === href) return true;
+
+    /* Match par segment : on vérifie que le caractère suivant est un « / »
+       pour éviter qu'un préfixe partiel (ex: /admin/quiz vs /admin/quiz-avance)
+       ne matche un autre lien. */
+    return pathname.startsWith(href + '/');
   };
 
   // ==================== RENDU ====================

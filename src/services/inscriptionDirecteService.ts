@@ -47,7 +47,18 @@ export interface InscriptionGroupe {
   profId: string;         // prof qui a effectué l'inscription
   dateInscription: Timestamp;
   statut: 'actif' | 'suspendu';
-  sourceInscription: 'code' | 'direct'; // 'direct' = inscrit par le prof
+  /**
+   * Origine de l'inscription :
+   *   'code'    = auto-inscription de l'élève via code groupe
+   *   'direct'  = inscrit par le prof depuis un compte PedaClic existant
+   *   'offline' = Phase 34 : élève sans compte PedaClic (inscription manuelle)
+   *               Permet au prof de suivre présences & notes même hors connexion
+   */
+  sourceInscription: 'code' | 'direct' | 'offline';
+  /** Phase 34 : note libre saisie par le prof (ex. tuteur, téléphone, remarque) */
+  remarque?: string;
+  /** Phase 34 : true si l'élève n'a pas (encore) de compte PedaClic */
+  isOffline?: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -335,4 +346,86 @@ function buildEleveResultat(
     dejaInscrit: inscritsMap.has(uid),
     inscriptionId,
   };
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 34 — INSCRIPTION D'UN ÉLÈVE SANS COMPTE PEDACLIC (OFFLINE)
+//
+// Cas d'usage : le prof souhaite suivre absences et notes d'un élève
+// qui n'est pas (encore) inscrit sur la plateforme — par exemple un
+// élève arrivé en cours d'année, ou sans connexion internet à domicile.
+// On crée une inscription "virtuelle" avec un id eleve synthétique
+// (préfixé "offline:") et aucun document `users/{uid}` associé.
+// ══════════════════════════════════════════════════════════════════════
+
+/** Génère un id élève offline stable (préfixe + timestamp) */
+function genererEleveIdOffline(): string {
+  // Préfixe clair pour distinguer des uid Firebase (28 caractères alphanum)
+  return `offline:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/**
+ * Inscrit un élève "offline" (sans compte PedaClic) dans un groupe.
+ * Cet élève pourra être pointé dans les listes d'absences et
+ * recevoir des notes, mais ne verra rien côté élève tant qu'il n'aura
+ * pas créé de compte. Une fois le compte créé, le prof pourra
+ * réinscrire l'élève avec inscrireEleveDirect() pour relier les deux.
+ *
+ * @param groupeId   ID du groupe cible
+ * @param nom        Nom complet de l'élève (obligatoire)
+ * @param profId     UID du prof qui effectue l'inscription
+ * @param remarque   Note libre optionnelle (tuteur, téléphone…)
+ * @returns          ID du document inscriptions_groupe créé
+ */
+export async function inscrireEleveOffline(
+  groupeId: string,
+  nom: string,
+  profId: string,
+  remarque?: string
+): Promise<string> {
+  const nomPropre = nom.trim();
+  if (nomPropre.length < 2) {
+    throw new Error('Le nom de l\'élève doit contenir au moins 2 caractères.');
+  }
+
+  // Pas de vérification de doublon stricte (un prof peut avoir 2 "Diop"),
+  // mais on garde la trace de la saisie dans `remarque` pour désambiguïser.
+  const eleveId = genererEleveIdOffline();
+
+  const inscriptionData: Omit<InscriptionGroupe, 'id'> = {
+    groupeId,
+    eleveId,
+    eleveNom:          nomPropre,
+    eleveEmail:        '', // pas d'email puisque pas de compte
+    profId,
+    dateInscription:   Timestamp.now(),
+    statut:            'actif',
+    sourceInscription: 'offline',
+    isOffline:         true,
+    ...(remarque && remarque.trim() ? { remarque: remarque.trim() } : {}),
+  };
+
+  const ref = await addDoc(collection(db, COL_INSCRIPTIONS), inscriptionData);
+
+  // Incrémenter le compteur de membres du groupe
+  await updateDoc(doc(db, COL_GROUPES, groupeId), {
+    nombreInscrits: increment(1),
+  });
+
+  return ref.id;
+}
+
+/**
+ * Met à jour le nom ou la remarque d'un élève offline.
+ * Utile si le prof corrige une faute de frappe après coup.
+ */
+export async function modifierInscriptionOffline(
+  inscriptionId: string,
+  modifs: { eleveNom?: string; remarque?: string }
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (modifs.eleveNom && modifs.eleveNom.trim()) payload.eleveNom = modifs.eleveNom.trim();
+  if (modifs.remarque !== undefined) payload.remarque = modifs.remarque.trim();
+  if (Object.keys(payload).length === 0) return;
+  await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), payload);
 }

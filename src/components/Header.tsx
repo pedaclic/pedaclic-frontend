@@ -41,12 +41,13 @@ import { useTheme } from '../contexts/ThemeContext';
 import './Header.css';
 import NotificationBell from './NotificationBell';
 
-/* ==================== INTERFACE ==================== */
+/* ==================== INTERFACES ==================== */
 
 /**
- * Interface pour les liens de navigation
+ * Lien de navigation simple (entrée cliquable)
  */
 interface NavLink {
+  kind?: 'link';
   path: string;
   label: string;
   icon: React.ReactNode;
@@ -54,6 +55,30 @@ interface NavLink {
   requirePremium?: boolean;   // Visible uniquement aux membres Premium
   hideIfPremium?: boolean;    // Masqué si déjà Premium (CTA d'abonnement)
   requireRole?: ('admin' | 'prof' | 'eleve' | 'parent')[]; // Rôles autorisés
+}
+
+/**
+ * Groupe de liens regroupés sous un menu déroulant.
+ *
+ * Évolution (avril 2026) : introduit pour regrouper Bibliothèque,
+ * Médiathèque, Sessions Live, Quiz, Quiz Avancés et Générateur IA
+ * sous un menu « Apprendre » unique, sans casser les permissions
+ * (chaque enfant conserve ses flags requireAuth / requirePremium / etc.).
+ */
+interface NavGroup {
+  kind: 'group';
+  id: string;                 // Identifiant unique (utilisé pour l'état open/close)
+  label: string;              // Libellé affiché sur le bouton
+  icon: React.ReactNode;
+  children: NavLink[];        // Liens enfants
+}
+
+/** Union : une entrée de navigation est soit un lien, soit un groupe */
+type NavEntry = NavLink | NavGroup;
+
+/** Type guard : vrai si l'entrée est un groupe déroulant */
+function isNavGroup(entry: NavEntry): entry is NavGroup {
+  return (entry as NavGroup).kind === 'group';
 }
 
 /* ==================== COMPOSANT HEADER ==================== */
@@ -70,9 +95,22 @@ const Header: React.FC = () => {
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<any>(null);
+  /* ID du groupe de navigation actuellement ouvert (desktop) ; null si aucun.
+     Un seul dropdown ouvert à la fois, à la manière du menu utilisateur. */
+  const [openNavGroupId, setOpenNavGroupId] = useState<string | null>(null);
+  /* Position absolue (viewport) du dropdown de groupe ouvert.
+     Recalculée à l'ouverture et lors de resize/scroll pour suivre le bouton. */
+  const [navGroupPos, setNavGroupPos] = useState<{ top: number; left: number } | null>(null);
 
   // ===== REFS =====
   const dropdownRef = useRef<HTMLDivElement>(null);
+  /* Ref sur chaque dropdown de groupe de navigation, pour le click-outside */
+  const navGroupRefs = useRef<Record<string, HTMLLIElement | null>>({});
+  /* Ref sur le bouton qui déclenche chaque dropdown de groupe.
+     Utilisé pour calculer la position fixed du panneau déroulant
+     (indispensable car le parent .header__nav--desktop a overflow
+     clippant qui masquerait un dropdown en position:absolute). */
+  const navGroupButtonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   /* ==================== CONFIGURATION DES LIENS ==================== */
   
@@ -80,7 +118,17 @@ const Header: React.FC = () => {
    * Liens de navigation principale
    * Configurés avec les permissions requises
    */
-  const navLinks: NavLink[] = [
+  /*
+   * NAVIGATION PRINCIPALE
+   *
+   * Évolution (avril 2026) : les 6 liens Bibliothèque, Médiathèque,
+   * Sessions Live, Quiz, Quiz Avancés et Générateur IA sont désormais
+   * regroupés sous un menu déroulant « Apprendre » unique pour alléger
+   * la barre de navigation. Les permissions (requireAuth, requirePremium)
+   * de chaque lien sont strictement préservées — chaque enfant est filtré
+   * individuellement par `shouldShowLink()` avant d'être affiché.
+   */
+  const navEntries: NavEntry[] = [
     {
       path: '/',
       label: 'Accueil',
@@ -91,37 +139,60 @@ const Header: React.FC = () => {
       label: 'Disciplines',
       icon: <BookOpen size={18} />
     },
-   {
-      path: '/ebooks',
-      label: 'Bibliothèque',
-      icon: <BookOpen size={18} />
-    },
+
+    // ==================== GROUPE « APPRENDRE » ====================
+    // Regroupe tous les contenus et outils pédagogiques accessibles.
+    // Le bouton d'ouverture du menu est rendu côté desktop avec un
+    // chevron ; côté mobile, les enfants sont listés à plat sous le
+    // libellé du groupe (pas d'accordion pour minimiser les frictions).
     {
-      path: '/mediatheque',
-      label: 'Médiathèque',
-      icon: <Film size={18} />
+      kind: 'group',
+      id: 'apprendre',
+      label: 'Apprendre',
+      icon: <GraduationCap size={18} />,
+      children: [
+        {
+          path: '/ebooks',
+          label: 'Bibliothèque',
+          icon: <BookOpen size={18} />
+        },
+        {
+          path: '/mediatheque',
+          label: 'Médiathèque',
+          icon: <Film size={18} />
+        },
+        {
+          path: '/live',
+          label: 'Sessions Live',
+          icon: <Radio size={18} />,
+          requireAuth: true,
+        },
+        // Quiz gratuits — accessibles sans connexion
+        {
+          path: '/quiz-gratuits',
+          label: 'Quiz',
+          icon: <GraduationCap size={18} />,
+          requireAuth: false,
+        },
+        // Quiz avancés — Premium seulement
+        {
+          path: '/quizzes',
+          label: 'Quiz Avancés',
+          icon: <GraduationCap size={18} />,
+          requireAuth: true,
+          requirePremium: true,
+        },
+        {
+          path: '/generateur',
+          label: 'Générateur IA',
+          icon: <Sparkles size={18} />,
+          requireAuth: true,
+          requirePremium: true
+        },
+      ],
     },
-    {
-      path: '/live',
-      label: 'Sessions Live',
-      icon: <Radio size={18} />,
-      requireAuth: true,
-    },
-    // APRÈS — Quiz gratuits pour tous
-   {
-  path: '/quiz-gratuits',
-  label: 'Quiz',
-  icon: <GraduationCap size={18} />,
-  requireAuth: false,  // Accessible sans connexion
-  },
-   // Quiz avancés — Premium seulement (visible si premium/prof/admin)
-  {
-    path: '/quizzes',
-    label: 'Quiz Avancés',
-    icon: <GraduationCap size={18} />,
-    requireAuth: true,
-    requirePremium: true,
-    },
+    // =============================================================
+
     {
       path: '/premium',
       label: 'Premium',
@@ -133,13 +204,6 @@ const Header: React.FC = () => {
       label: 'Tableau de bord',
       icon: <LayoutDashboard size={18} />,
       requireAuth: true
-    },
-    {
-      path: '/generateur',
-      label: 'Générateur IA',
-      icon: <Sparkles size={18} />,
-      requireAuth: true,
-      requirePremium: true
     },
     {
       path: '/eleve/cahiers',
@@ -160,18 +224,65 @@ const Header: React.FC = () => {
   /* ==================== EFFETS ==================== */
 
   /**
-   * Fermer le dropdown quand on clique à l'extérieur
+   * Calcule la position fixed du dropdown de groupe ouvert à partir
+   * du bounding rect de son bouton déclencheur. Recalcule également
+   * sur resize et scroll pour que le panneau suive le bouton.
+   *
+   * Ce mécanisme contourne le clip vertical imposé par le parent
+   * .header__nav--desktop qui combine overflow-x:auto et overflow-y:hidden.
+   */
+  useEffect(() => {
+    if (!openNavGroupId) {
+      setNavGroupPos(null);
+      return;
+    }
+
+    const updatePosition = () => {
+      const btn = navGroupButtonRefs.current[openNavGroupId];
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      setNavGroupPos({
+        top: rect.bottom + 8,    // 8px de marge sous le bouton
+        left: rect.left,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true); // capture pour attraper tous les scrolls parents
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [openNavGroupId]);
+
+  /**
+   * Fermer les dropdowns quand on clique à l'extérieur :
+   *  - dropdown utilisateur (dropdownRef)
+   *  - dropdowns de navigation (navGroupRefs : une ref par groupe)
    */
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      // Dropdown utilisateur
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsUserDropdownOpen(false);
+      }
+
+      // Dropdown groupe de navigation : on ferme si le clic est hors
+      // du <li> contenant le groupe actuellement ouvert.
+      if (openNavGroupId) {
+        const currentEl = navGroupRefs.current[openNavGroupId];
+        if (currentEl && !currentEl.contains(target)) {
+          setOpenNavGroupId(null);
+        }
       }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [openNavGroupId]);
 
   /** Capture l'événement d'installation PWA */
   useEffect(() => {
@@ -203,6 +314,7 @@ const Header: React.FC = () => {
   useEffect(() => {
     setIsMobileMenuOpen(false);
     setIsUserDropdownOpen(false);
+    setOpenNavGroupId(null);
   }, [location.pathname]);
 
   /**
@@ -279,10 +391,42 @@ const Header: React.FC = () => {
 
   /**
    * Vérifie si un lien est actif (route courante)
+   *
+   * CORRECTION : on exige que le préfixe soit suivi de la fin de chaîne
+   * ou d'un « / » pour éviter qu'un lien avec un nom partiel commun
+   * (ex : /quiz vs /quiz-avance) ne soit faussement marqué actif.
    */
   const isActiveLink = (path: string): boolean => {
     if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
+    const pathname = location.pathname;
+    return pathname === path || pathname.startsWith(path + '/');
+  };
+
+  /**
+   * Filtre les enfants visibles d'un groupe selon les permissions de
+   * l'utilisateur courant (réutilise shouldShowLink sur chaque enfant).
+   */
+  const visibleChildren = (group: NavGroup): NavLink[] =>
+    group.children.filter(shouldShowLink);
+
+  /**
+   * Un groupe est affiché uniquement s'il a AU MOINS un enfant visible.
+   * (Si l'utilisateur ne peut accéder à aucun lien du groupe, le groupe
+   * entier est masqué — évite un dropdown vide dans la sidebar.)
+   */
+  const shouldShowGroup = (group: NavGroup): boolean =>
+    visibleChildren(group).length > 0;
+
+  /**
+   * Un groupe est considéré « actif » (libellé mis en évidence) si la
+   * route courante correspond à l'un quelconque de ses enfants.
+   */
+  const isGroupActive = (group: NavGroup): boolean =>
+    group.children.some(child => isActiveLink(child.path));
+
+  /** Toggle de l'ouverture d'un groupe donné (desktop). */
+  const toggleNavGroup = (groupId: string) => {
+    setOpenNavGroupId(current => (current === groupId ? null : groupId));
   };
 
   /**
@@ -329,8 +473,80 @@ const Header: React.FC = () => {
         {/* ----- NAVIGATION DESKTOP ----- */}
         <nav className="header__nav header__nav--desktop">
           <ul className="header__nav-list">
-            {navLinks.map((link) => (
-              shouldShowLink(link) && (
+            {navEntries.map((entry) => {
+              /* ===== Cas 1 : entrée = GROUPE déroulant (ex : Apprendre) ===== */
+              if (isNavGroup(entry)) {
+                if (!shouldShowGroup(entry)) return null;
+                const isOpen = openNavGroupId === entry.id;
+                const active = isGroupActive(entry);
+                const children = visibleChildren(entry);
+
+                return (
+                  <li
+                    key={entry.id}
+                    className="header__nav-item header__nav-item--group"
+                    ref={el => { navGroupRefs.current[entry.id] = el; }}
+                  >
+                    {/* Bouton déclencheur du dropdown */}
+                    <button
+                      type="button"
+                      ref={el => { navGroupButtonRefs.current[entry.id] = el; }}
+                      className={`header__nav-link header__nav-link--group ${active ? 'header__nav-link--active' : ''}`}
+                      onClick={() => toggleNavGroup(entry.id)}
+                      aria-expanded={isOpen}
+                      aria-haspopup="true"
+                    >
+                      {entry.icon}
+                      <span>{entry.label}</span>
+                      <ChevronDown
+                        size={16}
+                        className={`header__nav-chevron ${isOpen ? 'header__nav-chevron--open' : ''}`}
+                      />
+                    </button>
+
+                    {/*
+                      Panneau dropdown (visible si isOpen).
+                      Position : fixed calculée à partir du bouton (voir useEffect
+                      qui met à jour navGroupPos). Cela permet au panneau de
+                      s'afficher hors du conteneur .header__nav--desktop qui a
+                      overflow clippant — sinon le dropdown serait invisible.
+                      Tant que navGroupPos n'est pas calculé (premier render),
+                      on ne rend rien pour éviter un flash en haut à gauche.
+                    */}
+                    {isOpen && navGroupPos && (
+                      <div
+                        className="header__nav-dropdown"
+                        role="menu"
+                        style={{
+                          position: 'fixed',
+                          top: `${navGroupPos.top}px`,
+                          left: `${navGroupPos.left}px`,
+                        }}
+                      >
+                        {children.map((child) => (
+                          <Link
+                            key={child.path}
+                            to={child.path}
+                            role="menuitem"
+                            className={`header__nav-dropdown-link ${isActiveLink(child.path) ? 'header__nav-dropdown-link--active' : ''}`}
+                          >
+                            {child.icon}
+                            <span>{child.label}</span>
+                            {child.requirePremium && (
+                              <Crown size={14} className="header__premium-badge" />
+                            )}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              }
+
+              /* ===== Cas 2 : entrée = LIEN SIMPLE (comportement historique) ===== */
+              const link = entry;
+              if (!shouldShowLink(link)) return null;
+              return (
                 <li key={link.path} className="header__nav-item">
                   <Link
                     to={link.path}
@@ -344,8 +560,8 @@ const Header: React.FC = () => {
                     )}
                   </Link>
                 </li>
-              )
-            ))}
+              );
+            })}
           </ul>
         </nav>
 
@@ -546,11 +762,50 @@ const Header: React.FC = () => {
         
         {/* Contenu du menu */}
         <div className="header__mobile-content">
-          {/* Navigation mobile */}
+          {/* Navigation mobile
+              Pour les groupes (ex : Apprendre), on affiche un titre de
+              section + la liste des enfants visibles en dessous. Aucun
+              accordion : tout reste accessible en un seul scroll, ce qui
+              évite toute régression d'accessibilité sur mobile. */}
           <nav className="header__mobile-nav">
             <ul className="header__mobile-list">
-              {navLinks.map((link) => (
-                shouldShowLink(link) && (
+              {navEntries.map((entry) => {
+                /* Groupe (ex : Apprendre) */
+                if (isNavGroup(entry)) {
+                  if (!shouldShowGroup(entry)) return null;
+                  const children = visibleChildren(entry);
+                  return (
+                    <li key={entry.id} className="header__mobile-item header__mobile-item--group">
+                      {/* Titre de section non cliquable */}
+                      <div className="header__mobile-group-title">
+                        {entry.icon}
+                        <span>{entry.label}</span>
+                      </div>
+                      {/* Liens enfants du groupe */}
+                      <ul className="header__mobile-sublist">
+                        {children.map((child) => (
+                          <li key={child.path} className="header__mobile-item">
+                            <Link
+                              to={child.path}
+                              className={`header__mobile-link header__mobile-link--sub ${isActiveLink(child.path) ? 'header__mobile-link--active' : ''}`}
+                            >
+                              {child.icon}
+                              <span>{child.label}</span>
+                              {child.requirePremium && (
+                                <Crown size={14} className="header__premium-badge" />
+                              )}
+                            </Link>
+                          </li>
+                        ))}
+                      </ul>
+                    </li>
+                  );
+                }
+
+                /* Lien simple (comportement mobile historique) */
+                const link = entry;
+                if (!shouldShowLink(link)) return null;
+                return (
                   <li key={link.path} className="header__mobile-item">
                     <Link
                       to={link.path}
@@ -563,8 +818,8 @@ const Header: React.FC = () => {
                       )}
                     </Link>
                   </li>
-                )
-              ))}
+                );
+              })}
             </ul>
           </nav>
 

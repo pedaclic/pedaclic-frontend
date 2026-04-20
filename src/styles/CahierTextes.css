@@ -1322,7 +1322,12 @@
   background: white;
   cursor: pointer;
   outline: none;
-  max-width: 110px;
+  /* Phase 34 : élargi pour afficher « Times New Roman » et « Paragraphe » en entier */
+  min-width: 140px;
+  max-width: 180px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .rte-select:focus { border-color: var(--ct-blue); }
 
@@ -1672,5 +1677,6 @@
   .view-tabs { width: 100%; }
   .cahier-detail-header { padding: 1rem; }
   .entrees-controls { flex-direction: column; align-items: flex-start; }
-  .rte-select { max-width: 90px; }
+  /* Phase 34 : en mobile les selects rétrécissent un peu mais conservent la place pour « Times New Roman » */
+  .rte-select { min-width: 120px; max-width: 150px; }
 }

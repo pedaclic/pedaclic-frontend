@@ -23,9 +23,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     return saved || 'light';
   });
 
-  // Applique la classe CSS dark sur <html> et sauvegarde dans localStorage
+  // Applique l'attribut data-theme sur <html> et sauvegarde dans localStorage
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('pedaclic-theme', theme);
   }, [theme]);
 

@@ -967,6 +967,9 @@ export async function createEntree(
       liens:                [],
       ebooksLies:           [],
       contenuIA:            [],
+      // Phase 34 — Exercices liés à la leçon (optionnels, persistés en clair)
+      exerciceJour:         f.exerciceJour || '',
+      exerciceDomicile:     f.exerciceDomicile || '',
     };
   } else {
     // Signature Phase 22 : createEntree(data)
@@ -1017,6 +1020,9 @@ export async function updateEntree(
         ? Timestamp.fromDate(new Date(f.dateEvaluationPrevue))
         : null,
       statutEvaluation:     f.statutEvaluation,
+      // Phase 34 — Exercices liés à la leçon (persistés même s'ils sont vides pour permettre la suppression)
+      exerciceJour:         f.exerciceJour || '',
+      exerciceDomicile:     f.exerciceDomicile || '',
     };
   } else {
     // Signature Phase 22 : updateEntree(entreeId, data)
@@ -1031,6 +1037,61 @@ export async function updateEntree(
 
 export async function deleteEntree(entreeId: string): Promise<void> {
   await deleteDoc(doc(db, COL_ENTREES, entreeId));
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 34 — DUPLICATION DE SÉANCE
+// Raccourci pour mettre à jour rapidement des contenus :
+// clone toutes les données d'une séance en créant un nouveau document
+// avec un nouvel id Firestore, une nouvelle date et le statut "planifie"
+// (pour permettre d'éditer sans écraser la séance source).
+// ─────────────────────────────────────────────────────────────
+export async function duplicateEntree(
+  entreeSource: EntreeCahier,
+  options?: { nouvelleDate?: Date; nouveauStatut?: StatutSeance }
+): Promise<string> {
+  const now = Timestamp.now();
+  const nouvelleDate = options?.nouvelleDate ?? new Date();
+  const nouveauStatut: StatutSeance = options?.nouveauStatut ?? 'planifie';
+
+  // On ne copie PAS : id, createdAt, updatedAt, ordre (recalculés)
+  // On ne copie PAS les pièces jointes (risque de doublons Storage — l'utilisateur
+  // peut les rattacher manuellement si besoin).
+  const clone: Record<string, unknown> = {
+    cahierId:             entreeSource.cahierId,
+    profId:               entreeSource.profId,
+    date:                 Timestamp.fromDate(nouvelleDate),
+    heureDebut:           entreeSource.heureDebut ?? '',
+    heureFin:             entreeSource.heureFin ?? '',
+    chapitre:             `${entreeSource.chapitre} (copie)`,
+    typeContenu:          entreeSource.typeContenu,
+    contenu:              entreeSource.contenu ?? '',
+    objectifs:            entreeSource.objectifs ?? '',
+    competences:          entreeSource.competences ?? [],
+    rubrique:             entreeSource.rubrique ?? '',
+    statut:               nouveauStatut,
+    motifAnnulation:      '',
+    dateReport:           null,
+    notesPrivees:         entreeSource.notesPrivees ?? '',
+    isMarqueEvaluation:   Boolean(entreeSource.isMarqueEvaluation),
+    typeEvaluation:       entreeSource.typeEvaluation ?? null,
+    dateEvaluationPrevue: null,
+    statutEvaluation:     entreeSource.statutEvaluation ?? 'a_evaluer',
+    ordre:                Date.now(),
+    piecesJointes:        [],
+    liens:                entreeSource.liens ?? [],
+    ebooksLies:           entreeSource.ebooksLies ?? [],
+    contenuIA:            entreeSource.contenuIA ?? [],
+    rubriqueId:           entreeSource.rubriqueId ?? null,
+    // Phase 34 — exercices liés
+    exerciceJour:         entreeSource.exerciceJour ?? '',
+    exerciceDomicile:     entreeSource.exerciceDomicile ?? '',
+    createdAt:            now,
+    updatedAt:            now,
+  };
+
+  const ref = await addDoc(collection(db, COL_ENTREES), clone);
+  return ref.id;
 }
 
 export async function mettreAJourCompteurSeances(

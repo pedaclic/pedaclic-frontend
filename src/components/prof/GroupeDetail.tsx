@@ -479,22 +479,34 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     if (!currentUser?.uid || !nouveauTravailTitre.trim()) return;
     const echeance = nouveauTravailEcheance ? new Date(nouveauTravailEcheance) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     // Phase 31 — Résolution de la rubrique sélectionnée
+    // On lit d'abord les valeurs saisies pour les champs optionnels,
+    // puis on ne les inclut dans le payload QUE si elles sont réellement définies.
+    // Firestore rejette tout champ à `undefined` (ex. rubriqueId sans rubrique sélectionnée)
+    // — d'où l'usage d'un spread conditionnel plutôt que d'un objet monolithique.
     const rubrique = rubriquesDisponibles.find(r => r.id === nouveauTravailRubriqueId);
+    const descriptionTrim = nouveauTravailDesc.trim();
     try {
       setSavingTravail(true);
-      await creerTravailAFaire({
+      // Construction progressive : on part du socle obligatoire,
+      // puis on ajoute chaque champ optionnel seulement s'il a une valeur.
+      const payload: Parameters<typeof creerTravailAFaire>[0] = {
         groupeId: groupe.id,
         groupeNom: groupe.nom,
         titre: nouveauTravailTitre.trim(),
-        description: nouveauTravailDesc.trim() || undefined,
         dateEcheance: echeance,
-        heureEcheance: nouveauTravailHeure || undefined,
         matiere: groupe.matiereNom,
-        cahierId: cahierSelectionne || undefined,
-        rubriqueId: rubrique?.id ?? undefined,
-        rubriqueNom: rubrique?.nom ?? undefined,
         profId: currentUser.uid,
-      });
+      };
+      if (descriptionTrim) payload.description = descriptionTrim;
+      if (nouveauTravailHeure) payload.heureEcheance = nouveauTravailHeure;
+      if (cahierSelectionne) payload.cahierId = cahierSelectionne;
+      // rubriqueId / rubriqueNom ne sont ajoutés qu'ensemble et seulement si
+      // une rubrique valide a été trouvée — jamais `undefined`.
+      if (rubrique) {
+        payload.rubriqueId = rubrique.id;
+        payload.rubriqueNom = rubrique.nom;
+      }
+      await creerTravailAFaire(payload);
       setNouveauTravailTitre('');
       setNouveauTravailDesc('');
       setNouveauTravailEcheance('');

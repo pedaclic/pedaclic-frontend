@@ -340,6 +340,16 @@ export interface EntreeCahier {
   contenuIA?: LienContenuIA[];
   // Phase 29 — ID de la rubrique (RubriqueCahier) à laquelle appartient cette entrée
   rubriqueId?: string | null;
+  // ────────────────────────────────────────────────────────────
+  // Phase 34 — Exercices liés à la leçon
+  //   Chaque entrée peut porter deux blocs d'exercices distincts :
+  //   exerciceJour     = Exercice d'application travaillé en classe
+  //   exerciceDomicile = Exercice à faire à la maison
+  //   Le contenu HTML riche est produit par le RichTextEditor.
+  //   Champs optionnels pour rester rétrocompatibles avec les séances existantes.
+  // ────────────────────────────────────────────────────────────
+  exerciceJour?: string;
+  exerciceDomicile?: string;
 }
 
 export interface EntreeFormData {
@@ -361,6 +371,10 @@ export interface EntreeFormData {
   typeEvaluation: TypeEvaluation | '';
   dateEvaluationPrevue: string;
   statutEvaluation: StatutEvaluation;
+  /** Phase 34 — Exercice d'application (travaillé en classe) */
+  exerciceJour?: string;
+  /** Phase 34 — Exercice à faire à la maison */
+  exerciceDomicile?: string;
 }
 
 // ─────────────────────────────────────────────────────────────

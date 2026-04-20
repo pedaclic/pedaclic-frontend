@@ -222,6 +222,106 @@
   color: #f59e0b;
 }
 
+/* ==================== GROUPE DÉROULANT DE NAVIGATION ====================
+ *
+ * Styles pour le menu déroulant « Apprendre » regroupant Bibliothèque,
+ * Médiathèque, Sessions Live, Quiz, Quiz Avancés et Générateur IA.
+ * Réutilise les variables et tokens visuels du dropdown utilisateur
+ * (ombres, animations, rayons) pour une cohérence UI globale.
+ * ===================================================================== */
+
+/* Le bouton déclencheur imite un lien de navigation classique
+   (flex align + hover cohérent). Type button → reset natif. */
+.header__nav-link--group {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Chevron : animation d'ouverture/fermeture synchrone avec l'état */
+.header__nav-chevron {
+  transition: transform var(--transition-base);
+  margin-left: var(--spacing-xs);
+  color: var(--color-text-muted, currentColor);
+}
+.header__nav-chevron--open {
+  transform: rotate(180deg);
+}
+
+/* Panneau déroulant positionné sous le bouton.
+   Important : on utilise position: fixed (set en inline style depuis React)
+   plutôt que position: absolute. Raison : le parent .header__nav--desktop
+   combine overflow-x: auto + overflow-y: hidden (pour masquer la scrollbar
+   horizontale sur nav étroits), ce qui CLIPPE verticalement tout enfant
+   en position: absolute. En fixed, le panneau s'affranchit de tous les
+   ancêtres avec overflow clippant — top/left sont calculés à partir du
+   bounding rect du bouton dans Header.tsx. */
+.header__nav-dropdown {
+  min-width: 240px;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: var(--z-dropdown);
+  padding: var(--spacing-sm);
+  animation: dropdownFadeIn 0.2s ease-out;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* Lien à l'intérieur du dropdown de navigation */
+.header__nav-dropdown-link {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+  transition: all var(--transition-base);
+  white-space: nowrap;
+}
+.header__nav-dropdown-link:hover {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-primary);
+  text-decoration: none;
+}
+.header__nav-dropdown-link--active {
+  background-color: rgba(37, 99, 235, 0.1);
+  color: var(--color-primary);
+}
+
+/* ==================== GROUPE DANS LE MENU MOBILE ==================== */
+
+/* Titre de section non cliquable — rappelle le libellé du dropdown */
+.header__mobile-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold, 600);
+  color: var(--color-text-muted, #6b7280);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: var(--spacing-sm);
+}
+
+/* Les enfants du groupe sont légèrement indentés pour marquer
+   visuellement l'appartenance au groupe parent. */
+.header__mobile-sublist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.header__mobile-link--sub {
+  padding-left: calc(var(--spacing-md) + 12px);
+}
+
 /* Version mobile */
 .header__mobile-link--premium-cta {
   color: #d97706;
