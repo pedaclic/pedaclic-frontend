@@ -1141,14 +1141,52 @@ export async function attacherQuizASeance(params: {
 
   // (a) Met à jour le quiz dans sa collection source
   const col = nature === 'classic' ? 'quizzes' : 'quizzes_v2';
-  await updateDoc(doc(db, col, quizId), {
+
+  // ──────────────────────────────────────────────────────────────
+  // Auto-réparation des quiz "legacy" (classic uniquement) :
+  //   - Quiz IA générés avant le fix d'avril 2026 ont `auteurId`
+  //     mais pas `profId` → ils n'apparaissent pas dans ProfQuizPage.
+  //   - Ces mêmes quiz ont `isPremium: true` par défaut → invisibles
+  //     aux élèves non-premium.
+  //   - Certains n'ont pas de `status` défini.
+  //
+  // Au moment du rattachement à une séance, le prof exprime clairement
+  // l'intention "je partage ce quiz avec ma classe". On en profite pour
+  // normaliser le document sur la convention actuelle. Cela corrige
+  // silencieusement les quiz hérités sans toucher ceux déjà conformes.
+  // ──────────────────────────────────────────────────────────────
+  const patch: Record<string, unknown> = {
     seanceId,
     cahierId,
-    // Ne pas écraser un groupeId déjà défini ; sinon prendre celui du cahier
-    // pour que l'élève voie bien le quiz.
     ...(groupeIdParDefaut ? { groupeId: groupeIdParDefaut } : {}),
     updatedAt: Timestamp.now(),
-  });
+  };
+
+  if (nature === 'classic') {
+    try {
+      const snap = await getDoc(doc(db, col, quizId));
+      const data = snap.exists() ? (snap.data() as Record<string, unknown>) : null;
+      if (data) {
+        // profId : migration depuis auteurId si absent
+        if (!data.profId && typeof data.auteurId === 'string') {
+          patch.profId = data.auteurId;
+        }
+        // isPremium : quiz explicitement partagé à une classe → accès libre
+        if (data.isPremium === true) {
+          patch.isPremium = false;
+        }
+        // status : valeur par défaut publiée pour une visibilité immédiate
+        if (!data.status) {
+          patch.status = 'published';
+        }
+      }
+    } catch {
+      // Non bloquant : si la lecture échoue, on procède au rattachement
+      // de base sans auto-réparation (comportement antérieur préservé).
+    }
+  }
+
+  await updateDoc(doc(db, col, quizId), patch);
 
   // (b) Met à jour la séance (arrayUnion pour éviter les doublons)
   await updateDoc(doc(db, COL_ENTREES, seanceId), {

@@ -298,16 +298,32 @@ export async function getQuizzesBySeance(seanceId: string): Promise<QuizUnifie[]
  * Utilisé par « Mes Quiz » côté prof.
  */
 export async function getQuizzesDuProf(profId: string): Promise<QuizUnifie[]> {
-  const [snapC, snapA] = await Promise.all([
+  // Classic : on interroge `profId` (convention actuelle) ET `auteurId`
+  // (legacy — quiz IA auto-générés avant le fix d'avril 2026). On fusionne
+  // ensuite par id pour éviter les doublons quand un quiz porte les deux.
+  const [snapClassicProf, snapClassicAuteur, snapA] = await Promise.all([
     getDocs(
       query(collection(db, 'quizzes'), where('profId', '==', profId))
+    ).catch(() => null),
+    getDocs(
+      query(collection(db, 'quizzes'), where('auteurId', '==', profId))
     ).catch(() => null),
     getDocs(
       query(collection(db, 'quizzes_v2'), where('auteurId', '==', profId))
     ).catch(() => null),
   ]);
 
-  const classics: Quiz[] = snapC ? snapC.docs.map((d) => ({ id: d.id, ...d.data() } as Quiz)) : [];
+  const mapClassics = new Map<string, Quiz>();
+  (snapClassicProf?.docs ?? []).forEach((d) =>
+    mapClassics.set(d.id, { id: d.id, ...d.data() } as Quiz)
+  );
+  (snapClassicAuteur?.docs ?? []).forEach((d) => {
+    if (!mapClassics.has(d.id)) {
+      mapClassics.set(d.id, { id: d.id, ...d.data() } as Quiz);
+    }
+  });
+  const classics: Quiz[] = [...mapClassics.values()];
+
   const avances: QuizAvance[] = snapA
     ? snapA.docs.map((d) => ({ id: d.id, ...d.data() } as QuizAvance))
     : [];
