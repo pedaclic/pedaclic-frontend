@@ -1,0 +1,134 @@
+/* ============================================================
+   PedaClic — Phase 32 : Correctif UI RichTextEditor
+   ============================================================
+   Problème Phase 31 : la barre d'outils d'édition du tableau
+   (ajouter/supprimer ligne/colonne, redimensionner) chevauche
+   la barre d'outils principale du texte enrichi quand le
+   curseur se trouve dans une cellule de tableau.
+   
+   Correctif : positionnement en "deuxième rangée" (sous la
+   toolbar principale) avec un arrière-plan distinct et un
+   z-index inférieur pour qu'aucun bouton ne masque l'autre.
+   
+   IMPORTANT — Ce fichier est importé dans main.tsx ou dans
+   RichTextEditor.tsx (voir INTEGRATION_PHASE32.md).
+   Il ne modifie PAS les styles existants : il ajoute des
+   règles plus spécifiques qui s'appliquent uniquement quand
+   les classes de la barre tableau sont présentes.
+   ============================================================ */
+
+/* ── Structure générale : la toolbar principale et la toolbar
+   tableau partagent le même conteneur `.rte-toolbar-wrapper`.
+   On les empile verticalement avec un gap visible et on évite
+   tout positionnement absolu. ── */
+.rte-toolbar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 6px 8px;
+}
+
+/* ── Barre d'outils principale (texte) ── */
+.rte-toolbar,
+.rich-text-editor__toolbar {
+  position: relative;
+  z-index: 11;                    /* au-dessus de la barre tableau */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+}
+
+/* ── Barre d'outils tableau (apparaît quand le curseur est dans
+   un <table>). Placée SOUS la barre principale, dans le flow
+   normal — plus aucun chevauchement possible. ── */
+.rte-toolbar-table,
+.rich-text-editor__toolbar--table {
+  position: relative;
+  z-index: 10;                    /* juste sous la principale */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  padding: 4px 6px;
+  background: #eff6ff;            /* fond distinct (bleu très clair) */
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #1e40af;
+  animation: rte-toolbar-table-slide-in 180ms ease-out;
+}
+
+@keyframes rte-toolbar-table-slide-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Boutons de la barre tableau : plus compacts pour tenir
+   sur une seule ligne sur desktop, et scrollables sur mobile. ── */
+.rte-toolbar-table button,
+.rich-text-editor__toolbar--table button {
+  padding: 4px 8px;
+  font-size: 0.78rem;
+  background: #ffffff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  color: #1e40af;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.rte-toolbar-table button:hover,
+.rich-text-editor__toolbar--table button:hover {
+  background: #dbeafe;
+}
+
+.rte-toolbar-table button:disabled,
+.rich-text-editor__toolbar--table button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Séparateur visuel dans la barre tableau ── */
+.rte-toolbar-table__label,
+.rich-text-editor__toolbar--table .toolbar-label {
+  font-weight: 600;
+  margin-right: 6px;
+  color: #1e40af;
+}
+
+/* ── Responsive : sur mobile, barre tableau scrollable ── */
+@media (max-width: 640px) {
+  .rte-toolbar-table,
+  .rich-text-editor__toolbar--table {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .rte-toolbar-table button,
+  .rich-text-editor__toolbar--table button {
+    flex-shrink: 0;
+  }
+}
+
+/* ── Garde-fou : annule tout positionnement absolu hérité
+   d'une version antérieure (Phase 31 avait `position: absolute`
+   sur certains boutons tableau). ── */
+.rte-toolbar-table [class*="table"],
+.rich-text-editor__toolbar--table [class*="table"] {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+}

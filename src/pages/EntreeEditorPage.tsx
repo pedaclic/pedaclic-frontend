@@ -46,9 +46,12 @@ import ContenuIASelector from '../components/prof/ContenuIASelector';
 import RichTextEditor from '../components/RichTextEditor';
 import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
+// Phase 32 — 3e onglet : Quiz rattachés à la séance
+import OngletQuizSeance from '../components/prof/OngletQuizSeance';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
+import '../styles/Phase32.css';
 
 // ─── Formulaire vide ─────────────────────────────────────────
 const emptyForm = (): EntreeFormData => ({
@@ -167,10 +170,11 @@ const EntreeEditorPage: React.FC = () => {
   // Feature 1 — Aperçu live
   const [showPreview, setShowPreview] = useState(false);
 
-  // Phase 34 — Onglets du bloc "Contenu / Exercices"
-  //   'contenu' = contenu de la leçon (champ `contenu`)
+  // Phase 34 + Phase 32 — Onglets du bloc "Contenu / Exercices / Quiz"
+  //   'contenu'   = contenu de la leçon (champ `contenu`)
   //   'exercices' = exercices liés (exerciceJour + exerciceDomicile)
-  const [ongletContenu, setOngletContenu] = useState<'contenu' | 'exercices'>('contenu');
+  //   'quiz'      = quiz rattachés à la séance (Phase 32)
+  const [ongletContenu, setOngletContenu] = useState<'contenu' | 'exercices' | 'quiz'>('contenu');
 
   const isEdit = !!entreeId;
 
@@ -630,6 +634,20 @@ const EntreeEditorPage: React.FC = () => {
                 <span className="cahier-contenu-tab-dot" aria-hidden="true" />
               )}
             </button>
+            {/* Phase 32 — Onglet Quiz */}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={ongletContenu === 'quiz'}
+              className={`cahier-contenu-tab ${ongletContenu === 'quiz' ? 'cahier-contenu-tab--actif' : ''}`}
+              onClick={() => setOngletContenu('quiz')}
+              title={!isEdit ? 'Enregistrez d’abord la séance pour rattacher un quiz' : undefined}
+            >
+              🎯 Quiz
+              {isEdit && (entreeOriginale?.quizIds?.length ?? 0) > 0 && (
+                <span className="cahier-contenu-tab-dot" aria-hidden="true" />
+              )}
+            </button>
           </div>
 
           {/* ── Onglet 1 : Contenu de la leçon ── */}
@@ -692,6 +710,17 @@ const EntreeEditorPage: React.FC = () => {
                 />
               </div>
             </div>
+          )}
+
+          {/* ── Onglet 3 : Quiz rattachés à la séance (Phase 32) ── */}
+          {ongletContenu === 'quiz' && (
+            <OngletQuizSeance
+              seanceId={entreeId ?? null}
+              cahierId={cahierId ?? ''}
+              profId={currentUser?.uid ?? ''}
+              groupeIdParDefaut={cahier?.groupeIds?.[0] ?? null}
+              titreSeance={form.chapitre}
+            />
           )}
 
           <div className="form-group">

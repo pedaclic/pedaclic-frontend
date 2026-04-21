@@ -350,6 +350,12 @@ export interface EntreeCahier {
   // ────────────────────────────────────────────────────────────
   exerciceJour?: string;
   exerciceDomicile?: string;
+  // ────────────────────────────────────────────────────────────
+  // Phase 32 — Quiz rattachés à la séance
+  //   Tableau de clés "<nature>:<id>" (ex: "classic:abc", "avance:xyz")
+  //   maintenu par attacherQuizASeance / detacherQuizDeSeance.
+  // ────────────────────────────────────────────────────────────
+  quizIds?: string[];
 }
 
 export interface EntreeFormData {

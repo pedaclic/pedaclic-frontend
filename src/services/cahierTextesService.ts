@@ -1103,3 +1103,85 @@ export async function mettreAJourCompteurSeances(
     updatedAt: Timestamp.now(),
   });
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 32 — Liaison Quiz ↔ Séance (cahier de textes)
+// ═══════════════════════════════════════════════════════════════
+// Maintient la cohérence bidirectionnelle :
+//   (a) EntreeCahier.quizIds[] stocke "<nature>:<id>" (rendu prof)
+//   (b) Quiz.seanceId + cahierId + groupeId (requête élève rapide)
+// Pas de batch transactionnel (règles Firestore le refusent entre
+// collections) ; on accepte un risque mineur de désync en cas de
+// crash réseau entre les deux writes.
+// ═══════════════════════════════════════════════════════════════
+
+type NatureQuiz = 'classic' | 'avance';
+
+/** Construit la clé "<nature>:<id>" stockée dans EntreeCahier.quizIds. */
+function cleQuiz(nature: NatureQuiz, quizId: string): string {
+  return `${nature}:${quizId}`;
+}
+
+/**
+ * Rattache un quiz (Classic ou Avancé) à une séance de cahier.
+ * - Met à jour le quiz : seanceId, cahierId, groupeId (1er groupe du cahier)
+ * - Met à jour la séance : quizIds (arrayUnion, évite les doublons)
+ */
+export async function attacherQuizASeance(params: {
+  cahierId: string;
+  seanceId: string;
+  quizId: string;
+  nature: NatureQuiz;
+}): Promise<void> {
+  const { cahierId, seanceId, quizId, nature } = params;
+
+  // Récupère le cahier pour dénormaliser groupeId (1er groupe lié)
+  const cahier = await getCahierById(cahierId);
+  const groupeIdParDefaut = cahier?.groupeIds?.[0] ?? null;
+
+  // (a) Met à jour le quiz dans sa collection source
+  const col = nature === 'classic' ? 'quizzes' : 'quizzes_v2';
+  await updateDoc(doc(db, col, quizId), {
+    seanceId,
+    cahierId,
+    // Ne pas écraser un groupeId déjà défini ; sinon prendre celui du cahier
+    // pour que l'élève voie bien le quiz.
+    ...(groupeIdParDefaut ? { groupeId: groupeIdParDefaut } : {}),
+    updatedAt: Timestamp.now(),
+  });
+
+  // (b) Met à jour la séance (arrayUnion pour éviter les doublons)
+  await updateDoc(doc(db, COL_ENTREES, seanceId), {
+    quizIds: arrayUnion(cleQuiz(nature, quizId)),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Détache un quiz d'une séance. Ne supprime PAS le quiz.
+ * - Retire seanceId et cahierId (null) sur le quiz
+ * - Conserve groupeId : l'élève continue de voir le quiz via sa classe
+ * - Retire la clé de la liste quizIds sur la séance
+ */
+export async function detacherQuizDeSeance(params: {
+  cahierId: string;
+  seanceId: string;
+  quizId: string;
+  nature: NatureQuiz;
+}): Promise<void> {
+  const { seanceId, quizId, nature } = params;
+
+  // (a) Dissociation côté quiz
+  const col = nature === 'classic' ? 'quizzes' : 'quizzes_v2';
+  await updateDoc(doc(db, col, quizId), {
+    seanceId: null,
+    cahierId: null,
+    updatedAt: Timestamp.now(),
+  });
+
+  // (b) Retrait côté séance
+  await updateDoc(doc(db, COL_ENTREES, seanceId), {
+    quizIds: arrayRemove(cleQuiz(nature, quizId)),
+    updatedAt: Timestamp.now(),
+  });
+}

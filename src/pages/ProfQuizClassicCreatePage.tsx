@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   createQuiz,
@@ -16,26 +16,80 @@ import {
 } from '../services/quizService';
 import type { Question } from '../services/quizService';
 import DisciplineService from '../services/disciplineService';
-import { getGroupesProf } from '../services/cahierTextesService';
+import { getGroupesProf, attacherQuizASeance } from '../services/cahierTextesService';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
+/**
+ * Phase 32 — Contexte d'auto-rattachement passé par OngletQuizSeance
+ * via `navigate(..., { state: { attachement } })`.
+ */
+interface AttachementContext {
+  cahierId: string;
+  seanceId: string;
+  nature: 'classic' | 'avance';
+  groupeId?: string | null;
+  disciplineId?: string | null;
+  titreSeance?: string | null;
+}
+
 const ProfQuizClassicCreatePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser } = useAuth();
   const { toast } = useToast();
+
+  // Phase 32 — contexte d'auto-rattachement (optionnel)
+  const attachement = (location.state as { attachement?: AttachementContext } | null)?.attachement
+    ?? null;
+  const hasAttachement = Boolean(attachement?.cahierId && attachement?.seanceId);
+
   const [disciplines, setDisciplines] = useState<{ id: string; nom: string }[]>([]);
   const [groupes, setGroupes] = useState<{ id: string; nom: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [titre, setTitre] = useState('');
-  const [disciplineId, setDisciplineId] = useState('');
-  const [groupeId, setGroupeId] = useState('');
+  const [titre, setTitre] = useState(
+    attachement?.titreSeance ? `Quiz — ${attachement.titreSeance}` : ''
+  );
+  // Phase 32 — pré-remplissage discipline/classe depuis le contexte séance
+  const [disciplineId, setDisciplineId] = useState(attachement?.disciplineId ?? '');
+  const [groupeId, setGroupeId] = useState(attachement?.groupeId ?? '');
   const [duree, setDuree] = useState(15);
   const [noteMinimale, setNoteMinimale] = useState(10);
   const [questions, setQuestions] = useState<Question[]>([createEmptyQuestion()]);
+
+  /**
+   * Phase 32 — Après création, rattache le quiz à la séance d'origine
+   * (si un contexte `attachement` a été passé via navigate state) puis
+   * redirige vers l'éditeur de la séance pour boucler l'UX.
+   * N'échoue pas silencieusement si le rattachement rate : le quiz existe,
+   * le prof pourra le rattacher manuellement depuis l'onglet Quiz.
+   */
+  const rattacherEtRetourner = async (quizId: string): Promise<boolean> => {
+    if (!hasAttachement || !attachement) return false;
+    try {
+      await attacherQuizASeance({
+        cahierId: attachement.cahierId,
+        seanceId: attachement.seanceId,
+        quizId,
+        nature: 'classic',
+      });
+      toast.success('Quiz créé et rattaché à la séance.');
+      navigate(
+        `/prof/cahiers/${attachement.cahierId}/modifier/${attachement.seanceId}`,
+        { replace: true }
+      );
+      return true;
+    } catch (err) {
+      console.error('[ProfQuizClassicCreate] Rattachement échoué :', err);
+      toast.warning(
+        'Quiz créé, mais le rattachement à la séance a échoué. Vous pouvez le rattacher manuellement.'
+      );
+      return false;
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -109,7 +163,9 @@ const ProfQuizClassicCreatePage: React.FC = () => {
         { asDraft: true }
       );
       toast.success('Brouillon enregistré. Vous pouvez continuer ou publier quand vous serez prêt.');
-      navigate(`/prof/quiz/classique/${id}/modifier`);
+      // Phase 32 — auto-rattachement si contexte séance
+      const rattache = await rattacherEtRetourner(id);
+      if (!rattache) navigate(`/prof/quiz/classique/${id}/modifier`);
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'enregistrement');
     } finally {
@@ -131,7 +187,7 @@ const ProfQuizClassicCreatePage: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      await createQuiz(
+      const id = await createQuiz(
         {
           disciplineId,
           titre: titre.trim(),
@@ -145,7 +201,9 @@ const ProfQuizClassicCreatePage: React.FC = () => {
         { asDraft: false }
       );
       toast.success('Quiz publié ! Il est maintenant visible par vos élèves.');
-      navigate('/prof/quiz');
+      // Phase 32 — auto-rattachement si contexte séance
+      const rattache = await rattacherEtRetourner(id);
+      if (!rattache) navigate('/prof/quiz');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la publication');
     } finally {
@@ -178,7 +236,9 @@ const ProfQuizClassicCreatePage: React.FC = () => {
         { asDraft: true }
       );
       toast.success('Brouillon enregistré. Vous pouvez continuer plus tard.');
-      navigate(`/prof/quiz/classique/${id}/modifier`);
+      // Phase 32 — auto-rattachement si contexte séance
+      const rattache = await rattacherEtRetourner(id);
+      if (!rattache) navigate(`/prof/quiz/classique/${id}/modifier`);
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'enregistrement du brouillon');
     } finally {
