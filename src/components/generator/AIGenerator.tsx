@@ -117,6 +117,12 @@ const AIGenerator: React.FC = () => {
   /** Options de structure (étape 4) */
   const [includeExercices, setIncludeExercices] = useState(true);
   const [includeQuiz, setIncludeQuiz] = useState(false);
+  /**
+   * Phase 35 — Afficher le texte source à l'élève pendant le Quiz IA.
+   * Visible uniquement pour le type `quiz_auto` quand un sourceText est présent.
+   * Par défaut désactivé : les questions doivent rester autonomes si possible.
+   */
+  const [afficherCorpus, setAfficherCorpus] = useState(false);
   /** Filigrane affiché sur les exports PDF / Word uniquement */
   const [filigrane, setFiligrane] = useState('');
 
@@ -283,6 +289,7 @@ const AIGenerator: React.FC = () => {
     setUploadError(null);
     setIncludeExercices(true);
     setIncludeQuiz(false);
+    setAfficherCorpus(false);
     setFiligrane('');
     setSelectedType(null);
     setOptions({});
@@ -381,6 +388,11 @@ const AIGenerator: React.FC = () => {
           includeExercices:
             selectedType === 'exercices_corriges' ? true : includeExercices,
           includeQuiz: selectedType === 'quiz_auto' ? true : includeQuiz,
+          // Phase 35 — corpus : on transmet le sourceText et le drapeau uniquement
+          // pour un quiz_auto. saveGeneratedQuiz filtre et ne persiste que si les
+          // deux sont vérifiés (toggle ON + texte non vide).
+          sourceText: sourceText.trim() || undefined,
+          afficherCorpus: selectedType === 'quiz_auto' ? afficherCorpus : undefined,
         },
       };
 
@@ -1447,10 +1459,30 @@ const AIGenerator: React.FC = () => {
                     />
                     <span>Inclure une section quiz (QCM) en fin de document</span>
                   </label>
+
+                  {/* Phase 35 — Toggle "Afficher le texte support à l'élève pendant le quiz".
+                      Pertinent uniquement pour un Quiz IA basé sur un texte source
+                      (compréhension écrite, analyse littéraire, documents historiques,
+                      etc.). Les questions qui dépendent du texte deviennent résolvables
+                      par l'élève sans quitter le quiz. */}
+                  {selectedType === 'quiz_auto' && sourceText.trim().length > 0 && (
+                    <label className="ai-generator__checkbox">
+                      <input
+                        type="checkbox"
+                        checked={afficherCorpus}
+                        onChange={(e) => setAfficherCorpus(e.target.checked)}
+                      />
+                      <span>
+                        📖 Afficher le texte support à l'élève pendant le quiz
+                      </span>
+                    </label>
+                  )}
                 </div>
                 <p className="ai-generator__hint">
                   {selectedType === 'quiz_auto'
-                    ? 'Le type « Quiz auto-généré » produit un contenu entièrement en QCM.'
+                    ? (sourceText.trim().length > 0
+                        ? 'Le type « Quiz auto-généré » produit un contenu entièrement en QCM. Cochez la dernière option si vos questions portent sur le texte source et que l\'élève doit y avoir accès pour répondre.'
+                        : 'Le type « Quiz auto-généré » produit un contenu entièrement en QCM.')
                     : 'Décochez les exercices pour un texte plus synthétique. Cochez le quiz pour une auto-évaluation en fin de parcours.'}
                 </p>
               </div>

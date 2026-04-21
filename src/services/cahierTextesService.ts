@@ -970,6 +970,8 @@ export async function createEntree(
       // Phase 34 — Exercices liés à la leçon (optionnels, persistés en clair)
       exerciceJour:         f.exerciceJour || '',
       exerciceDomicile:     f.exerciceDomicile || '',
+      // Phase 35 — Échéance (date + heure) de l'exercice à domicile (null si aucune)
+      echeanceDomicile:     f.echeanceDomicile && f.echeanceDomicile.date ? f.echeanceDomicile : null,
     };
   } else {
     // Signature Phase 22 : createEntree(data)
@@ -1023,6 +1025,8 @@ export async function updateEntree(
       // Phase 34 — Exercices liés à la leçon (persistés même s'ils sont vides pour permettre la suppression)
       exerciceJour:         f.exerciceJour || '',
       exerciceDomicile:     f.exerciceDomicile || '',
+      // Phase 35 — Échéance (date + heure) de l'exercice à domicile (null pour supprimer)
+      echeanceDomicile:     f.echeanceDomicile && f.echeanceDomicile.date ? f.echeanceDomicile : null,
     };
   } else {
     // Signature Phase 22 : updateEntree(entreeId, data)

@@ -63,6 +63,13 @@ export interface GenerationOptions {
   includeExercices?: boolean;
   /** Ajouter une section quiz (QCM) en fin de document (ignoré si type = quiz_auto). */
   includeQuiz?: boolean;
+  /**
+   * Phase 35 — Afficher le texte support (corpus) à l'élève pendant le quiz IA.
+   * Utile quand les questions portent sur un texte source (compréhension écrite,
+   * analyse littéraire, documents historiques, etc.). Par défaut à false pour
+   * ne pas changer le comportement des quiz existants.
+   */
+  afficherCorpus?: boolean;
 }
 
 /** Requête de génération envoyée au backend */
@@ -547,6 +554,19 @@ export async function saveGeneratedQuiz(
     //   - `status`   : 'published' → visible immédiatement côté élève
     //   - `auteurId` : conservé pour rétro-compatibilité (historique IA)
     // ────────────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────
+    // Phase 35 — Corpus (texte support) à afficher pendant le quiz.
+    //   Le prof décide au moment de la génération s'il veut que l'élève
+    //   voie le texte source pendant qu'il répond. On persiste les deux
+    //   champs uniquement si le toggle est activé ET qu'un texte existe.
+    // ────────────────────────────────────────────────────────────
+    const afficherCorpus = request.options?.afficherCorpus === true;
+    const corpusText = request.options?.sourceText?.trim() ?? '';
+    const corpusFields =
+      afficherCorpus && corpusText.length > 0
+        ? { afficherCorpus: true, corpusText }
+        : {};
+
     const quizDoc = {
       disciplineId,
       titre: `Quiz IA — ${request.chapitre}`,
@@ -559,6 +579,7 @@ export async function saveGeneratedQuiz(
       auteurId: userId,
       status: 'published' as const,
       source: 'ia_generator',
+      ...corpusFields,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };

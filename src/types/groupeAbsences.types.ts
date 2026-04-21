@@ -40,6 +40,13 @@ export interface TravailAFaire {
   matiere?: string;
   /** ID du cahier de textes lié (Phase 31) */
   cahierId?: string;
+  /**
+   * ID de la séance (EntreeCahier) qui a généré ce travail (Phase 35).
+   * Présent uniquement pour les travaux créés automatiquement depuis
+   * l'« Exercice à domicile » d'une séance. Sert de clé logique avec
+   * `groupeId` pour upsert/delete lors de la mise à jour de la séance.
+   */
+  seanceId?: string;
   /** ID de la rubrique du cahier à laquelle ce travail est rattaché (Phase 31) */
   rubriqueId?: string;
   /** Nom de la rubrique (dénormalisé pour affichage rapide) */

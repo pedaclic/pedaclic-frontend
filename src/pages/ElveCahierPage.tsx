@@ -388,9 +388,32 @@ const ElveCahierPage: React.FC = () => {
                 }}
                 aria-label="Exercice à domicile"
               >
-                <h4 style={{ margin: '0 0 6px', fontSize: '0.85rem', color: '#9a3412', fontWeight: 700 }}>
-                  🏠 Exercice à domicile
-                </h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+                  <h4 style={{ margin: 0, fontSize: '0.85rem', color: '#9a3412', fontWeight: 700 }}>
+                    🏠 Exercice à domicile
+                  </h4>
+                  {/* Phase 35 — pastille d'échéance si définie */}
+                  {entree.echeanceDomicile?.date && (
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        background: '#fef2f2',
+                        color: '#b91c1c',
+                        border: '1px solid #fecaca',
+                        padding: '2px 8px',
+                        borderRadius: 9999,
+                        fontWeight: 600,
+                      }}
+                      title="Date et heure limite de remise"
+                    >
+                      📅 À rendre le {(() => {
+                        const [y, m, d] = entree.echeanceDomicile.date.split('-');
+                        return `${d}/${m}/${y}`;
+                      })()}
+                      {entree.echeanceDomicile.heure ? ` à ${entree.echeanceDomicile.heure}` : ''}
+                    </span>
+                  )}
+                </div>
                 <div
                   className="rte-content rte-content--lecture"
                   dangerouslySetInnerHTML={{ __html: entree.exerciceDomicile }}

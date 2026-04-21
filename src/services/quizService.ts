@@ -56,6 +56,13 @@ export interface Quiz {
   profId?: string | null;
   /** ID du groupe-classe cible — null = quiz global */
   groupeId?: string | null;
+  /**
+   * Phase 35 — Texte support (corpus) à afficher à l'élève pendant le quiz IA.
+   * Persisté uniquement si le prof a coché l'option au moment de la génération.
+   */
+  corpusText?: string;
+  /** Phase 35 — active l'affichage du corpus dans le player (défaut : false). */
+  afficherCorpus?: boolean;
   createdAt?: any;
   updatedAt?: any;
 }

@@ -36,6 +36,38 @@ const COL_COURS    = 'cours_en_ligne';
 const COL_SECTIONS = 'cours_sections';
 
 // ─────────────────────────────────────────────────────────────
+// UTILITAIRE — Nettoyage des valeurs `undefined`
+// ─────────────────────────────────────────────────────────────
+/**
+ * Supprime récursivement les clés dont la valeur est `undefined`.
+ *
+ * Pourquoi ? Firestore refuse `undefined` dans les payloads d'écriture et
+ * lève `FirebaseError: Unsupported field value: undefined`. Les formulaires
+ * de l'éditeur peuvent contenir légitimement des champs optionnels non
+ * renseignés (ex. `niveauScolaire`, `cahierTextesId`, `serie`…), qu'il faut
+ * donc simplement omettre avant l'envoi.
+ *
+ * NB : même convention que `sequencePedagogiqueService.ts`,
+ * `travauxAFaireService.ts` et `chapitreService.ts` (voir commits 93929f0
+ * et 94152a3). Les tableaux, Timestamps, Dates et valeurs primitives sont
+ * préservés tels quels — seuls les objets littéraux sont nettoyés.
+ */
+function stripUndefined<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(stripUndefined) as unknown as T;
+  if (typeof obj === 'object' && obj.constructor === Object) {
+    const cleaned: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+      if (value !== undefined) {
+        cleaned[key] = stripUndefined(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
+
+// ─────────────────────────────────────────────────────────────
 // UTILITAIRE — Extraction de l'ID YouTube
 // ─────────────────────────────────────────────────────────────
 
@@ -144,7 +176,10 @@ export async function createCours(
   data: CoursFormData
 ): Promise<string> {
   const now = Timestamp.now();
-  const ref = await addDoc(collection(db, COL_COURS), {
+  // stripUndefined : retire les champs optionnels non renseignés
+  // (niveauScolaire, cahierTextesId, serie, disciplineId…) pour éviter
+  // l'erreur Firestore « Unsupported field value: undefined ».
+  const payload = stripUndefined({
     ...data,
     profId,
     profNom,
@@ -154,20 +189,28 @@ export async function createCours(
     createdAt: now,
     updatedAt: now,
   });
+  const ref = await addDoc(collection(db, COL_COURS), payload);
   return ref.id;
 }
 
 /**
  * Met à jour les métadonnées d'un cours existant.
+ *
+ * Le payload est nettoyé via stripUndefined car l'éditeur peut envoyer
+ * des champs optionnels à `undefined` (p. ex. cahierTextesId quand l'utilisateur
+ * « délie » un cahier, ou niveauScolaire avant sélection en cascade). Sans ce
+ * nettoyage, Firestore rejette l'écriture et l'UI affiche « Erreur lors de la
+ * sauvegarde. Réessayez. ».
  */
 export async function updateCours(
   coursId: string,
   data: Partial<Omit<CoursEnLigne, 'id' | 'profId' | 'createdAt'>>
 ): Promise<void> {
-  await updateDoc(doc(db, COL_COURS, coursId), {
+  const payload = stripUndefined({
     ...data,
     updatedAt: Timestamp.now(),
   });
+  await updateDoc(doc(db, COL_COURS, coursId), payload);
 }
 
 /**
@@ -251,15 +294,16 @@ export async function createSection(
   const batch = writeBatch(db);
   const now = Timestamp.now();
 
-  // Créer la section
+  // Créer la section (stripUndefined : même logique que pour le cours parent)
   const sectionRef = doc(collection(db, COL_SECTIONS));
-  batch.set(sectionRef, {
+  const payload = stripUndefined({
     ...data,
     coursId,
     blocs: data.blocs ?? [],
     createdAt: now,
     updatedAt: now,
   });
+  batch.set(sectionRef, payload);
 
   // Incrémenter nombreSections dans le cours parent
   batch.update(doc(db, COL_COURS, coursId), {
@@ -287,7 +331,10 @@ export async function updateSection(
     update.dureeEstimee = calculerDureeSection(data.blocs);
   }
 
-  await updateDoc(doc(db, COL_SECTIONS, sectionId), update);
+  // stripUndefined : les blocs peuvent contenir des champs optionnels
+  // (legende, description, points, quizAvanceId, explication…) laissés
+  // non renseignés par le prof — Firestore refuserait sans ce nettoyage.
+  await updateDoc(doc(db, COL_SECTIONS, sectionId), stripUndefined(update));
 }
 
 /**
@@ -343,11 +390,13 @@ export async function saveBlocsSection(
   // Réindexer les ordres avant sauvegarde
   const blocsOrdres = blocs.map((b, i) => ({ ...b, ordre: i }));
 
-  await updateDoc(doc(db, COL_SECTIONS, sectionId), {
+  // stripUndefined : champs optionnels possibles dans les blocs
+  // (legende, description, points, quizAvanceId, explication…).
+  await updateDoc(doc(db, COL_SECTIONS, sectionId), stripUndefined({
     blocs: blocsOrdres,
     dureeEstimee: calculerDureeSection(blocsOrdres),
     updatedAt: Timestamp.now(),
-  });
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────

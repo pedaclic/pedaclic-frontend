@@ -48,6 +48,9 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
 // Phase 32 — 3e onglet : Quiz rattachés à la séance
 import OngletQuizSeance from '../components/prof/OngletQuizSeance';
+// Phase 35 — Échéancier de l'exercice à domicile (synchro auto vers travaux_a_faire)
+import EcheanceDomicilePicker from '../components/prof/EcheanceDomicilePicker';
+import { upsertTravailDepuisExerciceDomicile } from '../services/travauxAFaireService';
 import { useToast } from '../contexts/ToastContext';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
@@ -75,6 +78,8 @@ const emptyForm = (): EntreeFormData => ({
   // Phase 34 — Exercices liés à la leçon (vides par défaut)
   exerciceJour: '',
   exerciceDomicile: '',
+  // Phase 35 — Échéance exercice à domicile (null = pas d'échéance)
+  echeanceDomicile: null,
 });
 
 // ─── Utilitaires de périodisation (trimestre / mois / semaine) ──
@@ -244,6 +249,8 @@ const EntreeEditorPage: React.FC = () => {
               // Phase 34 — charger les exercices liés (rétrocompat : chaînes vides si absents)
               exerciceJour:     entreeData.exerciceJour     ?? '',
               exerciceDomicile: entreeData.exerciceDomicile ?? '',
+              // Phase 35 — échéance existante si persistée (null sinon)
+              echeanceDomicile: entreeData.echeanceDomicile ?? null,
             });
           }
         }
@@ -378,6 +385,30 @@ const EntreeEditorPage: React.FC = () => {
       const toutesEntrees = await getEntreesByCahier(cahierId);
       const nbRealise = toutesEntrees.filter(e => e.statut === 'realise').length;
       await updateCahier(cahierId, { nombreSeancesRealise: nbRealise });
+
+      // Phase 35 — Synchronisation auto des Travaux à faire depuis l'exercice à domicile.
+      // Non bloquant : une erreur ici n'annule pas la sauvegarde de la séance.
+      const seanceIdPourSync = isEdit && entreeId
+        ? entreeId
+        : (toutesEntrees.find((e) => e.chapitre === form.chapitre && e.date?.toDate?.().toISOString().slice(0, 10) === form.date)?.id ?? null);
+      if (seanceIdPourSync && cahier) {
+        const rubriqueObj = cahier.rubriques?.find((r) => r.id === rubriqueIdFirestore);
+        await upsertTravailDepuisExerciceDomicile({
+          seanceId:          seanceIdPourSync,
+          chapitre:          form.chapitre,
+          exerciceDomicile:  form.exerciceDomicile,
+          echeanceDomicile:  form.echeanceDomicile ?? null,
+          cahier: {
+            id:         cahier.id,
+            profId:     cahier.profId,
+            matiere:    cahier.matiere,
+            groupeIds:  cahier.groupeIds ?? [],
+            groupeNoms: cahier.groupeNoms ?? [],
+          },
+          rubriqueId:        rubriqueIdFirestore || null,
+          rubriqueNom:       rubriqueObj?.nom || null,
+        });
+      }
 
       // Phase 33 — Mettre à jour le statut du titre sélectionné
       if (titreId && rubriqueId && cahier.rubriques) {
@@ -707,6 +738,12 @@ const EntreeEditorPage: React.FC = () => {
                   onChange={html => setForm(f => ({ ...f, exerciceDomicile: html }))}
                   placeholder="Consignes, énoncés, numéros d'exercices du manuel, date de remise attendue…"
                   minHeight={160}
+                />
+                {/* Phase 35 — Échéancier (date + heure) : si défini, génère
+                    automatiquement un TravailAFaire pour chaque groupe du cahier. */}
+                <EcheanceDomicilePicker
+                  valeur={form.echeanceDomicile ?? null}
+                  onChange={(v) => setForm((f) => ({ ...f, echeanceDomicile: v }))}
                 />
               </div>
             </div>

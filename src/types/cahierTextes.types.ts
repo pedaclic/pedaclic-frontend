@@ -350,6 +350,14 @@ export interface EntreeCahier {
   // ────────────────────────────────────────────────────────────
   exerciceJour?: string;
   exerciceDomicile?: string;
+  /**
+   * Phase 35 — Échéance optionnelle pour l'exercice à domicile.
+   *   - `date` : YYYY-MM-DD
+   *   - `heure` : HH:mm (24h)
+   * Si défini et exerciceDomicile non vide, un TravailAFaire est créé
+   * automatiquement pour chaque groupe du cahier (cf. upsertTravailDepuisExerciceDomicile).
+   */
+  echeanceDomicile?: { date: string; heure: string } | null;
   // ────────────────────────────────────────────────────────────
   // Phase 32 — Quiz rattachés à la séance
   //   Tableau de clés "<nature>:<id>" (ex: "classic:abc", "avance:xyz")
@@ -381,6 +389,8 @@ export interface EntreeFormData {
   exerciceJour?: string;
   /** Phase 34 — Exercice à faire à la maison */
   exerciceDomicile?: string;
+  /** Phase 35 — Échéance (date + heure) pour l'exercice à domicile (null = pas d'échéance) */
+  echeanceDomicile?: { date: string; heure: string } | null;
 }
 
 // ─────────────────────────────────────────────────────────────

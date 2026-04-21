@@ -351,8 +351,44 @@ const QuizPlayer: React.FC = () => {
                 <li>Vous pouvez naviguer entre les questions</li>
                 <li>Le quiz est soumis automatiquement quand le temps est écoulé</li>
                 <li>Il faut obtenir au moins {quiz.noteMinimale || 50}% pour réussir</li>
+                {quiz.afficherCorpus && quiz.corpusText && (
+                  <li>
+                    📖 Un <strong>texte support</strong> reste accessible tout au long du quiz.
+                  </li>
+                )}
               </ul>
             </div>
+
+            {/* Phase 35 — Aperçu du corpus (texte support) dans l'intro si activé */}
+            {quiz.afficherCorpus && quiz.corpusText && (
+              <details
+                style={{
+                  marginTop: '1rem',
+                  background: '#f0f9ff',
+                  border: '1px solid #bae6fd',
+                  borderRadius: 8,
+                  padding: '0.75rem 1rem',
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0369a1' }}>
+                  📖 Aperçu du texte support
+                </summary>
+                <pre
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    fontFamily: 'inherit',
+                    fontSize: '0.9rem',
+                    color: '#0c4a6e',
+                    marginTop: '0.75rem',
+                    maxHeight: 220,
+                    overflowY: 'auto',
+                  }}
+                >
+                  {quiz.corpusText}
+                </pre>
+              </details>
+            )}
           </div>
 
           {/* Bouton démarrer */}
@@ -391,6 +427,38 @@ const QuizPlayer: React.FC = () => {
             style={{ width: `${((currentQuestion + 1) / quiz.questions.length) * 100}%` }}
           />
         </div>
+
+        {/* Phase 35 — Texte support accessible tout au long du quiz (repliable) */}
+        {quiz.afficherCorpus && quiz.corpusText && (
+          <details
+            style={{
+              margin: '0.75rem auto',
+              maxWidth: 820,
+              background: '#f0f9ff',
+              border: '1px solid #bae6fd',
+              borderRadius: 8,
+              padding: '0.5rem 0.9rem',
+              fontSize: '0.88rem',
+            }}
+          >
+            <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#0369a1' }}>
+              📖 Texte support (cliquez pour déplier / replier)
+            </summary>
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                fontFamily: 'inherit',
+                color: '#0c4a6e',
+                marginTop: '0.5rem',
+                maxHeight: 280,
+                overflowY: 'auto',
+              }}
+            >
+              {quiz.corpusText}
+            </pre>
+          </details>
+        )}
 
         {/* ── Contenu de la question ── */}
         <div className="qp-game-content">

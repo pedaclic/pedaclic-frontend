@@ -185,3 +185,185 @@ export async function getTravauxByCahier(cahierId: string): Promise<TravailAFair
 export async function getTravauxForParent(groupeIdsEnfants: string[]): Promise<TravailAFaire[]> {
   return getTravauxForEleve(groupeIdsEnfants);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// PHASE 35 — Synchronisation automatique depuis « Exercice à domicile »
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Récupère les travaux à faire générés automatiquement pour une séance
+ * donnée (reconnus par le champ `seanceId`).
+ */
+export async function getTravauxBySeance(seanceId: string): Promise<TravailAFaire[]> {
+  const q = query(
+    collection(db, COL_TRAVAUX),
+    where('seanceId', '==', seanceId)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({
+    id: d.id,
+    ...d.data(),
+    dateEcheance: toDate(d.data().dateEcheance),
+    createdAt: toDate(d.data().createdAt),
+  })) as TravailAFaire[];
+}
+
+/**
+ * Convertit une chaîne HTML (issue de RichTextEditor) en texte brut.
+ * Utilisé pour alimenter le champ `description` du TravailAFaire —
+ * les élèves verront une version lisible même sans rendu HTML.
+ */
+function htmlVersTexte(html: string, maxChars = 500): string {
+  if (!html) return '';
+  // Retire les balises, remplace les retours par des espaces, coalesce
+  const sansBalises = html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\s+\n/g, '\n')
+    .replace(/\n\s+/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  if (sansBalises.length <= maxChars) return sansBalises;
+  return sansBalises.slice(0, maxChars - 1).trimEnd() + '…';
+}
+
+export interface UpsertTravauxDomicileParams {
+  seanceId: string;
+  chapitre: string;
+  exerciceDomicile: string | undefined | null;
+  echeanceDomicile: { date: string; heure: string } | null | undefined;
+  cahier: {
+    id: string;
+    profId: string;
+    matiere?: string;
+    groupeIds: string[];
+    groupeNoms: string[];
+  };
+  rubriqueId?: string | null;
+  rubriqueNom?: string | null;
+  profNom?: string | null;
+}
+
+/**
+ * Synchronise les travaux à faire dérivés d'un exercice à domicile :
+ *
+ *   - Si `exerciceDomicile` est vide OU `echeanceDomicile` absent/invalide
+ *     → supprime tous les travaux auto-créés pour cette séance.
+ *   - Sinon → upsert un travail par groupe du cahier (un par `groupeId`),
+ *     reconnaissable par la paire (seanceId, groupeId).
+ *
+ * Implémentée en best-effort : toute erreur Firestore est capturée et
+ * loguée, sans remonter à l'appelant (la sauvegarde de la séance ne
+ * doit jamais être compromise par un souci de synchronisation annexe).
+ */
+export async function upsertTravailDepuisExerciceDomicile(
+  p: UpsertTravauxDomicileParams
+): Promise<void> {
+  try {
+    const existants = await getTravauxBySeance(p.seanceId);
+
+    const aPasDExercice = !p.exerciceDomicile || !p.exerciceDomicile.trim();
+    const aPasDEcheance =
+      !p.echeanceDomicile ||
+      !p.echeanceDomicile.date ||
+      !p.echeanceDomicile.heure;
+
+    // Cas "retrait" : on nettoie tous les travaux auto-créés pour la séance
+    if (aPasDExercice || aPasDEcheance) {
+      await Promise.all(
+        existants.map((t) =>
+          deleteDoc(doc(db, COL_TRAVAUX, t.id)).catch(() => null)
+        )
+      );
+      return;
+    }
+
+    // Construction de la date d'échéance (fuseau local)
+    const [annee, mois, jour] = p.echeanceDomicile!.date.split('-').map(Number);
+    const [hh, mm] = p.echeanceDomicile!.heure.split(':').map(Number);
+    const dateEcheance = new Date(annee, (mois || 1) - 1, jour || 1, hh || 23, mm || 59, 0, 0);
+    if (Number.isNaN(dateEcheance.getTime())) {
+      // Échéance invalide → on nettoie les travaux existants pour éviter les résidus
+      await Promise.all(
+        existants.map((t) =>
+          deleteDoc(doc(db, COL_TRAVAUX, t.id)).catch(() => null)
+        )
+      );
+      return;
+    }
+
+    const titre = `🏠 Exercice à domicile — ${p.chapitre || 'Séance'}`;
+    const description = htmlVersTexte(p.exerciceDomicile || '');
+
+    // Map des travaux existants par groupeId → pour upsert ciblé
+    const parGroupe = new Map<string, TravailAFaire>();
+    for (const t of existants) parGroupe.set(t.groupeId, t);
+
+    const groupeIds = p.cahier.groupeIds || [];
+    const groupeNoms = p.cahier.groupeNoms || [];
+
+    // Upsert par groupe du cahier
+    await Promise.all(
+      groupeIds.map(async (gid, idx) => {
+        const groupeNom = groupeNoms[idx] || '';
+        const existant = parGroupe.get(gid);
+        if (existant) {
+          // Update : on ne touche pas `corrige` (initiative prof)
+          await modifierTravailAFaire(existant.id, {
+            titre,
+            description,
+            dateEcheance,
+            heureEcheance: p.echeanceDomicile!.heure,
+            matiere: p.cahier.matiere,
+            cahierId: p.cahier.id,
+            rubriqueId: p.rubriqueId || undefined,
+            rubriqueNom: p.rubriqueNom || undefined,
+          }).catch((err) =>
+            console.warn('[upsertTravauxDomicile] update a échoué:', err)
+          );
+          parGroupe.delete(gid); // marque comme traité
+        } else {
+          const payload: Omit<TravailAFaire, 'id' | 'createdAt'> = {
+            groupeId: gid,
+            groupeNom,
+            titre,
+            description,
+            dateEcheance,
+            heureEcheance: p.echeanceDomicile!.heure,
+            matiere: p.cahier.matiere,
+            cahierId: p.cahier.id,
+            seanceId: p.seanceId,
+            profId: p.cahier.profId,
+            corrige: false,
+          };
+          if (p.rubriqueId) {
+            payload.rubriqueId = p.rubriqueId;
+            payload.rubriqueNom = p.rubriqueNom || undefined;
+          }
+          if (p.profNom) {
+            payload.profNom = p.profNom;
+          }
+          await creerTravailAFaire(payload).catch((err) =>
+            console.warn('[upsertTravauxDomicile] create a échoué:', err)
+          );
+        }
+      })
+    );
+
+    // Nettoyage : travaux résiduels dont le groupe n'est plus dans le cahier
+    await Promise.all(
+      Array.from(parGroupe.values()).map((t) =>
+        deleteDoc(doc(db, COL_TRAVAUX, t.id)).catch(() => null)
+      )
+    );
+  } catch (err) {
+    console.warn('[upsertTravauxDomicile] erreur non bloquante :', err);
+  }
+}
