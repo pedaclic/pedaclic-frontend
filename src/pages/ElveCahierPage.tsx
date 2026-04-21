@@ -22,9 +22,12 @@ import ElveCahierFiltres, {
   filtresActifs,
   type FiltresCahier,
 } from '../components/eleve/ElveCahierFiltres';
+// Phase 32 — Quiz rattachés à la séance (vue élève)
+import QuizsDeSeance from '../components/eleve/QuizsDeSeance';
 
 import '../styles/CahierEnrichi.css';
 import '../styles/ElveCahierFiltres.css';
+import '../styles/Phase32.css';
 
 // ─────────────────────────────────────────────────────────────
 // UTILITAIRES DE DATE
@@ -410,6 +413,11 @@ const ElveCahierPage: React.FC = () => {
                 readonly
               />
             )}
+
+            {/* Phase 32 — Quiz rattachés à cette séance.
+                Le composant gère son propre état (loading/vide) :
+                s'il n'y a aucun quiz, il ne rend rien. */}
+            <QuizsDeSeance seanceId={entree.id} compact />
           </div>
         )}
       </article>
