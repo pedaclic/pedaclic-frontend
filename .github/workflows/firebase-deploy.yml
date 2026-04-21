@@ -1,0 +1,88 @@
+# ============================================================
+# PedaClic — Auto-deploy Firebase Hosting
+# ============================================================
+# Se déclenche sur push `main` ET manuellement (Actions → Run workflow).
+#
+# ⚠️ Tant que les secrets ne sont pas configurés, le job se termine
+#    proprement (vert) sans rien déployer. Pas de red X parasite.
+#    Voir .github/workflows/README.md pour la procédure d'activation.
+#
+# Le déploiement manuel via CLI (`firebase deploy --only hosting`)
+# continue de fonctionner en parallèle — les deux approches cohabitent.
+# ============================================================
+
+name: Deploy Firebase Hosting
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build & deploy to Firebase Hosting (pedaclic)
+    runs-on: ubuntu-latest
+    # Concurrency : n'exécuter qu'un deploy à la fois, annule les runs obsolètes.
+    concurrency:
+      group: firebase-hosting-${{ github.ref }}
+      cancel-in-progress: true
+
+    steps:
+      # ────────────────────────────────────────────────────────
+      # Garde-fou : vérifie que les secrets Firebase sont présents.
+      # Si absents, on met un warning et on passe le reste des étapes,
+      # le job reste vert pour ne pas polluer l'onglet Actions.
+      # ────────────────────────────────────────────────────────
+      - name: Vérifier la présence des secrets
+        id: check
+        run: |
+          if [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT_PEDACLIC }}" ]; then
+            echo "has_secret=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Secret manquant::FIREBASE_SERVICE_ACCOUNT_PEDACLIC non configuré — deploy ignoré. Voir .github/workflows/README.md"
+          else
+            echo "has_secret=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.check.outputs.has_secret == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.check.outputs.has_secret == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installer les dépendances
+        if: steps.check.outputs.has_secret == 'true'
+        run: npm ci
+
+      - name: Build Vite
+        if: steps.check.outputs.has_secret == 'true'
+        env:
+          # Firebase client config (obligatoires)
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          # Back-end Railway (fallback hardcodé en prod si non défini)
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_RAILWAY_API_URL: ${{ secrets.VITE_RAILWAY_API_URL }}
+          # Divers
+          VITE_RECAPTCHA_SITE_KEY: ${{ secrets.VITE_RECAPTCHA_SITE_KEY }}
+          VITE_MONTHLY_PRICE: ${{ secrets.VITE_MONTHLY_PRICE }}
+          VITE_YEARLY_PRICE: ${{ secrets.VITE_YEARLY_PRICE }}
+        run: npm run build
+
+      - name: Déployer sur Firebase Hosting (channel live)
+        if: steps.check.outputs.has_secret == 'true'
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PEDACLIC }}
+          projectId: pedaclic
+          channelId: live
