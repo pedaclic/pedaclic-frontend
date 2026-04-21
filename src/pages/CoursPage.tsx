@@ -12,7 +12,7 @@ import { estFormuleALaCarte } from '../types/premiumPlans';
 import { getCoursPublies } from '../services/coursService';
 import type { CoursEnLigne, FiltresCours } from '../types/cours_types';
 import { NIVEAUX_COURS } from '../types/cours_types';
-import { CLASSES } from '../types/cahierTextes.types';
+import { CLASSES, normaliserClassePourComparaison } from '../types/cahierTextes.types';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 import '../styles/CoursEnLigne.css';
 
@@ -32,8 +32,12 @@ function CoursCatalogCard({ cours, onClick }: CoursCatalogCardProps) {
       ? `${Math.floor(cours.dureeEstimee / 60)}h${cours.dureeEstimee % 60 > 0 ? cours.dureeEstimee % 60 : ''}`
       : `${cours.dureeEstimee} min`;
 
+  // Recherche du label propre du niveau avec normalisation :
+  // - rétrocompat ancien format sans accents ("3eme" → "3ème")
+  // - fallback sur la valeur brute si le niveau n'est pas reconnu
+  const niveauNormalise = normaliserClassePourComparaison(cours.niveau as string);
   const niveauLabel =
-    NIVEAUX_COURS.find(n => n.valeur === cours.niveau)?.label ?? cours.niveau;
+    NIVEAUX_COURS.find(n => n.valeur === niveauNormalise)?.label ?? niveauNormalise ?? cours.niveau;
 
   return (
     /* Carte cliquable du catalogue */
@@ -144,7 +148,13 @@ export default function CoursPage() {
         resultat = resultat.filter(c => c.matiere === nouveauxFiltres.matiere);
       }
       if (nouveauxFiltres.niveau) {
-        resultat = resultat.filter(c => c.niveau === nouveauxFiltres.niveau);
+        // Comparaison normalisée pour assurer la rétrocompatibilité avec
+        // les anciens cours enregistrés sans accent (ex: "3eme" vs "3ème").
+        // Sans cette normalisation, le filtre strict === échoue silencieusement.
+        const filtreNorm = normaliserClassePourComparaison(nouveauxFiltres.niveau);
+        resultat = resultat.filter(
+          c => normaliserClassePourComparaison(c.niveau as string) === filtreNorm
+        );
       }
       if (nouveauxFiltres.isPremium !== '' && nouveauxFiltres.isPremium !== undefined) {
         resultat = resultat.filter(c => c.isPremium === nouveauxFiltres.isPremium);
