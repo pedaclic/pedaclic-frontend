@@ -528,17 +528,39 @@ export async function saveGeneratedQuiz(
       points: q.points || 2,
     }));
 
+    // ────────────────────────────────────────────────────────────
+    // Résolution de la durée du quiz
+    //   - On privilégie la durée choisie dans le wizard (options.duree,
+    //     valeurs 30/45/60/90/120 min — c'est la durée de la séance).
+    //   - Fallback à 15 min si absente, pour préserver le comportement
+    //     historique sur d'anciens clients qui n'enverraient pas ce champ.
+    // ────────────────────────────────────────────────────────────
+    const dureeChoisie = request.options?.duree;
+    const duree =
+      typeof dureeChoisie === 'number' && dureeChoisie > 0 ? dureeChoisie : 15;
+
+    // ────────────────────────────────────────────────────────────
+    // Convention Firestore `quizzes` (alignée sur ProfQuizClassicCreatePage) :
+    //   - `profId`   : propriétaire → requis par getQuizzesByProf()
+    //   - `isPremium`: false pour un quiz créé par un prof pour sa classe
+    //                  (sinon filtré par `freeOnly` pour les élèves non-premium)
+    //   - `status`   : 'published' → visible immédiatement côté élève
+    //   - `auteurId` : conservé pour rétro-compatibilité (historique IA)
+    // ────────────────────────────────────────────────────────────
     const quizDoc = {
       disciplineId,
       titre: `Quiz IA — ${request.chapitre}`,
       description: `Quiz auto-généré pour ${request.discipline} (${request.classe}) — Chapitre : ${request.chapitre}`,
       questions: formattedQuestions,
-      duree: 15,        // 15 minutes par défaut
-      isPremium: true,  // Quiz IA = Premium
-      noteMinimale: 10, // 10/20 pour réussir
+      duree,
+      isPremium: false,
+      noteMinimale: 10,
+      profId: userId,
       auteurId: userId,
+      status: 'published' as const,
       source: 'ia_generator',
       createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
     };
 
     const docRef = await addDoc(collection(db, 'quizzes'), quizDoc);
