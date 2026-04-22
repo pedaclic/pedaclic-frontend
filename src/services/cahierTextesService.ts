@@ -653,9 +653,27 @@ export async function modifierRubrique(
   rubriqueId: string,
   modifications: Partial<Pick<RubriqueCahier, 'nom' | 'couleur' | 'nombreSeancesPrevu' | 'titres'>>
 ): Promise<RubriqueCahier[]> {
+  // ──────────────────────────────────────────────────────────────
+  // FIX : Firestore rejette toute valeur `undefined` à l'intérieur
+  // d'un tableau (ici `rubriques`). Si l'appelant envoie
+  // `{ titres: undefined }` ou `{ nombreSeancesPrevu: undefined }`,
+  // un spread `{ ...r, ...modifications }` fait passer ces undefined
+  // dans le document et fait échouer updateDoc() (« Unsupported
+  // field value: undefined ») → l'UI affiche « Erreur lors de la
+  // sauvegarde ». On nettoie donc les clés explicitement undefined
+  // avant le merge : l'intention d'un appelant qui passe `undefined`
+  // est « ne touche pas à ce champ », jamais « écrase par undefined ».
+  // ──────────────────────────────────────────────────────────────
+  const modifPropre: Partial<RubriqueCahier> = {};
+  for (const [k, v] of Object.entries(modifications)) {
+    if (v !== undefined) {
+      (modifPropre as Record<string, unknown>)[k] = v;
+    }
+  }
+
   const nouvelleListe = rubriquesActuelles.map(r => {
     if (r.id !== rubriqueId) return r;
-    const merged = { ...r, ...modifications };
+    const merged = { ...r, ...modifPropre };
     // Auto-sync : harmoniser nombreSeancesPrevu avec les titres
     const nbTitres = (merged.titres ?? []).length;
     const manuel = merged.nombreSeancesPrevu ?? 0;
@@ -663,6 +681,15 @@ export async function modifierRubrique(
       merged.nombreSeancesPrevu = nbTitres;
     } else if (manuel === 0 && nbTitres > 0) {
       merged.nombreSeancesPrevu = nbTitres;
+    }
+    // Sécurité : si aucun nbSeancesPrevu n'est défini et aucun titre,
+    // on supprime la clé plutôt que de persister `undefined` (qui
+    // serait également refusé par Firestore à l'intérieur du tableau).
+    if (merged.nombreSeancesPrevu === undefined) {
+      delete (merged as Partial<RubriqueCahier>).nombreSeancesPrevu;
+    }
+    if (merged.titres === undefined) {
+      delete (merged as Partial<RubriqueCahier>).titres;
     }
     return merged;
   });
