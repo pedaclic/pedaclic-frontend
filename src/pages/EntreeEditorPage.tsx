@@ -172,6 +172,20 @@ const EntreeEditorPage: React.FC = () => {
   const [semaineFiltre, setSemaineFiltre] = useState<string | null>(null);
   // Séance affichée en modale plein écran (preview)
   const [seanceModaleId, setSeanceModaleId] = useState<string | null>(null);
+  // ──────────────────────────────────────────────────────────
+  // FEATURE 4 — Direction temporelle des « Autres séances »
+  //   'toutes'       → antérieures + postérieures (défaut)
+  //   'anterieures'  → séances dont la date < aujourd'hui 00:00
+  //   'posterieures' → séances dont la date >= aujourd'hui 00:00
+  // ──────────────────────────────────────────────────────────
+  const [directionSeances, setDirectionSeances] =
+    useState<'toutes' | 'anterieures' | 'posterieures'>('toutes');
+  // ──────────────────────────────────────────────────────────
+  // FEATURE 1 (côté prof) — Filtre « Titres réalisés uniquement »
+  //   Si true : n'affiche que les séances dont le chapitre matche
+  //   un TitreRubrique au statut 'acheve' dans une rubrique du cahier.
+  // ──────────────────────────────────────────────────────────
+  const [titresAchevesSeuls, setTitresAchevesSeuls] = useState<boolean>(false);
   // Feature 1 — Aperçu live
   const [showPreview, setShowPreview] = useState(false);
 
@@ -999,11 +1013,15 @@ const EntreeEditorPage: React.FC = () => {
         </div>
 
         {/* ══════════════════════════════════════════════════════
-            Phase 34 — Séances précédentes organisées en vignettes
+            Phase 34 — « Autres séances » organisées en vignettes
+            (renommé en Phase 36 : antérieures + postérieures désormais)
             Navigation hiérarchique cliquable :
               1) Trimestres  →  2) Mois du trimestre  →  3) Semaines du mois
             Clic sur une vignette : ouvre le contenu complet dans une modale.
             Un fil d'Ariane en haut permet de remonter rapidement.
+            Deux filtres transverses :
+              • Direction (Antérieures / Postérieures / Toutes) — Feature 4
+              • Titres réalisés uniquement                     — Feature 1 prof
             ═══════════════════════════════════════════════════════ */}
         <div className="editor-card sidebar-panel">
           <button
@@ -1012,26 +1030,69 @@ const EntreeEditorPage: React.FC = () => {
             onClick={() => setShowSeances(v => !v)}
           >
             <span className="editor-section-title" style={{ margin: 0 }}>
-              📚 Séances précédentes ({autresEntrees.length})
+              📚 Autres séances ({autresEntrees.length})
             </span>
             <span className="editor-toggle-chevron">{showSeances ? '▲' : '▼'}</span>
           </button>
           <p style={{ fontSize: '0.78rem', color: '#6b7280', margin: '0.25rem 0 0' }}>
-            Navigation par trimestre → mois → semaine. Les listes longues sont masquées ; les vignettes s'ouvrent au clic.
+            Antérieures ou postérieures à la date saisie. Navigation par trimestre → mois → semaine ; les vignettes s'ouvrent au clic.
           </p>
 
           {showSeances && (() => {
-            // ── Regroupement hiérarchique des séances ──
+            // ── Feature 4 : filtrage par direction temporelle ──
+            //   On construit un minuit (00:00) « aujourd'hui » comme pivot :
+            //     - antérieures   = date strictement avant ce pivot
+            //     - postérieures  = date >= pivot (aujourd'hui inclus)
+            //     - toutes        = pas de filtrage temporel
+            const aujourdhuiMinuit = (() => {
+              const d = new Date();
+              d.setHours(0, 0, 0, 0);
+              return d;
+            })();
+
+            // ── Feature 1 (prof) : ensemble des noms de titres achevés ──
+            //   Matching insensible à la casse/espaces, cohérent avec la
+            //   logique côté élève (cf. ElveCahierPage.buildTitresAchevesSet).
+            const titresAchevesNoms = new Set<string>();
+            (cahier?.rubriques ?? []).forEach((r) => {
+              (r.titres ?? []).forEach((t) => {
+                if (t.statut === 'acheve' && t.nom) {
+                  titresAchevesNoms.add(t.nom.trim().toLowerCase());
+                }
+              });
+            });
+
+            // ── Application des deux filtres en amont du regroupement ──
+            const entreesFiltreesSidebar = autresEntrees.filter((e) => {
+              const d = e.date?.toDate?.() ?? new Date(0);
+
+              // Filtre Direction (Feature 4)
+              if (directionSeances === 'anterieures' && d >= aujourdhuiMinuit) return false;
+              if (directionSeances === 'posterieures' && d < aujourdhuiMinuit) return false;
+
+              // Filtre Titres réalisés (Feature 1 prof)
+              if (titresAchevesSeuls) {
+                const chap = (e.chapitre ?? '').trim().toLowerCase();
+                if (!chap || !titresAchevesNoms.has(chap)) return false;
+              }
+
+              return true;
+            });
+
+            // ── Regroupement hiérarchique des séances (sur la liste filtrée) ──
             //   Trimestres : Set d'identifiants distincts
             //   Pour chaque trimestre, on calcule mois et semaines à la volée.
             const trimestres = new Map<string, EntreeCahier[]>();
-            autresEntrees.forEach(e => {
+            entreesFiltreesSidebar.forEach(e => {
               const d = e.date?.toDate?.() ?? new Date(0);
               const key = getTrimestreKey(d);
               if (!trimestres.has(key)) trimestres.set(key, []);
               trimestres.get(key)!.push(e);
             });
             const trimestresOrdre = [...trimestres.keys()].sort((a, b) => b.localeCompare(a));
+
+            // Disponibilité du filtre Titres : au moins un titre existant
+            const aDesTitres = (cahier?.rubriques ?? []).some((r) => (r.titres?.length ?? 0) > 0);
 
             // Mois disponibles dans le trimestre sélectionné
             const moisDispos = (() => {
@@ -1047,10 +1108,11 @@ const EntreeEditorPage: React.FC = () => {
             })();
 
             // Semaines disponibles dans le mois sélectionné
+            // (on utilise entreesFiltreesSidebar pour respecter les filtres Direction + Titres)
             const semainesDispos = (() => {
               if (!moisFiltre) return [];
               const map = new Map<string, EntreeCahier[]>();
-              autresEntrees
+              entreesFiltreesSidebar
                 .filter(e => {
                   const d = e.date?.toDate?.() ?? new Date(0);
                   return getMoisKey(d) === moisFiltre;
@@ -1067,7 +1129,7 @@ const EntreeEditorPage: React.FC = () => {
             // Séances visibles (feuilles) selon le niveau atteint
             const seancesVisibles = (() => {
               if (semaineFiltre) {
-                return autresEntrees.filter(e => {
+                return entreesFiltreesSidebar.filter(e => {
                   const d = e.date?.toDate?.() ?? new Date(0);
                   return getSemaineKey(d) === semaineFiltre;
                 });
@@ -1077,6 +1139,75 @@ const EntreeEditorPage: React.FC = () => {
 
             return (
               <div className="seances-timeline">
+
+                {/* ══════════════════════════════════════════════════════
+                    Barre de filtres transverses : Direction + Titres réalisés
+                    Feature 4 : segmented control Antérieures / Postérieures / Toutes
+                    Feature 1 (prof) : toggle « Titres réalisés uniquement »
+                    Styles partagés avec .filtre-pill / .filtres-groupe
+                    (définis dans ElveCahierFiltres.css, importé plus bas).
+                    ═══════════════════════════════════════════════════════ */}
+                <div className="seances-timeline__filtres" role="group" aria-label="Filtres des séances">
+                  {/* Segmented control : direction temporelle */}
+                  <div className="seances-timeline__segmented" role="tablist" aria-label="Direction temporelle">
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={directionSeances === 'toutes'}
+                      className={`seances-timeline__seg${directionSeances === 'toutes' ? ' seances-timeline__seg--actif' : ''}`}
+                      onClick={() => {
+                        setDirectionSeances('toutes');
+                        // Réinitialise la navigation hiérarchique pour éviter un état vide/incohérent
+                        setTrimestreFiltre(null); setMoisFiltre(null); setSemaineFiltre(null);
+                      }}
+                      title="Afficher toutes les séances (antérieures + postérieures)"
+                    >
+                      🗂️ Toutes
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={directionSeances === 'anterieures'}
+                      className={`seances-timeline__seg${directionSeances === 'anterieures' ? ' seances-timeline__seg--actif' : ''}`}
+                      onClick={() => {
+                        setDirectionSeances('anterieures');
+                        setTrimestreFiltre(null); setMoisFiltre(null); setSemaineFiltre(null);
+                      }}
+                      title="Séances déjà passées (date < aujourd'hui)"
+                    >
+                      ⏪ Antérieures
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={directionSeances === 'posterieures'}
+                      className={`seances-timeline__seg${directionSeances === 'posterieures' ? ' seances-timeline__seg--actif' : ''}`}
+                      onClick={() => {
+                        setDirectionSeances('posterieures');
+                        setTrimestreFiltre(null); setMoisFiltre(null); setSemaineFiltre(null);
+                      }}
+                      title="Séances planifiées à venir (date ≥ aujourd'hui)"
+                    >
+                      ⏩ Postérieures
+                    </button>
+                  </div>
+
+                  {/* Toggle : Titres réalisés uniquement */}
+                  {aDesTitres && (
+                    <button
+                      type="button"
+                      className={`seances-timeline__toggle${titresAchevesSeuls ? ' seances-timeline__toggle--actif' : ''}`}
+                      onClick={() => {
+                        setTitresAchevesSeuls(v => !v);
+                        setTrimestreFiltre(null); setMoisFiltre(null); setSemaineFiltre(null);
+                      }}
+                      aria-pressed={titresAchevesSeuls}
+                      title="N'afficher que les séances dont le titre est marqué « Achevé »"
+                    >
+                      ✅ Titres réalisés uniquement
+                    </button>
+                  )}
+                </div>
 
                 {/* Fil d'Ariane des filtres — reset au clic */}
                 <nav className="seances-timeline__breadcrumb" aria-label="Fil d'Ariane des périodes">
@@ -1121,14 +1252,22 @@ const EntreeEditorPage: React.FC = () => {
                   )}
                 </nav>
 
+                {/* Aucune séance brute */}
                 {autresEntrees.length === 0 && (
                   <p style={{ textAlign: 'center', color: '#9ca3af', padding: '1rem 0' }}>
                     Aucune séance enregistrée.
                   </p>
                 )}
 
+                {/* Les filtres ont tout masqué : message dédié */}
+                {autresEntrees.length > 0 && entreesFiltreesSidebar.length === 0 && (
+                  <p style={{ textAlign: 'center', color: '#9ca3af', padding: '1rem 0' }}>
+                    🔍 Aucune séance ne correspond aux filtres actifs.
+                  </p>
+                )}
+
                 {/* Niveau 1 : Trimestres */}
-                {autresEntrees.length > 0 && !trimestreFiltre && (
+                {entreesFiltreesSidebar.length > 0 && !trimestreFiltre && (
                   <div className="seances-timeline__grille">
                     {trimestresOrdre.map(key => {
                       const nb = trimestres.get(key)!.length;
@@ -1192,6 +1331,10 @@ const EntreeEditorPage: React.FC = () => {
                       const typeCfg = TYPE_CONTENU_CONFIG[e.typeContenu];
                       const statutCfg = STATUT_CONFIG[e.statut];
                       const dateSeance = e.date?.toDate?.() ?? new Date(0);
+                      // Feature 4 — badge visuel Passée/À venir
+                      //   Comparaison contre minuit « aujourd'hui » local ;
+                      //   permet à l'enseignant d'identifier en un coup d'œil.
+                      const estPassee = dateSeance < aujourdhuiMinuit;
                       return (
                         <button
                           key={e.id}
@@ -1211,6 +1354,13 @@ const EntreeEditorPage: React.FC = () => {
                             </span>
                             <span className="entree-statut-badge" style={{ background: statutCfg.bg, color: statutCfg.color }}>
                               {statutCfg.label}
+                            </span>
+                            {/* Badge temporel : passée (gris) ou à venir (bleu) */}
+                            <span
+                              className={`seances-timeline__carte-temps seances-timeline__carte-temps--${estPassee ? 'passee' : 'a-venir'}`}
+                              aria-label={estPassee ? 'Séance passée' : 'Séance à venir'}
+                            >
+                              {estPassee ? '⏪ Passée' : '⏩ À venir'}
                             </span>
                             {isCurrentEntry && (
                               <span className="seances-timeline__carte-en-cours">✎ en cours</span>

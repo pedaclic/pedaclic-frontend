@@ -14,8 +14,11 @@ import {
   toggleStatutInscription,
   // Phase 34 — élève sans compte PedaClic
   inscrireEleveOffline,
+  // Phase 36 — inscription en lot (saisie texte multi-lignes)
+  inscrireElevesEnLot,
   type EleveResultat,
   type InscriptionGroupe,
+  type InscriptionBulkResultat,
 } from '../../services/inscriptionDirecteService';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/InscriptionDirecte.css'; // Styles du modal
@@ -46,7 +49,8 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   onSuccess,
 }) => {
   const confirmDlg = useConfirm();
-  const [onglet, setOnglet] = useState<'recherche' | 'liste'>('recherche');
+  // Phase 36 — 3e onglet "bulk" pour inscrire plusieurs élèves en une fois
+  const [onglet, setOnglet] = useState<'recherche' | 'bulk' | 'liste'>('recherche');
   const [termeRecherche, setTermeRecherche] = useState('');
   const [resultats, setResultats] = useState<EleveResultat[]>([]);
   const [chargementRecherche, setChargementRecherche] = useState(false);
@@ -63,6 +67,14 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   const [offlineRemarque, setOfflineRemarque] = useState('');
   const [offlineEnCours, setOfflineEnCours] = useState(false);
   const [offlineErreur, setOfflineErreur] = useState<string | null>(null);
+
+  // ── Phase 36 — Inscription en lot (saisie texte multi-lignes) ──
+  //   La zone de texte autorise le copier-coller depuis un tableur :
+  //   une ligne par élève, champs séparés par ; , ou tabulation.
+  const [bulkTexte, setBulkTexte] = useState('');
+  const [bulkEnCours, setBulkEnCours] = useState(false);
+  const [bulkResultats, setBulkResultats] = useState<InscriptionBulkResultat[] | null>(null);
+  const [bulkErreur, setBulkErreur] = useState<string | null>(null);
 
   const chargerInscrits = useCallback(async () => {
     setChargementListe(true);
@@ -209,6 +221,62 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
     }
   };
 
+  // ── Phase 36 — Lancement du traitement en lot ─────────────────
+  //   Parcourt les lignes, délègue au service, puis recharge la liste
+  //   des inscrits et affiche un rapport détaillé ligne par ligne.
+  const handleInscrireEnLot = async () => {
+    if (bulkEnCours) return;
+    setBulkErreur(null);
+    setBulkResultats(null);
+
+    // Découpage en lignes, normalisation des sauts de ligne
+    const lignes = bulkTexte
+      .split(/\r?\n/)
+      .map((l) => l.replace(/\s+$/g, ''))
+      .filter((l) => l.trim().length > 0);
+
+    if (lignes.length === 0) {
+      setBulkErreur('Aucune ligne à traiter. Saisissez au moins un élève par ligne.');
+      return;
+    }
+    if (lignes.length > 200) {
+      // Garde-fou : 200 lignes est déjà énorme ; limite raisonnable pour
+      // éviter une opération très lente qui mobiliserait le modal.
+      setBulkErreur(`Trop de lignes (${lignes.length}). Limite : 200 élèves par lot.`);
+      return;
+    }
+
+    setBulkEnCours(true);
+    try {
+      const resultats = await inscrireElevesEnLot(groupeId, profId, lignes);
+      setBulkResultats(resultats);
+
+      const nbOk = resultats.filter((r) => r.statut === 'success').length;
+      const nbErr = resultats.filter((r) => r.statut === 'error').length;
+      const nbSkip = resultats.filter((r) => r.statut === 'skipped').length;
+
+      setMessageSucces(
+        `✅ Lot terminé : ${nbOk} inscrit(s)` +
+          (nbErr > 0 ? ` · ⚠️ ${nbErr} erreur(s)` : '') +
+          (nbSkip > 0 ? ` · ⏭️ ${nbSkip} ignoré(s)` : '')
+      );
+
+      // Recharger la liste et prévenir le parent dès qu'au moins un succès
+      if (nbOk > 0) {
+        await chargerInscrits();
+        onSuccess?.();
+        // On vide la saisie pour ne pas relancer accidentellement le lot ;
+        // le rapport reste visible tant que l'utilisateur ne le ferme pas.
+        setBulkTexte('');
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors du traitement du lot.';
+      setBulkErreur(msg);
+    } finally {
+      setBulkEnCours(false);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -262,6 +330,15 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
             onClick={() => setOnglet('recherche')}
           >
             🔍 Inscrire un élève
+          </button>
+          {/* Phase 36 — onglet "Inscription en lot" */}
+          <button
+            role="tab"
+            aria-selected={onglet === 'bulk'}
+            className={`idm-onglet ${onglet === 'bulk' ? 'idm-onglet--actif' : ''}`}
+            onClick={() => setOnglet('bulk')}
+          >
+            ⚡ Inscription en lot
           </button>
           <button
             role="tab"
@@ -407,6 +484,109 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                   </button>
                 </form>
               </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════
+              Phase 36 — Panneau "Inscription en lot"
+              Saisie libre : 1 élève / ligne, séparateurs ; , ou \t
+              Le service tente d'abord une inscription directe (si email
+              → compte existant) puis retombe sur une inscription offline.
+              ══════════════════════════════════════════════════════ */}
+          {onglet === 'bulk' && (
+            <div className="idm-panneau-bulk">
+              <div className="idm-notice">
+                <span className="idm-notice__icone">💡</span>
+                <p className="idm-notice__texte">
+                  Saisissez <strong>un élève par ligne</strong>. Formats acceptés :
+                  <br />
+                  <code>Nom Prénom</code> &nbsp;•&nbsp;
+                  <code>email@domaine</code> &nbsp;•&nbsp;
+                  <code>Nom Prénom ; email@domaine</code> &nbsp;•&nbsp;
+                  <code>Nom Prénom ; email ; remarque</code>
+                  <br />
+                  Séparateurs autorisés : <code>;</code>, <code>,</code> ou tabulation
+                  (copier-coller depuis un tableur supporté).
+                </p>
+              </div>
+
+              <label className="form-label" htmlFor="idm-bulk-textarea">
+                Liste des élèves à inscrire
+              </label>
+              <textarea
+                id="idm-bulk-textarea"
+                className="idm-bulk-textarea"
+                placeholder={`Exemple :\nDiop Awa ; awa.diop@exemple.sn\nFall Moussa ; ; tuteur 77 123 45 67\nmoussa.fall@exemple.sn\nMbaye Fatou`}
+                value={bulkTexte}
+                onChange={(e) => setBulkTexte(e.target.value)}
+                rows={10}
+                disabled={bulkEnCours}
+                aria-label="Saisie en lot : un élève par ligne"
+              />
+
+              {/* Compteur et actions */}
+              <div className="idm-bulk-actions">
+                <span className="idm-bulk-count">
+                  {bulkTexte.split(/\r?\n/).filter((l) => l.trim()).length} ligne(s) à traiter
+                </span>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="idm-btn idm-btn--secondaire"
+                    onClick={() => { setBulkTexte(''); setBulkResultats(null); setBulkErreur(null); }}
+                    disabled={bulkEnCours || (!bulkTexte && !bulkResultats)}
+                  >
+                    ✕ Effacer
+                  </button>
+                  <button
+                    type="button"
+                    className="idm-btn idm-btn--inscrire"
+                    onClick={handleInscrireEnLot}
+                    disabled={bulkEnCours || bulkTexte.trim().length === 0}
+                  >
+                    {bulkEnCours
+                      ? <><span className="idm-spinner idm-spinner--sm" /> Inscription en cours…</>
+                      : '⚡ Lancer l\'inscription en lot'}
+                  </button>
+                </div>
+              </div>
+
+              {bulkErreur && (
+                <p className="idm-texte-erreur" role="alert" style={{ marginTop: 12 }}>
+                  ⚠️ {bulkErreur}
+                </p>
+              )}
+
+              {/* ── Rapport détaillé ── */}
+              {bulkResultats && bulkResultats.length > 0 && (
+                <div className="idm-bulk-rapport" aria-live="polite">
+                  <div className="idm-bulk-rapport__titre">
+                    Rapport d'inscription ({bulkResultats.length} ligne(s))
+                  </div>
+                  <ul className="idm-bulk-rapport__liste" role="list">
+                    {bulkResultats.map((r) => (
+                      <li
+                        key={r.ligne}
+                        className={`idm-bulk-ligne idm-bulk-ligne--${r.statut}`}
+                      >
+                        <span className="idm-bulk-ligne__num">L{r.ligne}</span>
+                        <span className="idm-bulk-ligne__icone" aria-hidden="true">
+                          {r.statut === 'success' ? '✅' : r.statut === 'error' ? '⚠️' : '⏭️'}
+                        </span>
+                        <span className="idm-bulk-ligne__contenu">
+                          <strong>{r.nom || r.email || r.contenuBrut}</strong>
+                          {r.source && (
+                            <span className="idm-bulk-ligne__source">
+                              {r.source === 'direct' ? ' · 🔑 compte' : ' · 📝 offline'}
+                            </span>
+                          )}
+                          <span className="idm-bulk-ligne__msg">{r.message}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           )}
 

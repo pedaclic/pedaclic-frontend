@@ -34,6 +34,14 @@ export interface FiltresCahier {
    * '__sans_rubrique__' = entrées sans rubrique
    */
   rubriqueId: string | null;
+  /**
+   * Filtre « Titres réalisés uniquement »
+   *   true  → ne garder que les séances dont le chapitre correspond
+   *           à un TitreRubrique dont le statut vaut 'acheve'
+   *   false → comportement normal (toutes les séances sont montrées)
+   * Utile pour l'élève : vue d'ensemble des leçons déjà bouclées.
+   */
+  titresAchevesSeuls: boolean;
 }
 
 /** Valeurs par défaut (aucun filtre actif) */
@@ -41,6 +49,7 @@ export const FILTRES_DEFAUT: FiltresCahier = {
   periode: 'tout',
   moisChoisi: '',
   rubriqueId: null,
+  titresAchevesSeuls: false,
 };
 
 /** Options de période fixes */
@@ -65,7 +74,8 @@ export function moisCourant(): string {
 // ─────────────────────────────────────────────────────────────
 
 export function filtresActifs(f: FiltresCahier): boolean {
-  return f.periode !== 'tout' || f.rubriqueId !== null;
+  // Un filtre est actif dès qu'une seule dimension s'écarte du défaut
+  return f.periode !== 'tout' || f.rubriqueId !== null || f.titresAchevesSeuls;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -114,6 +124,11 @@ const ElveCahierFiltres: React.FC<ElveCahierFiltresProps> = ({
     onChangeFiltres({ ...filtres, rubriqueId: id });
   };
 
+  // Bascule le filtre « Titres réalisés uniquement » (toggle booléen)
+  const toggleTitresAcheves = () => {
+    onChangeFiltres({ ...filtres, titresAchevesSeuls: !filtres.titresAchevesSeuls });
+  };
+
   const reinitialiser = () => onChangeFiltres(FILTRES_DEFAUT);
 
   const aFiltre = filtresActifs(filtres);
@@ -136,6 +151,10 @@ const ElveCahierFiltres: React.FC<ElveCahierFiltresProps> = ({
     const r = rubriques.find((r) => r.id === filtres.rubriqueId);
     return r?.nom ?? null;
   })();
+
+  // Le toggle « Titres réalisés » ne s'affiche que si au moins une rubrique
+  // du cahier possède des titres (sinon le filtre n'a pas de sens).
+  const aDesTitres = rubriques.some((r) => (r.titres?.length ?? 0) > 0);
 
   return (
     <>
@@ -248,6 +267,28 @@ const ElveCahierFiltres: React.FC<ElveCahierFiltresProps> = ({
             </div>
           </div>
         )}
+
+        {/* ══════════════════════════════════════════════════════
+            Filtre « Titres réalisés uniquement » (avancement)
+            Masqué si aucune rubrique du cahier n'a de titres.
+            ═══════════════════════════════════════════════════════ */}
+        {aDesTitres && (
+          <div className="filtres-groupe" role="group" aria-label="Filtrer par avancement">
+            <span className="filtres-groupe-label">🏁 Avancement</span>
+            <div className="filtres-pills">
+              <button
+                type="button"
+                className={`filtre-pill${filtres.titresAchevesSeuls ? ' actif' : ''}`}
+                onClick={toggleTitresAcheves}
+                aria-pressed={filtres.titresAchevesSeuls}
+                title="N'afficher que les séances dont le titre est marqué « Achevé »"
+              >
+                <span aria-hidden="true">✅</span>
+                Titres réalisés uniquement
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {aFiltre && (
@@ -261,6 +302,10 @@ const ElveCahierFiltres: React.FC<ElveCahierFiltresProps> = ({
           <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
             {descPeriode && <span className="filtres-badge-actif">📆 {descPeriode}</span>}
             {descRubrique && <span className="filtres-badge-actif">📂 {descRubrique}</span>}
+            {/* Badge récapitulatif du filtre Avancement */}
+            {filtres.titresAchevesSeuls && (
+              <span className="filtres-badge-actif">✅ Titres réalisés</span>
+            )}
           </div>
         </div>
       )}

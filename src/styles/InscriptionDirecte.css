@@ -430,6 +430,117 @@
 @keyframes idm-slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 @keyframes idm-spin { to { transform: rotate(360deg); } }
 
+/* ══════════════════════════════════════════════════════════════
+   Phase 36 — Panneau d'inscription en lot (bulk)
+   ══════════════════════════════════════════════════════════════ */
+
+/* Panneau racine — même padding que les autres panneaux (recherche/liste) */
+.idm-panneau-bulk {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Zone de saisie multi-lignes — grande, police mono pour lisibilité tabulaire */
+.idm-bulk-textarea {
+  width: 100%;
+  min-height: 180px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--idm-border, #e5e7eb);
+  border-radius: var(--idm-radius, 8px);
+  resize: vertical;
+  color: #1f2937;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.idm-bulk-textarea:focus {
+  outline: none;
+  border-color: var(--idm-blue, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.idm-bulk-textarea:disabled {
+  background: #f3f4f6;
+  color: #6b7280;
+  cursor: not-allowed;
+}
+
+/* Barre d'actions sous la textarea */
+.idm-bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.idm-bulk-count {
+  font-size: 0.78rem;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+/* Rapport ligne par ligne */
+.idm-bulk-rapport {
+  border: 1px solid var(--idm-border, #e5e7eb);
+  border-radius: var(--idm-radius, 8px);
+  background: #f9fafb;
+  padding: 0.75rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.idm-bulk-rapport__titre {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+.idm-bulk-rapport__liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Une ligne de rapport — fond coloré selon le statut */
+.idm-bulk-ligne {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  line-height: 1.35;
+}
+.idm-bulk-ligne--success { background: #f0fdf4; color: #166534; }
+.idm-bulk-ligne--error   { background: #fef2f2; color: #991b1b; }
+.idm-bulk-ligne--skipped { background: #f3f4f6; color: #4b5563; }
+
+.idm-bulk-ligne__num {
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: #6b7280;
+  min-width: 2.2rem;
+}
+.idm-bulk-ligne__icone { font-size: 0.9rem; line-height: 1; margin-top: 1px; }
+.idm-bulk-ligne__contenu {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.idm-bulk-ligne__source { font-size: 0.72rem; color: #6b7280; font-weight: 500; }
+.idm-bulk-ligne__msg    { font-size: 0.76rem; opacity: 0.9; }
+
+@media (max-width: 480px) {
+  .idm-bulk-textarea { font-size: 0.78rem; min-height: 160px; }
+  .idm-bulk-actions { flex-direction: column; align-items: stretch; }
+}
+
 @media (max-width: 480px) {
   .idm-modal { max-height: 95vh; border-radius: var(--idm-radius) var(--idm-radius) 0 0; align-self: flex-end; margin-top: auto; }
   .idm-overlay { align-items: flex-end; padding: 0; }

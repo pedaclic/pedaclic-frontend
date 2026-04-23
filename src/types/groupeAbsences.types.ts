@@ -53,6 +53,18 @@ export interface TravailAFaire {
   rubriqueNom?: string;
   /** Indique si l'exercice a été fait et corrigé */
   corrige?: boolean;
+  /**
+   * Phase 36 — Date de correction au format `YYYY-MM-DD`.
+   *   Rempli automatiquement (date du jour) quand le prof coche la
+   *   case "Corrigé" ; peut ensuite être édité manuellement.
+   *   Vide/absent = aucune date enregistrée (ou exercice non corrigé).
+   */
+  corrigeDate?: string;
+  /**
+   * Phase 36 — Heure de correction au format `HH:mm`.
+   *   Pendant : même règle que corrigeDate (auto à la saisie, éditable).
+   */
+  corrigeHeure?: string;
   profId: string;
   profNom?: string;
   createdAt: Date;

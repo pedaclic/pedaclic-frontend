@@ -38,8 +38,9 @@ import {
   creerTravailAFaire,
   getTravauxByGroupe,
   supprimerTravailAFaire,
-  toggleCorrigeTravail,
 } from '../../services/travauxAFaireService';
+// Phase 36 — cellule "Corrigé" avec date+heure auto + éditable
+import CorrigeTravailCell from './CorrigeTravailCell';
 import { getCahiersForGroupe, getEntreesCahier } from '../../services/cahierTextesService';
 import type { CahierTextes, RubriqueCahier, EntreeCahier } from '../../types/cahierTextes.types';
 import { useAuth } from '../../hooks/useAuth';
@@ -1263,18 +1264,18 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                 {travauxFiltres.map((t) => (
                   <li key={t.id} className="groupe-travaux-item" style={t.corrige ? { opacity: 0.7, background: '#f0fdf4' } : {}}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
-                      <input
-                        type="checkbox"
-                        checked={!!t.corrige}
-                        onChange={async () => {
-                          const newVal = !t.corrige;
-                          try {
-                            await toggleCorrigeTravail(t.id, newVal);
-                            setTravaux(prev => prev.map(x => x.id === t.id ? { ...x, corrige: newVal } : x));
-                          } catch { /* silencieux */ }
+                      {/* Phase 36 — cellule "Corrigé" (checkbox + date/heure auto + éditable) */}
+                      <CorrigeTravailCell
+                        travail={t}
+                        onChanged={(patch) => {
+                          // Mise à jour optimiste du state local avec le patch complet
+                          setTravaux(prev => prev.map(x => x.id === patch.id ? {
+                            ...x,
+                            corrige: patch.corrige,
+                            corrigeDate: patch.corrigeDate,
+                            corrigeHeure: patch.corrigeHeure,
+                          } : x));
                         }}
-                        title={t.corrige ? 'Marquer comme non corrigé' : 'Marquer comme fait & corrigé'}
-                        style={{ marginTop: '0.3rem', width: 18, height: 18, accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
                       />
                     <div>
                       <strong style={t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : {}}>{t.titre}</strong>
@@ -1300,7 +1301,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                       <span className="groupe-travaux-date">
                         📅 {t.dateEcheance instanceof Date ? t.dateEcheance.toLocaleDateString('fr-FR') : new Date(t.dateEcheance).toLocaleDateString('fr-FR')}
                         {t.heureEcheance && ` à ${t.heureEcheance}`}
-                        {t.corrige && <span style={{ marginLeft: '0.5rem', color: '#16a34a', fontWeight: 600, fontSize: '0.75rem' }}>✅ Fait & corrigé</span>}
+                        {/* Le badge "Fait & corrigé le ..." est désormais porté par CorrigeTravailCell,
+                            on laisse la date d'échéance seule ici pour éviter les doublons. */}
                       </span>
                     </div>
                     </div>

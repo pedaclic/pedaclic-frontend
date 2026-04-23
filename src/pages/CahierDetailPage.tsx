@@ -50,8 +50,10 @@ import Breadcrumbs from '../components/shared/Breadcrumbs';
 import { SkeletonDashboard } from '../components/shared/Skeleton';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
-import { getTravauxByGroupe, toggleCorrigeTravail } from '../services/travauxAFaireService';
+import { getTravauxByGroupe } from '../services/travauxAFaireService';
 import type { TravailAFaire } from '../types/groupeAbsences.types';
+// Phase 36 — cellule "Corrigé" avec date+heure auto + éditable
+import CorrigeTravailCell from '../components/prof/CorrigeTravailCell';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -1084,18 +1086,18 @@ const CahierDetailPage: React.FC = () => {
                             opacity: t.corrige ? 0.75 : 1,
                           }}
                         >
-                          <input
-                            type="checkbox"
-                            checked={!!t.corrige}
-                            onChange={async () => {
-                              const newVal = !t.corrige;
-                              try {
-                                await toggleCorrigeTravail(t.id, newVal);
-                                setTravauxCahier(prev => prev.map(x => x.id === t.id ? { ...x, corrige: newVal } : x));
-                              } catch { /* silencieux */ }
+                          {/* Phase 36 — cellule "Corrigé" (checkbox + date/heure auto + éditable) */}
+                          <CorrigeTravailCell
+                            travail={t}
+                            onChanged={(patch) => {
+                              // Mise à jour optimiste du state local avec le patch complet
+                              setTravauxCahier(prev => prev.map(x => x.id === patch.id ? {
+                                ...x,
+                                corrige: patch.corrige,
+                                corrigeDate: patch.corrigeDate,
+                                corrigeHeure: patch.corrigeHeure,
+                              } : x));
                             }}
-                            title={t.corrige ? 'Marquer comme non corrigé' : 'Marquer comme fait & corrigé'}
-                            style={{ marginTop: '0.25rem', width: 18, height: 18, accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
                           />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1103,7 +1105,6 @@ const CahierDetailPage: React.FC = () => {
                               {t.rubriqueNom && (
                                 <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 9999, fontWeight: 600 }}>📂 {t.rubriqueNom}</span>
                               )}
-                              {t.corrige && <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 600 }}>✅ Fait & corrigé</span>}
                             </div>
                             {t.description && (
                               <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.25rem', lineHeight: 1.4 }} dangerouslySetInnerHTML={{ __html: t.description }} />

@@ -80,7 +80,28 @@ function couleurRubrique(r: RubriqueCahier, idx: number): string {
 // FILTRAGE (client-side)
 // ─────────────────────────────────────────────────────────────
 
-function filtrerEntrees(entrees: EntreeCahier[], filtres: FiltresCahier): EntreeCahier[] {
+/**
+ * Construit l'ensemble des noms de titres "achevés" du cahier.
+ * Normalise la casse et les espaces pour un matching robuste avec
+ * le `chapitre` de chaque séance (qui peut être saisi librement).
+ */
+function buildTitresAchevesSet(rubriques: RubriqueCahier[]): Set<string> {
+  const set = new Set<string>();
+  rubriques.forEach((r) => {
+    (r.titres ?? []).forEach((t) => {
+      if (t.statut === 'acheve' && t.nom) {
+        set.add(t.nom.trim().toLowerCase());
+      }
+    });
+  });
+  return set;
+}
+
+function filtrerEntrees(
+  entrees: EntreeCahier[],
+  filtres: FiltresCahier,
+  titresAchevesNoms: Set<string>,
+): EntreeCahier[] {
   const maintenant = new Date();
 
   return entrees.filter((e) => {
@@ -112,6 +133,13 @@ function filtrerEntrees(entrees: EntreeCahier[], filtres: FiltresCahier): Entree
       } else if (e.rubriqueId !== filtres.rubriqueId) {
         return false;
       }
+    }
+
+    // Filtre « Titres réalisés uniquement » :
+    //   on matche le chapitre (normalisé) avec la liste des titres achevés.
+    if (filtres.titresAchevesSeuls) {
+      const chapitreNorm = (e.chapitre ?? '').trim().toLowerCase();
+      if (!chapitreNorm || !titresAchevesNoms.has(chapitreNorm)) return false;
     }
 
     return true;
@@ -181,7 +209,17 @@ const ElveCahierPage: React.FC = () => {
     charger();
   }, [cahierId]);
 
-  const entreesFiltrees = useMemo(() => filtrerEntrees(entrees, filtres), [entrees, filtres]);
+  // Ensemble des titres "achevés" (normalisés) — recalculé à chaque
+  // changement de rubriques pour prise en compte immédiate.
+  const titresAchevesNoms = useMemo(
+    () => buildTitresAchevesSet(rubriques),
+    [rubriques],
+  );
+
+  const entreesFiltrees = useMemo(
+    () => filtrerEntrees(entrees, filtres, titresAchevesNoms),
+    [entrees, filtres, titresAchevesNoms],
+  );
 
   const groupes = useMemo(() => grouperParMois(entreesFiltrees), [entreesFiltrees]);
 

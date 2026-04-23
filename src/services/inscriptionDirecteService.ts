@@ -429,3 +429,218 @@ export async function modifierInscriptionOffline(
   if (Object.keys(payload).length === 0) return;
   await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), payload);
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// PHASE 36 — INSCRIPTION EN LOT (BULK)
+//
+// Objectif : permettre au prof de saisir plusieurs élèves en une seule
+// opération (copier-coller depuis une feuille d'élèves, par exemple) au
+// lieu d'une inscription unitaire chronophage.
+//
+// Format d'entrée : tableau de lignes brutes (1 élève par ligne).
+// Chaque ligne peut être :
+//   - "Nom Prénom"                              → inscription OFFLINE
+//   - "email@domaine"                           → tentative DIRECTE si compte existant
+//   - "Nom Prénom ; email@domaine"              → idem, avec nom de secours
+//   - "Nom Prénom ; email@domaine ; remarque"   → remarque utilisée si offline
+//
+// Séparateurs autorisés entre champs : ";" ou "," ou tabulation.
+// Résultat : une entrée par ligne indiquant le statut (success / error /
+// skipped), la source utilisée (direct / offline), et un message lisible.
+// ══════════════════════════════════════════════════════════════════════
+
+/** Statut d'une ligne traitée lors d'un import bulk. */
+export type InscriptionBulkStatut = 'success' | 'error' | 'skipped';
+
+/** Résultat détaillé pour une ligne saisie. */
+export interface InscriptionBulkResultat {
+  /** Numéro de ligne (1-indexed) dans la saisie d'origine */
+  ligne: number;
+  /** Contenu brut de la ligne (tel que saisi) */
+  contenuBrut: string;
+  /** Statut final du traitement */
+  statut: InscriptionBulkStatut;
+  /** Source effective d'inscription quand statut = success */
+  source?: 'direct' | 'offline';
+  /** Nom final retenu (utile pour l'affichage du rapport) */
+  nom?: string;
+  /** Email détecté (si présent dans la ligne) */
+  email?: string;
+  /** Message lisible (erreur, ou info « Ajouté sans compte » etc.) */
+  message: string;
+}
+
+/**
+ * Parse une ligne brute en champs structurés.
+ * Tolère ";", ",", et "\t" comme séparateurs ; trim tout.
+ *
+ * Heuristique email :
+ *   Si un champ quelconque contient "@", il est traité comme email.
+ *   Les autres champs non-email sont candidats au "nom".
+ */
+function parseLigneBulk(ligne: string): { nom: string; email: string; remarque: string } | null {
+  const brut = ligne.trim();
+  if (!brut) return null;
+  // Split flexible : ; ou , ou tab
+  const parties = brut.split(/[;,\t]/).map((s) => s.trim()).filter(Boolean);
+  if (parties.length === 0) return null;
+
+  let email = '';
+  const nonEmail: string[] = [];
+  for (const p of parties) {
+    if (p.includes('@') && !email) {
+      email = p.toLowerCase();
+    } else {
+      nonEmail.push(p);
+    }
+  }
+  const nom = nonEmail[0] ?? '';
+  const remarque = nonEmail.slice(1).join(' ').trim();
+  return { nom, email, remarque };
+}
+
+/**
+ * Inscrit en lot plusieurs élèves dans un groupe.
+ *
+ * Politique :
+ *   - Si email renseigné et compte PedaClic trouvé avec ce mail (rôle "eleve")
+ *       → inscrireEleveDirect
+ *   - Sinon, si nom renseigné
+ *       → inscrireEleveOffline (remarque optionnelle, email stocké dans remarque si fourni)
+ *   - Sinon → ligne ignorée (statut "skipped" : vide ou inparsable)
+ *
+ * Le traitement est séquentiel (rythme raisonnable pour 10-100 lignes) :
+ *   plus simple à déboguer, et évite les races sur `nombreInscrits`.
+ */
+export async function inscrireElevesEnLot(
+  groupeId: string,
+  profId: string,
+  lignes: string[]
+): Promise<InscriptionBulkResultat[]> {
+  const resultats: InscriptionBulkResultat[] = [];
+
+  for (let i = 0; i < lignes.length; i++) {
+    const numeroLigne = i + 1;
+    const contenuBrut = lignes[i];
+    const parsed = parseLigneBulk(contenuBrut);
+
+    // Ligne vide / non parsable
+    if (!parsed) {
+      resultats.push({
+        ligne: numeroLigne,
+        contenuBrut,
+        statut: 'skipped',
+        message: 'Ligne vide ou illisible — ignorée.',
+      });
+      continue;
+    }
+
+    const { nom, email, remarque } = parsed;
+
+    // ── Cas 1 : email fourni → on tente l'inscription directe ───
+    if (email) {
+      try {
+        const candidats = await rechercherEleves(email, groupeId);
+        const match = candidats.find((c) => c.email.toLowerCase() === email);
+        if (match) {
+          if (match.dejaInscrit) {
+            resultats.push({
+              ligne: numeroLigne,
+              contenuBrut,
+              statut: 'skipped',
+              source: 'direct',
+              email,
+              nom: match.displayName,
+              message: `Déjà inscrit : ${match.displayName}`,
+            });
+            continue;
+          }
+          // Inscription directe via compte PedaClic existant
+          await inscrireEleveDirect(
+            groupeId,
+            { uid: match.uid, displayName: match.displayName, email: match.email },
+            profId
+          );
+          resultats.push({
+            ligne: numeroLigne,
+            contenuBrut,
+            statut: 'success',
+            source: 'direct',
+            email,
+            nom: match.displayName,
+            message: `✓ Inscrit avec son compte PedaClic (${match.displayName}).`,
+          });
+          continue;
+        }
+        // Pas de compte trouvé → on bascule sur offline si on a un nom
+        if (!nom) {
+          resultats.push({
+            ligne: numeroLigne,
+            contenuBrut,
+            statut: 'error',
+            email,
+            message: "Aucun compte PedaClic ne correspond à cet email, et aucun nom n'a été fourni.",
+          });
+          continue;
+        }
+        // Nom disponible : on tombe dans le flux offline ci-dessous (avec email en remarque)
+      } catch (err) {
+        // Les erreurs réseau / Firestore passent en "error" sans bloquer
+        // le reste du batch.
+        const msg = err instanceof Error ? err.message : String(err);
+        resultats.push({
+          ligne: numeroLigne,
+          contenuBrut,
+          statut: 'error',
+          email,
+          nom,
+          message: `Erreur pendant la recherche de compte : ${msg}`,
+        });
+        continue;
+      }
+    }
+
+    // ── Cas 2 : pas d'email exploitable, on crée une inscription offline ──
+    if (!nom || nom.length < 2) {
+      resultats.push({
+        ligne: numeroLigne,
+        contenuBrut,
+        statut: 'error',
+        message: 'Aucun nom valide (au moins 2 caractères) détecté sur la ligne.',
+      });
+      continue;
+    }
+
+    try {
+      // Si un email était fourni mais introuvable en base, on le glisse
+      // dans la remarque pour qu'il ne soit pas perdu.
+      const remarqueFinale = [remarque, email ? `email: ${email}` : '']
+        .filter(Boolean)
+        .join(' — ');
+      await inscrireEleveOffline(groupeId, nom, profId, remarqueFinale || undefined);
+      resultats.push({
+        ligne: numeroLigne,
+        contenuBrut,
+        statut: 'success',
+        source: 'offline',
+        nom,
+        email: email || undefined,
+        message: email
+          ? `✓ Ajouté sans compte (email "${email}" consigné en remarque).`
+          : '✓ Ajouté sans compte PedaClic.',
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      resultats.push({
+        ligne: numeroLigne,
+        contenuBrut,
+        statut: 'error',
+        nom,
+        email: email || undefined,
+        message: `Erreur lors de l'inscription : ${msg}`,
+      });
+    }
+  }
+
+  return resultats;
+}

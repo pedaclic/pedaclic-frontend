@@ -78,10 +78,18 @@ export async function creerTravailAFaire(
 
 /**
  * Met à jour un travail à faire.
+ *
+ * Phase 36 — la liste des champs modifiables inclut maintenant
+ * `corrigeDate` (YYYY-MM-DD) et `corrigeHeure` (HH:mm) pour permettre
+ * à l'enseignant de régler finement le moment de la correction.
  */
 export async function modifierTravailAFaire(
   id: string,
-  updates: Partial<Pick<TravailAFaire, 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance' | 'cahierId' | 'rubriqueId' | 'rubriqueNom' | 'corrige'>>
+  updates: Partial<Pick<TravailAFaire,
+    | 'titre' | 'description' | 'dateEcheance' | 'matiere' | 'heureEcheance'
+    | 'cahierId' | 'rubriqueId' | 'rubriqueNom'
+    | 'corrige' | 'corrigeDate' | 'corrigeHeure'
+  >>
 ): Promise<void> {
   const ref = doc(db, COL_TRAVAUX, id);
   // Exclure les champs undefined pour éviter le rejet Firestore
@@ -98,11 +106,53 @@ export async function modifierTravailAFaire(
 }
 
 /**
- * Bascule le statut corrigé d'un travail.
+ * Retourne un couple [YYYY-MM-DD, HH:mm] représentant l'instant présent
+ * en fuseau local — utilisé pour auto-dater la clôture d'un exercice.
+ *
+ * Exposé (pas seulement interne) pour permettre à la UI d'initialiser
+ * des inputs date/time quand l'utilisateur édite la date de correction.
  */
-export async function toggleCorrigeTravail(id: string, corrige: boolean): Promise<void> {
+export function maintenantDateHeure(): { date: string; heure: string } {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const heure = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return { date, heure };
+}
+
+/**
+ * Bascule le statut corrigé d'un travail.
+ *
+ * Phase 36 :
+ *   - À la cochée (corrige=true) : on estampille `corrigeDate` et
+ *     `corrigeHeure` avec l'instant local courant SAUF si l'appelant
+ *     fournit une date/heure explicite (ex. édition manuelle du prof).
+ *   - À la décochée (corrige=false) : on efface date & heure en
+ *     écrivant une chaîne vide (Firestore ne connaît pas delete côté
+ *     client sans FieldValue.delete() ; ici, chaîne vide = "non
+ *     renseigné", cohérent avec la lecture dans l'UI).
+ *
+ * L'appelant peut passer un 3e argument pour forcer une valeur
+ * (utile quand l'enseignant ajuste après coup).
+ */
+export async function toggleCorrigeTravail(
+  id: string,
+  corrige: boolean,
+  options?: { date?: string; heure?: string }
+): Promise<{ corrige: boolean; corrigeDate: string; corrigeHeure: string }> {
   const ref = doc(db, COL_TRAVAUX, id);
-  await updateDoc(ref, { corrige });
+  if (corrige) {
+    // Auto-remplissage si la UI n'a pas fourni de valeur explicite
+    const auto = maintenantDateHeure();
+    const corrigeDate = options?.date ?? auto.date;
+    const corrigeHeure = options?.heure ?? auto.heure;
+    await updateDoc(ref, { corrige, corrigeDate, corrigeHeure });
+    return { corrige, corrigeDate, corrigeHeure };
+  }
+  // Décoché : reset des méta-données pour éviter d'afficher un
+  // horodatage orphelin dans la UI.
+  await updateDoc(ref, { corrige, corrigeDate: '', corrigeHeure: '' });
+  return { corrige, corrigeDate: '', corrigeHeure: '' };
 }
 
 /**
