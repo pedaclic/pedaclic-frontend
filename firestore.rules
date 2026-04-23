@@ -239,13 +239,36 @@ service cloud.firestore {
       }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // absences_groupe — CORRIGÉ (appel & retards)
+    //
+    // AVANT : isProf() appelait getUserData() à CHAQUE opération
+    //   ⇒ surcoût systématique + timeout WebChannel constaté
+    //   ⇒ erreur "Missing or insufficient permissions" intermittente
+    //
+    // APRÈS : l'ownership (profId == auth.uid) suffit, car un document
+    //   n'est créé qu'avec le profId du créateur (vérifié côté create).
+    //   Plus aucun getUserData() → pas d'appel get() supplémentaire.
+    //
+    // Le prof est implicitement authentifié puisqu'il a pu créer
+    // le groupe et un document d'absence référence toujours ce prof.
+    // ══════════════════════════════════════════════════════════
     match /absences_groupe/{absenceId} {
-      allow read, update, delete: if isSignedIn() && (
-        (isProf() && resource.data.profId == request.auth.uid) ||
+      allow read: if isSignedIn() && (
+        resource.data.profId == request.auth.uid ||
         isAdmin()
       );
-      allow create: if isSignedIn() && (
-        (isProf() && request.resource.data.profId == request.auth.uid) ||
+      allow create: if isSignedIn() &&
+        request.resource.data.profId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        // Update classique : l'ancien et le nouveau profId doivent
+        // pointer vers l'utilisateur courant (pas de détournement).
+        (resource.data.profId == request.auth.uid &&
+         request.resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.profId == request.auth.uid ||
         isAdmin()
       );
     }

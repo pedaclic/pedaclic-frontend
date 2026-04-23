@@ -20,6 +20,8 @@ import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus } from
 import { COMPETENCES_PAR_DEFAUT, COMPETENCE_STATUS_LABELS, COMPETENCE_STATUS_COLORS } from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
+// ✨ Formatage "Prénoms NOM" + tri alphabétique par nom de famille
+import { formatEleveNom, compareParNomFamille } from '../utils/formatNom';
 import '../styles/prof.css';
 import '../styles/feuillesNotes.css';
 
@@ -54,10 +56,15 @@ const FeuilleNotesEditorPage: React.FC = () => {
       }
       const inscriptions = await getElevesGroupe(f.groupeId);
       setFeuille(f);
+      // Tri alphabétique par NOM de famille pour la feuille de notes
+      // (cohérent avec l'appel : élèves listés dans le même ordre partout)
+      const inscriptionsTriees = [...inscriptions].sort((a, b) =>
+        compareParNomFamille(a.eleveNom, b.eleveNom),
+      );
       setLignes(
         buildLignesNotes(
           f,
-          inscriptions.map((i) => ({ eleveId: i.eleveId, eleveNom: i.eleveNom, eleveEmail: i.eleveEmail }))
+          inscriptionsTriees.map((i) => ({ eleveId: i.eleveId, eleveNom: i.eleveNom, eleveEmail: i.eleveEmail }))
         )
       );
     } catch (err: any) {
@@ -333,7 +340,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
             {lignes.map((ligne) => (
               <tr key={ligne.eleveId}>
                 <td className="col-eleve">
-                  <strong>{ligne.eleveNom}</strong>
+                  {/* Affichage canonique "Prénoms NOM" (cf. src/utils/formatNom.ts) */}
+                  <strong>{formatEleveNom(ligne.eleveNom)}</strong>
                 </td>
                 {evals.map((e) => {
                   const isEdit = editCell?.eleveId === ligne.eleveId && editCell?.evalId === e.id;

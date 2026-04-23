@@ -29,11 +29,15 @@ import {
 } from '../../services/profGroupeService';
 import {
   marquerAbsences,
-  getAbsencesByDate,
+  getAppelByDate,
   getAbsencesByPeriod,
   sauvegarderObservation,
   getObservationEleve,
 } from '../../services/groupeAbsencesService';
+import type { DetailRetard, MotifRetard } from '../../types/groupeAbsences.types';
+// ✨ Formatage "Prénoms NOM" (dernier mot en MAJUSCULES)
+//    + tri alphabétique par nom de famille
+import { formatEleveNom, compareParNomFamille } from '../../utils/formatNom';
 import {
   creerTravailAFaire,
   getTravauxByGroupe,
@@ -71,16 +75,24 @@ type OngletActif = 'apercu' | 'eleves' | 'appel' | 'travaux' | 'notes' | 'quiz' 
 type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count';
 
 
-// ==================== SOUS-COMPOSANT : SUIVI ABSENCES ====================
+// ==================== SOUS-COMPOSANT : SUIVI ABSENCES + RETARDS ====================
 
 interface AppelSuiviTableProps {
   groupeId: string;
+  profId: string;
   statsEleves: EleveGroupeStats[];
   periode: 'jour' | 'semaine' | 'mois';
 }
 
-function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProps) {
+/**
+ * Tableau de suivi : affiche pour chaque élève le nombre d'absences
+ * ET le nombre de retards cumulés sur la période choisie, ainsi que
+ * les séances manquées.
+ * Les noms sont affichés au format « Prénoms NOM » et triés par NOM.
+ */
+function AppelSuiviTable({ groupeId, profId, statsEleves, periode }: AppelSuiviTableProps) {
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [retards, setRetards] = useState<Record<string, number>>({});
   const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -104,29 +116,43 @@ function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProp
 
     (async () => {
       try {
-        const absences = await getAbsencesByPeriod(groupeId, debut, fin);
+        // Filtre profId passé explicitement pour satisfaire la règle Firestore
+        const absences = await getAbsencesByPeriod(groupeId, debut, fin, profId);
         const c: Record<string, number> = {};
+        const r: Record<string, number> = {};
         const sm: Record<string, string[]> = {};
-        statsEleves.forEach(e => { c[e.eleveId] = 0; sm[e.eleveId] = []; });
+        statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
+          // Comptage des absences
           (a.eleveIdsAbsents || []).forEach((id: string) => {
             if (c[id] !== undefined) c[id]++;
             if (a.entreeTitre && sm[id]) {
               sm[id].push(a.entreeTitre);
             }
           });
+          // Comptage des retards
+          (a.eleveIdsRetards || []).forEach((id: string) => {
+            if (r[id] !== undefined) r[id]++;
+          });
         });
-        if (!cancelled) { setCounts(c); setSeancesManquees(sm); }
+        if (!cancelled) { setCounts(c); setRetards(r); setSeancesManquees(sm); }
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, [groupeId, statsEleves, periode]);
+  }, [groupeId, profId, statsEleves, periode]);
 
   if (loading) return <p className="text-muted">Chargement...</p>;
 
-  const sorted = [...statsEleves].sort((a, b) => (counts[b.eleveId] || 0) - (counts[a.eleveId] || 0));
+  // Tri : élèves avec le plus d'absences d'abord, puis retards, puis ordre alphabétique
+  const sorted = [...statsEleves].sort((a, b) => {
+    const diffAbs = (counts[b.eleveId] || 0) - (counts[a.eleveId] || 0);
+    if (diffAbs !== 0) return diffAbs;
+    const diffRet = (retards[b.eleveId] || 0) - (retards[a.eleveId] || 0);
+    if (diffRet !== 0) return diffRet;
+    return compareParNomFamille(a.eleveNom, b.eleveNom);
+  });
 
   return (
     <table className="groupe-eleves-table groupe-appel-suivi-table">
@@ -134,15 +160,20 @@ function AppelSuiviTable({ groupeId, statsEleves, periode }: AppelSuiviTableProp
         <tr>
           <th>Élève</th>
           <th>Absences ({periode})</th>
+          <th>Retards ({periode})</th>
           <th>Séances manquées</th>
         </tr>
       </thead>
       <tbody>
         {sorted.map(e => (
           <tr key={e.eleveId}>
-            <td>{e.eleveNom}</td>
+            {/* Nom formaté "Prénoms NOM" */}
+            <td>{formatEleveNom(e.eleveNom)}</td>
             <td className={counts[e.eleveId] > 0 ? 'prof-note-critique' : ''}>
               {counts[e.eleveId] || 0}
+            </td>
+            <td className={retards[e.eleveId] > 0 ? 'prof-note-insuffisant' : ''}>
+              {retards[e.eleveId] || 0}
             </td>
             <td className="groupe-appel-seances-manquees">
               {(seancesManquees[e.eleveId] || []).length > 0
@@ -184,10 +215,15 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   const [travaux, setTravaux] = useState<TravailAFaire[]>([]);
   const [observations, setObservations] = useState<Record<string, string>>({});
 
-  // ===== États : Appel / Absences =====
+  // ===== États : Appel / Absences / Retards =====
   const [dateAppel, setDateAppel] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [absentsIds, setAbsentsIds] = useState<string[]>([]);
+  // ✨ Retards : IDs des élèves en retard + détails (minutes, motif, commentaire)
+  const [retardsIds, setRetardsIds] = useState<string[]>([]);
+  const [retardsDetails, setRetardsDetails] = useState<Record<string, DetailRetard>>({});
   const [loadingAppel, setLoadingAppel] = useState(false);
+  // Feedback de sauvegarde ("idle" | "ok" | "err") pour l'utilisateur
+  const [appelSaveState, setAppelSaveState] = useState<'idle' | 'ok' | 'err'>('idle');
   const [periodeSuivi, setPeriodeSuivi] = useState<'jour' | 'semaine' | 'mois'>('semaine');
   // Liaison absence ↔ séance
   const [appelCahiers, setAppelCahiers] = useState<CahierTextes[]>([]);
@@ -267,10 +303,21 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     chargerDonneesGroupe();
   }, [chargerDonneesGroupe]);
 
-  /** Charge les absences du jour + cahiers pour l'appel */
+  /** Charge l'appel complet du jour (absences + retards) + cahiers */
   useEffect(() => {
     if (ongletActif !== 'appel') return;
-    getAbsencesByDate(groupe.id, dateAppel).then(setAbsentsIds).catch(() => setAbsentsIds([]));
+    // ✨ On charge l'appel complet pour récupérer absents ET retards
+    getAppelByDate(groupe.id, dateAppel)
+      .then((appel) => {
+        setAbsentsIds(appel?.eleveIdsAbsents || []);
+        setRetardsIds(appel?.eleveIdsRetards || []);
+        setRetardsDetails(appel?.retardsDetails || {});
+      })
+      .catch(() => {
+        setAbsentsIds([]);
+        setRetardsIds([]);
+        setRetardsDetails({});
+      });
     if (currentUser?.uid) {
       getCahiersForGroupe(groupe.id, currentUser.uid)
         .then(c => { setAppelCahiers(c); if (c.length === 1) setAppelCahierId(c[0].id); })
@@ -388,12 +435,33 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     }
   };
 
-  /** Marque les absences pour la date d'appel (avec séance liée) */
+  /**
+   * Enregistre l'appel : absents + retards (minutes/motif/commentaire)
+   * + séance liée (optionnelle).
+   * Affiche un feedback visuel OK/KO à l'utilisateur.
+   */
   const handleMarquerAbsences = async () => {
-    if (!currentUser?.uid) return;
+    if (!currentUser?.uid) {
+      setError("Vous devez être connecté pour enregistrer l'appel.");
+      setAppelSaveState('err');
+      return;
+    }
     try {
       setLoadingAppel(true);
+      setAppelSaveState('idle');
       const entreeSelectionnee = appelEntrees.find(e => e.id === appelEntreeId);
+      // Ne conserve les détails que pour les élèves effectivement en retard
+      const detailsNets: Record<string, DetailRetard> = {};
+      retardsIds.forEach((id) => {
+        const d = retardsDetails[id] || { minutes: 0 };
+        detailsNets[id] = {
+          minutes: typeof d.minutes === 'number' ? d.minutes : 0,
+          // motif/commentaire ne sont inclus que s'ils sont définis
+          ...(d.motif ? { motif: d.motif } : {}),
+          ...(d.commentaire ? { commentaire: d.commentaire } : {}),
+        };
+      });
+
       await marquerAbsences(
         groupe.id,
         dateAppel,
@@ -401,12 +469,66 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
         currentUser.uid,
         entreeSelectionnee?.id,
         entreeSelectionnee?.chapitre,
+        retardsIds,
+        detailsNets,
       );
+      setAppelSaveState('ok');
+      // Le message "✅ Enregistré" disparaît après 3s
+      setTimeout(() => setAppelSaveState('idle'), 3000);
     } catch (err: any) {
-      setError(err.message);
+      console.error('❌ Erreur enregistrement appel:', err);
+      setError(
+        err?.message?.includes('permission')
+          ? "Permission refusée. Vérifiez que les règles Firestore sont bien déployées (voir documentation)."
+          : err?.message || "Impossible d'enregistrer l'appel.",
+      );
+      setAppelSaveState('err');
     } finally {
       setLoadingAppel(false);
     }
+  };
+
+  /**
+   * Bascule un élève entre Présent / Retard / Absent (exclusif).
+   * @param action 'absent' | 'retard' — si l'élève est déjà dans cet état, il redevient présent.
+   */
+  const toggleStatutEleve = (eleveId: string, action: 'absent' | 'retard') => {
+    if (action === 'absent') {
+      if (absentsIds.includes(eleveId)) {
+        setAbsentsIds(prev => prev.filter(id => id !== eleveId));
+      } else {
+        setAbsentsIds(prev => [...prev, eleveId]);
+        // Mutuellement exclusif : si on marque absent, on retire le retard
+        setRetardsIds(prev => prev.filter(id => id !== eleveId));
+      }
+    } else {
+      if (retardsIds.includes(eleveId)) {
+        setRetardsIds(prev => prev.filter(id => id !== eleveId));
+      } else {
+        setRetardsIds(prev => [...prev, eleveId]);
+        setAbsentsIds(prev => prev.filter(id => id !== eleveId));
+        // Initialise les détails par défaut si vide
+        setRetardsDetails(prev => prev[eleveId]
+          ? prev
+          : { ...prev, [eleveId]: { minutes: 0 } }
+        );
+      }
+    }
+  };
+
+  /** Met à jour un champ des détails de retard pour un élève. */
+  const updateRetardDetail = (
+    eleveId: string,
+    patch: Partial<DetailRetard>,
+  ) => {
+    setRetardsDetails(prev => {
+      // Repart de l'état précédent (ou d'un objet vide si premier patch)
+      const current: DetailRetard = prev[eleveId] ?? { minutes: 0 };
+      return {
+        ...prev,
+        [eleveId]: { ...current, ...patch },
+      };
+    });
   };
 
   /** Sauvegarde une observation sur l'élève sélectionné */
@@ -539,7 +661,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
     switch (triEleves) {
       case 'moyenne_desc': return b.moyenne - a.moyenne;
       case 'moyenne_asc': return a.moyenne - b.moyenne;
-      case 'nom': return a.eleveNom.localeCompare(b.eleveNom);
+      // Tri "nom" = tri alphabétique par NOM de famille (cf. formatNom.ts)
+      case 'nom': return compareParNomFamille(a.eleveNom, b.eleveNom);
       case 'streak': return b.streak.actuel - a.streak.actuel;
       case 'quiz_count': return b.totalQuiz - a.totalQuiz;
       default: return 0;
@@ -745,7 +868,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                     <span className="groupe-classement-rang">
                       {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                     </span>
-                    <span className="groupe-classement-nom">{eleve.eleveNom}</span>
+                    {/* Nom formaté "Prénoms NOM" */}
+                    <span className="groupe-classement-nom">{formatEleveNom(eleve.eleveNom)}</span>
                     <span className={`groupe-classement-note ${getClasseMoyenne(eleve.moyenne)}`}>
                       {eleve.moyenne}/20
                     </span>
@@ -762,7 +886,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                   .map(eleve => (
                     <div key={eleve.eleveId} className="groupe-classement-item">
                       <span className="groupe-classement-rang">🔴</span>
-                      <span className="groupe-classement-nom">{eleve.eleveNom}</span>
+                      {/* Nom formaté "Prénoms NOM" */}
+                      <span className="groupe-classement-nom">{formatEleveNom(eleve.eleveNom)}</span>
                       <span className={`groupe-classement-note ${getClasseMoyenne(eleve.moyenne)}`}>
                         {eleve.moyenne}/20
                       </span>
@@ -854,7 +979,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                         <td className="groupe-eleve-rang">{idx + 1}</td>
                         <td className="groupe-eleve-nom-cell">
                           <div>
-                            <strong>{eleve.eleveNom}</strong>
+                            {/* Nom formaté "Prénoms NOM" */}
+                            <strong>{formatEleveNom(eleve.eleveNom)}</strong>
                             <span className="groupe-eleve-email">{eleve.eleveEmail}</span>
                           </div>
                         </td>
@@ -904,7 +1030,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                 return (
                   <div className="groupe-eleve-detail">
                     <div className="groupe-eleve-detail-header">
-                      <h3>📋 Détail — {eleve.eleveNom}</h3>
+                      {/* Nom formaté "Prénoms NOM" */}
+                      <h3>📋 Détail — {formatEleveNom(eleve.eleveNom)}</h3>
                       <button
                         className="prof-btn-icon"
                         onClick={() => setEleveSelectionne(null)}
@@ -1055,38 +1182,143 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
             </div>
           ) : (
             <>
+              {/* ============================================ */}
+              {/* LISTE D'APPEL — Absences + Retards           */}
+              {/* Format "Prénoms NOM" trié par nom de famille */}
+              {/* ============================================ */}
               <div className="groupe-appel-liste">
-                <h4>☑️ Marquer les absents</h4>
-                {statsEleves.map((eleve) => (
-                  <label key={eleve.eleveId} className="groupe-appel-item">
-                    <input
-                      type="checkbox"
-                      checked={absentsIds.includes(eleve.eleveId)}
-                      onChange={(e) => {
-                        if (e.target.checked) setAbsentsIds(prev => [...prev, eleve.eleveId]);
-                        else setAbsentsIds(prev => prev.filter(id => id !== eleve.eleveId));
-                      }}
-                    />
-                    <span className={absentsIds.includes(eleve.eleveId) ? 'groupe-appel-absent' : ''}>
-                      {eleve.eleveNom}
-                    </span>
-                  </label>
-                ))}
+                <div className="groupe-appel-liste-header">
+                  <h4>☑️ Marquer l'appel</h4>
+                  <div className="groupe-appel-legende">
+                    <span className="legende-item legende-present">🟢 Présent (par défaut)</span>
+                    <span className="legende-item legende-retard">🟠 Retard</span>
+                    <span className="legende-item legende-absent">🔴 Absent</span>
+                  </div>
+                </div>
+
+                {/* Tri alphabétique par NOM de famille pour un appel clair */}
+                {[...statsEleves]
+                  .sort((a, b) => compareParNomFamille(a.eleveNom, b.eleveNom))
+                  .map((eleve) => {
+                    const estAbsent = absentsIds.includes(eleve.eleveId);
+                    const estRetard = retardsIds.includes(eleve.eleveId);
+                    const detail = retardsDetails[eleve.eleveId] || { minutes: 0 };
+                    return (
+                      <div
+                        key={eleve.eleveId}
+                        className={`groupe-appel-item groupe-appel-item--v2 ${
+                          estAbsent ? 'is-absent' : estRetard ? 'is-retard' : ''
+                        }`}
+                      >
+                        {/* Nom de l'élève — format "Prénoms NOM" */}
+                        <span className="groupe-appel-nom">
+                          {formatEleveNom(eleve.eleveNom)}
+                        </span>
+
+                        {/* Boutons radio visuels : Présent / Retard / Absent */}
+                        <div className="groupe-appel-statuts">
+                          <label
+                            className={`statut-pill statut-absent ${estAbsent ? 'active' : ''}`}
+                            title="Marquer absent"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={estAbsent}
+                              onChange={() => toggleStatutEleve(eleve.eleveId, 'absent')}
+                            />
+                            <span>Absent</span>
+                          </label>
+                          <label
+                            className={`statut-pill statut-retard ${estRetard ? 'active' : ''}`}
+                            title="Marquer en retard"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={estRetard}
+                              onChange={() => toggleStatutEleve(eleve.eleveId, 'retard')}
+                            />
+                            <span>Retard</span>
+                          </label>
+                        </div>
+
+                        {/* Détails de retard — affichés uniquement si l'élève est en retard */}
+                        {estRetard && (
+                          <div className="groupe-appel-retard-details">
+                            <input
+                              type="number"
+                              min={0}
+                              max={240}
+                              step={1}
+                              placeholder="min"
+                              aria-label={`Minutes de retard pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm retard-input-min"
+                              value={detail.minutes || ''}
+                              onChange={(e) => updateRetardDetail(eleve.eleveId, {
+                                minutes: Number(e.target.value) || 0,
+                              })}
+                            />
+                            <span className="retard-unite">min</span>
+                            <select
+                              aria-label={`Motif du retard pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-select prof-select-sm retard-motif"
+                              value={detail.motif || ''}
+                              onChange={(e) => updateRetardDetail(eleve.eleveId, {
+                                motif: (e.target.value || undefined) as MotifRetard | undefined,
+                              })}
+                            >
+                              <option value="">— Motif —</option>
+                              <option value="justifie">✅ Justifié</option>
+                              <option value="non_justifie">❌ Non justifié</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Commentaire (optionnel)"
+                              aria-label={`Commentaire pour le retard de ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm retard-commentaire"
+                              value={detail.commentaire || ''}
+                              onChange={(e) => updateRetardDetail(eleve.eleveId, {
+                                commentaire: e.target.value,
+                              })}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
               </div>
 
+              {/* ============================================ */}
+              {/* ACTIONS : Enregistrement + feedback          */}
+              {/* ============================================ */}
               <div className="groupe-appel-actions">
                 <button
                   className="prof-btn prof-btn-primary"
                   onClick={handleMarquerAbsences}
                   disabled={loadingAppel}
                 >
-                  {loadingAppel ? 'Enregistrement...' : '✅ Enregistrer les absences'}
+                  {loadingAppel ? 'Enregistrement...' : '✅ Enregistrer l\'appel'}
                 </button>
+                {appelSaveState === 'ok' && (
+                  <span className="groupe-appel-feedback groupe-appel-feedback--ok">
+                    ✔️ Appel enregistré
+                  </span>
+                )}
+                {appelSaveState === 'err' && (
+                  <span className="groupe-appel-feedback groupe-appel-feedback--err">
+                    ⚠️ Échec — voir message d'erreur
+                  </span>
+                )}
+                <span className="groupe-appel-compteur">
+                  {absentsIds.length} absent{absentsIds.length > 1 ? 's' : ''} •{' '}
+                  {retardsIds.length} retard{retardsIds.length > 1 ? 's' : ''}
+                </span>
               </div>
 
-              {/* Suivi des absences sur une période */}
+              {/* ============================================ */}
+              {/* SUIVI SUR PÉRIODE — Absences + Retards       */}
+              {/* ============================================ */}
               <div className="groupe-appel-suivi">
-                <h4>📊 Suivi des absences</h4>
+                <h4>📊 Suivi des absences & retards</h4>
                 <div className="groupe-appel-suivi-btns">
                   {(['jour', 'semaine', 'mois'] as const).map((p) => (
                     <button
@@ -1098,7 +1330,14 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                     </button>
                   ))}
                 </div>
-                <AppelSuiviTable groupeId={groupe.id} statsEleves={statsEleves} periode={periodeSuivi} />
+                {currentUser?.uid && (
+                  <AppelSuiviTable
+                    groupeId={groupe.id}
+                    profId={currentUser.uid}
+                    statsEleves={statsEleves}
+                    periode={periodeSuivi}
+                  />
+                )}
               </div>
             </>
           )}
@@ -1539,7 +1778,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
                     <span className="groupe-alerte-emoji">
                       {getAlerteEmoji(alerte.type)}
                     </span>
-                    <span className="groupe-alerte-eleve">{alerte.eleveNom}</span>
+                    <span className="groupe-alerte-eleve">{formatEleveNom(alerte.eleveNom)}</span>
                     <span className={`groupe-alerte-badge groupe-alerte-badge-${alerte.niveauUrgence}`}>
                       {alerte.niveauUrgence}
                     </span>

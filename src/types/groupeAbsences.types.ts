@@ -3,12 +3,43 @@
  * PedaClic — Groupes-classes (prof)
  */
 
+/**
+ * Motif d'un retard.
+ *  - 'justifie'    : le retard a été justifié (mot, certificat, etc.)
+ *  - 'non_justifie': retard sans justification
+ *  - undefined     : pas encore qualifié (rétrocompatible)
+ */
+export type MotifRetard = 'justifie' | 'non_justifie';
+
+/**
+ * Détail d'un retard pour un élève donné — enregistré dans le doc d'appel.
+ *  - minutes : minutes de retard saisies par le prof (0 si non précisé)
+ *  - motif   : justifié / non justifié (optionnel à la saisie initiale)
+ *  - commentaire : texte libre optionnel (ex. "bus en retard")
+ */
+export interface DetailRetard {
+  minutes: number;
+  motif?: MotifRetard;
+  commentaire?: string;
+}
+
 /** Enregistrement d'absence pour une date donnée */
 export interface AbsenceGroupe {
   id: string;
   groupeId: string;
   date: string; // YYYY-MM-DD
+  /** IDs des élèves marqués ABSENTS ce jour-là */
   eleveIdsAbsents: string[];
+  /**
+   * IDs des élèves marqués EN RETARD ce jour-là.
+   * Complémentaire à eleveIdsAbsents (un élève ne peut pas être les deux).
+   */
+  eleveIdsRetards?: string[];
+  /**
+   * Détails des retards par élève (clé = eleveId).
+   * Ne contient que les élèves marqués en retard.
+   */
+  retardsDetails?: Record<string, DetailRetard>;
   /** ID de la séance (entrée cahier) liée à cet appel (optionnel) */
   entreeId?: string;
   /** Titre de la séance liée (dénormalisé pour affichage rapide) */

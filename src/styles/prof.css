@@ -1036,6 +1036,197 @@
   margin-top: var(--spacing-sm);
 }
 
+/* ============================================================ */
+/* APPEL V2 — Absences + Retards + Motifs                        */
+/* Styles additifs : les classes .groupe-appel-item existantes   */
+/* restent compatibles. Les nouveaux styles ciblent .--v2.       */
+/* ============================================================ */
+
+/* En-tête de la liste d'appel : titre + légende */
+.groupe-appel-liste-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.groupe-appel-legende {
+  display: flex;
+  gap: var(--spacing-md);
+  font-size: 0.8rem;
+}
+
+.groupe-appel-legende .legende-item {
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Ligne d'appel V2 : nom + boutons statut + détails retard */
+.groupe-appel-item--v2 {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  grid-template-areas:
+    "nom   statuts"
+    "details details";
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  cursor: default; /* plus de clic global ambigu */
+  transition: background 0.15s ease;
+}
+
+.groupe-appel-item--v2:hover {
+  background: var(--color-bg-secondary, #f9fafb);
+}
+
+.groupe-appel-item--v2.is-absent {
+  background: rgba(239, 68, 68, 0.06); /* rouge très léger */
+}
+
+.groupe-appel-item--v2.is-retard {
+  background: rgba(251, 146, 60, 0.08); /* orange très léger */
+}
+
+/* Nom de l'élève dans la liste d'appel */
+.groupe-appel-item--v2 .groupe-appel-nom {
+  grid-area: nom;
+  font-weight: var(--font-medium, 500);
+  color: var(--color-text, #111827);
+}
+
+.groupe-appel-item--v2.is-absent .groupe-appel-nom {
+  color: var(--color-error, #dc2626);
+  text-decoration: line-through;
+}
+
+/* Conteneur des pilules statut (Absent / Retard) */
+.groupe-appel-statuts {
+  grid-area: statuts;
+  display: flex;
+  gap: var(--spacing-xs);
+}
+
+/* Pilule statut — checkbox stylisée */
+.statut-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--color-border, #d1d5db);
+  background: #fff;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+
+.statut-pill input[type="checkbox"] {
+  /* On masque la case native, c'est la pilule qui sert de visuel */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.statut-pill:hover {
+  border-color: #9ca3af;
+}
+
+.statut-pill.statut-absent.active {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.statut-pill.statut-retard.active {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #f59e0b;
+}
+
+/* Bloc détails de retard (minutes + motif + commentaire) */
+.groupe-appel-retard-details {
+  grid-area: details;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: rgba(251, 146, 60, 0.04);
+  border-left: 3px solid #f59e0b;
+  border-radius: 4px;
+  margin-top: var(--spacing-xs);
+}
+
+.retard-input-min {
+  width: 70px;
+}
+
+.retard-unite {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary, #6b7280);
+  margin-right: var(--spacing-xs);
+}
+
+.retard-motif {
+  min-width: 140px;
+}
+
+.retard-commentaire {
+  flex: 1;
+  min-width: 160px;
+}
+
+/* Actions d'appel : bouton + feedback + compteur */
+.groupe-appel-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  margin-bottom: var(--spacing-xl);
+}
+
+.groupe-appel-feedback {
+  font-size: 0.85rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.groupe-appel-feedback--ok {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.groupe-appel-feedback--err {
+  color: #991b1b;
+  background: #fee2e2;
+}
+
+.groupe-appel-compteur {
+  margin-left: auto;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+/* Responsive : sur mobile, la ligne s'empile proprement */
+@media (max-width: 640px) {
+  .groupe-appel-item--v2 {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "nom"
+      "statuts"
+      "details";
+  }
+  .groupe-appel-statuts {
+    justify-content: flex-start;
+  }
+}
+
 
 /* ==================== TRAVAUX À FAIRE ==================== */
 

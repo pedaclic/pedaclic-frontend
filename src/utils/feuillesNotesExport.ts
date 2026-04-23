@@ -4,6 +4,8 @@
  */
 
 import type { FeuilleDeNotes, LigneNotes, EvaluationNote } from '../types/feuillesNotes.types';
+// ✨ Formatage canonique "Prénoms NOM" — cohérence entre écran et exports
+import { formatEleveNom } from './formatNom';
 
 function toDate(val: unknown): Date {
   if (val instanceof Date) return val;
@@ -23,7 +25,8 @@ export async function exportFeuilleExcel(
   const evals = feuille.evaluations || [];
   const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
   const rows = lignes.map((l) => {
-    const r: (string | number)[] = [l.eleveNom];
+    // Nom canonique "Prénoms NOM" pour l'export
+    const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(l.notes[e.id] ?? ''));
     r.push(l.moyenne);
     return r;
@@ -48,7 +51,8 @@ export async function exportFeuillePDF(
   const evals = feuille.evaluations || [];
   const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
   const rows = lignes.map((l) => {
-    const r: (string | number)[] = [l.eleveNom];
+    // Nom canonique "Prénoms NOM" pour l'export PDF
+    const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(String(l.notes[e.id] ?? '-')));
     r.push(l.moyenne.toFixed(2));
     return r;
@@ -86,7 +90,8 @@ export function exportFeuilleWord(
   const evals = feuille.evaluations || [];
   const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
   const rows = lignes.map((l) => {
-    const r: (string | number)[] = [l.eleveNom];
+    // Nom canonique "Prénoms NOM" pour l'export Word/HTML
+    const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(l.notes[e.id] ?? '-'));
     r.push(l.moyenne.toFixed(2));
     return r;
