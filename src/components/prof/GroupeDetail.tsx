@@ -28,6 +28,8 @@ import {
   modifierNomEleve,
   getElevesGroupe
 } from '../../services/profGroupeService';
+// 🆕 Édition a posteriori du sexe d'une inscription (depuis la liste Élèves).
+import { mettreAJourSexeInscription, type SexeEleve } from '../../services/inscriptionDirecteService';
 import {
   marquerAbsences,
   getAppelByDate,
@@ -310,6 +312,13 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   const [editEleveId, setEditEleveId] = useState<string | null>(null);
   const [draftEleveNom, setDraftEleveNom] = useState<string>('');
   const [savingEleveNom, setSavingEleveNom] = useState<string | null>(null);
+  // 🆕 Édition inline du SEXE d'un élève — fonctionne en parallèle de
+  //    l'édition du nom. Les deux modes sont mutuellement exclusifs côté UI
+  //    pour éviter qu'un même clic ouvre 2 sous-formulaires.
+  const [editSexeEleveId, setEditSexeEleveId] = useState<string | null>(null);
+  const [draftSexe, setDraftSexe] = useState<SexeEleve | undefined>(undefined);
+  const [draftSexeAutre, setDraftSexeAutre] = useState<string>('');
+  const [savingSexeEleveId, setSavingSexeEleveId] = useState<string | null>(null);
   const [modalInscriptionOuvert, setModalInscriptionOuvert] = useState(false);
 
 
@@ -526,6 +535,57 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
       setError(err.message || "Impossible de mettre à jour le nom.");
     } finally {
       setSavingEleveNom(null);
+    }
+  };
+
+  /**
+   * 🆕 Persiste le sexe d'un élève saisi inline depuis la liste « Élèves ».
+   *
+   *   - Lookup de l'inscription correspondant à `eleveId` dans CE groupe.
+   *   - Appel `mettreAJourSexeInscription` (Firestore `inscriptions_groupe`).
+   *   - Mise à jour optimiste de l'état local `inscriptions` (réutilisé par
+   *     les pictogrammes ♂/♀ + carte « Répartition F/M » de l'aperçu)
+   *     pour afficher la nouvelle valeur sans recharger toute la page.
+   *   - Validation : si « Autre » → précision libre obligatoire.
+   */
+  const handleEditerSexeEleve = async (eleveId: string) => {
+    if (draftSexe === 'autre' && !draftSexeAutre.trim()) {
+      setError('Veuillez préciser le libellé pour « Autre ».');
+      return;
+    }
+    try {
+      setSavingSexeEleveId(eleveId);
+      const inscription = inscriptions.find((i) => i.eleveId === eleveId);
+      if (!inscription) {
+        throw new Error("Inscription introuvable pour cet élève.");
+      }
+      await mettreAJourSexeInscription(
+        inscription.id,
+        draftSexe ?? null,
+        draftSexe === 'autre' ? draftSexeAutre.trim() : null,
+      );
+      // Mise à jour optimiste : on évite un round-trip Firestore complet.
+      //   → la carte Répartition F/M et les pictogrammes se rafraîchissent
+      //     instantanément à l'écran.
+      setInscriptions((prev) =>
+        prev.map((i) =>
+          i.eleveId === eleveId
+            ? {
+                ...i,
+                eleveSexe: draftSexe,
+                eleveSexeAutre: draftSexe === 'autre' ? draftSexeAutre.trim() : undefined,
+              }
+            : i,
+        ),
+      );
+      // Reset de l'état d'édition local
+      setEditSexeEleveId(null);
+      setDraftSexe(undefined);
+      setDraftSexeAutre('');
+    } catch (err: any) {
+      setError(err.message || 'Impossible de mettre à jour le sexe.');
+    } finally {
+      setSavingSexeEleveId(null);
     }
   };
 
@@ -1178,9 +1238,124 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                                 {eleve.eleveEmail}
                               </span>
                             </div>
+                          ) : editSexeEleveId === eleve.eleveId ? (
+                            // ─────────────────────────────────────────────
+                            // 🆕 ÉDITION INLINE DU SEXE
+                            // ─────────────────────────────────────────────
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <div style={{ minWidth: 180 }}>
+                                <strong>{formatEleveNom(eleve.eleveNom)}</strong>
+                              </div>
+                              {/* Trois radios M / F / Autre — couleurs alignées
+                                  sur la palette du dashboard (♂ bleu, ♀ rose, ✱ gris). */}
+                              {([
+                                { v: 'M' as SexeEleve, label: '♂ M', color: '#3b82f6' },
+                                { v: 'F' as SexeEleve, label: '♀ F', color: '#ec4899' },
+                                { v: 'autre' as SexeEleve, label: '✱ Autre', color: '#6b7280' },
+                              ]).map((opt) => (
+                                <label
+                                  key={opt.v}
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '3px 8px',
+                                    border: `1px solid ${draftSexe === opt.v ? opt.color : '#e5e7eb'}`,
+                                    borderRadius: 4,
+                                    background: draftSexe === opt.v ? `${opt.color}15` : 'white',
+                                    color: draftSexe === opt.v ? opt.color : '#374151',
+                                    fontWeight: 600,
+                                    fontSize: '0.78rem',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <input
+                                    type="radio"
+                                    name={`draftSexe-${eleve.eleveId}`}
+                                    value={opt.v}
+                                    checked={draftSexe === opt.v}
+                                    onChange={() => setDraftSexe(opt.v)}
+                                    style={{ margin: 0 }}
+                                    disabled={savingSexeEleveId === eleve.eleveId}
+                                  />
+                                  {opt.label}
+                                </label>
+                              ))}
+                              {draftSexe === 'autre' && (
+                                <input
+                                  type="text"
+                                  placeholder="Précisez…"
+                                  value={draftSexeAutre}
+                                  onChange={(e) => setDraftSexeAutre(e.target.value)}
+                                  maxLength={40}
+                                  style={{
+                                    padding: '4px 8px',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: 4,
+                                    fontSize: '0.78rem',
+                                    flex: '1 1 120px',
+                                  }}
+                                  disabled={savingSexeEleveId === eleve.eleveId}
+                                />
+                              )}
+                              <button
+                                className="prof-btn-icon"
+                                title="Enregistrer le sexe"
+                                onClick={() => handleEditerSexeEleve(eleve.eleveId)}
+                                disabled={
+                                  savingSexeEleveId === eleve.eleveId ||
+                                  (draftSexe === 'autre' && !draftSexeAutre.trim())
+                                }
+                              >
+                                {savingSexeEleveId === eleve.eleveId ? '⏳' : '✓'}
+                              </button>
+                              <button
+                                className="prof-btn-icon"
+                                title="Annuler"
+                                onClick={() => {
+                                  setEditSexeEleveId(null);
+                                  setDraftSexe(undefined);
+                                  setDraftSexeAutre('');
+                                }}
+                                disabled={savingSexeEleveId === eleve.eleveId}
+                              >
+                                ✕
+                              </button>
+                            </div>
                           ) : (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <div>
+                                {/* 🆕 Pictogramme ♂ / ♀ / ✱ AVANT le nom — invisible
+                                    si non renseigné (incite à compléter via le bouton ⚧). */}
+                                {(() => {
+                                  const sx = inscriptions.find((i) => i.eleveId === eleve.eleveId)?.eleveSexe;
+                                  if (!sx) return null;
+                                  const couleur = sx === 'F' ? '#ec4899' : sx === 'M' ? '#3b82f6' : '#9ca3af';
+                                  const picto = sx === 'F' ? '♀' : sx === 'M' ? '♂' : '✱';
+                                  const label =
+                                    sx === 'M' ? 'Masculin' : sx === 'F' ? 'Féminin' : 'Autre';
+                                  return (
+                                    <span
+                                      title={label}
+                                      aria-label={label}
+                                      style={{
+                                        color: couleur,
+                                        fontWeight: 700,
+                                        fontSize: '1rem',
+                                        marginRight: 6,
+                                      }}
+                                    >
+                                      {picto}
+                                    </span>
+                                  );
+                                })()}
                                 {/* Nom formaté "Prénoms NOM" */}
                                 <strong>{formatEleveNom(eleve.eleveNom)}</strong>
                                 <span className="groupe-eleve-email">{eleve.eleveEmail}</span>
@@ -1195,6 +1370,35 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                               >
                                 ✏️
                               </button>
+                              {/* 🆕 Bouton ⚧ : ouvre l'édition inline du sexe.
+                                  Coloré violet si renseigné, rouge clair sinon
+                                  (visuellement urgent pour les fiches incomplètes). */}
+                              {(() => {
+                                const inscription = inscriptions.find((i) => i.eleveId === eleve.eleveId);
+                                const sx = inscription?.eleveSexe;
+                                return (
+                                  <button
+                                    className="prof-btn-icon"
+                                    title={
+                                      sx
+                                        ? `Modifier le sexe (actuel : ${sx === 'M' ? 'Masculin' : sx === 'F' ? 'Féminin' : 'Autre'})`
+                                        : 'Renseigner le sexe (manquant)'
+                                    }
+                                    onClick={() => {
+                                      setEditSexeEleveId(eleve.eleveId);
+                                      setDraftSexe(sx);
+                                      setDraftSexeAutre(inscription?.eleveSexeAutre || '');
+                                    }}
+                                    style={{
+                                      background: sx ? '#f3e8ff' : '#fee2e2',
+                                      color: sx ? '#6b21a8' : '#991b1b',
+                                      borderColor: sx ? '#e9d5ff' : '#fecaca',
+                                    }}
+                                  >
+                                    ⚧
+                                  </button>
+                                );
+                              })()}
                             </div>
                           )}
                         </td>

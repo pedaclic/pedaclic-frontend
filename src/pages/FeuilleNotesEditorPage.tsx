@@ -61,6 +61,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [draftTitre, setDraftTitre] = useState<string>('');
   const [showCompPanel, setShowCompPanel] = useState(false);
   const [newCompLib, setNewCompLib] = useState('');
+  // 🆕 Map eleveId → sexe ('M' | 'F' | 'autre') alimentée depuis les
+  //    inscriptions du groupe lors du chargement de la feuille. Permet
+  //    d'afficher le pictogramme ♂/♀ devant chaque nom dans la colonne
+  //    « Élève » (cohérent avec l'onglet Élèves du dashboard).
+  const [sexeMap, setSexeMap] = useState<Record<string, 'M' | 'F' | 'autre' | undefined>>({});
   // ── Navigation clavier dans la grille de notes ──
   //   On indexe chaque input note par (eleveId, evalId) pour pouvoir
   //   déplacer le focus via Enter / Tab / flèches sans perdre la
@@ -80,6 +85,14 @@ const FeuilleNotesEditorPage: React.FC = () => {
       }
       const inscriptions = await getElevesGroupe(f.groupeId);
       setFeuille(f);
+      // 🆕 Construction de la map des sexes (eleveId → sexe) à partir des
+      //    inscriptions, pour affichage du pictogramme dans la colonne Élève.
+      //    Les inscriptions où `eleveSexe` est absent restent à `undefined`.
+      const sxMap: Record<string, 'M' | 'F' | 'autre' | undefined> = {};
+      inscriptions.forEach((i) => {
+        sxMap[i.eleveId] = i.eleveSexe;
+      });
+      setSexeMap(sxMap);
       // Tri alphabétique par NOM de famille pour la feuille de notes
       // (cohérent avec l'appel : élèves listés dans le même ordre partout)
       const inscriptionsTriees = [...inscriptions].sort((a, b) =>
@@ -802,6 +815,32 @@ const FeuilleNotesEditorPage: React.FC = () => {
             {lignes.map((ligne) => (
               <tr key={ligne.eleveId}>
                 <td className="col-eleve">
+                  {/* 🆕 Pictogramme ♂ / ♀ / ✱ AVANT le nom — invisible
+                      si non renseigné. Cohérent avec l'onglet Élèves
+                      (mêmes couleurs : bleu / rose / gris). Pour modifier
+                      le sexe, le prof retourne sur l'onglet « Élèves »
+                      du tableau de bord (bouton ⚧ par ligne). */}
+                  {(() => {
+                    const sx = sexeMap[ligne.eleveId];
+                    if (!sx) return null;
+                    const couleur = sx === 'F' ? '#ec4899' : sx === 'M' ? '#3b82f6' : '#9ca3af';
+                    const picto = sx === 'F' ? '♀' : sx === 'M' ? '♂' : '✱';
+                    const label =
+                      sx === 'M' ? 'Masculin' : sx === 'F' ? 'Féminin' : 'Autre';
+                    return (
+                      <span
+                        title={label}
+                        aria-label={label}
+                        style={{
+                          color: couleur,
+                          fontWeight: 700,
+                          marginRight: 6,
+                        }}
+                      >
+                        {picto}
+                      </span>
+                    );
+                  })()}
                   {/* Affichage canonique "Prénoms NOM" (cf. src/utils/formatNom.ts) */}
                   <strong>{formatEleveNom(ligne.eleveNom)}</strong>
                 </td>
