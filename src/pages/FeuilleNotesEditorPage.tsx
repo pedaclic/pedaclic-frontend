@@ -3,9 +3,9 @@
  * Tableau éditable, export Excel/PDF/Word
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Trash2, Pencil, Check, X, Plus, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Trash2, Pencil, Check, X, Plus, BookOpen, ChevronDown, ChevronUp, Award, GraduationCap } from 'lucide-react';
 import {
   getFeuilleById,
   updateNoteBulk,
@@ -16,8 +16,8 @@ import {
 } from '../services/feuillesNotesService';
 import { getElevesGroupe } from '../services/profGroupeService';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
-import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus } from '../types/feuillesNotes.types';
-import { COMPETENCES_PAR_DEFAUT, COMPETENCE_STATUS_LABELS, COMPETENCE_STATUS_COLORS } from '../types/feuillesNotes.types';
+import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus, TypeEvaluation } from '../types/feuillesNotes.types';
+import { COMPETENCES_PAR_DEFAUT, COMPETENCE_STATUS_LABELS, COMPETENCE_STATUS_COLORS, TYPE_EVAL_LABELS } from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
 // ✨ Formatage "Prénoms NOM" + tri alphabétique par nom de famille
@@ -29,6 +29,9 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const { feuilleId } = useParams<{ feuilleId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  // useLocation : pour récupérer un éventuel state {groupeId, fromTab}
+  // posé par FeuillesNotesManager au moment de la navigation.
+  const location = useLocation();
   const { toast } = useToast();
   const [feuille, setFeuille] = useState<FeuilleDeNotes | null>(null);
   const [lignes, setLignes] = useState<LigneNotes[]>([]);
@@ -43,6 +46,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [draftLibelle, setDraftLibelle] = useState<string>('');
   const [showCompPanel, setShowCompPanel] = useState(false);
   const [newCompLib, setNewCompLib] = useState('');
+  // ── Navigation clavier dans la grille de notes ──
+  //   On indexe chaque input note par (eleveId, evalId) pour pouvoir
+  //   déplacer le focus via Enter / Tab / flèches sans perdre la
+  //   sauvegarde automatique onBlur existante.
+  const cellRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const cellKey = (eleveId: string, evalId: string) => `${eleveId}::${evalId}`;
 
   const load = useCallback(async () => {
     if (!feuilleId) return;
@@ -78,22 +87,94 @@ const FeuilleNotesEditorPage: React.FC = () => {
     load();
   }, [load]);
 
-  const handleNoteChange = (eleveId: string, evalId: string, value: string) => {
+  /**
+   * Sauvegarde une note saisie (Firestore + état local).
+   * `keepEdit` permet de conserver la cellule ouverte (utile lors d'une
+   * navigation clavier où l'on enchaîne sur la cellule suivante).
+   */
+  const handleNoteChange = (eleveId: string, evalId: string, value: string, keepEdit = false) => {
     const num = value === '' ? null : parseFloat(value.replace(',', '.'));
     if (num !== null && (num < 0 || num > 20 || isNaN(num))) return;
     setLignes((prev) =>
       prev.map((l) =>
         l.eleveId === eleveId
           ? { ...l, notes: { ...l.notes, [evalId]: num ?? 0 } }
-          : l
-      )
+          : l,
+      ),
     );
-    // Debounced save
+    // Sauvegarde immédiate (idempotente) — onBlur + onKeyDown appellent cette fonction
     if (feuilleId) {
       updateNoteBulk(feuilleId, [{ eleveId, evaluationId: evalId, note: num }]).catch(console.error);
     }
-    setEditCell(null);
+    if (!keepEdit) setEditCell(null);
   };
+
+  /**
+   * Déplace le focus depuis la cellule (eleveId, evalId) vers la cellule
+   * voisine selon la direction demandée :
+   *   - right / Tab / Enter : évaluation suivante sur la même ligne ;
+   *     en fin de ligne, on descend sur la première évaluation de la ligne suivante.
+   *   - left / Shift+Tab    : évaluation précédente (wrap inverse).
+   *   - down                : même évaluation, élève suivant.
+   *   - up                  : même évaluation, élève précédent.
+   */
+  const moveFocus = (
+    eleveId: string,
+    evalId: string,
+    direction: 'right' | 'left' | 'down' | 'up',
+  ) => {
+    if (!feuille) return;
+    const evaluationsList = feuille.evaluations || [];
+    const colIdx = evaluationsList.findIndex((e) => e.id === evalId);
+    const rowIdx = lignes.findIndex((l) => l.eleveId === eleveId);
+    if (colIdx < 0 || rowIdx < 0) return;
+
+    let nextRow = rowIdx;
+    let nextCol = colIdx;
+
+    if (direction === 'right') {
+      nextCol = colIdx + 1;
+      if (nextCol >= evaluationsList.length) { nextCol = 0; nextRow = rowIdx + 1; }
+    } else if (direction === 'left') {
+      nextCol = colIdx - 1;
+      if (nextCol < 0) { nextCol = evaluationsList.length - 1; nextRow = rowIdx - 1; }
+    } else if (direction === 'down') {
+      nextRow = rowIdx + 1;
+    } else if (direction === 'up') {
+      nextRow = rowIdx - 1;
+    }
+
+    // Limites : ne sort pas de la grille
+    if (nextRow < 0 || nextRow >= lignes.length) return;
+    if (nextCol < 0 || nextCol >= evaluationsList.length) return;
+
+    const nextLigne = lignes[nextRow];
+    const nextEval = evaluationsList[nextCol];
+    const val = nextLigne.notes[nextEval.id];
+
+    // Ouvre la cellule suivante en édition. Le focus sera réappliqué par
+    // l'effet ci-dessous dès que l'input sera monté par React.
+    setEditCell({ eleveId: nextLigne.eleveId, evalId: nextEval.id });
+    setDraftNote(val != null ? String(val) : '');
+  };
+
+  /**
+   * Quand la cellule éditée change, on focalise/sélectionne automatiquement
+   * le nouvel input (pour que la saisie clavier continue sans interruption).
+   */
+  useEffect(() => {
+    if (!editCell) return;
+    const key = cellKey(editCell.eleveId, editCell.evalId);
+    // Après render, le ref de l'input ciblé est peuplé : on focus + select.
+    const id = requestAnimationFrame(() => {
+      const input = cellRefs.current[key];
+      if (input) {
+        input.focus();
+        input.select();
+      }
+    });
+    return () => cancelAnimationFrame(id);
+  }, [editCell]);
 
   const getClasseMoyenne = (m: number) => {
     if (m >= 16) return 'prof-note-excellent';
@@ -115,14 +196,71 @@ const FeuilleNotesEditorPage: React.FC = () => {
     }
   };
 
-  const ajouterEvaluation = () => {
+  /**
+   * Ajoute une évaluation en choisissant son type.
+   * Par défaut « devoir » (cas le plus fréquent).
+   *
+   * ✨ Intitulé personnalisé :
+   *   1. On propose un nom par défaut (« Devoir 3 », « Composition 1 », …)
+   *      via window.prompt — l'utilisateur peut alors saisir un titre
+   *      personnalisé (ex. « Évaluation grammaire — adjectif qualificatif »).
+   *   2. Si le prompt est annulé, on retombe sur le nom par défaut.
+   *   3. Après création, on entre AUSSI en mode renommage en ligne pour
+   *      offrir un second point d'édition cohérent avec l'UI existante,
+   *      utile si le prompt n'a pas été affiché (ex. user-agent restrictif).
+   */
+  const ajouterEvaluation = (type: TypeEvaluation = 'devoir') => {
     if (!feuille) return;
     const evals = [...(feuille.evaluations || [])];
-    const id = 'e' + (evals.length + 1);
-    evals.push({ id, libelle: `Évaluation ${evals.length + 1}`, coefficient: 1 });
+    const id = 'e' + Date.now().toString(36);
+    const nbDuType = evals.filter((e) => (e.type ?? 'devoir') === type).length + 1;
+    const libelleDefaut = type === 'composition' ? `Composition ${nbDuType}` : `Devoir ${nbDuType}`;
+
+    // Saisie du titre par l'enseignant (annulable). On garde la même
+    // logique « titre par défaut » comme repli pour ne jamais bloquer
+    // l'ajout d'évaluation.
+    let libelle = libelleDefaut;
+    try {
+      const saisie = window.prompt(
+        type === 'composition'
+          ? "Intitulé de la composition (ex. « Composition 1er trimestre »)"
+          : "Intitulé du devoir (ex. « Devoir surveillé n°2 — Conjugaison »)",
+        libelleDefaut,
+      );
+      if (saisie !== null) {
+        const trimmed = saisie.trim();
+        if (trimmed.length > 0) libelle = trimmed;
+      }
+    } catch {
+      // Environnements sans prompt() : on conserve le titre par défaut.
+    }
+
+    evals.push({ id, libelle, coefficient: 1, type });
     updateEvaluationsFeuille(feuille.id, evals).then(() => {
       setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+      // Active immédiatement le mode renommage en ligne sur la nouvelle
+      // évaluation : l'utilisateur peut affiner le titre sans recliquer
+      // sur l'icône crayon.
+      setEditEvalId(id);
+      setDraftLibelle(libelle);
     });
+  };
+
+  /**
+   * Bascule le type d'une évaluation existante (devoir ⇄ composition).
+   * Met à jour Firestore et l'état local ; les moyennes seront recalculées
+   * au prochain rendu via buildLignesNotes (mais on relance load() pour
+   * garantir un résultat cohérent côté lignes affichées).
+   */
+  const changerTypeEval = (evalId: string, nouveauType: TypeEvaluation) => {
+    if (!feuille) return;
+    const evals = feuille.evaluations.map((e) =>
+      e.id === evalId ? { ...e, type: nouveauType } : e,
+    );
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateEvaluationsFeuille(feuille.id, evals)
+      .then(() => load())
+      .catch(console.error);
   };
 
   const handleDragStart = (idx: number) => setDragIdx(idx);
@@ -209,15 +347,45 @@ const FeuilleNotesEditorPage: React.FC = () => {
   }
 
   const evals = feuille.evaluations || [];
-  const moyenneClasse =
-    lignes.length > 0
-      ? lignes.reduce((s, l) => s + l.moyenne, 0) / lignes.filter((l) => l.moyenne > 0).length || 0
-      : 0;
+
+  /**
+   * Agrégations « moyenne classe » par catégorie.
+   * On ignore les lignes à 0 pour ne pas diluer la moyenne avec des élèves
+   * qui n'ont pas encore reçu de note dans la catégorie concernée.
+   */
+  const avg = (arr: number[]) => (arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0);
+  const moyenneClasseDevoirs = avg(lignes.map((l) => l.moyenneDevoirs).filter((v) => v > 0));
+  const moyenneClasseCompo = avg(lignes.map((l) => l.noteComposition).filter((v) => v > 0));
+  const moyenneClasse = avg(lignes.map((l) => l.moyenneGenerale).filter((v) => v > 0));
 
   return (
     <div className="feuille-editor-page">
       <header className="feuille-editor-header">
-        <button className="prof-btn prof-btn-secondary" onClick={() => navigate(-1)}>
+        {/*
+          ✨ Bouton Retour : doit ramener à l'onglet « Notes » du groupe
+          d'origine (et NON au tableau de bord). On privilégie :
+            1. Le state de navigation (groupeId + fromTab) si présent.
+            2. À défaut, on utilise feuille.groupeId qui est toujours connu
+               car la feuille est rattachée à un groupe.
+          On passe l'info au ProfDashboard via location.state pour qu'il
+          ouvre directement le détail du groupe sur le bon onglet.
+        */}
+        <button
+          className="prof-btn prof-btn-secondary"
+          onClick={() => {
+            const fromState = (location.state ?? {}) as {
+              groupeId?: string;
+              fromTab?: string;
+            };
+            const groupeId = fromState.groupeId || feuille.groupeId;
+            navigate('/prof/dashboard', {
+              state: {
+                openGroupeId: groupeId,
+                openTab: fromState.fromTab || 'notes',
+              },
+            });
+          }}
+        >
           <ArrowLeft size={18} /> Retour
         </button>
         <div className="feuille-editor-titre">
@@ -245,8 +413,27 @@ const FeuilleNotesEditorPage: React.FC = () => {
       )}
 
       <div className="feuille-editor-toolbar">
-        <button className="prof-btn prof-btn-primary prof-btn-sm" onClick={ajouterEvaluation}>
-          <Plus size={14} /> Ajouter une évaluation
+        {/*
+          Deux boutons distincts pour préciser le type à la création :
+          « devoir » ou « composition ». Chaque ajout écrit immédiatement
+          le type dans Firestore pour que les exports et la moyenne
+          générale soient cohérents sans action supplémentaire du prof.
+        */}
+        <button className="prof-btn prof-btn-primary prof-btn-sm" onClick={() => ajouterEvaluation('devoir')}>
+          <Plus size={14} /> Ajouter un devoir
+        </button>
+        <button
+          className="prof-btn prof-btn-sm"
+          onClick={() => ajouterEvaluation('composition')}
+          style={{
+            marginLeft: 8,
+            background: '#7c3aed',
+            color: 'white',
+            border: '1px solid #6d28d9',
+          }}
+          title="Composition : entre dans la moyenne générale au même titre que la moyenne des devoirs (moyenne générale = (MoyDevoirs + Composition) / 2)"
+        >
+          <GraduationCap size={14} /> Ajouter une composition
         </button>
         <button
           className={`prof-btn prof-btn-sm ${showCompPanel ? 'prof-btn-primary' : 'prof-btn-secondary'}`}
@@ -255,6 +442,20 @@ const FeuilleNotesEditorPage: React.FC = () => {
         >
           <BookOpen size={14} /> Compétences {showCompPanel ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
+
+        {/* Aide visuelle : rappel concis de la formule PedaClic */}
+        <span
+          style={{
+            marginLeft: 'auto',
+            fontSize: '0.8125rem',
+            color: 'var(--color-text-secondary, #6b7280)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+        >
+          <Award size={14} /> Moy. générale = (Moy. devoirs + Composition) / 2
+        </span>
       </div>
 
       {showCompPanel && (
@@ -291,49 +492,79 @@ const FeuilleNotesEditorPage: React.FC = () => {
           <thead>
             <tr>
               <th className="col-eleve">Élève</th>
-              {evals.map((e, idx) => (
-                <th
-                  key={e.id}
-                  className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}`}
-                  draggable
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(ev) => handleDragOver(ev, idx)}
-                  onDrop={() => handleDrop(idx)}
-                  onDragEnd={handleDragEnd}
-                >
-                  <div className="eval-header">
-                    <span className="eval-grip" title="Glisser pour réordonner"><GripVertical size={14} /></span>
-                    {editEvalId === e.id ? (
-                      <span className="eval-rename">
-                        <input
-                          type="text" className="eval-rename-input" autoFocus
-                          value={draftLibelle}
-                          onChange={(ev) => setDraftLibelle(ev.target.value)}
-                          onKeyDown={(ev) => { if (ev.key === 'Enter') renommerEval(e.id); if (ev.key === 'Escape') setEditEvalId(null); }}
-                        />
-                        <button className="eval-action-btn eval-ok" onClick={() => renommerEval(e.id)}><Check size={12} /></button>
-                        <button className="eval-action-btn eval-cancel" onClick={() => setEditEvalId(null)}><X size={12} /></button>
-                      </span>
-                    ) : (
-                      <span className="eval-label">
-                        {e.libelle}
-                        {e.coefficient && e.coefficient !== 1 && (
-                          <span className="coef"> (coef. {e.coefficient})</span>
-                        )}
-                      </span>
-                    )}
-                    {editEvalId !== e.id && (
-                      <span className="eval-actions">
-                        <button className="eval-action-btn" title="Renommer" onClick={() => { setEditEvalId(e.id); setDraftLibelle(e.libelle); }}><Pencil size={12} /></button>
-                        {evals.length > 1 && (
-                          <button className="eval-action-btn eval-delete" title="Supprimer" onClick={() => supprimerEval(e.id)}><Trash2 size={12} /></button>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                </th>
-              ))}
-              <th className="col-moyenne">Moyenne</th>
+              {evals.map((e, idx) => {
+                const typeEval: TypeEvaluation = e.type ?? 'devoir';
+                const isCompo = typeEval === 'composition';
+                return (
+                  <th
+                    key={e.id}
+                    className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}${isCompo ? ' col-note--compo' : ''}`}
+                    draggable
+                    onDragStart={() => handleDragStart(idx)}
+                    onDragOver={(ev) => handleDragOver(ev, idx)}
+                    onDrop={() => handleDrop(idx)}
+                    onDragEnd={handleDragEnd}
+                    /* Bande colorée différenciante : violet pour composition */
+                    style={isCompo ? { background: '#7c3aed' } : undefined}
+                  >
+                    <div className="eval-header">
+                      <span className="eval-grip" title="Glisser pour réordonner"><GripVertical size={14} /></span>
+                      {editEvalId === e.id ? (
+                        <span className="eval-rename">
+                          <input
+                            type="text" className="eval-rename-input" autoFocus
+                            value={draftLibelle}
+                            onChange={(ev) => setDraftLibelle(ev.target.value)}
+                            onKeyDown={(ev) => { if (ev.key === 'Enter') renommerEval(e.id); if (ev.key === 'Escape') setEditEvalId(null); }}
+                          />
+                          <button className="eval-action-btn eval-ok" onClick={() => renommerEval(e.id)}><Check size={12} /></button>
+                          <button className="eval-action-btn eval-cancel" onClick={() => setEditEvalId(null)}><X size={12} /></button>
+                        </span>
+                      ) : (
+                        <span className="eval-label">
+                          {/* Badge type : devoir (D) / composition (C) */}
+                          <span
+                            className="eval-type-badge"
+                            title={`${TYPE_EVAL_LABELS[typeEval]} — cliquer pour basculer`}
+                            onClick={() => changerTypeEval(e.id, isCompo ? 'devoir' : 'composition')}
+                            style={{
+                              display: 'inline-block',
+                              padding: '0 5px',
+                              borderRadius: 3,
+                              background: isCompo ? '#fde68a' : '#bfdbfe',
+                              color: isCompo ? '#78350f' : '#1e3a8a',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              marginRight: 4,
+                              cursor: 'pointer',
+                              userSelect: 'none',
+                            }}
+                          >
+                            {isCompo ? 'C' : 'D'}
+                          </span>
+                          {e.libelle}
+                          {e.coefficient && e.coefficient !== 1 && (
+                            <span className="coef"> (coef. {e.coefficient})</span>
+                          )}
+                        </span>
+                      )}
+                      {editEvalId !== e.id && (
+                        <span className="eval-actions">
+                          <button className="eval-action-btn" title="Renommer" onClick={() => { setEditEvalId(e.id); setDraftLibelle(e.libelle); }}><Pencil size={12} /></button>
+                          {evals.length > 1 && (
+                            <button className="eval-action-btn eval-delete" title="Supprimer" onClick={() => supprimerEval(e.id)}><Trash2 size={12} /></button>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
+              {/* Colonnes de synthèse : distinctes pour la lisibilité du bulletin */}
+              <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">Moy. Devoirs</th>
+              <th className="col-moyenne" title="Note de composition (moyenne pondérée si plusieurs)">Compo</th>
+              <th className="col-moyenne" title="Moyenne générale = (Moy. Devoirs + Compo) / 2">Moy. Gén.</th>
+              <th className="col-moyenne" title="Rang de classe (1 = meilleur)">Rang</th>
             </tr>
           </thead>
           <tbody>
@@ -346,26 +577,70 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 {evals.map((e) => {
                   const isEdit = editCell?.eleveId === ligne.eleveId && editCell?.evalId === e.id;
                   const val = ligne.notes[e.id];
+                  const kCell = cellKey(ligne.eleveId, e.id);
                   return (
                     <td key={e.id} className="col-note">
                       {isEdit ? (
                         <input
+                          /*
+                            Ref par cellule pour pouvoir refocaliser lors d'une
+                            navigation clavier (Enter / Tab / flèches).
+                          */
+                          ref={(el) => { cellRefs.current[kCell] = el; }}
                           type="text"
+                          inputMode="decimal"
                           className="note-input"
-                          autoFocus
                           value={draftNote}
                           onChange={(ev) => setDraftNote(ev.target.value)}
                           onBlur={() => handleNoteChange(ligne.eleveId, e.id, draftNote)}
                           onKeyDown={(ev) => {
-                            if (ev.key === 'Enter') handleNoteChange(ligne.eleveId, e.id, draftNote);
+                            // ── Navigation clavier ──
+                            //   Enter / Tab       → cellule suivante (à droite, wrap en bas)
+                            //   Shift+Tab         → cellule précédente
+                            //   Flèche ↓ / ↑      → ligne suivante / précédente (même évaluation)
+                            //   Flèche → / ←      → cellule droite / gauche (même ligne)
+                            //   Escape            → annule l'édition en cours
+                            if (ev.key === 'Enter' || ev.key === 'Tab') {
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              moveFocus(ligne.eleveId, e.id, ev.shiftKey ? 'left' : 'right');
+                            } else if (ev.key === 'ArrowDown') {
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              moveFocus(ligne.eleveId, e.id, 'down');
+                            } else if (ev.key === 'ArrowUp') {
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              moveFocus(ligne.eleveId, e.id, 'up');
+                            } else if (ev.key === 'ArrowRight' && ev.currentTarget.selectionStart === draftNote.length) {
+                              // Ne capte que si le curseur est à la fin (évite de gêner la saisie)
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              moveFocus(ligne.eleveId, e.id, 'right');
+                            } else if (ev.key === 'ArrowLeft' && ev.currentTarget.selectionStart === 0) {
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              moveFocus(ligne.eleveId, e.id, 'left');
+                            } else if (ev.key === 'Escape') {
+                              setEditCell(null);
+                            }
                           }}
                         />
                       ) : (
                         <span
                           className="note-cell"
+                          tabIndex={0}
                           onClick={() => {
                             setEditCell({ eleveId: ligne.eleveId, evalId: e.id });
                             setDraftNote(val != null ? String(val) : '');
+                          }}
+                          onKeyDown={(ev) => {
+                            // Permet d'entrer en édition via Enter depuis une cellule fermée
+                            if (ev.key === 'Enter' || ev.key === 'F2') {
+                              ev.preventDefault();
+                              setEditCell({ eleveId: ligne.eleveId, evalId: e.id });
+                              setDraftNote(val != null ? String(val) : '');
+                            }
                           }}
                         >
                           {val != null ? val : '—'}
@@ -392,8 +667,33 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     </td>
                   );
                 })}
-                <td className={`col-moyenne ${getClasseMoyenne(ligne.moyenne)}`}>
-                  {ligne.moyenne > 0 ? ligne.moyenne.toFixed(2) : '—'}
+                {/* Colonnes de synthèse : moyennes séparées + rang */}
+                <td className={`col-moyenne ${getClasseMoyenne(ligne.moyenneDevoirs)}`}>
+                  {ligne.moyenneDevoirs > 0 ? ligne.moyenneDevoirs.toFixed(2) : '—'}
+                </td>
+                <td className={`col-moyenne ${getClasseMoyenne(ligne.noteComposition)}`}>
+                  {ligne.noteComposition > 0 ? ligne.noteComposition.toFixed(2) : '—'}
+                </td>
+                <td className={`col-moyenne ${getClasseMoyenne(ligne.moyenneGenerale)}`}>
+                  <strong>{ligne.moyenneGenerale > 0 ? ligne.moyenneGenerale.toFixed(2) : '—'}</strong>
+                </td>
+                <td className="col-moyenne">
+                  {ligne.rang > 0 ? (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        minWidth: 24,
+                        padding: '2px 6px',
+                        borderRadius: 6,
+                        background: ligne.rang === 1 ? '#fde68a' : ligne.rang <= 3 ? '#e9d5ff' : '#e5e7eb',
+                        color: ligne.rang === 1 ? '#78350f' : '#1f2937',
+                        fontWeight: 700,
+                      }}
+                    >
+                      {ligne.rang}
+                      {ligne.rang === 1 ? 'er' : 'e'}
+                    </span>
+                  ) : '—'}
                 </td>
               </tr>
             ))}
@@ -404,9 +704,17 @@ const FeuilleNotesEditorPage: React.FC = () => {
               {evals.map((e) => (
                 <td key={e.id} className="col-note" />
               ))}
-              <td className={`col-moyenne ${getClasseMoyenne(moyenneClasse)}`}>
-                {moyenneClasse > 0 ? moyenneClasse.toFixed(2) : '—'}
+              {/* Moyennes de classe calculées sur chaque agrégat */}
+              <td className={`col-moyenne ${getClasseMoyenne(moyenneClasseDevoirs)}`}>
+                {moyenneClasseDevoirs > 0 ? moyenneClasseDevoirs.toFixed(2) : '—'}
               </td>
+              <td className={`col-moyenne ${getClasseMoyenne(moyenneClasseCompo)}`}>
+                {moyenneClasseCompo > 0 ? moyenneClasseCompo.toFixed(2) : '—'}
+              </td>
+              <td className={`col-moyenne ${getClasseMoyenne(moyenneClasse)}`}>
+                <strong>{moyenneClasse > 0 ? moyenneClasse.toFixed(2) : '—'}</strong>
+              </td>
+              <td className="col-moyenne" />
             </tr>
           </tbody>
         </table>

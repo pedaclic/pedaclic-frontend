@@ -86,7 +86,11 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
       );
       setShowCreate(false);
       setFeuilles((prev) => [f, ...prev]);
-      navigate(`/prof/feuilles/${f.id}`);
+      // ✨ On transmet le groupeId via location.state pour que le bouton
+      //    "Retour" de l'éditeur sache à quel onglet revenir (tab "notes").
+      navigate(`/prof/feuilles/${f.id}`, {
+        state: { groupeId: groupe.id, fromTab: 'notes' },
+      });
     } catch (err: any) {
       toast.error(err?.message || 'Erreur lors de la création.');
     } finally {
@@ -197,7 +201,14 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
               <div className="feuilles-notes-card-actions">
                 <button
                   className="prof-btn prof-btn-primary prof-btn-sm"
-                  onClick={() => navigate(`/prof/feuilles/${f.id}`)}
+                  onClick={() =>
+                    // ✨ Idem que pour la création : on transporte le contexte
+                    //    du groupe (id + onglet d'origine) afin de pouvoir y
+                    //    revenir précisément depuis l'éditeur de feuille.
+                    navigate(`/prof/feuilles/${f.id}`, {
+                      state: { groupeId: groupe.id, fromTab: 'notes' },
+                    })
+                  }
                 >
                   <Pencil size={14} /> Modifier
                 </button>

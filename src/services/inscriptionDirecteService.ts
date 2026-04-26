@@ -430,6 +430,38 @@ export async function modifierInscriptionOffline(
   await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), payload);
 }
 
+/**
+ * Met à jour le nom affiché d'un élève dans une inscription,
+ * qu'elle soit « offline », « code » ou « direct ».
+ *
+ * ⚠️ On met à jour UNIQUEMENT le document `inscriptions_groupe` : cela
+ * corrige l'affichage côté prof (listes, feuille de notes, exports) sans
+ * toucher au document `users/{uid}` (qui appartient à l'élève).
+ *
+ * Cette opération est strictement locale au groupe et n'affecte ni les
+ * autres inscriptions de l'élève dans d'autres groupes, ni son profil
+ * global. La remarque peut également être corrigée si fournie.
+ *
+ * @param inscriptionId ID du document `inscriptions_groupe`
+ * @param modifs        Champs à mettre à jour (eleveNom / remarque)
+ */
+export async function modifierInscription(
+  inscriptionId: string,
+  modifs: { eleveNom?: string; remarque?: string }
+): Promise<void> {
+  const payload: Record<string, unknown> = {};
+  if (typeof modifs.eleveNom === 'string' && modifs.eleveNom.trim().length >= 2) {
+    payload.eleveNom = modifs.eleveNom.trim();
+  }
+  if (modifs.remarque !== undefined) {
+    payload.remarque = modifs.remarque.trim();
+  }
+  if (Object.keys(payload).length === 0) {
+    throw new Error('Aucune donnée à mettre à jour (nom trop court ou vide).');
+  }
+  await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), payload);
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // PHASE 36 — INSCRIPTION EN LOT (BULK)
 //

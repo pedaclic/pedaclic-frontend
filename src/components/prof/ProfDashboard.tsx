@@ -20,18 +20,60 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Lock, Star } from 'lucide-react';
 import GroupeManager from './GroupeManager';
 import GroupeDetail from './GroupeDetail';
 import {
   getGroupesProf,
+  getGroupeById,
   getStatsGroupe
 } from '../../services/profGroupeService';
 import type { GroupeProf, StatsGroupe } from '../../types/prof';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import '../../styles/prof.css';
+
+/**
+ * ──────────────────────────────────────────────────────────────────────
+ *  Caches mémoire (scope module) — performance du tableau de bord prof.
+ *
+ *  Le calcul de StatsGroupe est coûteux (plusieurs requêtes Firestore
+ *  par groupe). La navigation overview ↔ groupes ↔ detail déclenchait
+ *  systématiquement un rechargement complet en série, d'où la lenteur
+ *  perçue. On met donc en cache deux choses :
+ *
+ *    1. La liste des groupes par profId (rarement modifiée pendant
+ *       une session de travail).
+ *    2. Les stats par groupeId.
+ *
+ *  TTL volontairement assez long (5 min) : ces données peuvent évoluer
+ *  mais la perte de fraîcheur est compensée par un `force = true` lors
+ *  des opérations qui modifient l'état (création de groupe, retour
+ *  d'un détail après édition…).
+ * ──────────────────────────────────────────────────────────────────────
+ */
+const STATS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 min — bon compromis fraîcheur/latence
+const statsCache = new Map<string, { stats: StatsGroupe; expire: number }>();
+const groupesCache = new Map<string, { groupes: GroupeProf[]; expire: number }>();
+
+async function getStatsGroupeCached(groupeId: string, force = false): Promise<StatsGroupe> {
+  const now = Date.now();
+  const hit = statsCache.get(groupeId);
+  if (!force && hit && hit.expire > now) return hit.stats;
+  const stats = await getStatsGroupe(groupeId);
+  statsCache.set(groupeId, { stats, expire: now + STATS_CACHE_TTL_MS });
+  return stats;
+}
+
+async function getGroupesProfCached(profId: string, force = false): Promise<GroupeProf[]> {
+  const now = Date.now();
+  const hit = groupesCache.get(profId);
+  if (!force && hit && hit.expire > now) return hit.groupes;
+  const groupes = await getGroupesProf(profId);
+  groupesCache.set(profId, { groupes, expire: now + STATS_CACHE_TTL_MS });
+  return groupes;
+}
 
 
 // ==================== TYPES LOCAUX ====================
@@ -47,10 +89,16 @@ const ProfDashboard: React.FC = () => {
   // ===== Hooks =====
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  // useLocation : pour réagir à un retour explicite vers un groupe précis
+  // (ex. depuis l'éditeur de feuille de notes → onglet « Notes »).
+  const location = useLocation();
 
   // ===== États : navigation =====
   const [vueActive, setVueActive] = useState<VueDashboard>('overview');
   const [groupeSelectionne, setGroupeSelectionne] = useState<GroupeProf | null>(null);
+  // ✨ Onglet à pré-sélectionner dans GroupeDetail quand on l'ouvre via
+  //    une navigation programmée (location.state.openTab).
+  const [initialOnglet, setInitialOnglet] = useState<string | undefined>(undefined);
 
   // ===== États : données résumé =====
   const [totalGroupes, setTotalGroupes] = useState<number>(0);
@@ -60,67 +108,164 @@ const ProfDashboard: React.FC = () => {
   const [groupesRecap, setGroupesRecap] = useState<(GroupeProf & { stats?: StatsGroupe })[]>([]);
 
   // ===== États : UI =====
+  //   `loading`      : blocage initial jusqu'à l'arrivée de la liste des groupes
+  //   `loadingStats` : rafraîchissement non bloquant des statistiques
+  //   On sépare les deux pour que l'utilisateur voie immédiatement ses
+  //   groupes tandis que les stats se calculent en arrière-plan.
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingStats, setLoadingStats] = useState<boolean>(false);
 
 
   // ==================== CHARGEMENT RÉSUMÉ ====================
 
   /**
-   * Charge les données résumées pour la vue d'ensemble
+   * Charge les données résumées pour la vue d'ensemble.
+   *
+   *  Optimisations clés (vs. version précédente) :
+   *   - Les groupes sont affichés dès que getGroupesProf() répond : l'UI
+   *     ne bloque plus sur le calcul des stats (qui arrivent en second).
+   *   - Les stats sont calculées EN PARALLÈLE via Promise.all (N requêtes
+   *     concurrentes au lieu de N séquentielles) — principal gain de
+   *     latence sur l'Aperçu.
+   *   - Un cache mémoire (TTL 5 min) évite de recalculer ces stats lors
+   *     d'un simple aller-retour overview ⇄ groupes ⇄ detail. La liste
+   *     des groupes elle-même est aussi mise en cache pour rendre le
+   *     premier rendu post-navigation quasi instantané.
+   *   - `force = true` permet au retour d'un écran de détail de rafraîchir
+   *     proprement les données si l'utilisateur a modifié quelque chose.
    */
-  const chargerResume = useCallback(async () => {
-    if (!currentUser?.uid) return;
+  const chargerResume = useCallback(
+    async (force = false) => {
+      if (!currentUser?.uid) return;
 
-    try {
-      setLoading(true);
-
-      // ===== 1. Récupérer les groupes actifs =====
-      const groupes = await getGroupesProf(currentUser.uid);
-      const groupesActifs = groupes.filter(g => g.statut === 'actif');
-
-      setTotalGroupes(groupesActifs.length);
-
-      // ===== 2. Calculer les stats pour chaque groupe =====
-      let sommeEleves = 0;
-      let sommeMoyennes = 0;
-      let groupesAvecStats = 0;
-      let alertesCount = 0;
-      const recap: (GroupeProf & { stats?: StatsGroupe })[] = [];
-
-      for (const groupe of groupesActifs) {
-        try {
-          const stats = await getStatsGroupe(groupe.id);
-          sommeEleves += stats.nombreEleves;
-          if (stats.nombreEleves > 0) {
-            sommeMoyennes += stats.moyenneClasse;
-            groupesAvecStats++;
-          }
-          alertesCount += stats.elevesEnDifficulte;
-          recap.push({ ...groupe, stats });
-        } catch {
-          recap.push({ ...groupe });
+      try {
+        // ⚡ Si on a déjà un cache pour ce prof, on l'utilise SANS bloquer
+        //    l'UI : `loading` reste à false, on reflète juste un
+        //    rafraîchissement secondaire via `loadingStats`. Le résultat
+        //    est un dashboard qui ré-apparaît instantanément lors d'un
+        //    aller-retour, pendant qu'on remet à jour les chiffres en
+        //    arrière-plan.
+        const hit = !force && groupesCache.get(currentUser.uid);
+        if (hit && hit.expire > Date.now()) {
+          setLoading(false);
+        } else {
+          setLoading(true);
         }
+
+        // ===== 1. Récupérer les groupes actifs =====
+        //   Cache mémoire : les groupes ne changent pas pendant la
+        //   navigation overview ⇄ groupes ⇄ detail. force=true permet
+        //   de bypasser le cache après une création/suppression.
+        const groupes = await getGroupesProfCached(currentUser.uid, force);
+        const groupesActifs = groupes.filter((g) => g.statut === 'actif');
+
+        setTotalGroupes(groupesActifs.length);
+        // Affichage immédiat (sans stats) : l'UI paraît bien plus rapide.
+        setGroupesRecap(groupesActifs.map((g) => ({ ...g })));
+        // Dès que les groupes sont affichés, on lève le blocage principal
+        // et on bascule sur un indicateur secondaire pour les stats.
+        setLoading(false);
+        setLoadingStats(true);
+
+        // ===== 2. Calcul des stats en parallèle (avec cache) =====
+        const resultats = await Promise.all(
+          groupesActifs.map(async (g) => {
+            try {
+              return { groupe: g, stats: await getStatsGroupeCached(g.id, force) };
+            } catch (err) {
+              console.warn('⚠️ Stats indisponibles pour le groupe', g.id, err);
+              return { groupe: g, stats: undefined as StatsGroupe | undefined };
+            }
+          }),
+        );
+
+        // ===== 3. Agrégation synchrone (rapide) =====
+        let sommeEleves = 0;
+        let sommeMoyennes = 0;
+        let groupesAvecStats = 0;
+        let alertesCount = 0;
+        const recap: (GroupeProf & { stats?: StatsGroupe })[] = [];
+
+        for (const { groupe, stats } of resultats) {
+          if (stats) {
+            sommeEleves += stats.nombreEleves;
+            if (stats.nombreEleves > 0) {
+              sommeMoyennes += stats.moyenneClasse;
+              groupesAvecStats++;
+            }
+            alertesCount += stats.elevesEnDifficulte;
+            recap.push({ ...groupe, stats });
+          } else {
+            recap.push({ ...groupe });
+          }
+        }
+
+        setTotalEleves(sommeEleves);
+        setMoyenneGenerale(
+          groupesAvecStats > 0
+            ? Math.round((sommeMoyennes / groupesAvecStats) * 10) / 10
+            : 0,
+        );
+        setTotalAlertes(alertesCount);
+        setGroupesRecap(recap);
+      } catch (err) {
+        console.error('Erreur chargement résumé prof:', err);
+      } finally {
+        // On coupe les deux indicateurs : protège contre une annulation
+        // prématurée (ex. setLoading(false) non appelé à cause d'une erreur
+        // avant la bascule vers loadingStats).
+        setLoading(false);
+        setLoadingStats(false);
       }
-
-      setTotalEleves(sommeEleves);
-      setMoyenneGenerale(
-        groupesAvecStats > 0
-          ? Math.round((sommeMoyennes / groupesAvecStats) * 10) / 10
-          : 0
-      );
-      setTotalAlertes(alertesCount);
-      setGroupesRecap(recap);
-
-    } catch (err) {
-      console.error('Erreur chargement résumé prof:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUser?.uid]);
+    },
+    [currentUser?.uid],
+  );
 
   useEffect(() => {
-    chargerResume();
+    // Premier chargement : on laisse le cache décider (force = false)
+    chargerResume(false);
   }, [chargerResume]);
+
+  /**
+   * ✨ Ouverture programmée d'un groupe sur un onglet précis.
+   *
+   *  Lorsque l'utilisateur revient sur le dashboard via le bouton
+   *  « Retour » d'une feuille de notes (ou tout autre lien semblable),
+   *  l'appelant pose dans location.state :
+   *    { openGroupeId: '...', openTab: 'notes' }
+   *  On charge le groupe correspondant, on le sélectionne, et on
+   *  bascule sur la vue détail avec l'onglet demandé pré-actif.
+   *  On nettoie ensuite le state pour éviter de réouvrir au prochain
+   *  remount (replace de l'historique).
+   */
+  useEffect(() => {
+    const state = (location.state ?? {}) as {
+      openGroupeId?: string;
+      openTab?: string;
+    };
+    if (!state.openGroupeId) return;
+
+    let annulee = false;
+    (async () => {
+      try {
+        const g = await getGroupeById(state.openGroupeId!);
+        if (annulee || !g) return;
+        setGroupeSelectionne(g);
+        setInitialOnglet(state.openTab || 'apercu');
+        setVueActive('detail');
+        // Nettoyage du state pour ne pas répéter l'ouverture en cas
+        // de re-render ou de retour navigateur.
+        navigate(location.pathname, { replace: true });
+      } catch (err) {
+        console.error('Erreur ouverture groupe via state:', err);
+      }
+    })();
+    return () => {
+      annulee = true;
+    };
+    // On veut bien réagir uniquement au changement de location.state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
 
   // ==================== HANDLERS NAVIGATION ====================
@@ -139,7 +284,9 @@ const ProfDashboard: React.FC = () => {
   const handleRetourDetail = () => {
     setGroupeSelectionne(null);
     setVueActive('groupes');
-    chargerResume(); // Rafraîchir les données
+    // Force le rafraîchissement : l'utilisateur peut avoir modifié des données
+    // dans le détail du groupe, on bypasse donc le cache.
+    chargerResume(true);
   };
 
 
@@ -240,6 +387,26 @@ const ProfDashboard: React.FC = () => {
       {/* ============================================================ */}
       {vueActive === 'overview' && (
         <div className="prof-overview">
+
+          {/* Indicateur discret pendant le recalcul des statistiques.
+              Les chiffres restent visibles (dernière valeur connue) pendant
+              que l'on rafraîchit — pas d'écran « Chargement » pleine page. */}
+          {loadingStats && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                fontSize: '0.78rem',
+                color: '#6b7280',
+                marginBottom: 8,
+              }}
+              aria-live="polite"
+            >
+              <span className="spinner" style={{ width: 12, height: 12 }} />
+              Mise à jour des statistiques…
+            </div>
+          )}
 
           {/* Cartes résumé */}
           <div className="prof-overview-cards">
@@ -417,6 +584,9 @@ const ProfDashboard: React.FC = () => {
         <GroupeDetail
           groupe={groupeSelectionne}
           onRetour={handleRetourDetail}
+          /* ✨ Permet à un appelant (ex. retour depuis FeuilleNotesEditorPage)
+             de forcer l'onglet d'ouverture (« notes » par défaut dans ce cas). */
+          initialOnglet={initialOnglet as any}
         />
       )}
     </div>

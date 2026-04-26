@@ -16,6 +16,8 @@ import {
   inscrireEleveOffline,
   // Phase 36 — inscription en lot (saisie texte multi-lignes)
   inscrireElevesEnLot,
+  // Correction / édition des noms d'élèves inscrits
+  modifierInscription,
   type EleveResultat,
   type InscriptionGroupe,
   type InscriptionBulkResultat,
@@ -75,6 +77,16 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   const [bulkEnCours, setBulkEnCours] = useState(false);
   const [bulkResultats, setBulkResultats] = useState<InscriptionBulkResultat[] | null>(null);
   const [bulkErreur, setBulkErreur] = useState<string | null>(null);
+
+  // ── Édition inline d'un nom/remarque existant ──
+  //   On mémorise l'id de l'inscription en cours de modification + les
+  //   valeurs en brouillon (nom, remarque) pour n'écrire en base qu'à la
+  //   validation explicite (bouton ✓ ou Enter).
+  const [editionInscriptionId, setEditionInscriptionId] = useState<string | null>(null);
+  const [editionNom, setEditionNom] = useState('');
+  const [editionRemarque, setEditionRemarque] = useState('');
+  const [editionEnCours, setEditionEnCours] = useState(false);
+  const [editionErreur, setEditionErreur] = useState<string | null>(null);
 
   const chargerInscrits = useCallback(async () => {
     setChargementListe(true);
@@ -197,6 +209,63 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
       setOfflineErreur(message);
     } finally {
       setOfflineEnCours(false);
+    }
+  };
+
+  // ── Édition inline du nom/remarque d'un élève inscrit ──
+  const commencerEdition = (inscription: InscriptionGroupe) => {
+    setEditionInscriptionId(inscription.id);
+    setEditionNom(inscription.eleveNom || '');
+    setEditionRemarque(inscription.remarque || '');
+    setEditionErreur(null);
+  };
+
+  const annulerEdition = () => {
+    setEditionInscriptionId(null);
+    setEditionNom('');
+    setEditionRemarque('');
+    setEditionErreur(null);
+  };
+
+  const validerEdition = async (inscription: InscriptionGroupe) => {
+    if (editionEnCours) return;
+    const nomCible = editionNom.trim();
+    // Sécurité : on refuse un nom quasi vide (risque de perdre l'identification)
+    if (nomCible.length < 2) {
+      setEditionErreur('Le nom doit contenir au moins 2 caractères.');
+      return;
+    }
+    // Pas de modification utile → rien à faire (évite un write inutile)
+    if (
+      nomCible === (inscription.eleveNom || '') &&
+      editionRemarque.trim() === (inscription.remarque || '').trim()
+    ) {
+      annulerEdition();
+      return;
+    }
+    setEditionEnCours(true);
+    setEditionErreur(null);
+    try {
+      await modifierInscription(inscription.id, {
+        eleveNom: nomCible,
+        remarque: editionRemarque,
+      });
+      // Mise à jour optimiste de la liste locale (pas besoin de recharger)
+      setInscrits((prev) =>
+        prev.map((i) =>
+          i.id === inscription.id
+            ? { ...i, eleveNom: nomCible, remarque: editionRemarque.trim() || undefined }
+            : i,
+        ),
+      );
+      setMessageSucces(`✏️ Nom mis à jour : ${nomCible}.`);
+      annulerEdition();
+      onSuccess?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la modification.';
+      setEditionErreur(msg);
+    } finally {
+      setEditionEnCours(false);
     }
   };
 
@@ -619,7 +688,9 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                     {inscrits.filter(i => i.statut === 'actif').length} élève(s) actif(s) sur {inscrits.length} inscrit(s)
                   </p>
                   <ul className="idm-liste-inscrits" role="list">
-                    {inscrits.map((inscription) => (
+                    {inscrits.map((inscription) => {
+                      const enEdition = editionInscriptionId === inscription.id;
+                      return (
                       <li
                         key={inscription.id}
                         className={`idm-ligne-inscrit ${inscription.statut === 'suspendu' ? 'idm-ligne-inscrit--suspendu' : ''}`}
@@ -629,66 +700,166 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                             {inscription.eleveNom.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <div className="idm-carte-eleve__infos">
-                          <span className="idm-carte-eleve__nom">
-                            {inscription.eleveNom}
-                            {/* Phase 34 — marqueur "sans compte" */}
-                            {inscription.isOffline && (
-                              <span
-                                className="idm-badge idm-badge--offline"
-                                style={{ marginLeft: 8, fontSize: '0.68rem' }}
-                                title="Élève sans compte PedaClic"
-                              >
-                                📝 Sans compte
+                        <div className="idm-carte-eleve__infos" style={{ flex: 1 }}>
+                          {/*
+                            Deux modes d'affichage :
+                              - Lecture   : nom + badges + méta (par défaut)
+                              - Édition   : champs pour corriger nom & remarque
+                            On n'écrit dans inscriptions_groupe qu'au clic sur ✓.
+                          */}
+                          {enEdition ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <input
+                                type="text"
+                                value={editionNom}
+                                onChange={(e) => setEditionNom(e.target.value)}
+                                disabled={editionEnCours}
+                                autoFocus
+                                maxLength={80}
+                                placeholder="Nom complet de l'élève"
+                                aria-label="Nom de l'élève"
+                                style={{
+                                  padding: '6px 10px',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: 6,
+                                  fontSize: '0.9rem',
+                                }}
+                                onKeyDown={(e) => {
+                                  // Enter = valider ; Escape = annuler (UX classique)
+                                  if (e.key === 'Enter') { e.preventDefault(); validerEdition(inscription); }
+                                  else if (e.key === 'Escape') { e.preventDefault(); annulerEdition(); }
+                                }}
+                              />
+                              <input
+                                type="text"
+                                value={editionRemarque}
+                                onChange={(e) => setEditionRemarque(e.target.value)}
+                                disabled={editionEnCours}
+                                maxLength={120}
+                                placeholder="Remarque (tuteur, téléphone — facultatif)"
+                                aria-label="Remarque facultative"
+                                style={{
+                                  padding: '6px 10px',
+                                  border: '1px solid #e5e7eb',
+                                  borderRadius: 6,
+                                  fontSize: '0.85rem',
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') { e.preventDefault(); validerEdition(inscription); }
+                                  else if (e.key === 'Escape') { e.preventDefault(); annulerEdition(); }
+                                }}
+                              />
+                              {editionErreur && (
+                                <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.78rem' }} role="alert">
+                                  ⚠️ {editionErreur}
+                                </p>
+                              )}
+                              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.72rem' }}>
+                                ℹ️ La correction s'applique uniquement à l'affichage dans ce groupe.
+                                {!inscription.isOffline && " Le profil global de l'élève n'est pas modifié."}
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="idm-carte-eleve__nom">
+                                {inscription.eleveNom}
+                                {/* Phase 34 — marqueur "sans compte" */}
+                                {inscription.isOffline && (
+                                  <span
+                                    className="idm-badge idm-badge--offline"
+                                    style={{ marginLeft: 8, fontSize: '0.68rem' }}
+                                    title="Élève sans compte PedaClic"
+                                  >
+                                    📝 Sans compte
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
-                          <span className="idm-carte-eleve__email">
-                            {inscription.eleveEmail
-                              ? inscription.eleveEmail
-                              : (inscription.remarque ? `📌 ${inscription.remarque}` : <em style={{ color: '#9ca3af' }}>Aucun email enregistré</em>)}
-                          </span>
-                          <div className="idm-ligne-inscrit__meta">
-                            <span className={`idm-badge ${inscription.statut === 'actif' ? 'idm-badge--actif' : 'idm-badge--suspendu'}`}>
-                              {inscription.statut === 'actif' ? '✓ Actif' : '⏸ Suspendu'}
-                            </span>
-                            <span className="idm-badge idm-badge--source">
-                              {inscription.sourceInscription === 'direct'
-                                ? '👨‍🏫 Prof'
-                                : inscription.sourceInscription === 'offline'
-                                  ? '📝 Hors-ligne'
-                                  : '🔑 Code'}
-                            </span>
-                            <span className="idm-date">
-                              Inscrit le {formatDate(inscription.dateInscription as { toDate?: () => Date })}
-                            </span>
-                          </div>
+                              <span className="idm-carte-eleve__email">
+                                {inscription.eleveEmail
+                                  ? inscription.eleveEmail
+                                  : (inscription.remarque ? `📌 ${inscription.remarque}` : <em style={{ color: '#9ca3af' }}>Aucun email enregistré</em>)}
+                              </span>
+                              <div className="idm-ligne-inscrit__meta">
+                                <span className={`idm-badge ${inscription.statut === 'actif' ? 'idm-badge--actif' : 'idm-badge--suspendu'}`}>
+                                  {inscription.statut === 'actif' ? '✓ Actif' : '⏸ Suspendu'}
+                                </span>
+                                <span className="idm-badge idm-badge--source">
+                                  {inscription.sourceInscription === 'direct'
+                                    ? '👨‍🏫 Prof'
+                                    : inscription.sourceInscription === 'offline'
+                                      ? '📝 Hors-ligne'
+                                      : '🔑 Code'}
+                                </span>
+                                <span className="idm-date">
+                                  Inscrit le {formatDate(inscription.dateInscription as { toDate?: () => Date })}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                         <div className="idm-ligne-inscrit__actions">
-                          <button
-                            className={`idm-btn ${inscription.statut === 'actif' ? 'idm-btn--suspendre' : 'idm-btn--reactiver'}`}
-                            onClick={() => handleToggleStatut(inscription)}
-                            disabled={actionEnCours === inscription.id}
-                            title={inscription.statut === 'actif' ? 'Suspendre l\'accès' : 'Réactiver l\'accès'}
-                            aria-label={inscription.statut === 'actif' ? `Suspendre ${inscription.eleveNom}` : `Réactiver ${inscription.eleveNom}`}
-                          >
-                            {actionEnCours === inscription.id
-                              ? <span className="idm-spinner idm-spinner--sm" />
-                              : inscription.statut === 'actif' ? '⏸' : '▶️'
-                            }
-                          </button>
-                          <button
-                            className="idm-btn idm-btn--retirer"
-                            onClick={() => handleDesinscrire(inscription)}
-                            disabled={actionEnCours === inscription.id}
-                            title="Retirer du groupe"
-                            aria-label={`Retirer ${inscription.eleveNom} du groupe`}
-                          >
-                            🗑️
-                          </button>
+                          {enEdition ? (
+                            <>
+                              {/* Boutons Valider / Annuler visibles en mode édition */}
+                              <button
+                                className="idm-btn idm-btn--reactiver"
+                                onClick={() => validerEdition(inscription)}
+                                disabled={editionEnCours || editionNom.trim().length < 2}
+                                title="Enregistrer les corrections"
+                                aria-label="Enregistrer"
+                              >
+                                {editionEnCours ? <span className="idm-spinner idm-spinner--sm" /> : '✓'}
+                              </button>
+                              <button
+                                className="idm-btn idm-btn--retirer"
+                                onClick={annulerEdition}
+                                disabled={editionEnCours}
+                                title="Annuler la modification"
+                                aria-label="Annuler"
+                              >
+                                ✕
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Bouton Modifier — disponible pour TOUS les types d'inscription */}
+                              <button
+                                className="idm-btn"
+                                onClick={() => commencerEdition(inscription)}
+                                disabled={actionEnCours === inscription.id}
+                                title="Modifier le nom ou la remarque"
+                                aria-label={`Modifier ${inscription.eleveNom}`}
+                                style={{ background: '#e0f2fe', color: '#075985', borderColor: '#bae6fd' }}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                className={`idm-btn ${inscription.statut === 'actif' ? 'idm-btn--suspendre' : 'idm-btn--reactiver'}`}
+                                onClick={() => handleToggleStatut(inscription)}
+                                disabled={actionEnCours === inscription.id}
+                                title={inscription.statut === 'actif' ? 'Suspendre l\'accès' : 'Réactiver l\'accès'}
+                                aria-label={inscription.statut === 'actif' ? `Suspendre ${inscription.eleveNom}` : `Réactiver ${inscription.eleveNom}`}
+                              >
+                                {actionEnCours === inscription.id
+                                  ? <span className="idm-spinner idm-spinner--sm" />
+                                  : inscription.statut === 'actif' ? '⏸' : '▶️'
+                                }
+                              </button>
+                              <button
+                                className="idm-btn idm-btn--retirer"
+                                onClick={() => handleDesinscrire(inscription)}
+                                disabled={actionEnCours === inscription.id}
+                                title="Retirer du groupe"
+                                aria-label={`Retirer ${inscription.eleveNom} du groupe`}
+                              >
+                                🗑️
+                              </button>
+                            </>
+                          )}
                         </div>
                       </li>
-                    ))}
+                      );
+                    })}
                   </ul>
                 </>
               )}

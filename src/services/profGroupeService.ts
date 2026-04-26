@@ -436,19 +436,25 @@ export async function getStatsGroupe(groupeId: string): Promise<StatsGroupe> {
     }
 
     // Récupérer les résultats de quiz par lots de 10 (limite Firestore 'in')
+    // ⚡ Optimisation : exécution PARALLÈLE des lots (Promise.all) au lieu
+    //    d'un await séquentiel. Pour un groupe de 30 élèves on passe
+    //    par exemple de 3 round-trips en série à 1 seul round-trip
+    //    parallèle — gain perceptible côté tableau de bord.
     const tousResultats: any[] = [];
-    const lots = [];
+    const lots: string[][] = [];
     for (let i = 0; i < eleveIds.length; i += 10) {
       lots.push(eleveIds.slice(i, i + 10));
     }
 
-    for (const lot of lots) {
-      const q = query(
-        collection(db, 'quiz_results'),
-        where('userId', 'in', lot)
-      );
-      const snap = await getDocs(q);
-      snap.docs.forEach(d => tousResultats.push({ id: d.id, ...d.data() }));
+    const snaps = await Promise.all(
+      lots.map((lot) =>
+        getDocs(
+          query(collection(db, 'quiz_results'), where('userId', 'in', lot)),
+        ),
+      ),
+    );
+    for (const snap of snaps) {
+      snap.docs.forEach((d) => tousResultats.push({ id: d.id, ...d.data() }));
     }
 
     // Calculer les statistiques par élève

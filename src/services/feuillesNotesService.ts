@@ -26,6 +26,7 @@ import type {
   PeriodeType,
   CompetenceDef,
   CompetenceStatus,
+  TypeEvaluation,
 } from '../types/feuillesNotes.types';
 
 const COL = 'feuilles_notes';
@@ -76,7 +77,12 @@ export async function creerFeuilleDeNotes(
     periodeLabel,
     dateDebut: Timestamp.fromDate(dateDebut),
     dateFin: Timestamp.fromDate(dateFin),
-    evaluations: evaluations.length ? evaluations : [{ id: 'e1', libelle: 'Évaluation 1', coefficient: 1 }],
+    // Par défaut, toute nouvelle évaluation créée hors sélection explicite
+    // est considérée comme un « devoir » (type pondéré 1 dans la moyenne
+    // générale sénégalaise). Le prof pourra la basculer en « composition ».
+    evaluations: evaluations.length
+      ? evaluations.map((e) => ({ ...e, type: e.type ?? 'devoir' as TypeEvaluation }))
+      : [{ id: 'e1', libelle: 'Devoir 1', coefficient: 1, type: 'devoir' as TypeEvaluation }],
     notes,
     createdAt: now,
     updatedAt: now,
@@ -188,36 +194,116 @@ export async function supprimerFeuille(feuilleId: string): Promise<void> {
   await deleteDoc(doc(db, COL, feuilleId));
 }
 
-/** Construit les lignes de notes (élèves + moyennes) */
-export function buildLignesNotes(feuille: FeuilleDeNotes, inscriptions: { eleveId: string; eleveNom: string; eleveEmail: string }[]): LigneNotes[] {
-  const lignes: LigneNotes[] = [];
+/**
+ * Construit les lignes de notes (élèves + moyennes + rang).
+ *
+ * Règle de calcul (formule retenue par PedaClic) :
+ *   - MoyenneDevoirs  = Σ(note × coef) / Σ(coef) sur les évaluations de type 'devoir'
+ *   - NoteComposition = Σ(note × coef) / Σ(coef) sur les évaluations de type 'composition'
+ *   - MoyenneGénérale =
+ *       • Si devoirs + composition présents : (MoyDevoirs + Composition) / 2
+ *       • Sinon : la seule des deux qui existe (fallback gracieux)
+ *       • Sinon : moyenne pondérée classique sur toutes les évaluations
+ *   - Rang  : classement décroissant sur MoyenneGénérale (égalité → même rang).
+ *
+ * Rétro-compat : le champ `moyenne` est renseigné avec la MoyenneGénérale,
+ * ce qui préserve les vues lecture seule (élève, parent) sans les casser.
+ */
+export function buildLignesNotes(
+  feuille: FeuilleDeNotes,
+  inscriptions: { eleveId: string; eleveNom: string; eleveEmail: string }[],
+): LigneNotes[] {
+  const lignesBrutes: LigneNotes[] = [];
   const notes = feuille.notes || {};
   const evals = feuille.evaluations || [];
 
+  // Pré-partitionnement devoirs / compositions pour éviter un test par ligne
+  const evalsDevoirs = evals.filter((e) => (e.type ?? 'devoir') === 'devoir');
+  const evalsCompo = evals.filter((e) => (e.type ?? 'devoir') === 'composition');
+
   for (const i of inscriptions) {
     const notesEleve = notes[i.eleveId] || {};
-    let totalCoef = 0;
-    let totalPoints = 0;
-    for (const e of evals) {
+
+    // Agrégateurs : moyennes pondérées sur chaque sous-ensemble
+    let totalCoefD = 0, totalPointsD = 0;
+    let totalCoefC = 0, totalPointsC = 0;
+    let totalCoefAll = 0, totalPointsAll = 0;
+
+    for (const e of evalsDevoirs) {
       const n = notesEleve[e.id];
       if (n !== undefined && n !== null && !Number.isNaN(n)) {
         const coef = e.coefficient ?? 1;
-        totalPoints += n * coef;
-        totalCoef += coef;
+        totalPointsD += n * coef;
+        totalCoefD += coef;
+        totalPointsAll += n * coef;
+        totalCoefAll += coef;
       }
     }
-    const moyenne = totalCoef > 0 ? Math.round((totalPoints / totalCoef) * 100) / 100 : 0;
+    for (const e of evalsCompo) {
+      const n = notesEleve[e.id];
+      if (n !== undefined && n !== null && !Number.isNaN(n)) {
+        const coef = e.coefficient ?? 1;
+        totalPointsC += n * coef;
+        totalCoefC += coef;
+        totalPointsAll += n * coef;
+        totalCoefAll += coef;
+      }
+    }
 
-    lignes.push({
+    const round2 = (v: number) => Math.round(v * 100) / 100;
+    const moyenneDevoirs = totalCoefD > 0 ? round2(totalPointsD / totalCoefD) : 0;
+    const noteComposition = totalCoefC > 0 ? round2(totalPointsC / totalCoefC) : 0;
+
+    // Choix de la moyenne générale (gère les 3 configurations possibles)
+    let moyenneGenerale: number;
+    if (totalCoefD > 0 && totalCoefC > 0) {
+      // Cas nominal : moyenne PedaClic = (Moyenne devoirs + Composition) / 2
+      moyenneGenerale = round2((moyenneDevoirs + noteComposition) / 2);
+    } else if (totalCoefD > 0) {
+      moyenneGenerale = moyenneDevoirs;
+    } else if (totalCoefC > 0) {
+      moyenneGenerale = noteComposition;
+    } else if (totalCoefAll > 0) {
+      // Filet de sécurité : calcul classique sur toutes les évaluations
+      moyenneGenerale = round2(totalPointsAll / totalCoefAll);
+    } else {
+      moyenneGenerale = 0;
+    }
+
+    lignesBrutes.push({
       eleveId: i.eleveId,
       eleveNom: i.eleveNom,
       eleveEmail: i.eleveEmail,
       notes: notesEleve,
-      moyenne,
+      // `moyenne` conservée = moyenne générale (rétro-compat vues lecture)
+      moyenne: moyenneGenerale,
+      moyenneDevoirs,
+      noteComposition,
+      moyenneGenerale,
+      rang: 0, // calculé ci-dessous
     });
   }
 
-  return lignes;
+  // ── Calcul du rang (égalité = même rang type "dense ranking") ──
+  //   Les élèves sans aucune note évaluée (moyenneGenerale = 0 et aucune
+  //   évaluation saisie) restent à rang 0 pour ne pas polluer le classement.
+  const lignesClassables = lignesBrutes
+    .map((l, idx) => ({ idx, mg: l.moyenneGenerale, aNote: Object.keys(l.notes).length > 0 }))
+    .filter((l) => l.aNote)
+    .sort((a, b) => b.mg - a.mg);
+
+  let rangCourant = 0;
+  let moyennePrecedente = Number.POSITIVE_INFINITY;
+  lignesClassables.forEach((item, position) => {
+    // Rang compétition : position suivante prend en compte le saut (1, 1, 3...)
+    if (item.mg !== moyennePrecedente) {
+      rangCourant = position + 1;
+      moyennePrecedente = item.mg;
+    }
+    lignesBrutes[item.idx].rang = rangCourant;
+  });
+
+  return lignesBrutes;
 }
 
 /** Met à jour les compétences définies pour une feuille */

@@ -198,12 +198,18 @@ interface GroupeDetailProps {
   groupe: GroupeProf;
   /** Callback pour revenir à la liste des groupes */
   onRetour: () => void;
+  /**
+   * ✨ Onglet à pré-sélectionner à l'ouverture (ex. 'notes' lorsqu'on
+   *    revient depuis l'éditeur de feuille de notes). Si non fourni,
+   *    l'onglet par défaut « apercu » est utilisé.
+   */
+  initialOnglet?: OngletActif;
 }
 
 
 // ==================== COMPOSANT PRINCIPAL ====================
 
-const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
+const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOnglet }) => {
   const { currentUser } = useAuth();
 
   // ===== États : données =====
@@ -254,7 +260,10 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour }) => {
   // ===== États : UI =====
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [ongletActif, setOngletActif] = useState<OngletActif>('apercu');
+  // ✨ initialOnglet (prop) prime sur la valeur par défaut « apercu » :
+  //    permet d'ouvrir le détail d'un groupe directement sur l'onglet
+  //    « Notes » lors d'un retour depuis l'éditeur de feuille de notes.
+  const [ongletActif, setOngletActif] = useState<OngletActif>(initialOnglet || 'apercu');
   const [triEleves, setTriEleves] = useState<TriEleves>('moyenne_desc');
   const [eleveSelectionne, setEleveSelectionne] = useState<string | null>(null);
   const [observationEdit, setObservationEdit] = useState('');

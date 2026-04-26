@@ -38,12 +38,32 @@ export const COMPETENCES_PAR_DEFAUT: CompetenceDef[] = [
   { id: 'etudier_langue', libelle: 'Étudier la langue' },
 ];
 
+/**
+ * Type d'évaluation : distingue un devoir d'une composition.
+ * Utilisé pour le calcul de la moyenne générale PedaClic :
+ *   MoyenneGénérale = (MoyenneDevoirs + Composition) / 2
+ *
+ * Valeur par défaut : 'devoir' (compatibilité avec les feuilles existantes).
+ */
+export type TypeEvaluation = 'devoir' | 'composition';
+
+export const TYPE_EVAL_LABELS: Record<TypeEvaluation, string> = {
+  devoir: 'Devoir',
+  composition: 'Composition',
+};
+
 /** Évaluation / contrôle dans une feuille */
 export interface EvaluationNote {
   id: string;
   libelle: string;
   coefficient?: number;
   date?: string; // YYYY-MM-DD
+  /**
+   * Type d'évaluation : 'devoir' (par défaut) ou 'composition'.
+   * Permet le calcul séparé : moyenne des devoirs, note de composition,
+   * moyenne générale, puis rang de classe.
+   */
+  type?: TypeEvaluation;
   /** Compétences évaluées dans ce devoir (optionnel) */
   competences?: CompetenceDef[];
 }
@@ -79,13 +99,32 @@ export interface FeuilleDeNotes {
   updatedAt: Date | Timestamp;
 }
 
-/** Ligne de notes pour affichage (élève + notes + moyenne) */
+/**
+ * Ligne de notes pour affichage (élève + notes + moyennes + rang).
+ *
+ * Champs supplémentaires (formule PedaClic) :
+ *   - moyenneDevoirs   : moyenne pondérée des évaluations de type 'devoir'
+ *   - noteComposition  : note (ou moyenne pondérée) des évaluations de type 'composition'
+ *   - moyenneGenerale  : (MoyDevoirs + Composition) / 2 — valeur
+ *                        qui sert aussi de base pour le rang et pour le
+ *                        champ historique `moyenne` (conservé par compat.).
+ *   - rang             : classement dans la feuille (1 = meilleur).
+ */
 export interface LigneNotes {
   eleveId: string;
   eleveNom: string;
   eleveEmail: string;
   notes: Record<string, number>;
+  /** Moyenne générale (ou moyenne simple si pas de distinction type) — conservée pour compat. */
   moyenne: number;
+  /** Moyenne pondérée des devoirs uniquement. 0 si aucun devoir noté. */
+  moyenneDevoirs: number;
+  /** Note de composition (moyenne si plusieurs). 0 si aucune composition notée. */
+  noteComposition: number;
+  /** Moyenne générale retenue pour le bulletin et le rang. */
+  moyenneGenerale: number;
+  /** Rang dans la classe (1 = meilleur). 0 si non calculable. */
+  rang: number;
 }
 
 /** Options de période pour le sélecteur */

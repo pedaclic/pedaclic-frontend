@@ -87,8 +87,28 @@ export function extraireNomFamille(nomComplet?: string | null): string {
 }
 
 /**
- * Comparateur de tri alphabétique par NOM de famille (A→Z).
- * À utiliser avec Array.sort() — ex. pour l'appel ou la feuille de notes.
+ * Extrait les prénoms (tout sauf le dernier mot), normalisés.
+ * Utilisé pour départager les homonymes lors du tri alphabétique.
+ *
+ * Exemple : "Aliou Badara TOURÉ" → "Aliou Badara"
+ */
+export function extrairePrenoms(nomComplet?: string | null): string {
+  if (!nomComplet) return '';
+  const trim = String(nomComplet).trim().replace(/\s+/g, ' ');
+  if (!trim) return '';
+  const parts = trim.split(' ');
+  if (parts.length <= 1) return '';
+  return parts.slice(0, -1).map(capitalizeFirst).join(' ');
+}
+
+/**
+ * Comparateur de tri alphabétique par NOM de famille (A→Z), puis par
+ * PRÉNOMS pour départager les homonymes — ex. deux « DIOP » s'ordonnent
+ * comme Aïssatou Diop < Moussa Diop.
+ *
+ * Le comportement du tri primaire (nom de famille) n'est pas modifié,
+ * ce qui préserve toutes les listes existantes (appel, feuille de notes).
+ * Seul le tri secondaire est ajouté.
  *
  * Usage :
  *   eleves.sort((a, b) => compareParNomFamille(a.eleveNom, b.eleveNom));
@@ -96,5 +116,24 @@ export function extraireNomFamille(nomComplet?: string | null): string {
 export function compareParNomFamille(a?: string | null, b?: string | null): number {
   const nomA = extraireNomFamille(a);
   const nomB = extraireNomFamille(b);
-  return nomA.localeCompare(nomB, 'fr-FR', { sensitivity: 'base' });
+  const cmp = nomA.localeCompare(nomB, 'fr-FR', { sensitivity: 'base' });
+  if (cmp !== 0) return cmp;
+  // Homonymie sur le NOM → on départage avec les prénoms
+  const prenomsA = extrairePrenoms(a);
+  const prenomsB = extrairePrenoms(b);
+  return prenomsA.localeCompare(prenomsB, 'fr-FR', { sensitivity: 'base' });
+}
+
+/**
+ * Comparateur alternatif qui privilégie le tri par PRÉNOMS (utile pour
+ * des listes informelles ou conviviales). Non utilisé par défaut : fourni
+ * pour les futurs écrans qui voudraient ce comportement sans modifier
+ * ceux qui utilisent déjà compareParNomFamille.
+ */
+export function compareParPrenoms(a?: string | null, b?: string | null): number {
+  const prenomsA = extrairePrenoms(a) || extraireNomFamille(a);
+  const prenomsB = extrairePrenoms(b) || extraireNomFamille(b);
+  const cmp = prenomsA.localeCompare(prenomsB, 'fr-FR', { sensitivity: 'base' });
+  if (cmp !== 0) return cmp;
+  return extraireNomFamille(a).localeCompare(extraireNomFamille(b), 'fr-FR', { sensitivity: 'base' });
 }

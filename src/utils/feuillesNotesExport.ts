@@ -3,9 +3,20 @@
  * PedaClic — Charte graphique respectée
  */
 
-import type { FeuilleDeNotes, LigneNotes, EvaluationNote } from '../types/feuillesNotes.types';
+import type { FeuilleDeNotes, LigneNotes, EvaluationNote, TypeEvaluation } from '../types/feuillesNotes.types';
 // ✨ Formatage canonique "Prénoms NOM" — cohérence entre écran et exports
 import { formatEleveNom } from './formatNom';
+
+/**
+ * Étiquette de colonne enrichie : inclut le type (D/C) et le coef. éventuel
+ * pour que les exports soient lisibles seuls (sans le contexte écran).
+ */
+function labelEvalExport(e: EvaluationNote): string {
+  const t: TypeEvaluation = e.type ?? 'devoir';
+  const marqueur = t === 'composition' ? ' [Compo]' : '';
+  const coef = e.coefficient && e.coefficient !== 1 ? ` (coef. ${e.coefficient})` : '';
+  return `${e.libelle}${marqueur}${coef}`;
+}
 
 function toDate(val: unknown): Date {
   if (val instanceof Date) return val;
@@ -23,12 +34,23 @@ export async function exportFeuilleExcel(
 ): Promise<void> {
   const XLSX = await import('xlsx');
   const evals = feuille.evaluations || [];
-  const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
+  // Colonnes de synthèse : devoir, composition, moyenne générale, rang
+  const headers = [
+    'Élève',
+    ...evals.map(labelEvalExport),
+    'Moy. Devoirs',
+    'Composition',
+    'Moy. Générale',
+    'Rang',
+  ];
   const rows = lignes.map((l) => {
     // Nom canonique "Prénoms NOM" pour l'export
     const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(l.notes[e.id] ?? ''));
-    r.push(l.moyenne);
+    r.push(l.moyenneDevoirs || '');
+    r.push(l.noteComposition || '');
+    r.push(l.moyenneGenerale || '');
+    r.push(l.rang || '');
     return r;
   });
   const data = [headers, ...rows];
@@ -49,12 +71,22 @@ export async function exportFeuillePDF(
   const autoTable = (await import('jspdf-autotable')).default;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm' });
   const evals = feuille.evaluations || [];
-  const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
+  const headers = [
+    'Élève',
+    ...evals.map(labelEvalExport),
+    'Moy. Dev.',
+    'Compo',
+    'Moy. Gén.',
+    'Rang',
+  ];
   const rows = lignes.map((l) => {
     // Nom canonique "Prénoms NOM" pour l'export PDF
     const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(String(l.notes[e.id] ?? '-')));
-    r.push(l.moyenne.toFixed(2));
+    r.push(l.moyenneDevoirs > 0 ? l.moyenneDevoirs.toFixed(2) : '-');
+    r.push(l.noteComposition > 0 ? l.noteComposition.toFixed(2) : '-');
+    r.push(l.moyenneGenerale > 0 ? l.moyenneGenerale.toFixed(2) : '-');
+    r.push(l.rang > 0 ? String(l.rang) : '-');
     return r;
   });
 
@@ -88,12 +120,22 @@ export function exportFeuilleWord(
   filename: string
 ): void {
   const evals = feuille.evaluations || [];
-  const headers = ['Élève', ...evals.map((e) => e.libelle), 'Moyenne'];
+  const headers = [
+    'Élève',
+    ...evals.map(labelEvalExport),
+    'Moy. Devoirs',
+    'Composition',
+    'Moy. Générale',
+    'Rang',
+  ];
   const rows = lignes.map((l) => {
     // Nom canonique "Prénoms NOM" pour l'export Word/HTML
     const r: (string | number)[] = [formatEleveNom(l.eleveNom)];
     evals.forEach((e) => r.push(l.notes[e.id] ?? '-'));
-    r.push(l.moyenne.toFixed(2));
+    r.push(l.moyenneDevoirs > 0 ? l.moyenneDevoirs.toFixed(2) : '-');
+    r.push(l.noteComposition > 0 ? l.noteComposition.toFixed(2) : '-');
+    r.push(l.moyenneGenerale > 0 ? l.moyenneGenerale.toFixed(2) : '-');
+    r.push(l.rang > 0 ? String(l.rang) : '-');
     return r;
   });
 
@@ -111,7 +153,8 @@ export function exportFeuilleWord(
     th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; }
     th { background: #2563eb; color: white; font-weight: 600; }
     tr:nth-child(even) { background: #f9fafb; }
-    .moyenne { font-weight: 600; }
+    .moyenne { font-weight: 700; background: #eff6ff; }
+    .synthese { background: #f3f4f6; }
   </style>
 </head>
 <body>
@@ -122,13 +165,17 @@ export function exportFeuilleWord(
     <tbody>
       ${rows
         .map(
-          (row, i) =>
+          (row) =>
+            // Les 4 dernières cellules (Moy. Dev. / Compo / Moy. Gén. / Rang)
+            // sont mises en valeur pour être facilement lisibles dans Word.
             `<tr>${row
-              .map(
-                (cell, j) =>
-                  `<td class="${j === row.length - 1 ? 'moyenne' : ''}">${cell}</td>`
-              )
-              .join('')}</tr>`
+              .map((cell, j) => {
+                const isSynthese = j >= row.length - 4;
+                const isMoyGenerale = j === row.length - 2;
+                const cls = isMoyGenerale ? 'moyenne' : isSynthese ? 'synthese' : '';
+                return `<td class="${cls}">${cell}</td>`;
+              })
+              .join('')}</tr>`,
         )
         .join('')}
     </tbody>
