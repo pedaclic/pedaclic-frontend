@@ -91,15 +91,29 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
             onClick={() => setSelectedFeuille(f)}
           >
             {showGroupeNom && `${f.groupeNom} — `}
-            {f.periodeLabel}
-            <span className="feuille-meta">{f.matiereNom}</span>
+            {/*
+              Affiche le titre libre saisi par le prof s'il existe,
+              sinon retombe sur le libellé de période. Même logique que
+              FeuillesNotesManager.tsx (ligne 302) côté prof, pour que
+              l'élève / le parent voient EXACTEMENT le même intitulé.
+            */}
+            {f.titre || f.periodeLabel}
+            <span className="feuille-meta">
+              {/* On garde la période en sous-libellé quand un titre est défini,
+                  sinon on affiche la matière (comportement historique) */}
+              {f.titre ? `${f.periodeLabel} • ${f.matiereNom}` : f.matiereNom}
+            </span>
           </button>
         ))}
       </div>
       {selectedFeuille && (
         <div className="feuilles-notes-view-detail">
           <h4>
-            {selectedFeuille.periodeLabel} — {selectedFeuille.matiereNom}
+            {/* Titre principal du panneau de détail : titre libre s'il existe,
+                sinon période + matière (comportement précédent) */}
+            {selectedFeuille.titre
+              ? `${selectedFeuille.titre} — ${selectedFeuille.matiereNom}`
+              : `${selectedFeuille.periodeLabel} — ${selectedFeuille.matiereNom}`}
           </h4>
           <div className="feuille-readonly-table-wrapper">
             <table className="feuille-editor-table">

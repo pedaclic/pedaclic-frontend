@@ -194,10 +194,26 @@
   min-width: 80px;
 }
 
-.feuille-editor-table .col-moyenne {
+/* ─────────────────────────────────────────────────────────────
+   Colonnes de synthèse (Moy. Devoirs, Compo, Moy. Gén., Rang).
+   IMPORTANT : on cible UNIQUEMENT les <td> du tbody pour le fond
+   gris clair, sinon ce background écraserait le bleu primaire des
+   <th> et rendrait le texte blanc des titres invisible.
+   ───────────────────────────────────────────────────────────── */
+.feuille-editor-table tbody .col-moyenne {
   min-width: 70px;
   font-weight: var(--font-semibold);
   background: var(--color-bg-secondary);
+}
+
+/* En-tête : on conserve le bleu primaire + texte blanc, comme les
+   autres <th> du tableau, pour que « Moy. Devoirs / Compo / Moy.
+   Gén. / Rang » soient bien lisibles. */
+.feuille-editor-table thead .col-moyenne {
+  min-width: 70px;
+  background: var(--color-primary);
+  color: white;
+  font-weight: var(--font-semibold);
 }
 
 .feuille-editor-table tbody tr:nth-child(even) {
