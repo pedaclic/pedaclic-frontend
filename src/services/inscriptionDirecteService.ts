@@ -37,6 +37,17 @@ export interface EleveResultat {
   inscriptionId?: string; // id du doc inscriptions_groupe si inscrit
 }
 
+/**
+ * Sexe de l'élève (cohérent avec `Sexe` de src/types/index.ts).
+ *   - 'M'    : masculin
+ *   - 'F'    : féminin
+ *   - 'autre': précision libre stockée dans `eleveSexeAutre`
+ *
+ * Champ optionnel pour rétro-compatibilité (les anciennes inscriptions
+ * antérieures à l'ajout de la fonctionnalité n'avaient pas ce champ).
+ */
+export type SexeEleve = 'M' | 'F' | 'autre';
+
 /** Données d'une inscription (document inscriptions_groupe) */
 export interface InscriptionGroupe {
   id: string;
@@ -44,6 +55,15 @@ export interface InscriptionGroupe {
   eleveId: string;
   eleveNom: string;
   eleveEmail: string;
+  /**
+   * Sexe DÉNORMALISÉ depuis `users/{uid}.sexe` (ou saisi manuellement
+   * pour une inscription offline / corrigé a posteriori par le prof).
+   * Permet l'affichage des pictogrammes ♂/♀ et les statistiques genrées
+   * sans relire la collection `users` à chaque rendu.
+   */
+  eleveSexe?: SexeEleve;
+  /** Précision libre quand eleveSexe === 'autre'. */
+  eleveSexeAutre?: string;
   profId: string;         // prof qui a effectué l'inscription
   dateInscription: Timestamp;
   statut: 'actif' | 'suspendu';
@@ -164,12 +184,30 @@ export async function inscrireEleveDirect(
     throw new Error('Compte élève introuvable ou invalide.');
   }
 
+  // ── 2 bis. Dénormalisation du SEXE de l'élève ────────────────
+  //   On lit `users/{uid}.sexe` et `users/{uid}.sexeAutre` pour les
+  //   copier sur le document d'inscription. Permet d'afficher les
+  //   pictogrammes ♂/♀ côté prof sans relire `users` ligne par ligne.
+  const eleveDoc = eleveSnap.data() || {};
+  let eleveSexe: SexeEleve | undefined;
+  let eleveSexeAutre: string | undefined;
+  if (eleveDoc.sexe === 'M' || eleveDoc.sexe === 'F' || eleveDoc.sexe === 'autre') {
+    eleveSexe = eleveDoc.sexe;
+  }
+  if (typeof eleveDoc.sexeAutre === 'string' && eleveDoc.sexeAutre.trim()) {
+    eleveSexeAutre = eleveDoc.sexeAutre.trim();
+  }
+
   // ── 3. Créer le document d'inscription ───────────────────────
+  //   On omet les champs `eleveSexe`/`eleveSexeAutre` quand ils ne sont
+  //   pas définis : Firestore refuse `undefined` sur un `addDoc`.
   const inscriptionData: Omit<InscriptionGroupe, 'id'> = {
     groupeId,
     eleveId:          eleve.uid,
     eleveNom:         eleve.displayName,
     eleveEmail:       eleve.email,
+    ...(eleveSexe ? { eleveSexe } : {}),
+    ...(eleveSexeAutre ? { eleveSexeAutre } : {}),
     profId,
     dateInscription:  Timestamp.now(),
     statut:           'actif',
@@ -371,17 +409,25 @@ function genererEleveIdOffline(): string {
  * pas créé de compte. Une fois le compte créé, le prof pourra
  * réinscrire l'élève avec inscrireEleveDirect() pour relier les deux.
  *
+ * 🆕 Le sexe est OPTIONNEL ici car l'élève n'a pas de compte ; on
+ *    le saisit donc directement sur l'inscription pour alimenter les
+ *    statistiques genrées du groupe (cf. carte « Répartition F/M »).
+ *
  * @param groupeId   ID du groupe cible
  * @param nom        Nom complet de l'élève (obligatoire)
  * @param profId     UID du prof qui effectue l'inscription
  * @param remarque   Note libre optionnelle (tuteur, téléphone…)
+ * @param sexe       Sexe de l'élève ('M' | 'F' | 'autre') — optionnel
+ * @param sexeAutre  Précision libre quand sexe === 'autre' — optionnel
  * @returns          ID du document inscriptions_groupe créé
  */
 export async function inscrireEleveOffline(
   groupeId: string,
   nom: string,
   profId: string,
-  remarque?: string
+  remarque?: string,
+  sexe?: SexeEleve,
+  sexeAutre?: string,
 ): Promise<string> {
   const nomPropre = nom.trim();
   if (nomPropre.length < 2) {
@@ -397,6 +443,11 @@ export async function inscrireEleveOffline(
     eleveId,
     eleveNom:          nomPropre,
     eleveEmail:        '', // pas d'email puisque pas de compte
+    // Sexe écrit uniquement s'il est valide (Firestore refuse undefined).
+    ...(sexe === 'M' || sexe === 'F' || sexe === 'autre' ? { eleveSexe: sexe } : {}),
+    ...(sexe === 'autre' && sexeAutre && sexeAutre.trim()
+      ? { eleveSexeAutre: sexeAutre.trim() }
+      : {}),
     profId,
     dateInscription:   Timestamp.now(),
     statut:            'actif',
@@ -413,6 +464,33 @@ export async function inscrireEleveOffline(
   });
 
   return ref.id;
+}
+
+/**
+ * 🆕 Met à jour le SEXE d'une inscription (édition a posteriori).
+ *
+ *   - Pour une inscription 'offline' (pas de compte) : le sexe est
+ *     stocké uniquement sur l'inscription, donc on met à jour ce doc.
+ *   - Pour une inscription 'direct' / 'code' (élève avec compte) : on
+ *     met à jour la dénormalisation locale ; le profil global
+ *     (`users/{uid}.sexe`) reste sous le contrôle de l'élève.
+ *
+ *   Passer `sexe = null` retire le champ (cas rare : correction d'erreur).
+ */
+export async function mettreAJourSexeInscription(
+  inscriptionId: string,
+  sexe: SexeEleve | null,
+  sexeAutre?: string | null,
+): Promise<void> {
+  // Firestore n'accepte pas `undefined` : on utilise `null` pour
+  // matérialiser la suppression d'un champ existant. Les lectures côté
+  // UI traitent `null` comme « non renseigné ».
+  const payload: Record<string, unknown> = {
+    eleveSexe: sexe ?? null,
+    eleveSexeAutre:
+      sexe === 'autre' && sexeAutre && sexeAutre.trim() ? sexeAutre.trim() : null,
+  };
+  await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), payload);
 }
 
 /**
@@ -506,29 +584,60 @@ export interface InscriptionBulkResultat {
  * Parse une ligne brute en champs structurés.
  * Tolère ";", ",", et "\t" comme séparateurs ; trim tout.
  *
- * Heuristique email :
- *   Si un champ quelconque contient "@", il est traité comme email.
- *   Les autres champs non-email sont candidats au "nom".
+ * Heuristiques :
+ *   - Email   : tout champ contenant "@" est traité comme email.
+ *   - Sexe    : tout champ qui est exactement "M" / "F" / "Masculin" /
+ *               "Féminin" / "Garcon" / "Garçon" / "Fille" (insensible à
+ *               la casse) est interprété comme sexe.
+ *   - Nom     : premier champ non-email + non-sexe.
+ *   - Remarque: champs restants concaténés.
+ *
+ * Cette détection permet aux profs d'importer une liste avec une colonne
+ * sexe sans devoir respecter un ordre figé : « Diop Awa ; F ; awa@... »
+ * fonctionne aussi bien que « Diop Awa ; awa@... ; F ».
  */
-function parseLigneBulk(ligne: string): { nom: string; email: string; remarque: string } | null {
+function parseLigneBulk(ligne: string): {
+  nom: string;
+  email: string;
+  remarque: string;
+  sexe?: SexeEleve;
+} | null {
   const brut = ligne.trim();
   if (!brut) return null;
   // Split flexible : ; ou , ou tab
   const parties = brut.split(/[;,\t]/).map((s) => s.trim()).filter(Boolean);
   if (parties.length === 0) return null;
 
+  // Helper : tente d'interpréter un champ comme sexe.
+  //   Renvoie 'M' / 'F' / null. On accepte plusieurs synonymes français
+  //   pour rester tolérant à la diversité des fichiers source.
+  const detecterSexe = (champ: string): SexeEleve | null => {
+    const c = champ.trim().toLowerCase();
+    if (c === 'm' || c === 'masculin' || c === 'garcon' || c === 'garçon') return 'M';
+    if (c === 'f' || c === 'féminin' || c === 'feminin' || c === 'fille') return 'F';
+    return null;
+  };
+
   let email = '';
-  const nonEmail: string[] = [];
+  let sexe: SexeEleve | undefined;
+  const nonClassifies: string[] = [];
   for (const p of parties) {
     if (p.includes('@') && !email) {
       email = p.toLowerCase();
-    } else {
-      nonEmail.push(p);
+      continue;
     }
+    if (!sexe) {
+      const s = detecterSexe(p);
+      if (s) {
+        sexe = s;
+        continue;
+      }
+    }
+    nonClassifies.push(p);
   }
-  const nom = nonEmail[0] ?? '';
-  const remarque = nonEmail.slice(1).join(' ').trim();
-  return { nom, email, remarque };
+  const nom = nonClassifies[0] ?? '';
+  const remarque = nonClassifies.slice(1).join(' ').trim();
+  return { nom, email, remarque, sexe };
 }
 
 /**
@@ -567,7 +676,7 @@ export async function inscrireElevesEnLot(
       continue;
     }
 
-    const { nom, email, remarque } = parsed;
+    const { nom, email, remarque, sexe } = parsed;
 
     // ── Cas 1 : email fourni → on tente l'inscription directe ───
     if (email) {
@@ -649,7 +758,9 @@ export async function inscrireElevesEnLot(
       const remarqueFinale = [remarque, email ? `email: ${email}` : '']
         .filter(Boolean)
         .join(' — ');
-      await inscrireEleveOffline(groupeId, nom, profId, remarqueFinale || undefined);
+      // 🆕 On transmet le sexe (s'il a été détecté dans la ligne) à
+      //    `inscrireEleveOffline` qui le persistera sur l'inscription.
+      await inscrireEleveOffline(groupeId, nom, profId, remarqueFinale || undefined, sexe);
       resultats.push({
         ligne: numeroLigne,
         contenuBrut,
@@ -657,9 +768,11 @@ export async function inscrireElevesEnLot(
         source: 'offline',
         nom,
         email: email || undefined,
-        message: email
-          ? `✓ Ajouté sans compte (email "${email}" consigné en remarque).`
-          : '✓ Ajouté sans compte PedaClic.',
+        message:
+          (email
+            ? `✓ Ajouté sans compte (email "${email}" consigné en remarque)`
+            : '✓ Ajouté sans compte PedaClic') +
+          (sexe ? ` — sexe : ${sexe === 'M' ? 'Masculin' : sexe === 'F' ? 'Féminin' : 'Autre'}.` : '.'),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

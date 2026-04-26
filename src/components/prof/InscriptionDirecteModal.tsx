@@ -18,9 +18,13 @@ import {
   inscrireElevesEnLot,
   // Correction / édition des noms d'élèves inscrits
   modifierInscription,
+  // 🆕 Édition a posteriori du sexe d'un élève (pour les 87 élèves
+  //    déjà inscrits avant l'introduction du champ).
+  mettreAJourSexeInscription,
   type EleveResultat,
   type InscriptionGroupe,
   type InscriptionBulkResultat,
+  type SexeEleve,
 } from '../../services/inscriptionDirecteService';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import '../../styles/InscriptionDirecte.css'; // Styles du modal
@@ -67,8 +71,21 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   // ── Phase 34 — Formulaire d'inscription d'un élève sans compte PedaClic ──
   const [offlineNom, setOfflineNom] = useState('');
   const [offlineRemarque, setOfflineRemarque] = useState('');
+  // 🆕 Sexe saisi par le prof pour l'élève sans compte (statistiques genrées)
+  //    `undefined` = pas encore choisi ; valeur obligatoire à la saisie.
+  const [offlineSexe, setOfflineSexe] = useState<SexeEleve | undefined>(undefined);
+  const [offlineSexeAutre, setOfflineSexeAutre] = useState<string>('');
   const [offlineEnCours, setOfflineEnCours] = useState(false);
   const [offlineErreur, setOfflineErreur] = useState<string | null>(null);
+
+  // ── Édition a posteriori du SEXE d'un élève inscrit ──────────────
+  //   `editionSexeId` mémorise l'inscription en cours d'édition de sexe
+  //   (différent de l'édition de nom). Permet au prof de saisir/corriger
+  //   le sexe d'un élève pré-existant directement depuis la liste.
+  const [editionSexeId, setEditionSexeId] = useState<string | null>(null);
+  const [editionSexeValeur, setEditionSexeValeur] = useState<SexeEleve | undefined>(undefined);
+  const [editionSexeAutre, setEditionSexeAutre] = useState<string>('');
+  const [editionSexeEnCours, setEditionSexeEnCours] = useState(false);
 
   // ── Phase 36 — Inscription en lot (saisie texte multi-lignes) ──
   //   La zone de texte autorise le copier-coller depuis un tableur :
@@ -187,6 +204,11 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
   //   Permet au prof de tenir à jour absences et notes même si l'élève
   //   n'a pas encore créé son compte. Crée une inscription virtuelle
   //   dans inscriptions_groupe avec un id synthétique.
+  //
+  //   🆕 Le sexe est OBLIGATOIRE ici (pour alimenter les stats genrées) ;
+  //      l'élève n'ayant pas de compte, c'est l'unique opportunité de
+  //      capturer cette donnée. Si « Autre » est choisi, on exige aussi
+  //      la précision libre.
   const handleInscrireOffline = async (e: React.FormEvent) => {
     e.preventDefault();
     if (offlineEnCours) return;
@@ -196,12 +218,30 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
       setOfflineErreur('Le nom doit contenir au moins 2 caractères.');
       return;
     }
+    if (!offlineSexe) {
+      setOfflineErreur('Veuillez préciser le sexe (M / F / Autre).');
+      return;
+    }
+    if (offlineSexe === 'autre' && !offlineSexeAutre.trim()) {
+      setOfflineErreur('Veuillez préciser le libellé pour « Autre ».');
+      return;
+    }
     setOfflineEnCours(true);
     try {
-      await inscrireEleveOffline(groupeId, nomPropre, profId, offlineRemarque || undefined);
+      await inscrireEleveOffline(
+        groupeId,
+        nomPropre,
+        profId,
+        offlineRemarque || undefined,
+        offlineSexe,
+        offlineSexe === 'autre' ? offlineSexeAutre.trim() : undefined,
+      );
       setMessageSucces(`✅ ${nomPropre} a été ajouté dans ${groupeNom} (sans compte PedaClic).`);
+      // Reset des champs pour permettre un enchaînement rapide d'inscriptions
       setOfflineNom('');
       setOfflineRemarque('');
+      setOfflineSexe(undefined);
+      setOfflineSexeAutre('');
       await chargerInscrits();
       onSuccess?.();
     } catch (err: unknown) {
@@ -209,6 +249,61 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
       setOfflineErreur(message);
     } finally {
       setOfflineEnCours(false);
+    }
+  };
+
+  // ── Édition a posteriori du SEXE d'un élève déjà inscrit ──────────
+  //   Ouvre un mini-formulaire au-dessus de la ligne. Idempotent : si
+  //   l'utilisateur valide sans changement, on évite l'écriture Firestore.
+  const commencerEditionSexe = (inscription: InscriptionGroupe) => {
+    setEditionSexeId(inscription.id);
+    setEditionSexeValeur(inscription.eleveSexe);
+    setEditionSexeAutre(inscription.eleveSexeAutre || '');
+  };
+
+  const annulerEditionSexe = () => {
+    setEditionSexeId(null);
+    setEditionSexeValeur(undefined);
+    setEditionSexeAutre('');
+  };
+
+  const validerEditionSexe = async (inscription: InscriptionGroupe) => {
+    if (editionSexeEnCours) return;
+    // Validation : si « Autre », on exige une précision libre.
+    if (editionSexeValeur === 'autre' && !editionSexeAutre.trim()) {
+      setMessageSucces(null);
+      // On réutilise l'erreur Liste (plus visible que de créer une 4e variable)
+      setErreurListe('Veuillez préciser le libellé pour « Autre ».');
+      return;
+    }
+    setEditionSexeEnCours(true);
+    try {
+      await mettreAJourSexeInscription(
+        inscription.id,
+        editionSexeValeur ?? null,
+        editionSexeValeur === 'autre' ? editionSexeAutre.trim() : null,
+      );
+      // Mise à jour optimiste (pas de rechargement complet : économique)
+      setInscrits((prev) =>
+        prev.map((i) =>
+          i.id === inscription.id
+            ? {
+                ...i,
+                eleveSexe: editionSexeValeur,
+                eleveSexeAutre:
+                  editionSexeValeur === 'autre' ? editionSexeAutre.trim() : undefined,
+              }
+            : i,
+        ),
+      );
+      setMessageSucces(`✏️ Sexe mis à jour pour ${inscription.eleveNom}.`);
+      annulerEditionSexe();
+      onSuccess?.();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la mise à jour du sexe.';
+      setErreurListe(msg);
+    } finally {
+      setEditionSexeEnCours(false);
     }
   };
 
@@ -543,12 +638,93 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                     maxLength={120}
                     aria-label="Remarque facultative"
                   />
+
+                  {/* ──────────────────────────────────────────────────
+                      🆕 Sélection du SEXE — OBLIGATOIRE pour l'inscription
+                      offline (l'élève n'a pas de compte, donc on ne pourra
+                      pas récupérer la donnée plus tard automatiquement).
+                      ────────────────────────────────────────────────── */}
+                  <div
+                    role="radiogroup"
+                    aria-label="Sexe de l'élève"
+                    style={{
+                      gridColumn: '1 / -1',
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '8px 10px',
+                      border: '1px dashed #d1d5db',
+                      borderRadius: 6,
+                      background: '#fff',
+                    }}
+                  >
+                    <strong style={{ fontSize: '0.85rem', color: '#1f2937' }}>
+                      Sexe <span style={{ color: '#b91c1c' }}>*</span>
+                    </strong>
+                    {/* Trois options M / F / Autre, alignées sur la palette
+                        utilisée dans la carte « Répartition F/M » du dashboard. */}
+                    {([
+                      { v: 'M' as SexeEleve, label: '♂ Masculin', color: '#3b82f6' },
+                      { v: 'F' as SexeEleve, label: '♀ Féminin', color: '#ec4899' },
+                      { v: 'autre' as SexeEleve, label: '✱ Autre', color: '#6b7280' },
+                    ]).map((opt) => (
+                      <label
+                        key={opt.v}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                          padding: '4px 10px',
+                          border: `1px solid ${offlineSexe === opt.v ? opt.color : '#e5e7eb'}`,
+                          borderRadius: 4,
+                          background: offlineSexe === opt.v ? `${opt.color}15` : 'white',
+                          color: offlineSexe === opt.v ? opt.color : '#374151',
+                          fontWeight: 600,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="offlineSexe"
+                          value={opt.v}
+                          checked={offlineSexe === opt.v}
+                          onChange={() => setOfflineSexe(opt.v)}
+                          style={{ margin: 0 }}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                    {/* Champ libre conditionnel (« Autre ») */}
+                    {offlineSexe === 'autre' && (
+                      <input
+                        type="text"
+                        placeholder="Précisez…"
+                        value={offlineSexeAutre}
+                        onChange={(e) => setOfflineSexeAutre(e.target.value)}
+                        maxLength={40}
+                        aria-label="Précision pour « Autre »"
+                        style={{
+                          flex: '1 1 140px',
+                          padding: '4px 8px',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          fontSize: '0.85rem',
+                        }}
+                      />
+                    )}
+                  </div>
+
                   {offlineErreur && (
                     <p style={{ gridColumn: '1 / -1', margin: 0, color: '#b91c1c', fontSize: '0.78rem' }} role="alert">
                       ⚠️ {offlineErreur}
                     </p>
                   )}
-                  <button type="submit" disabled={offlineEnCours || offlineNom.trim().length < 2}>
+                  <button
+                    type="submit"
+                    disabled={offlineEnCours || offlineNom.trim().length < 2 || !offlineSexe}
+                  >
                     {offlineEnCours ? '⏳ Ajout en cours…' : '➕ Ajouter cet élève (sans compte)'}
                   </button>
                 </form>
@@ -571,8 +747,15 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                   <br />
                   <code>Nom Prénom</code> &nbsp;•&nbsp;
                   <code>email@domaine</code> &nbsp;•&nbsp;
-                  <code>Nom Prénom ; email@domaine</code> &nbsp;•&nbsp;
-                  <code>Nom Prénom ; email ; remarque</code>
+                  <code>Nom Prénom ; F</code> &nbsp;•&nbsp;
+                  <code>Nom Prénom ; email ; M</code> &nbsp;•&nbsp;
+                  <code>Nom Prénom ; email ; F ; remarque</code>
+                  <br />
+                  {/* 🆕 Le sexe est détecté automatiquement quel que soit son
+                      ordre dans la ligne. Synonymes acceptés ci-dessous. */}
+                  <strong>Sexe</strong> (optionnel mais recommandé) :{' '}
+                  <code>M</code>, <code>F</code>, <code>Masculin</code>, <code>Féminin</code>,{' '}
+                  <code>Garçon</code>, <code>Fille</code> (insensible à la casse).
                   <br />
                   Séparateurs autorisés : <code>;</code>, <code>,</code> ou tabulation
                   (copier-coller depuis un tableur supporté).
@@ -585,7 +768,7 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
               <textarea
                 id="idm-bulk-textarea"
                 className="idm-bulk-textarea"
-                placeholder={`Exemple :\nDiop Awa ; awa.diop@exemple.sn\nFall Moussa ; ; tuteur 77 123 45 67\nmoussa.fall@exemple.sn\nMbaye Fatou`}
+                placeholder={`Exemple :\nDiop Awa ; F ; awa.diop@exemple.sn\nFall Moussa ; M ; ; tuteur 77 123 45 67\nmoussa.fall@exemple.sn ; M\nMbaye Fatou ; F`}
                 value={bulkTexte}
                 onChange={(e) => setBulkTexte(e.target.value)}
                 rows={10}
@@ -759,9 +942,106 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                                 {!inscription.isOffline && " Le profil global de l'élève n'est pas modifié."}
                               </p>
                             </div>
+                          ) : editionSexeId === inscription.id ? (
+                            // ─────────────────────────────────────────
+                            // ÉDITION DU SEXE (a posteriori)
+                            // ─────────────────────────────────────────
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              <span className="idm-carte-eleve__nom">{inscription.eleveNom}</span>
+                              <div
+                                role="radiogroup"
+                                aria-label={`Sexe de ${inscription.eleveNom}`}
+                                style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}
+                              >
+                                {([
+                                  { v: 'M' as SexeEleve, label: '♂ M', color: '#3b82f6' },
+                                  { v: 'F' as SexeEleve, label: '♀ F', color: '#ec4899' },
+                                  { v: 'autre' as SexeEleve, label: '✱ Autre', color: '#6b7280' },
+                                ]).map((opt) => (
+                                  <label
+                                    key={opt.v}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: 4,
+                                      padding: '3px 8px',
+                                      border: `1px solid ${editionSexeValeur === opt.v ? opt.color : '#e5e7eb'}`,
+                                      borderRadius: 4,
+                                      background: editionSexeValeur === opt.v ? `${opt.color}15` : 'white',
+                                      color: editionSexeValeur === opt.v ? opt.color : '#374151',
+                                      fontWeight: 600,
+                                      fontSize: '0.78rem',
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name={`editionSexe-${inscription.id}`}
+                                      value={opt.v}
+                                      checked={editionSexeValeur === opt.v}
+                                      onChange={() => setEditionSexeValeur(opt.v)}
+                                      style={{ margin: 0 }}
+                                      disabled={editionSexeEnCours}
+                                    />
+                                    {opt.label}
+                                  </label>
+                                ))}
+                                {editionSexeValeur === 'autre' && (
+                                  <input
+                                    type="text"
+                                    placeholder="Précisez…"
+                                    value={editionSexeAutre}
+                                    onChange={(e) => setEditionSexeAutre(e.target.value)}
+                                    maxLength={40}
+                                    style={{
+                                      padding: '4px 8px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: 4,
+                                      fontSize: '0.78rem',
+                                      flex: '1 1 120px',
+                                    }}
+                                    disabled={editionSexeEnCours}
+                                  />
+                                )}
+                              </div>
+                              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.72rem' }}>
+                                ℹ️ Stocké uniquement sur cette inscription (n'affecte pas le profil de l'élève).
+                              </p>
+                            </div>
                           ) : (
                             <>
                               <span className="idm-carte-eleve__nom">
+                                {/* 🆕 Pictogramme sexe (♂/♀/✱) AVANT le nom — invisible
+                                    si non renseigné. Couleur cohérente avec le dashboard. */}
+                                {inscription.eleveSexe && (
+                                  <span
+                                    title={
+                                      inscription.eleveSexe === 'M'
+                                        ? 'Masculin'
+                                        : inscription.eleveSexe === 'F'
+                                          ? 'Féminin'
+                                          : `Autre${inscription.eleveSexeAutre ? ' — ' + inscription.eleveSexeAutre : ''}`
+                                    }
+                                    style={{
+                                      display: 'inline-block',
+                                      marginRight: 6,
+                                      color:
+                                        inscription.eleveSexe === 'F'
+                                          ? '#ec4899'
+                                          : inscription.eleveSexe === 'M'
+                                            ? '#3b82f6'
+                                            : '#9ca3af',
+                                      fontWeight: 700,
+                                      fontSize: '1rem',
+                                    }}
+                                  >
+                                    {inscription.eleveSexe === 'F'
+                                      ? '♀'
+                                      : inscription.eleveSexe === 'M'
+                                        ? '♂'
+                                        : '✱'}
+                                  </span>
+                                )}
                                 {inscription.eleveNom}
                                 {/* Phase 34 — marqueur "sans compte" */}
                                 {inscription.isOffline && (
@@ -771,6 +1051,20 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                                     title="Élève sans compte PedaClic"
                                   >
                                     📝 Sans compte
+                                  </span>
+                                )}
+                                {/* 🆕 Indicateur visuel quand le sexe n'est PAS renseigné :
+                                    incite le prof à le saisir (en cliquant sur ⚧). */}
+                                {!inscription.eleveSexe && (
+                                  <span
+                                    style={{
+                                      marginLeft: 8,
+                                      fontSize: '0.65rem',
+                                      color: '#9ca3af',
+                                      fontStyle: 'italic',
+                                    }}
+                                  >
+                                    sexe non renseigné
                                   </span>
                                 )}
                               </span>
@@ -820,6 +1114,31 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                                 ✕
                               </button>
                             </>
+                          ) : editionSexeId === inscription.id ? (
+                            <>
+                              {/* Boutons spécifiques à l'édition du SEXE */}
+                              <button
+                                className="idm-btn idm-btn--reactiver"
+                                onClick={() => validerEditionSexe(inscription)}
+                                disabled={
+                                  editionSexeEnCours ||
+                                  (editionSexeValeur === 'autre' && !editionSexeAutre.trim())
+                                }
+                                title="Enregistrer le sexe"
+                                aria-label="Enregistrer le sexe"
+                              >
+                                {editionSexeEnCours ? <span className="idm-spinner idm-spinner--sm" /> : '✓'}
+                              </button>
+                              <button
+                                className="idm-btn idm-btn--retirer"
+                                onClick={annulerEditionSexe}
+                                disabled={editionSexeEnCours}
+                                title="Annuler"
+                                aria-label="Annuler"
+                              >
+                                ✕
+                              </button>
+                            </>
                           ) : (
                             <>
                               {/* Bouton Modifier — disponible pour TOUS les types d'inscription */}
@@ -832,6 +1151,27 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
                                 style={{ background: '#e0f2fe', color: '#075985', borderColor: '#bae6fd' }}
                               >
                                 ✏️
+                              </button>
+                              {/* 🆕 Bouton ⚧ — ouvre l'édition du sexe a posteriori.
+                                  Coloré rose/bleu si déjà renseigné, gris vif sinon
+                                  pour attirer l'attention sur les fiches incomplètes. */}
+                              <button
+                                className="idm-btn"
+                                onClick={() => commencerEditionSexe(inscription)}
+                                disabled={actionEnCours === inscription.id}
+                                title={
+                                  inscription.eleveSexe
+                                    ? `Modifier le sexe (actuel : ${inscription.eleveSexe === 'M' ? 'Masculin' : inscription.eleveSexe === 'F' ? 'Féminin' : 'Autre'})`
+                                    : 'Renseigner le sexe (manquant)'
+                                }
+                                aria-label={`Sexe de ${inscription.eleveNom}`}
+                                style={{
+                                  background: inscription.eleveSexe ? '#f3e8ff' : '#fee2e2',
+                                  color: inscription.eleveSexe ? '#6b21a8' : '#991b1b',
+                                  borderColor: inscription.eleveSexe ? '#e9d5ff' : '#fecaca',
+                                }}
+                              >
+                                ⚧
                               </button>
                               <button
                                 className={`idm-btn ${inscription.statut === 'actif' ? 'idm-btn--suspendre' : 'idm-btn--reactiver'}`}
