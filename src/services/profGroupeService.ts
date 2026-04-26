@@ -308,11 +308,41 @@ export async function rejoindreGroupe(
       throw new Error('Tu es déjà inscrit(e) dans ce groupe.');
     }
 
+    // ── Dénormalisation du SEXE de l'élève sur l'inscription ──
+    //   On lit `users/{eleveId}.sexe` (et `sexeAutre`) puis on les copie
+    //   dans le document d'inscription afin que le prof puisse afficher
+    //   les pictogrammes ♂/♀ et calculer les statistiques genrées sans
+    //   relire la collection `users` pour chaque ligne. Champ optionnel :
+    //   un compte sans sexe renseigné s'inscrira sans `eleveSexe`.
+    let eleveSexe: 'M' | 'F' | 'autre' | undefined;
+    let eleveSexeAutre: string | undefined;
+    try {
+      const userSnap = await getDoc(doc(db, 'users', eleveId));
+      if (userSnap.exists()) {
+        const u = userSnap.data();
+        if (u.sexe === 'M' || u.sexe === 'F' || u.sexe === 'autre') {
+          eleveSexe = u.sexe;
+        }
+        if (typeof u.sexeAutre === 'string' && u.sexeAutre.trim()) {
+          eleveSexeAutre = u.sexeAutre.trim();
+        }
+      }
+    } catch (e) {
+      // Lecture facultative : on continue sans bloquer l'inscription si la
+      // règle Firestore refuse l'accès au profil (rare mais possible).
+      console.warn('Lecture sexe échouée, inscription poursuivie sans :', e);
+    }
+
     const inscriptionData = {
       groupeId: groupeDoc.id,
       eleveId,
       eleveNom,
       eleveEmail,
+      // On n'écrit `eleveSexe`/`eleveSexeAutre` que s'ils sont définis :
+      // évite de polluer Firestore avec des champs `undefined` (Firestore
+      // les rejette en `addDoc`).
+      ...(eleveSexe ? { eleveSexe } : {}),
+      ...(eleveSexeAutre ? { eleveSexeAutre } : {}),
       statut: 'actif' as const,
       dateInscription: new Date()
     };
@@ -358,6 +388,47 @@ export async function getElevesGroupe(
   } catch (error) {
     console.error('❌ Erreur récupération élèves groupe:', error);
     throw new Error('Impossible de charger les élèves du groupe.');
+  }
+}
+
+/**
+ * 🆕 Propage une mise à jour de sexe (faite côté profil élève) vers TOUTES
+ *    les inscriptions actives de l'élève. Idempotent : appelable à chaque
+ *    enregistrement du profil sans risque (writes fusionnés en batch).
+ *
+ *    `sexe = null` ou `undefined` → suppression du champ sur les inscriptions
+ *    (cas rare : l'élève a vidé son sexe au profil).
+ */
+export async function syncSexeInscriptions(
+  eleveId: string,
+  sexe: 'M' | 'F' | 'autre' | null | undefined,
+  sexeAutre?: string | null
+): Promise<void> {
+  try {
+    const q = query(
+      collection(db, 'inscriptions_groupe'),
+      where('eleveId', '==', eleveId),
+      where('statut', '==', 'actif')
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return;
+
+    const batch = writeBatch(db);
+    snap.docs.forEach((d) => {
+      const ref = doc(db, 'inscriptions_groupe', d.id);
+      // Patch minimal : on met à jour eleveSexe / eleveSexeAutre.
+      // Note : Firestore n'accepte pas `undefined`, donc pour supprimer un
+      // champ on passe `null` (qui sera ensuite ignoré par le typage côté UI).
+      const patch: Record<string, unknown> = {
+        eleveSexe: sexe ?? null,
+        eleveSexeAutre: sexe === 'autre' ? (sexeAutre || null) : null,
+      };
+      batch.update(ref, patch);
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error('❌ Erreur synchronisation sexe inscriptions:', error);
+    // Erreur non bloquante : la mise à jour du profil principal a déjà eu lieu.
   }
 }
 

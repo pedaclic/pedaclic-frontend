@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchUserData = async (uid: string): Promise<User | null> => {
     try {
       const userDoc = await getDoc(doc(db, 'users', uid));
-      
+
       if (userDoc.exists()) {
         const data = userDoc.data();
         return {
@@ -88,6 +88,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: data.email,
           displayName: data.displayName,
           role: data.role as UserRole,
+          // Sexe (M/F/autre) — peut être absent sur les comptes antérieurs
+          // à l'introduction du champ : on remonte alors `undefined` plutôt
+          // qu'une valeur arbitraire.
+          sexe: data.sexe || undefined,
+          sexeAutre: data.sexeAutre || undefined,
           isPremium: data.isPremium || false,
           subscriptionEnd: data.subscriptionEnd?.toDate() || null,
           subscriptionPlan: data.subscriptionPlan || undefined,
@@ -128,6 +133,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         createdAt: serverTimestamp(),
         lastLogin: serverTimestamp()
       };
+      // Persistance OPTIONNELLE du sexe : on n'écrit le champ que s'il a
+      // été fourni (cas des inscriptions email/mdp avec rôle élève/parent).
+      // Lors d'un login Google de tout compte, le champ peut rester vide ;
+      // l'utilisateur le complétera depuis son profil.
+      if (additionalData?.sexe) {
+        baseData.sexe = additionalData.sexe;
+        if (additionalData.sexe === 'autre' && additionalData.sexeAutre) {
+          baseData.sexeAutre = additionalData.sexeAutre;
+        }
+      }
       if (additionalData?.emailVerificationRequired === true) {
         baseData.emailVerificationRequired = true;
       }
@@ -190,6 +205,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await createOrUpdateUserDoc(user, {
         displayName: data.displayName,
         role: data.role,
+        // Champs sexe transmis si saisis (cf. RegisterPage : recommandé pour
+        // les rôles élève / parent, optionnel pour les autres).
+        sexe: data.sexe,
+        sexeAutre: data.sexeAutre,
         emailVerificationRequired: true
       });
 

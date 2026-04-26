@@ -9,6 +9,7 @@ import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Tra
 import {
   getFeuilleById,
   updateNoteBulk,
+  updateAbsenceBulk,
   updateEvaluationsFeuille,
   updateCompetencesDefFeuille,
   updateCompetenceEleve,
@@ -17,8 +18,16 @@ import {
 } from '../services/feuillesNotesService';
 import { getElevesGroupe } from '../services/profGroupeService';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
-import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus, TypeEvaluation } from '../types/feuillesNotes.types';
-import { COMPETENCES_PAR_DEFAUT, COMPETENCE_STATUS_LABELS, COMPETENCE_STATUS_COLORS, TYPE_EVAL_LABELS } from '../types/feuillesNotes.types';
+import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus, TypeEvaluation, StatutAbsenceDevoir } from '../types/feuillesNotes.types';
+import {
+  COMPETENCES_PAR_DEFAUT,
+  COMPETENCE_STATUS_LABELS,
+  COMPETENCE_STATUS_COLORS,
+  TYPE_EVAL_LABELS,
+  STATUT_ABSENCE_LABELS,
+  STATUT_ABSENCE_BADGES,
+  STATUT_ABSENCE_COLORS,
+} from '../types/feuillesNotes.types';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
 // ✨ Formatage "Prénoms NOM" + tri alphabétique par nom de famille
@@ -333,6 +342,66 @@ const FeuilleNotesEditorPage: React.FC = () => {
     updateCompetencesDefFeuille(feuille.id, defs).catch(console.error);
   };
 
+  /**
+   * 🆕 Bascule le statut d'absence d'un élève à une évaluation.
+   *
+   *   Cycle : Présent → Absent justifié → Absent non justifié → Présent…
+   *
+   *   - Met à jour optimistiquement l'état local de la feuille
+   *     (champ `feuille.absences[eleveId][evalId]`).
+   *   - Recalcule les lignes (moyennes + rang) immédiatement via
+   *     `buildLignesNotes` pour que l'UI reflète la règle
+   *     « justifiée = ignore / non justifiée = 0 ».
+   *   - Persiste en parallèle via `updateAbsenceBulk` (Firestore).
+   *
+   *   En cas de passage à une absence, la note saisie est aussi effacée
+   *   localement (cohérence : un élève absent n'a pas pu composer).
+   */
+  const cycleAbsenceStatut = (eleveId: string, evalId: string) => {
+    if (!feuille || !feuilleId) return;
+
+    // Cycle de 3 états : Présent → AJ → ANJ → Présent…
+    const order: (StatutAbsenceDevoir | 'present')[] = ['present', 'absent_justifie', 'absent_non_justifie'];
+    const current = feuille.absences?.[eleveId]?.[evalId] ?? 'present';
+    const next = order[(order.indexOf(current) + 1) % order.length];
+
+    // Clone défensif puis mise à jour optimiste
+    const absencesUpdated = JSON.parse(JSON.stringify(feuille.absences || {}));
+    if (!absencesUpdated[eleveId]) absencesUpdated[eleveId] = {};
+    if (next === 'present') {
+      delete absencesUpdated[eleveId][evalId];
+    } else {
+      absencesUpdated[eleveId][evalId] = next;
+    }
+
+    // Si on passe en absence, on retire la note (cohérence pédagogique)
+    const notesUpdated = JSON.parse(JSON.stringify(feuille.notes || {}));
+    if (next !== 'present' && notesUpdated[eleveId]) {
+      delete notesUpdated[eleveId][evalId];
+    }
+
+    // 🔁 Mise à jour state + recalcul des lignes (moyennes / rang)
+    const feuilleNouvelle: FeuilleDeNotes = { ...feuille, absences: absencesUpdated, notes: notesUpdated };
+    setFeuille(feuilleNouvelle);
+    setLignes((prev) => {
+      // Reconstruction propre via buildLignesNotes (source de vérité unique)
+      const inscriptions = prev.map((l) => ({
+        eleveId: l.eleveId,
+        eleveNom: l.eleveNom,
+        eleveEmail: l.eleveEmail,
+      }));
+      return buildLignesNotes(feuilleNouvelle, inscriptions);
+    });
+
+    // Persistance Firestore (toast.error en cas d'échec, mais on ne casse pas l'UI)
+    updateAbsenceBulk(feuilleId, [
+      { eleveId, evaluationId: evalId, statut: next === 'present' ? null : next },
+    ]).catch((err) => {
+      console.error('Erreur enregistrement absence :', err);
+      toast.error('Impossible d\'enregistrer le statut d\'absence');
+    });
+  };
+
   const cycleCompStatus = (eleveId: string, evalId: string, compId: string) => {
     if (!feuille || !feuilleId) return;
     const current = feuille.competences?.[eleveId]?.[evalId]?.[compId];
@@ -368,6 +437,16 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const moyenneClasseDevoirs = avg(lignes.map((l) => l.moyenneDevoirs).filter((v) => v > 0));
   const moyenneClasseCompo = avg(lignes.map((l) => l.noteComposition).filter((v) => v > 0));
   const moyenneClasse = avg(lignes.map((l) => l.moyenneGenerale).filter((v) => v > 0));
+
+  // ── Compteurs d'absences cumulés (toute la feuille / toute la classe) ──
+  //   Affichés en pied de tableau pour donner au prof une vue synthétique :
+  //   combien d'absences justifiées vs non justifiées sur cette feuille,
+  //   et combien d'élèves sont concernés.
+  const totalAbsJ = lignes.reduce((s, l) => s + l.nbAbsencesJustifiees, 0);
+  const totalAbsNJ = lignes.reduce((s, l) => s + l.nbAbsencesNonJustifiees, 0);
+  const nbElevesAvecAbsence = lignes.filter(
+    (l) => l.nbAbsencesJustifiees > 0 || l.nbAbsencesNonJustifiees > 0,
+  ).length;
 
   return (
     <div className="feuille-editor-page">
@@ -558,6 +637,58 @@ const FeuilleNotesEditorPage: React.FC = () => {
         </span>
       </div>
 
+      {/* ─────────────────────────────────────────────────────────────
+           LÉGENDE ABSENCES — affichée sous la barre d'outils
+           ─────────────────────────────────────────────────────────────
+           Explique les 3 badges A/AJ/ANJ visibles dans chaque cellule
+           de note, et précise la règle de calcul appliquée par PedaClic.
+           Discrète mais informative ; alignée à droite pour rester
+           cohérente avec la formule moyenne ci-dessus. */}
+      <div
+        className="feuille-absence-legende"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 12,
+          padding: '6px 4px',
+          marginBottom: 4,
+          fontSize: '0.75rem',
+          color: 'var(--color-text-secondary, #6b7280)',
+        }}
+      >
+        <strong style={{ color: 'var(--color-text-primary, #1f2937)' }}>Absences :</strong>
+        <span title="Cliquer le badge en haut-droite d'une cellule pour basculer le statut">
+          <span
+            style={{
+              display: 'inline-block', padding: '0 5px', minWidth: 22,
+              border: '1px solid #d1d5db', borderRadius: 4,
+              color: '#9ca3af', fontWeight: 700, marginRight: 4, textAlign: 'center',
+            }}
+          >P</span>
+          Présent (note saisie)
+        </span>
+        <span>
+          <span
+            style={{
+              display: 'inline-block', padding: '0 5px', minWidth: 22,
+              background: '#f59e0b', color: '#fff',
+              borderRadius: 4, fontWeight: 700, marginRight: 4, textAlign: 'center',
+            }}
+          >AJ</span>
+          Absent justifié — devoir <em>ignoré</em> dans la moyenne
+        </span>
+        <span>
+          <span
+            style={{
+              display: 'inline-block', padding: '0 5px', minWidth: 22,
+              background: '#ef4444', color: '#fff',
+              borderRadius: 4, fontWeight: 700, marginRight: 4, textAlign: 'center',
+            }}
+          >ANJ</span>
+          Absent non justifié — compte <strong>0&nbsp;/&nbsp;20</strong>
+        </span>
+      </div>
+
       {showCompPanel && (
         <div className="comp-panel">
           <div className="comp-panel-header">
@@ -678,9 +809,59 @@ const FeuilleNotesEditorPage: React.FC = () => {
                   const isEdit = editCell?.eleveId === ligne.eleveId && editCell?.evalId === e.id;
                   const val = ligne.notes[e.id];
                   const kCell = cellKey(ligne.eleveId, e.id);
+                  // ── Statut d'absence pour cette cellule ──
+                  //   Lu directement depuis la feuille (source de vérité après
+                  //   chaque mise à jour optimiste). Implicite = 'present'.
+                  const statutAbs: StatutAbsenceDevoir | 'present' =
+                    feuille.absences?.[ligne.eleveId]?.[e.id] ?? 'present';
+                  const estAbsent = statutAbs !== 'present';
                   return (
                     <td key={e.id} className="col-note">
-                      {isEdit ? (
+                      {/* ────────────────────────────────────────────────
+                          Bouton de BASCULE STATUT D'ABSENCE
+                          ────────────────────────────────────────────────
+                          - Toujours visible en haut à droite de la cellule.
+                          - 'P' = Présent (gris discret) ; 'AJ' = orange ;
+                            'ANJ' = rouge.
+                          - Tooltip = libellé long pour la lisibilité.
+                          - Clic = passage à l'état suivant (cycle de 3).
+                       */}
+                      <button
+                        type="button"
+                        className={`absence-toggle absence-toggle--${statutAbs}`}
+                        title={`${STATUT_ABSENCE_LABELS[statutAbs]} — cliquer pour changer`}
+                        aria-label={`Statut absence : ${STATUT_ABSENCE_LABELS[statutAbs]}`}
+                        onClick={(ev) => { ev.stopPropagation(); cycleAbsenceStatut(ligne.eleveId, e.id); }}
+                        style={{
+                          // Surcharge inline : la couleur dépend du statut
+                          background: estAbsent ? STATUT_ABSENCE_COLORS[statutAbs] : 'transparent',
+                          color: estAbsent ? '#fff' : '#9ca3af',
+                          borderColor: estAbsent ? STATUT_ABSENCE_COLORS[statutAbs] : '#d1d5db',
+                        }}
+                      >
+                        {estAbsent ? STATUT_ABSENCE_BADGES[statutAbs] : 'P'}
+                      </button>
+
+                      {/* ────────────────────────────────────────────────
+                          Affichage / saisie de la note OU badge absence
+                          ────────────────────────────────────────────────
+                          - Si élève absent → on désactive la saisie et on
+                            affiche le libellé long du statut.
+                          - Sinon → comportement habituel (clic = édition).
+                       */}
+                      {estAbsent ? (
+                        <span
+                          className="note-cell note-cell--absent"
+                          title={STATUT_ABSENCE_LABELS[statutAbs]}
+                          style={{
+                            color: STATUT_ABSENCE_COLORS[statutAbs],
+                            fontWeight: 700,
+                            fontStyle: 'italic',
+                          }}
+                        >
+                          {STATUT_ABSENCE_BADGES[statutAbs]}
+                        </span>
+                      ) : isEdit ? (
                         <input
                           /*
                             Ref par cellule pour pouvoir refocaliser lors d'une
@@ -816,6 +997,60 @@ const FeuilleNotesEditorPage: React.FC = () => {
               </td>
               <td className="col-moyenne" />
             </tr>
+
+            {/* ─────────────────────────────────────────────────────────
+                LIGNE « TOTAL ABSENCES »
+                ─────────────────────────────────────────────────────────
+                On affiche le compteur cumulé d'absences justifiées /
+                non justifiées sur l'ensemble de la classe et de la feuille.
+                Visible uniquement si au moins une absence a été saisie,
+                pour éviter de surcharger l'UI quand le système n'est pas utilisé.
+            */}
+            {(totalAbsJ > 0 || totalAbsNJ > 0) && (
+              <tr className="feuille-moyenne-classe" title={`${nbElevesAvecAbsence} élève(s) concerné(s) par au moins une absence`}>
+                <td className="col-eleve">
+                  <strong>Total absences</strong>
+                  <span className="text-muted" style={{ fontSize: '0.75rem', marginLeft: 6 }}>
+                    ({nbElevesAvecAbsence} élève{nbElevesAvecAbsence > 1 ? 's' : ''})
+                  </span>
+                </td>
+                {/* Pour chaque évaluation : nombre d'absences sur cette colonne */}
+                {evals.map((e) => {
+                  let cntJ = 0, cntNJ = 0;
+                  lignes.forEach((l) => {
+                    const st = l.absences?.[e.id];
+                    if (st === 'absent_justifie') cntJ++;
+                    if (st === 'absent_non_justifie') cntNJ++;
+                  });
+                  return (
+                    <td key={e.id} className="col-note" style={{ fontSize: '0.75rem' }}>
+                      {cntJ > 0 && (
+                        <span style={{ color: '#f59e0b', fontWeight: 700 }} title="Absences justifiées">
+                          AJ:{cntJ}
+                        </span>
+                      )}
+                      {cntJ > 0 && cntNJ > 0 && ' · '}
+                      {cntNJ > 0 && (
+                        <span style={{ color: '#ef4444', fontWeight: 700 }} title="Absences non justifiées (compte 0/20)">
+                          ANJ:{cntNJ}
+                        </span>
+                      )}
+                      {cntJ === 0 && cntNJ === 0 && <span className="text-muted">—</span>}
+                    </td>
+                  );
+                })}
+                {/* 4 cellules synthèse vides (Moy. Devoirs / Compo / Moy. Gén. / Rang) */}
+                <td className="col-moyenne" colSpan={4} style={{ textAlign: 'right', fontSize: '0.8rem' }}>
+                  <span style={{ color: '#f59e0b', fontWeight: 700 }} title="Total absences justifiées sur la feuille">
+                    AJ : {totalAbsJ}
+                  </span>
+                  {' · '}
+                  <span style={{ color: '#ef4444', fontWeight: 700 }} title="Total absences non justifiées (chacune compte 0/20)">
+                    ANJ : {totalAbsNJ}
+                  </span>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

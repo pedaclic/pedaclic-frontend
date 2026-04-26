@@ -394,6 +394,55 @@ th.col-note:hover .eval-actions { opacity: 1; }
   box-shadow: 0 0 0 2px rgba(37,99,235,0.15);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   ABSENCES AUX DEVOIRS — Bouton de bascule par cellule
+   ─────────────────────────────────────────────────────────────
+   Le bouton est positionné en haut à droite de la cellule de note
+   via `position: absolute` (la cellule passe en `position: relative`
+   plus bas). Tailles compactes pour ne pas voler la place du chiffre.
+*/
+.feuille-editor-table td.col-note {
+  position: relative;
+}
+
+.absence-toggle {
+  /* Position absolue, coin supérieur droit, légèrement enfoncé */
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 16px;
+  padding: 0 5px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: transparent;
+  color: #9ca3af;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  user-select: none;
+  z-index: 1;                 /* au-dessus de la cellule, sous l'input */
+  transition: transform 0.1s, box-shadow 0.15s;
+}
+.absence-toggle:hover {
+  transform: scale(1.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+.absence-toggle:focus { outline: 2px solid rgba(37, 99, 235, 0.3); outline-offset: 1px; }
+
+/* État « absent » — le badge prend toute la cellule visuellement */
+.note-cell--absent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  letter-spacing: 0.5px;
+}
+
 /* ── Compétences dans cellules ── */
 .comp-cell-list {
   display: flex;

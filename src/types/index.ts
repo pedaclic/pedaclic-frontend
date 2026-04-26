@@ -21,6 +21,19 @@
 export type UserRole = 'admin' | 'prof' | 'eleve' | 'parent';
 
 /**
+ * Sexe d'un utilisateur (principalement utile pour les élèves : statistiques
+ * genrées, répartition F/M dans la classe, suivi pédagogique).
+ *
+ *   - 'M'    : masculin
+ *   - 'F'    : féminin
+ *   - 'autre': indication libre (`User.sexeAutre` portera le libellé saisi)
+ *
+ * Champ optionnel pour préserver la rétro-compatibilité avec les comptes
+ * créés avant l'introduction de cette donnée.
+ */
+export type Sexe = 'M' | 'F' | 'autre';
+
+/**
  * Interface pour un utilisateur PedaClic
  */
 /** Formule d'abonnement Premium (illimité ou à la carte) */
@@ -38,6 +51,15 @@ export interface User {
   email: string;                  // Email de l'utilisateur
   displayName?: string;           // Nom d'affichage (optionnel)
   role: UserRole;                 // Rôle de l'utilisateur
+  /**
+   * Sexe de l'élève — alimenté à l'inscription, modifiable au profil.
+   * Optionnel pour ne pas casser les comptes existants. Lorsque la valeur
+   * est 'autre', `sexeAutre` peut contenir un libellé libre saisi par
+   * l'utilisateur (cas peu fréquent au Sénégal mais prévu pour la flexibilité).
+   */
+  sexe?: Sexe;
+  /** Libellé libre quand `sexe === 'autre'`. Vide ou absent sinon. */
+  sexeAutre?: string;
   isPremium: boolean;             // Statut Premium
   subscriptionEnd?: Date | null;  // Date de fin d'abonnement Premium
   /** Formule souscrite (mensuel, annuel, ou cours à la carte) */
@@ -62,7 +84,29 @@ export interface User {
 }
 
 /**
+ * Étiquettes lisibles du sexe — utilisées dans les UI prof / parent / élève
+ * et les exports. Centralisées ici pour éviter les divergences entre vues.
+ */
+export const SEXE_LABELS: Record<Sexe, string> = {
+  M: 'Masculin',
+  F: 'Féminin',
+  autre: 'Autre',
+};
+
+/** Pictogramme court (♂ / ♀ / ✱) pour les listes denses (badges côté prof). */
+export const SEXE_PICTOS: Record<Sexe, string> = {
+  M: '♂',
+  F: '♀',
+  autre: '✱',
+};
+
+/**
  * Données du formulaire d'inscription
+ *
+ * Les champs `sexe` et `sexeAutre` sont OPTIONNELS au niveau du type
+ * (rétro-compat) mais le formulaire d'inscription les exige pour les
+ * rôles 'eleve' / 'parent'. Le composant `RegisterPage` se charge de la
+ * validation conditionnelle.
  */
 export interface RegisterFormData {
   email: string;
@@ -70,6 +114,10 @@ export interface RegisterFormData {
   confirmPassword: string;
   displayName: string;
   role: UserRole;
+  /** Sexe à l'inscription. Recommandé pour 'eleve' (stats genrées). */
+  sexe?: Sexe;
+  /** Précision libre quand sexe === 'autre'. */
+  sexeAutre?: string;
 }
 
 /**

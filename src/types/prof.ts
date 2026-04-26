@@ -69,6 +69,12 @@ export type StatutInscription = 'actif' | 'retire';
 /**
  * Interface pour l'inscription d'un élève à un groupe-classe.
  * Collection Firestore : inscriptions_groupe
+ *
+ * 💡 `eleveSexe` est DÉNORMALISÉ depuis `users/{uid}.sexe` au moment
+ *    de l'inscription, afin que la liste de classe et la feuille de
+ *    notes puissent afficher le sexe sans relire `users` pour chaque
+ *    ligne (économie de lectures Firestore + chargement instantané).
+ *    Champ optionnel : pré-existe sur les inscriptions antérieures.
  */
 export interface InscriptionGroupe {
   id: string;                       // ID unique Firestore
@@ -76,6 +82,10 @@ export interface InscriptionGroupe {
   eleveId: string;                  // UID de l'élève inscrit
   eleveNom: string;                 // Nom de l'élève (pour affichage rapide)
   eleveEmail: string;               // Email de l'élève
+  /** Sexe dénormalisé ('M' | 'F' | 'autre'). Manquant sur anciennes inscriptions. */
+  eleveSexe?: import('./index').Sexe;
+  /** Libellé libre quand eleveSexe === 'autre'. */
+  eleveSexeAutre?: string;
   statut: StatutInscription;        // Statut de l'inscription
   dateInscription: Date;            // Date d'inscription au groupe
   dateRetrait?: Date;               // Date de retrait (si retiré)

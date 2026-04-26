@@ -58,8 +58,11 @@ import type {
   StatsGroupe,
   EleveGroupeStats,
   StatsQuizGroupe,
-  AlerteProf
+  AlerteProf,
+  InscriptionGroupe,
 } from '../../types/prof';
+// Pictogrammes ♂ / ♀ / ✱ pour les listes denses (cellule "Élève").
+import { SEXE_PICTOS, SEXE_LABELS } from '../../types';
 import type { TravailAFaire } from '../../types/groupeAbsences.types';
 import RichTextEditor from '../RichTextEditor';
 import '../../styles/prof.css';
@@ -83,6 +86,13 @@ interface AppelSuiviTableProps {
   profId: string;
   statsEleves: EleveGroupeStats[];
   periode: 'jour' | 'semaine' | 'mois';
+  /**
+   * Map eleveId → sexe ('M' | 'F' | 'autre'). Permet d'afficher un petit
+   *   pictogramme ♂/♀/✱ devant le nom dans la liste de suivi.
+   *   Optionnel : la table reste fonctionnelle même sans cette donnée
+   *   (rétro-compat : élèves inscrits avant l'introduction du champ).
+   */
+  sexeMap?: Record<string, 'M' | 'F' | 'autre' | undefined>;
 }
 
 /**
@@ -91,7 +101,7 @@ interface AppelSuiviTableProps {
  * les séances manquées.
  * Les noms sont affichés au format « Prénoms NOM » et triés par NOM.
  */
-function AppelSuiviTable({ groupeId, profId, statsEleves, periode }: AppelSuiviTableProps) {
+function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: AppelSuiviTableProps) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [retards, setRetards] = useState<Record<string, number>>({});
   const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
@@ -166,10 +176,27 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode }: AppelSuiviT
         </tr>
       </thead>
       <tbody>
-        {sorted.map(e => (
+        {sorted.map(e => {
+          // Pictogramme ♂ / ♀ / ✱ devant le nom, en couleur (bleu / rose / gris)
+          // Aucun pictogramme si sexe non renseigné — la cellule reste neutre.
+          const sx = sexeMap?.[e.eleveId];
+          const picto = sx ? SEXE_PICTOS[sx] : '';
+          const couleurPicto = sx === 'F' ? '#ec4899' : sx === 'M' ? '#3b82f6' : '#9ca3af';
+          return (
           <tr key={e.eleveId}>
-            {/* Nom formaté "Prénoms NOM" */}
-            <td>{formatEleveNom(e.eleveNom)}</td>
+            {/* Nom formaté "Prénoms NOM" + pictogramme sexe (optionnel) */}
+            <td>
+              {sx && (
+                <span
+                  aria-label={SEXE_LABELS[sx]}
+                  title={SEXE_LABELS[sx]}
+                  style={{ color: couleurPicto, fontWeight: 700, marginRight: 6 }}
+                >
+                  {picto}
+                </span>
+              )}
+              {formatEleveNom(e.eleveNom)}
+            </td>
             <td className={counts[e.eleveId] > 0 ? 'prof-note-critique' : ''}>
               {counts[e.eleveId] || 0}
             </td>
@@ -185,7 +212,8 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode }: AppelSuiviT
               }
             </td>
           </tr>
-        ))}
+          );
+        })}
       </tbody>
     </table>
   );
@@ -216,6 +244,9 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   // ===== États : données =====
   const [statsGroupe, setStatsGroupe] = useState<StatsGroupe | null>(null);
   const [statsEleves, setStatsEleves] = useState<EleveGroupeStats[]>([]);
+  // Inscriptions complètes (incluent eleveSexe / eleveSexeAutre) — utilisées
+  // pour afficher les pictogrammes ♂/♀ et calculer la répartition genrée.
+  const [inscriptions, setInscriptions] = useState<InscriptionGroupe[]>([]);
   const [alertes, setAlertes] = useState<AlerteProf[]>([]);
   const [quizDisponibles, setQuizDisponibles] = useState<{ id: string; titre: string; source?: string }[]>([]);
   const [statsQuiz, setStatsQuiz] = useState<StatsQuizGroupe | null>(null);
@@ -294,14 +325,19 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
       setError(null);
 
       // ===== Chargement parallèle =====
-      const [stats, elevesStats, quiz] = await Promise.all([
+      // ⚠️ On ajoute getElevesGroupe pour récupérer les inscriptions
+      //    enrichies (eleveSexe, eleveSexeAutre) — indispensables pour
+      //    les statistiques genrées et les pictogrammes ♂/♀.
+      const [stats, elevesStats, quiz, inscs] = await Promise.all([
         getStatsGroupe(groupe.id),
         getStatsElevesGroupe(groupe.id),
-        getQuizParMatiere(groupe.matiereId, groupe.id)
+        getQuizParMatiere(groupe.matiereId, groupe.id),
+        getElevesGroupe(groupe.id),
       ]);
 
       setStatsGroupe(stats);
       setStatsEleves(elevesStats);
+      setInscriptions(inscs);
       setQuizDisponibles(quiz);
 
       // ===== Générer les alertes =====
@@ -895,6 +931,60 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                 <span className="groupe-stat-card-label">En difficulté</span>
               </div>
             </div>
+
+            {/* ─────────────────────────────────────────────────────────
+                CARTE RÉPARTITION F / M (statistiques genrées)
+                ─────────────────────────────────────────────────────────
+                On compte les inscriptions actives par sexe puis on calcule
+                également la moyenne pondérée par groupe (F vs M) à partir
+                de `statsEleves`. Cela donne au prof un aperçu rapide de
+                l'équité des résultats entre filles et garçons. */}
+            {(() => {
+              // Mémo simple : on n'utilise pas useMemo pour rester proche
+              // du style du composant existant (pas de hooks ajoutés).
+              const sexeMap: Record<string, 'M' | 'F' | 'autre' | undefined> = {};
+              inscriptions.forEach((i) => { sexeMap[i.eleveId] = i.eleveSexe; });
+
+              const moyenneSur = (sexe: 'M' | 'F') => {
+                const items = statsEleves.filter((e) => sexeMap[e.eleveId] === sexe && e.totalQuiz > 0);
+                if (items.length === 0) return 0;
+                const sum = items.reduce((s, e) => s + e.moyenne, 0);
+                return Math.round((sum / items.length) * 100) / 100;
+              };
+
+              const nbF = inscriptions.filter((i) => i.eleveSexe === 'F').length;
+              const nbM = inscriptions.filter((i) => i.eleveSexe === 'M').length;
+              const nbAutre = inscriptions.filter((i) => i.eleveSexe === 'autre').length;
+              const nbInconnu = inscriptions.length - nbF - nbM - nbAutre;
+              const moyF = moyenneSur('F');
+              const moyM = moyenneSur('M');
+
+              return (
+                <div className="groupe-stat-card" title="Répartition par sexe et moyennes genrées">
+                  <div className="groupe-stat-card-icon">⚧</div>
+                  <div className="groupe-stat-card-content">
+                    {/* Ligne principale : compteurs F / M / Autre */}
+                    <span className="groupe-stat-card-value" style={{ fontSize: '1rem', lineHeight: 1.2 }}>
+                      <span style={{ color: '#ec4899' }}>♀ {nbF}</span>
+                      {' · '}
+                      <span style={{ color: '#3b82f6' }}>♂ {nbM}</span>
+                      {nbAutre > 0 && <> {' · '}<span style={{ color: '#6b7280' }}>✱ {nbAutre}</span></>}
+                      {nbInconnu > 0 && <> {' · '}<span style={{ color: '#9ca3af' }} title="Sexe non renseigné">? {nbInconnu}</span></>}
+                    </span>
+                    {/* Sous-ligne : moyennes genrées (si dispo) */}
+                    <span className="groupe-stat-card-label">
+                      {moyF > 0 || moyM > 0 ? (
+                        <>
+                          Moy. ♀ {moyF || '—'} / ♂ {moyM || '—'}
+                        </>
+                      ) : (
+                        'Répartition F / M'
+                      )}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Barre de notes (meilleure / pire) */}
@@ -1460,6 +1550,12 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                     profId={currentUser.uid}
                     statsEleves={statsEleves}
                     periode={periodeSuivi}
+                    /* Map eleveId → sexe : permet l'affichage du pictogramme
+                       ♂/♀/✱ devant le nom dans la liste de suivi. */
+                    sexeMap={inscriptions.reduce<Record<string, 'M' | 'F' | 'autre' | undefined>>((acc, i) => {
+                      acc[i.eleveId] = i.eleveSexe;
+                      return acc;
+                    }, {})}
                   />
                 )}
               </div>

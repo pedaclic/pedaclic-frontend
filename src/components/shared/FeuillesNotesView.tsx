@@ -8,7 +8,12 @@ import { FileSpreadsheet } from 'lucide-react';
 import { getFeuillesForEleve, getFeuillesForParent } from '../../services/feuillesNotesService';
 import { buildLignesNotes } from '../../services/feuillesNotesService';
 import { getElevesGroupe } from '../../services/profGroupeService';
-import type { FeuilleDeNotes, LigneNotes } from '../../types/feuillesNotes.types';
+import type { FeuilleDeNotes, LigneNotes, StatutAbsenceDevoir } from '../../types/feuillesNotes.types';
+import {
+  STATUT_ABSENCE_LABELS,
+  STATUT_ABSENCE_BADGES,
+  STATUT_ABSENCE_COLORS,
+} from '../../types/feuillesNotes.types';
 import '../../styles/feuillesNotes.css';
 
 interface FeuillesNotesViewProps {
@@ -152,11 +157,36 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
                     <td className="col-eleve">
                       <strong>{l.eleveNom}</strong>
                     </td>
-                    {(selectedFeuille.evaluations || []).map((e) => (
-                      <td key={e.id} className="col-note">
-                        {l.notes[e.id] != null ? l.notes[e.id] : '—'}
-                      </td>
-                    ))}
+                    {(selectedFeuille.evaluations || []).map((e) => {
+                      // ── Statut d'absence (lecture seule) ──
+                      //   Identique à l'éditeur prof, mais sans bouton de
+                      //   bascule : on n'autorise pas l'élève / parent à
+                      //   modifier. Le badge AJ / ANJ remplace la note.
+                      const statut: StatutAbsenceDevoir | undefined = l.absences?.[e.id];
+                      if (statut === 'absent_justifie' || statut === 'absent_non_justifie') {
+                        return (
+                          <td key={e.id} className="col-note">
+                            <span
+                              className="note-cell--absent"
+                              title={STATUT_ABSENCE_LABELS[statut]}
+                              style={{
+                                color: STATUT_ABSENCE_COLORS[statut],
+                                fontWeight: 700,
+                                fontStyle: 'italic',
+                              }}
+                            >
+                              {STATUT_ABSENCE_BADGES[statut]}
+                            </span>
+                          </td>
+                        );
+                      }
+                      // Cas standard : on affiche la note (ou « — » si vide).
+                      return (
+                        <td key={e.id} className="col-note">
+                          {l.notes[e.id] != null ? l.notes[e.id] : '—'}
+                        </td>
+                      );
+                    })}
                     {/* Cellule Moy. Devoirs — colorée selon le palier de note */}
                     <td className={`col-moyenne ${getClasseMoyenne(l.moyenneDevoirs)}`}>
                       {l.moyenneDevoirs > 0 ? l.moyenneDevoirs.toFixed(2) : '—'}

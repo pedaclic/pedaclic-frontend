@@ -22,6 +22,8 @@ import type {
   FeuilleDeNotes,
   EvaluationNote,
   NotesEleve,
+  AbsencesEleve,
+  StatutAbsenceDevoir,
   LigneNotes,
   PeriodeType,
   CompetenceDef,
@@ -65,9 +67,14 @@ export async function creerFeuilleDeNotes(
   const now = Timestamp.now();
   const inscriptions = await getElevesGroupe(groupeId);
   const notes: Record<string, NotesEleve> = {};
+  // Map des absences initialisée vide pour chaque élève. Le statut implicite
+  // est « present » : on n'écrit jamais 'present' explicitement, ce qui évite
+  // de gonfler le document Firestore avec des entrées par défaut.
+  const absences: Record<string, AbsencesEleve> = {};
   const eleveIds: string[] = [];
   inscriptions.forEach((i) => {
     notes[i.eleveId] = {};
+    absences[i.eleveId] = {};
     eleveIds.push(i.eleveId);
   });
 
@@ -94,6 +101,7 @@ export async function creerFeuilleDeNotes(
       ? evaluations.map((e) => ({ ...e, type: e.type ?? 'devoir' as TypeEvaluation }))
       : [{ id: 'e1', libelle: 'Devoir 1', coefficient: 1, type: 'devoir' as TypeEvaluation }],
     notes,
+    absences,
     createdAt: now,
     updatedAt: now,
   });
@@ -188,6 +196,52 @@ export async function updateNoteBulk(
   await updateDoc(ref, { notes, updatedAt: Timestamp.now() });
 }
 
+/**
+ * 🆕 Met à jour le STATUT D'ABSENCE d'un élève à une évaluation.
+ *
+ *   - statut === 'present' (ou null) → on supprime l'entrée (état implicite,
+ *     évite de stocker des valeurs par défaut).
+ *   - statut === 'absent_justifie'   → l'évaluation sera ignorée dans le calcul.
+ *   - statut === 'absent_non_justifie' → l'évaluation comptera 0/20.
+ *
+ * 💡 Lorsque le prof passe un élève en absence, on supprime AUSSI la note
+ *    saisie pour cette évaluation : la note n'a plus de sens (élève absent),
+ *    elle pourrait au contraire troubler la lecture de la feuille.
+ *
+ *    Le calcul de la moyenne (`buildLignesNotes`) ré-injecte 0/20 quand
+ *    nécessaire pour les absences non justifiées : on n'a donc pas besoin
+ *    de stocker un 0 explicite côté `notes`.
+ */
+export async function updateAbsenceBulk(
+  feuilleId: string,
+  updates: { eleveId: string; evaluationId: string; statut: StatutAbsenceDevoir | null }[]
+): Promise<void> {
+  const ref = doc(db, COL, feuilleId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Feuille introuvable');
+  const data = snap.data();
+  // Clones défensifs : ne mutent pas les références Firestore directement.
+  const absences = JSON.parse(JSON.stringify(data.absences || {}));
+  const notes = JSON.parse(JSON.stringify(data.notes || {}));
+
+  for (const u of updates) {
+    if (!absences[u.eleveId]) absences[u.eleveId] = {};
+    if (u.statut === null || u.statut === 'present' || u.statut === undefined) {
+      // Retour à l'état présent → on retire la clé d'absence, on garde la note.
+      delete absences[u.eleveId][u.evaluationId];
+    } else {
+      absences[u.eleveId][u.evaluationId] = u.statut;
+      // Cohérence pédagogique : un élève absent n'a pas pu composer ; toute
+      // note résiduelle est supprimée pour ne pas polluer l'affichage.
+      if (notes[u.eleveId]) {
+        delete notes[u.eleveId][u.evaluationId];
+      }
+    }
+  }
+
+  await updateDoc(ref, { absences, notes, updatedAt: Timestamp.now() });
+}
+
 /** Met à jour les évaluations d'une feuille */
 export async function updateEvaluationsFeuille(
   feuilleId: string,
@@ -258,6 +312,8 @@ export function buildLignesNotes(
 ): LigneNotes[] {
   const lignesBrutes: LigneNotes[] = [];
   const notes = feuille.notes || {};
+  // Map des absences (rétro-compat : feuilles antérieures n'ont pas le champ).
+  const absences = feuille.absences || {};
   const evals = feuille.evaluations || [];
 
   // ── Partitionnement strict par type ──
@@ -284,6 +340,7 @@ export function buildLignesNotes(
   for (const i of inscriptions) {
     // Brut Firestore : peut contenir des entrées orphelines (legacy / import).
     const notesEleveBrutes = notes[i.eleveId] || {};
+    const absencesEleveBrutes = absences[i.eleveId] || {};
 
     // 🔒 Filtre défensif : on ne conserve que les notes dont l'evaluationId
     //    appartient encore à `feuille.evaluations`. Les autres sont écartées.
@@ -294,31 +351,67 @@ export function buildLignesNotes(
       if (n !== null) notesEleve[evalId] = n;
     }
 
+    // 🔒 Même filtrage pour les statuts d'absence : on ne garde que ceux
+    //    qui correspondent à une évaluation existante de la feuille.
+    const absencesEleve: AbsencesEleve = {};
+    let nbAbsencesJustifiees = 0;
+    let nbAbsencesNonJustifiees = 0;
+    for (const [evalId, statut] of Object.entries(absencesEleveBrutes)) {
+      if (!idsValides.has(evalId)) continue;
+      if (statut === 'absent_justifie') {
+        absencesEleve[evalId] = 'absent_justifie';
+        nbAbsencesJustifiees++;
+      } else if (statut === 'absent_non_justifie') {
+        absencesEleve[evalId] = 'absent_non_justifie';
+        nbAbsencesNonJustifiees++;
+      }
+      // 'present' / valeur inconnue → on ignore (état implicite).
+    }
+
     // Agrégateurs : moyennes pondérées sur chaque sous-ensemble
     let totalCoefD = 0, totalPointsD = 0;
     let totalCoefC = 0, totalPointsC = 0;
     let totalCoefAll = 0, totalPointsAll = 0;
 
+    /**
+     * Helper interne : injecte la note d'une évaluation dans les agrégateurs
+     * en appliquant la règle d'absence retenue par PedaClic :
+     *
+     *   - 'absent_justifie'      → on IGNORE l'évaluation (return immédiat).
+     *   - 'absent_non_justifie'  → on injecte 0 / 20 (pondéré par coef).
+     *   - 'present' (ou absent)  → on prend la note saisie si elle existe.
+     *
+     * `bucket` indique dans quels accumulateurs sommer ('devoir' ou 'compo').
+     */
+    const consommerEval = (e: EvaluationNote, bucket: 'devoir' | 'compo') => {
+      const statut = absencesEleve[e.id]; // déjà filtré
+      if (statut === 'absent_justifie') return; // ignorée
+
+      const coef = e.coefficient && e.coefficient > 0 ? e.coefficient : 1;
+      let valeur: number | null = null;
+      if (statut === 'absent_non_justifie') {
+        valeur = 0; // pénalité explicite : compte 0/20 dans la moyenne
+      } else {
+        const n = notesEleve[e.id];
+        if (n === undefined) return; // pas de note ni d'absence → on ignore
+        valeur = n;
+      }
+
+      if (bucket === 'devoir') {
+        totalPointsD += valeur * coef;
+        totalCoefD += coef;
+      } else {
+        totalPointsC += valeur * coef;
+        totalCoefC += coef;
+      }
+      totalPointsAll += valeur * coef;
+      totalCoefAll += coef;
+    };
+
     // ── Boucle DEVOIRS : strictement les évaluations type='devoir' de cette feuille ──
-    for (const e of evalsDevoirs) {
-      const n = notesEleve[e.id]; // déjà filtré et numérique
-      if (n === undefined) continue;
-      const coef = e.coefficient && e.coefficient > 0 ? e.coefficient : 1;
-      totalPointsD += n * coef;
-      totalCoefD += coef;
-      totalPointsAll += n * coef;
-      totalCoefAll += coef;
-    }
+    for (const e of evalsDevoirs) consommerEval(e, 'devoir');
     // ── Boucle COMPOSITIONS : strictement les évaluations type='composition' ──
-    for (const e of evalsCompo) {
-      const n = notesEleve[e.id];
-      if (n === undefined) continue;
-      const coef = e.coefficient && e.coefficient > 0 ? e.coefficient : 1;
-      totalPointsC += n * coef;
-      totalCoefC += coef;
-      totalPointsAll += n * coef;
-      totalCoefAll += coef;
-    }
+    for (const e of evalsCompo) consommerEval(e, 'compo');
 
     const round2 = (v: number) => Math.round(v * 100) / 100;
     const moyenneDevoirs = totalCoefD > 0 ? round2(totalPointsD / totalCoefD) : 0;
@@ -348,21 +441,39 @@ export function buildLignesNotes(
       //    voit donc exactement les mêmes notes que celles utilisées
       //    pour le calcul, sans clés orphelines.
       notes: notesEleve,
+      // ⚠️ Idem pour les absences : on expose la map filtrée pour que
+      //    l'éditeur, la vue lecture seule et les exports utilisent la
+      //    même source de vérité que le calcul.
+      absences: absencesEleve,
       // `moyenne` conservée = moyenne générale (rétro-compat vues lecture)
       moyenne: moyenneGenerale,
       moyenneDevoirs,
       noteComposition,
       moyenneGenerale,
       rang: 0, // calculé ci-dessous
+      nbAbsencesJustifiees,
+      nbAbsencesNonJustifiees,
     });
   }
 
   // ── Calcul du rang (égalité = même rang type "dense ranking") ──
-  //   Les élèves sans aucune note évaluée (moyenneGenerale = 0 et aucune
-  //   évaluation saisie) restent à rang 0 pour ne pas polluer le classement.
+  //   Un élève est « classable » dès qu'il a au moins :
+  //     • une note saisie sur la feuille,
+  //     • OU une absence non justifiée (qui compte 0/20 et doit donc être
+  //       reflétée dans le classement),
+  //     • OU une absence justifiée (présence avérée à la session, statut connu).
+  //   Les élèves sans aucune trace (ni note, ni absence) restent à rang 0
+  //   pour ne pas polluer le classement.
   const lignesClassables = lignesBrutes
-    .map((l, idx) => ({ idx, mg: l.moyenneGenerale, aNote: Object.keys(l.notes).length > 0 }))
-    .filter((l) => l.aNote)
+    .map((l, idx) => ({
+      idx,
+      mg: l.moyenneGenerale,
+      aTrace:
+        Object.keys(l.notes).length > 0 ||
+        l.nbAbsencesJustifiees > 0 ||
+        l.nbAbsencesNonJustifiees > 0,
+    }))
+    .filter((l) => l.aTrace)
     .sort((a, b) => b.mg - a.mg);
 
   let rangCourant = 0;

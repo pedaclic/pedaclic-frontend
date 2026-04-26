@@ -284,11 +284,25 @@
   margin: 0;
 }
 
+/* Astérisque rouge pour les champs obligatoires (ex. Sexe pour élève/parent).
+   On garde un espacement minimal pour ne pas écraser le label. */
+.auth-required {
+  color: var(--color-danger, #ef4444);
+  margin-left: 2px;
+  font-weight: 700;
+}
+
 /* ==================== SÉLECTEUR DE RÔLE ==================== */
 
+/*
+  Grille 2 ou 3 colonnes selon le nombre d'options. Sur mobile, on
+  passe automatiquement à 1 colonne pour préserver la lisibilité.
+  La grille s'adapte avec `repeat(auto-fit, ...)` : 3 options → 3 col.,
+  2 options → 2 col., etc.
+*/
 .auth-role-selector {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: var(--spacing-sm);
 }
 

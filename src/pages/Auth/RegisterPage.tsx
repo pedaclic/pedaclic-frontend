@@ -14,7 +14,7 @@
 import React, { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { UserRole, RegisterFormData } from '../../types';
+import { UserRole, RegisterFormData, Sexe } from '../../types';
 import '../styles/auth.css';
 
 /**
@@ -28,12 +28,16 @@ const RegisterPage: React.FC = () => {
   // ==================== ÉTATS ====================
   
   // État du formulaire
+  //   Le sexe est laissé `undefined` par défaut : on force ainsi la saisie
+  //   explicite par l'utilisateur (les radios sont décochés au démarrage).
   const [formData, setFormData] = useState<RegisterFormData>({
     email: '',
     password: '',
     confirmPassword: '',
     displayName: '',
-    role: 'eleve' as UserRole
+    role: 'eleve' as UserRole,
+    sexe: undefined,
+    sexeAutre: ''
   });
   
   // État de chargement
@@ -75,48 +79,77 @@ const RegisterPage: React.FC = () => {
       setError('Veuillez entrer votre nom complet.');
       return false;
     }
-    
+
     if (formData.displayName.trim().length < 2) {
       setError('Le nom doit contenir au moins 2 caractères.');
       return false;
     }
-    
+
     // Validation email
     if (!formData.email.trim()) {
       setError('Veuillez entrer votre adresse email.');
       return false;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Veuillez entrer une adresse email valide.');
       return false;
     }
-    
+
+    // Validation du sexe — OBLIGATOIRE pour les rôles élève / parent
+    // (utilisé pour les statistiques pédagogiques genrées). Optionnel
+    // pour les rôles 'prof' et 'admin' (purement administratifs).
+    if ((formData.role === 'eleve' || formData.role === 'parent') && !formData.sexe) {
+      setError('Veuillez préciser le sexe (M / F / Autre).');
+      return false;
+    }
+    if (formData.sexe === 'autre' && !(formData.sexeAutre || '').trim()) {
+      setError('Veuillez préciser le libellé pour « Autre ».');
+      return false;
+    }
+
     // Validation mot de passe
     if (!formData.password) {
       setError('Veuillez entrer un mot de passe.');
       return false;
     }
-    
+
     if (formData.password.length < 6) {
       setError('Le mot de passe doit contenir au moins 6 caractères.');
       return false;
     }
-    
+
     // Validation confirmation
     if (formData.password !== formData.confirmPassword) {
       setError('Les mots de passe ne correspondent pas.');
       return false;
     }
-    
+
     // Validation CGU
     if (!acceptTerms) {
       setError('Veuillez accepter les conditions d\'utilisation.');
       return false;
     }
-    
+
     return true;
+  };
+
+  /**
+   * Handler dédié à la sélection du sexe (radio M/F/Autre).
+   * Sépare la logique de mise à jour du `formData.sexe` du reste de
+   * `handleChange` : on conserve `sexeAutre` quand on revient sur 'autre'
+   * et on le vide automatiquement quand on bascule vers 'M' ou 'F'.
+   */
+  const handleSexeChange = (nouveauSexe: Sexe): void => {
+    setFormData((prev) => ({
+      ...prev,
+      sexe: nouveauSexe,
+      // Si l'utilisateur quitte la valeur 'autre', on nettoie le champ libre
+      // pour éviter d'envoyer une valeur résiduelle à Firestore.
+      sexeAutre: nouveauSexe === 'autre' ? prev.sexeAutre : ''
+    }));
+    if (error) setError('');
   };
 
   /**
@@ -229,6 +262,117 @@ const RegisterPage: React.FC = () => {
                   disabled={isLoading}
                 />
               </div>
+            </div>
+
+            {/* <!-- ─────────────────────────────────────────────────────
+                       Sélection du SEXE (M / F / Autre)
+                   ─────────────────────────────────────────────────────
+                   - Trois radios + un input libre conditionnel pour
+                     « Autre ».
+                   - Stocké côté Firestore (`users/{uid}.sexe`) puis
+                     dénormalisé dans `inscriptions_groupe.eleveSexe`
+                     pour les statistiques côté prof.
+                   - Champ obligatoire pour rôles 'eleve' / 'parent',
+                     optionnel sinon (cf. validateForm).
+                 --> */}
+            <div className="auth-field">
+              <label className="auth-label">
+                Sexe{(formData.role === 'eleve' || formData.role === 'parent') && (
+                  <span className="auth-required" aria-label="champ obligatoire">*</span>
+                )}
+              </label>
+              <div
+                className="auth-role-selector"
+                /* Réutilise la grille des rôles : 3 colonnes responsive. */
+                role="radiogroup"
+                aria-label="Sexe de l'utilisateur"
+              >
+                {/* Option Masculin */}
+                <label
+                  className={`auth-role-option ${formData.sexe === 'M' ? 'auth-role-option--selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="sexe"
+                    value="M"
+                    checked={formData.sexe === 'M'}
+                    onChange={() => handleSexeChange('M')}
+                    className="auth-role-input"
+                    disabled={isLoading}
+                  />
+                  <div className="auth-role-content">
+                    {/* Pictogramme ♂ : couleur héritée du thème */}
+                    <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>♂</span>
+                    <span>Masculin</span>
+                  </div>
+                </label>
+
+                {/* Option Féminin */}
+                <label
+                  className={`auth-role-option ${formData.sexe === 'F' ? 'auth-role-option--selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="sexe"
+                    value="F"
+                    checked={formData.sexe === 'F'}
+                    onChange={() => handleSexeChange('F')}
+                    className="auth-role-input"
+                    disabled={isLoading}
+                  />
+                  <div className="auth-role-content">
+                    <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>♀</span>
+                    <span>Féminin</span>
+                  </div>
+                </label>
+
+                {/* Option Autre — débloque l'input libre ci-dessous */}
+                <label
+                  className={`auth-role-option ${formData.sexe === 'autre' ? 'auth-role-option--selected' : ''}`}
+                >
+                  <input
+                    type="radio"
+                    name="sexe"
+                    value="autre"
+                    checked={formData.sexe === 'autre'}
+                    onChange={() => handleSexeChange('autre')}
+                    className="auth-role-input"
+                    disabled={isLoading}
+                  />
+                  <div className="auth-role-content">
+                    <span aria-hidden="true" style={{ fontSize: '1.5rem', lineHeight: 1 }}>✱</span>
+                    <span>Autre</span>
+                  </div>
+                </label>
+              </div>
+
+              {/*
+                Champ libre conditionnel : on le rend uniquement quand
+                'autre' est sélectionné, pour ne pas encombrer le formulaire.
+                `marginTop` modeste pour le rapprocher visuellement du groupe.
+              */}
+              {formData.sexe === 'autre' && (
+                <div className="auth-input-wrapper" style={{ marginTop: 8 }}>
+                  <input
+                    type="text"
+                    id="sexeAutre"
+                    name="sexeAutre"
+                    value={formData.sexeAutre || ''}
+                    onChange={handleChange}
+                    placeholder="Précisez (ex. non-binaire, intersexe…)"
+                    className="auth-input"
+                    autoComplete="off"
+                    maxLength={40}
+                    disabled={isLoading}
+                  />
+                </div>
+              )}
+
+              {/* Hint : explique l'usage de la donnée (transparence RGPD) */}
+              <p className="auth-hint">
+                Cette information sert aux statistiques pédagogiques (répartition F/M de la classe).
+                Vous pourrez la modifier dans votre profil à tout moment.
+              </p>
             </div>
 
             {/* <!-- Champ Email --> */}
