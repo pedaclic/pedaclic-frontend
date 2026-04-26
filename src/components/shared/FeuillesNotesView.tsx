@@ -103,6 +103,15 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
           </h4>
           <div className="feuille-readonly-table-wrapper">
             <table className="feuille-editor-table">
+              {/* ────────────────────────────────────────────────────────────
+                   En-tête du tableau de notes (vue élève / parent).
+                   On conserve la colonne « Élève », puis chaque évaluation,
+                   et on AJOUTE en fin de tableau les 3 colonnes de synthèse
+                   identiques à l'éditeur prof :
+                     • Moy. Devoirs  — moyenne pondérée des devoirs
+                     • Moy. Gén.     — (Moy. Devoirs + Compo) / 2
+                     • Rang          — classement dans la classe
+                   ──────────────────────────────────────────────────────── */}
               <thead>
                 <tr>
                   <th className="col-eleve">Élève</th>
@@ -111,7 +120,16 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
                       {e.libelle}
                     </th>
                   ))}
-                  <th className="col-moyenne">Moyenne</th>
+                  {/* Colonnes de synthèse : titres explicites + tooltip */}
+                  <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">
+                    Moy. Devoirs
+                  </th>
+                  <th className="col-moyenne" title="Moyenne générale = (Moy. Devoirs + Compo) / 2">
+                    Moy. Gén.
+                  </th>
+                  <th className="col-moyenne" title="Rang de classe (1 = meilleur)">
+                    Rang
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -125,8 +143,33 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
                         {l.notes[e.id] != null ? l.notes[e.id] : '—'}
                       </td>
                     ))}
-                    <td className={`col-moyenne ${getClasseMoyenne(l.moyenne)}`}>
-                      {l.moyenne > 0 ? l.moyenne.toFixed(2) : '—'}
+                    {/* Cellule Moy. Devoirs — colorée selon le palier de note */}
+                    <td className={`col-moyenne ${getClasseMoyenne(l.moyenneDevoirs)}`}>
+                      {l.moyenneDevoirs > 0 ? l.moyenneDevoirs.toFixed(2) : '—'}
+                    </td>
+                    {/* Cellule Moy. Générale — affichée en gras (valeur clé du bulletin) */}
+                    <td className={`col-moyenne ${getClasseMoyenne(l.moyenneGenerale)}`}>
+                      <strong>{l.moyenneGenerale > 0 ? l.moyenneGenerale.toFixed(2) : '—'}</strong>
+                    </td>
+                    {/* Cellule Rang — badge visuel (or pour 1er, violet pour top 3, gris sinon) */}
+                    <td className="col-moyenne">
+                      {l.rang > 0 ? (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '2px 8px',
+                            borderRadius: '999px',
+                            fontWeight: 600,
+                            background: l.rang === 1 ? '#fde68a' : l.rang <= 3 ? '#e9d5ff' : '#e5e7eb',
+                            color: l.rang === 1 ? '#78350f' : '#1f2937',
+                          }}
+                        >
+                          {l.rang}
+                          {l.rang === 1 ? 'er' : 'e'}
+                        </span>
+                      ) : (
+                        '—'
+                      )}
                     </td>
                   </tr>
                 ))}
