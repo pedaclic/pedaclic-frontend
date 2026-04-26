@@ -5,11 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileSpreadsheet, Plus, Pencil, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, Plus, Pencil, Trash2, Check, X, Tag } from 'lucide-react';
 import {
   getFeuillesByGroupe,
   creerFeuilleDeNotes,
   supprimerFeuille,
+  updateTitreFeuille,
 } from '../../services/feuillesNotesService';
 import type { FeuilleDeNotes, PeriodeType } from '../../types/feuillesNotes.types';
 import { PERIODE_LABELS } from '../../types/feuillesNotes.types';
@@ -60,6 +61,14 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
   const [showCreate, setShowCreate] = useState(false);
   const [newPeriodeType, setNewPeriodeType] = useState<PeriodeType>('trimestrielle');
   const [newPeriodeIndex, setNewPeriodeIndex] = useState(0);
+  // ✨ Titre libre saisi à la création (vide → l'UI retombera sur la
+  //    période, comportement historique pour ne pas surprendre).
+  const [newTitre, setNewTitre] = useState<string>('');
+  // ✨ Édition inline du titre d'une feuille existante.
+  //    `editTitreId` : id de la feuille en cours d'édition (null = aucune).
+  //    `draftTitre`  : valeur du champ de saisie pendant l'édition.
+  const [editTitreId, setEditTitreId] = useState<string | null>(null);
+  const [draftTitre, setDraftTitre] = useState<string>('');
 
   useEffect(() => {
     getFeuillesByGroupe(groupe.id).then(setFeuilles).catch(console.error).finally(() => setLoading(false));
@@ -82,9 +91,14 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
         newPeriodeType,
         label,
         debut,
-        fin
+        fin,
+        // 12e arg : evaluations par défaut (générées côté service).
+        [],
+        // 13e arg ✨ : titre libre saisi par le prof.
+        newTitre,
       );
       setShowCreate(false);
+      setNewTitre(''); // reset pour la prochaine création
       setFeuilles((prev) => [f, ...prev]);
       // ✨ On transmet le groupeId via location.state pour que le bouton
       //    "Retour" de l'éditeur sache à quel onglet revenir (tab "notes").
@@ -95,6 +109,28 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
       toast.error(err?.message || 'Erreur lors de la création.');
     } finally {
       setCreating(false);
+    }
+  };
+
+  /**
+   * ✨ Persiste le titre saisi pour une feuille existante.
+   *  - Vide la saisie revient à supprimer le titre (et donc retomber
+   *    sur le periodeLabel à l'affichage).
+   *  - Optimiste : on met l'état local à jour avant la confirmation
+   *    serveur pour fluidité ; en cas d'erreur on log et on toast.
+   */
+  const handleSaveTitre = async (feuille: FeuilleDeNotes) => {
+    const valeur = draftTitre.trim();
+    setEditTitreId(null);
+    // Pas de changement → on n'appelle pas Firestore inutilement.
+    if ((feuille.titre || '') === valeur) return;
+    setFeuilles((prev) =>
+      prev.map((x) => (x.id === feuille.id ? { ...x, titre: valeur || undefined } : x)),
+    );
+    try {
+      await updateTitreFeuille(feuille.id, valeur);
+    } catch (err: any) {
+      toast.error(err?.message || 'Impossible de mettre à jour le titre.');
     }
   };
 
@@ -141,6 +177,27 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
         <div className="feuilles-notes-create-card">
           <h4>Créer une feuille</h4>
           <div className="feuilles-notes-create-form">
+            {/*
+              ✨ Titre libre de la feuille (facultatif).
+              Permet de différencier plusieurs feuilles d'une même
+              discipline/période — ex. « Évaluation orthographe » vs
+              « Évaluation grammaire » sur le 1er trimestre.
+              Si vide, l'affichage retombe sur le `periodeLabel`.
+            */}
+            <div className="form-group">
+              <label htmlFor="feuille-titre">
+                Titre de la feuille <span className="text-muted">(optionnel)</span>
+              </label>
+              <input
+                id="feuille-titre"
+                type="text"
+                className="prof-select"
+                placeholder="Ex. Évaluation orthographe — 1er trimestre"
+                value={newTitre}
+                onChange={(e) => setNewTitre(e.target.value)}
+                maxLength={120}
+              />
+            </div>
             <div className="form-group">
               <label>Période</label>
               <select
@@ -190,38 +247,118 @@ const FeuillesNotesManager: React.FC<FeuillesNotesManagerProps> = ({ groupe, cur
         </div>
       ) : (
         <div className="feuilles-notes-list">
-          {feuilles.map((f) => (
-            <div key={f.id} className="feuilles-notes-card">
-              <div className="feuilles-notes-card-body">
-                <strong>{f.periodeLabel}</strong>
-                <span className="feuilles-notes-meta">
-                  {f.matiereNom} • {f.anneeScolaire}
-                </span>
+          {feuilles.map((f) => {
+            const enEdition = editTitreId === f.id;
+            return (
+              <div key={f.id} className="feuilles-notes-card">
+                <div className="feuilles-notes-card-body">
+                  {/*
+                    Titre principal : en mode lecture, on privilégie
+                    f.titre, à défaut on retombe sur le periodeLabel
+                    (rétro-compatibilité avec les feuilles existantes).
+                    En mode édition, un input remplace le titre + boutons
+                    OK / Annuler. Validation : Enter, Annulation : Escape.
+                  */}
+                  {enEdition ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <input
+                        type="text"
+                        className="prof-select"
+                        autoFocus
+                        value={draftTitre}
+                        placeholder={f.periodeLabel}
+                        onChange={(e) => setDraftTitre(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleSaveTitre(f);
+                          if (e.key === 'Escape') setEditTitreId(null);
+                        }}
+                        maxLength={120}
+                        style={{ flex: '1 1 240px', minWidth: 200 }}
+                      />
+                      <button
+                        className="prof-btn prof-btn-primary prof-btn-sm"
+                        onClick={() => handleSaveTitre(f)}
+                        title="Enregistrer le titre"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        className="prof-btn prof-btn-secondary prof-btn-sm"
+                        onClick={() => setEditTitreId(null)}
+                        title="Annuler"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <strong>{f.titre || f.periodeLabel}</strong>
+                      {/*
+                        Quand un titre custom est défini, on garde le
+                        periodeLabel en sous-ligne pour ne pas perdre
+                        l'information de période d'un coup d'œil.
+                      */}
+                      {f.titre && (
+                        <span className="feuilles-notes-meta" style={{ display: 'block' }}>
+                          {f.periodeLabel}
+                        </span>
+                      )}
+                      <span className="feuilles-notes-meta">
+                        {f.matiereNom} • {f.anneeScolaire}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <div className="feuilles-notes-card-actions">
+                  {/*
+                    ✨ Bouton « Renommer » : place la carte en mode
+                    édition de titre (sans aller sur l'éditeur).
+                    Permet le renommage rétroactif des feuilles
+                    existantes (qui n'avaient pas de titre).
+                  */}
+                  {!enEdition && (
+                    <button
+                      className="prof-btn prof-btn-secondary prof-btn-sm"
+                      onClick={() => {
+                        setEditTitreId(f.id);
+                        setDraftTitre(f.titre || '');
+                      }}
+                      title="Renommer la feuille"
+                    >
+                      <Tag size={14} /> Renommer
+                    </button>
+                  )}
+                  <button
+                    className="prof-btn prof-btn-primary prof-btn-sm"
+                    onClick={() =>
+                      // ✨ Idem que pour la création : on transporte le contexte
+                      //    du groupe (id + onglet d'origine) afin de pouvoir y
+                      //    revenir précisément depuis l'éditeur de feuille.
+                      navigate(`/prof/feuilles/${f.id}`, {
+                        state: { groupeId: groupe.id, fromTab: 'notes' },
+                      })
+                    }
+                  >
+                    <Pencil size={14} /> Modifier
+                  </button>
+                  <button
+                    className="prof-btn prof-btn-danger prof-btn-sm"
+                    onClick={() => handleDelete(f.id)}
+                    title="Supprimer"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
-              <div className="feuilles-notes-card-actions">
-                <button
-                  className="prof-btn prof-btn-primary prof-btn-sm"
-                  onClick={() =>
-                    // ✨ Idem que pour la création : on transporte le contexte
-                    //    du groupe (id + onglet d'origine) afin de pouvoir y
-                    //    revenir précisément depuis l'éditeur de feuille.
-                    navigate(`/prof/feuilles/${f.id}`, {
-                      state: { groupeId: groupe.id, fromTab: 'notes' },
-                    })
-                  }
-                >
-                  <Pencil size={14} /> Modifier
-                </button>
-                <button
-                  className="prof-btn prof-btn-danger prof-btn-sm"
-                  onClick={() => handleDelete(f.id)}
-                  title="Supprimer"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

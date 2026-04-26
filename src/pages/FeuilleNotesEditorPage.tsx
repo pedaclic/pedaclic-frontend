@@ -12,6 +12,7 @@ import {
   updateEvaluationsFeuille,
   updateCompetencesDefFeuille,
   updateCompetenceEleve,
+  updateTitreFeuille,
   buildLignesNotes,
 } from '../services/feuillesNotesService';
 import { getElevesGroupe } from '../services/profGroupeService';
@@ -44,6 +45,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [overIdx, setOverIdx] = useState<number | null>(null);
   const [editEvalId, setEditEvalId] = useState<string | null>(null);
   const [draftLibelle, setDraftLibelle] = useState<string>('');
+  // ✨ Édition inline du TITRE de la feuille (en haut de l'éditeur).
+  //    `editTitre` ouvre/ferme le mode édition ; `draftTitre` porte la
+  //    saisie en cours. Validation : Enter / clic ✓ ; annulation : Esc.
+  const [editTitre, setEditTitre] = useState<boolean>(false);
+  const [draftTitre, setDraftTitre] = useState<string>('');
   const [showCompPanel, setShowCompPanel] = useState(false);
   const [newCompLib, setNewCompLib] = useState('');
   // ── Navigation clavier dans la grille de notes ──
@@ -186,7 +192,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
 
   const handleExport = async (format: 'excel' | 'pdf' | 'word') => {
     if (!feuille) return;
-    const name = `Notes_${feuille.groupeNom.replace(/\s+/g, '_')}_${feuille.periodeLabel.replace(/\s+/g, '_')}`;
+    // ✨ Le nom de fichier inclut le titre (s'il existe) pour
+    //    différencier deux exports d'une même période / discipline.
+    //    Caractères incompatibles avec les FS retirés.
+    const sanitize = (s: string) => s.replace(/[^\p{L}\p{N}_\- ]/gu, '').replace(/\s+/g, '_');
+    const baseTitre = feuille.titre ? `${sanitize(feuille.titre)}_` : '';
+    const name = `Notes_${baseTitre}${sanitize(feuille.groupeNom)}_${sanitize(feuille.periodeLabel)}`;
     try {
       if (format === 'excel') await exportFeuilleExcel(feuille, lignes, name);
       else if (format === 'pdf') await exportFeuillePDF(feuille, lignes, name);
@@ -389,8 +400,97 @@ const FeuilleNotesEditorPage: React.FC = () => {
           <ArrowLeft size={18} /> Retour
         </button>
         <div className="feuille-editor-titre">
-          <h1>Feuille de notes — {feuille.groupeNom}</h1>
-          <p>{feuille.matiereNom} • {feuille.periodeLabel} • {feuille.anneeScolaire}</p>
+          {/*
+            ✨ Titre éditable de la feuille.
+            En mode lecture : on affiche `feuille.titre` en grand quand
+            il existe (le `groupeNom` reste en sous-ligne pour le contexte).
+            Sans titre, on conserve l'affichage historique
+            « Feuille de notes — <Groupe> ».
+            En mode édition : input + boutons ✓ / ✕. Vider + valider
+            supprime le titre (retour à l'affichage historique).
+          */}
+          {editTitre ? (
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                className="prof-select"
+                autoFocus
+                value={draftTitre}
+                placeholder={`Feuille de notes — ${feuille.groupeNom}`}
+                onChange={(e) => setDraftTitre(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key === 'Enter') {
+                    const valeur = draftTitre.trim();
+                    setEditTitre(false);
+                    if ((feuille.titre || '') !== valeur) {
+                      setFeuille((f) => (f ? { ...f, titre: valeur || undefined } : f));
+                      try {
+                        await updateTitreFeuille(feuille.id, valeur);
+                      } catch (err: any) {
+                        toast.error(err?.message || 'Impossible de mettre à jour le titre.');
+                      }
+                    }
+                  } else if (e.key === 'Escape') {
+                    setEditTitre(false);
+                  }
+                }}
+                maxLength={120}
+                style={{ minWidth: 300, fontSize: '1.1rem', fontWeight: 600 }}
+              />
+              <button
+                className="prof-btn prof-btn-primary prof-btn-sm"
+                title="Enregistrer le titre"
+                onClick={async () => {
+                  const valeur = draftTitre.trim();
+                  setEditTitre(false);
+                  if ((feuille.titre || '') !== valeur) {
+                    setFeuille((f) => (f ? { ...f, titre: valeur || undefined } : f));
+                    try {
+                      await updateTitreFeuille(feuille.id, valeur);
+                    } catch (err: any) {
+                      toast.error(err?.message || 'Impossible de mettre à jour le titre.');
+                    }
+                  }
+                }}
+              >
+                <Check size={14} />
+              </button>
+              <button
+                className="prof-btn prof-btn-secondary prof-btn-sm"
+                onClick={() => setEditTitre(false)}
+                title="Annuler"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <h1
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+              >
+                {feuille.titre || `Feuille de notes — ${feuille.groupeNom}`}
+                {/* Crayon discret pour entrer en édition. Toujours dispo,
+                    y compris pour les feuilles antérieures (sans titre). */}
+                <button
+                  className="prof-btn prof-btn-secondary prof-btn-sm"
+                  title="Renommer la feuille"
+                  onClick={() => {
+                    setDraftTitre(feuille.titre || '');
+                    setEditTitre(true);
+                  }}
+                  style={{ padding: '2px 6px' }}
+                >
+                  <Pencil size={14} />
+                </button>
+              </h1>
+              <p>
+                {/* Si un titre custom est posé, on garde le nom du groupe
+                    en sous-ligne (contexte). Sinon comportement historique. */}
+                {feuille.titre ? `${feuille.groupeNom} • ` : ''}
+                {feuille.matiereNom} • {feuille.periodeLabel} • {feuille.anneeScolaire}
+              </p>
+            </>
+          )}
         </div>
         <div className="feuille-editor-export">
           <button className="prof-btn prof-btn-secondary" onClick={() => handleExport('excel')} title="Excel">

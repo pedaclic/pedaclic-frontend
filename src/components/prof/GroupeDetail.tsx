@@ -25,6 +25,7 @@ import {
   genererExportCSV,
   telechargerCSV,
   retirerEleve,
+  modifierNomEleve,
   getElevesGroupe
 } from '../../services/profGroupeService';
 import {
@@ -271,6 +272,13 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   const [quizSelectionne, setQuizSelectionne] = useState<string | null>(null);
   const [loadingQuiz, setLoadingQuiz] = useState<boolean>(false);
   const [loadingRetrait, setLoadingRetrait] = useState<string | null>(null);
+  // ✨ Édition inline du nom d'un élève (correction d'orthographe, etc.).
+  //    `editEleveId` : eleveId en cours d'édition (null = aucun).
+  //    `draftEleveNom` : valeur du champ pendant la saisie.
+  //    `savingEleveNom` : eleveId en cours de sauvegarde (loader visuel).
+  const [editEleveId, setEditEleveId] = useState<string | null>(null);
+  const [draftEleveNom, setDraftEleveNom] = useState<string>('');
+  const [savingEleveNom, setSavingEleveNom] = useState<string | null>(null);
   const [modalInscriptionOuvert, setModalInscriptionOuvert] = useState(false);
 
 
@@ -441,6 +449,47 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
       setError(err.message);
     } finally {
       setLoadingRetrait(null);
+    }
+  };
+
+  /**
+   * ✨ Persiste le nom d'un élève (correction d'une coquille).
+   *
+   *  Étapes :
+   *   1. Validation locale : nom non vide.
+   *   2. Lookup de l'inscription correspondante (un élève peut être
+   *      dans plusieurs groupes ; on cible bien celle de CE groupe).
+   *   3. Appel `modifierNomEleve` (Firestore).
+   *   4. Recharge des données du groupe pour rafraîchir partout
+   *      (tableau, classement, alertes, exports, feuilles de notes).
+   *
+   *  Aucune modification destructive : les notes, l'historique d'appel
+   *  et les feuilles de notes sont préservés (le nom est dénormalisé,
+   *  donc il suffit de le mettre à jour à un seul endroit).
+   */
+  const handleEditerNomEleve = async (eleveId: string) => {
+    const valeur = draftEleveNom.trim();
+    if (!valeur) {
+      setError('Le nom ne peut pas être vide.');
+      return;
+    }
+    try {
+      setSavingEleveNom(eleveId);
+      const inscriptions = await getElevesGroupe(groupe.id);
+      const inscription = inscriptions.find(i => i.eleveId === eleveId);
+      if (!inscription) {
+        throw new Error("Inscription introuvable pour cet élève.");
+      }
+      // Pas de changement → on évite l'écriture inutile.
+      if (inscription.eleveNom !== valeur) {
+        await modifierNomEleve(inscription.id, valeur);
+        await chargerDonneesGroupe();
+      }
+      setEditEleveId(null);
+    } catch (err: any) {
+      setError(err.message || "Impossible de mettre à jour le nom.");
+    } finally {
+      setSavingEleveNom(null);
     }
   };
 
@@ -987,11 +1036,77 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                       >
                         <td className="groupe-eleve-rang">{idx + 1}</td>
                         <td className="groupe-eleve-nom-cell">
-                          <div>
-                            {/* Nom formaté "Prénoms NOM" */}
-                            <strong>{formatEleveNom(eleve.eleveNom)}</strong>
-                            <span className="groupe-eleve-email">{eleve.eleveEmail}</span>
-                          </div>
+                          {/*
+                            ✨ Édition inline du nom de l'élève.
+                            En lecture : nom formaté + email + bouton crayon
+                            (✏️) qui ouvre un input contrôlé.
+                            En édition : input + ✓ (Enter) / ✕ (Escape).
+                            En cas de coquille, le prof corrige directement
+                            sans devoir retirer puis ré-inscrire l'élève
+                            (préserve toutes les notes et l'historique).
+                          */}
+                          {editEleveId === eleve.eleveId ? (
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <input
+                                type="text"
+                                className="prof-select prof-select-sm"
+                                autoFocus
+                                value={draftEleveNom}
+                                onChange={(e) => setDraftEleveNom(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleEditerNomEleve(eleve.eleveId);
+                                  if (e.key === 'Escape') setEditEleveId(null);
+                                }}
+                                maxLength={120}
+                                style={{ minWidth: 200 }}
+                                aria-label={`Nouveau nom pour ${eleve.eleveNom}`}
+                              />
+                              <button
+                                className="prof-btn-icon"
+                                title="Enregistrer"
+                                onClick={() => handleEditerNomEleve(eleve.eleveId)}
+                                disabled={savingEleveNom === eleve.eleveId}
+                              >
+                                {savingEleveNom === eleve.eleveId ? '⏳' : '✓'}
+                              </button>
+                              <button
+                                className="prof-btn-icon"
+                                title="Annuler"
+                                onClick={() => setEditEleveId(null)}
+                                disabled={savingEleveNom === eleve.eleveId}
+                              >
+                                ✕
+                              </button>
+                              <span className="groupe-eleve-email" style={{ flexBasis: '100%' }}>
+                                {eleve.eleveEmail}
+                              </span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div>
+                                {/* Nom formaté "Prénoms NOM" */}
+                                <strong>{formatEleveNom(eleve.eleveNom)}</strong>
+                                <span className="groupe-eleve-email">{eleve.eleveEmail}</span>
+                              </div>
+                              <button
+                                className="prof-btn-icon"
+                                title="Renommer l'élève (corriger le nom)"
+                                onClick={() => {
+                                  setEditEleveId(eleve.eleveId);
+                                  setDraftEleveNom(eleve.eleveNom);
+                                }}
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                          )}
                         </td>
                         <td>
                           <span className={`groupe-note-badge ${getClasseMoyenne(eleve.moyenne)}`}>

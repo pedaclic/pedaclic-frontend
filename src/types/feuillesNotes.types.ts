@@ -77,6 +77,16 @@ export type CompetencesEleve = Record<string, Record<string, CompetenceStatus>>;
 /** Feuille de notes complète pour un groupe */
 export interface FeuilleDeNotes {
   id: string;
+  /**
+   * ✨ Titre libre de la feuille (saisi par le professeur).
+   *
+   *   Permet de distinguer plusieurs feuilles d'un même groupe portant
+   *   sur la même discipline (ex. « Évaluation orthographe — 1er trim. »
+   *   vs « Évaluation grammaire — 1er trim. »). Optionnel pour rester
+   *   rétro-compatible avec les feuilles existantes (qui n'avaient pas
+   *   ce champ) : à l'affichage on retombe sur le `periodeLabel`.
+   */
+  titre?: string;
   groupeId: string;
   groupeNom: string;
   matiereId: string;

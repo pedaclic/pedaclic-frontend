@@ -388,6 +388,38 @@ export async function getGroupesEleve(eleveId: string): Promise<GroupeProf[]> {
   }
 }
 
+/**
+ * ✨ Met à jour le nom (eleveNom) d'une inscription existante.
+ *
+ *  Utilisé pour corriger une coquille (orthographe, prénom inversé, …)
+ *  sans devoir retirer puis ré-inscrire l'élève — opération qui aurait
+ *  cassé l'historique des notes / de l'appel.
+ *
+ *  Le `eleveNom` est dénormalisé dans le document d'inscription, donc
+ *  une simple mise à jour de ce champ suffit : tous les calculs amont
+ *  (feuilles de notes, alertes, exports) le relisent à chaque chargement.
+ */
+export async function modifierNomEleve(
+  inscriptionId: string,
+  nouveauNom: string
+): Promise<void> {
+  const trimmed = nouveauNom.trim();
+  if (!trimmed) {
+    throw new Error('Le nom de l\'élève ne peut pas être vide.');
+  }
+  try {
+    await updateDoc(doc(db, 'inscriptions_groupe', inscriptionId), {
+      eleveNom: trimmed,
+      // On trace la dernière modif pour audit éventuel.
+      dateMiseAJour: new Date(),
+    });
+    console.log(`✅ Nom de l'élève (inscription ${inscriptionId}) mis à jour: "${trimmed}"`);
+  } catch (error) {
+    console.error('❌ Erreur mise à jour nom élève:', error);
+    throw new Error('Impossible de mettre à jour le nom de l\'élève.');
+  }
+}
+
 export async function retirerEleve(
   inscriptionId: string,
   groupeId: string

@@ -40,7 +40,13 @@ function toDate(val: unknown): Date {
   return new Date(String(val));
 }
 
-/** Crée une feuille de notes pour un groupe */
+/**
+ * Crée une feuille de notes pour un groupe.
+ *
+ *  ✨ `titre` est optionnel : il s'agit du titre libre de la feuille
+ *     (ex. « Évaluation orthographe — 1er trim. »). Quand il est vide
+ *     l'UI retombe sur le `periodeLabel` pour rester rétro-compatible.
+ */
 export async function creerFeuilleDeNotes(
   groupeId: string,
   groupeNom: string,
@@ -53,7 +59,8 @@ export async function creerFeuilleDeNotes(
   periodeLabel: string,
   dateDebut: Date,
   dateFin: Date,
-  evaluations: EvaluationNote[] = []
+  evaluations: EvaluationNote[] = [],
+  titre: string = ''
 ): Promise<FeuilleDeNotes> {
   const now = Timestamp.now();
   const inscriptions = await getElevesGroupe(groupeId);
@@ -66,6 +73,9 @@ export async function creerFeuilleDeNotes(
 
   const ref = await addDoc(collection(db, COL), {
     eleveIds,
+    // Titre stocké uniquement s'il est non vide (évite de polluer les
+    // documents Firestore avec des champs vides côté requêtes).
+    ...(titre.trim() ? { titre: titre.trim() } : {}),
     groupeId,
     groupeNom,
     matiereId,
@@ -192,6 +202,26 @@ export async function updateEvaluationsFeuille(
 /** Supprime une feuille */
 export async function supprimerFeuille(feuilleId: string): Promise<void> {
   await deleteDoc(doc(db, COL, feuilleId));
+}
+
+/**
+ * ✨ Met à jour le titre d'une feuille existante.
+ *
+ *  Passer une chaîne vide (ou faite uniquement d'espaces) supprime le
+ *  titre — l'UI retombera alors sur le `periodeLabel`. Cette opération
+ *  est idempotente et ne touche ni aux notes, ni aux évaluations.
+ */
+export async function updateTitreFeuille(
+  feuilleId: string,
+  titre: string,
+): Promise<void> {
+  const trimmed = (titre || '').trim();
+  await updateDoc(doc(db, COL, feuilleId), {
+    // On stocke `null` (et non `undefined`) lorsque l'utilisateur efface
+    // le titre : Firestore tolère mieux ce type côté requêtes futures.
+    titre: trimmed.length > 0 ? trimmed : null,
+    updatedAt: Timestamp.now(),
+  });
 }
 
 /**
