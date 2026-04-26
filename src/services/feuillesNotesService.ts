@@ -229,12 +229,25 @@ export async function updateTitreFeuille(
  *
  * Règle de calcul (formule retenue par PedaClic) :
  *   - MoyenneDevoirs  = Σ(note × coef) / Σ(coef) sur les évaluations de type 'devoir'
+ *                      DE LA FEUILLE COURANTE UNIQUEMENT.
  *   - NoteComposition = Σ(note × coef) / Σ(coef) sur les évaluations de type 'composition'
+ *                      DE LA FEUILLE COURANTE UNIQUEMENT.
  *   - MoyenneGénérale =
  *       • Si devoirs + composition présents : (MoyDevoirs + Composition) / 2
  *       • Sinon : la seule des deux qui existe (fallback gracieux)
  *       • Sinon : moyenne pondérée classique sur toutes les évaluations
  *   - Rang  : classement décroissant sur MoyenneGénérale (égalité → même rang).
+ *
+ * 🛡️ Garde-fou strict : on ne consomme QUE les notes dont l'evaluationId
+ *    est encore présent dans `feuille.evaluations`. Cela élimine toute
+ *    contamination possible :
+ *      • notes orphelines laissées en base après suppression / renommage
+ *        d'une évaluation,
+ *      • notes héritées d'une autre feuille (ex. import / duplication),
+ *      • notes saisies pour un id qui aurait migré entre catégories.
+ *
+ *    Concrètement : la colonne « Moy. Devoirs » ne récupère QUE les notes
+ *    de devoirs de la feuille courante — pas plus, pas moins.
  *
  * Rétro-compat : le champ `moyenne` est renseigné avec la MoyenneGénérale,
  * ce qui préserve les vues lecture seule (élève, parent) sans les casser.
@@ -247,37 +260,64 @@ export function buildLignesNotes(
   const notes = feuille.notes || {};
   const evals = feuille.evaluations || [];
 
-  // Pré-partitionnement devoirs / compositions pour éviter un test par ligne
+  // ── Partitionnement strict par type ──
+  //   On garde le défaut historique « 'devoir' si type absent » pour ne
+  //   PAS casser les feuilles d'avant l'introduction du champ `type`.
   const evalsDevoirs = evals.filter((e) => (e.type ?? 'devoir') === 'devoir');
-  const evalsCompo = evals.filter((e) => (e.type ?? 'devoir') === 'composition');
+  const evalsCompo = evals.filter((e) => e.type === 'composition');
+
+  // ── Sets d'IDs autorisés (référence absolue : la feuille courante) ──
+  //   Toute clé de `notes[eleveId]` ABSENTE de ces sets sera ignorée :
+  //   c'est le verrou anti-contamination demandé par l'utilisateur.
+  const idsDevoirs = new Set(evalsDevoirs.map((e) => e.id));
+  const idsCompo = new Set(evalsCompo.map((e) => e.id));
+  const idsValides = new Set<string>([...idsDevoirs, ...idsCompo]);
+
+  // Helper : renvoie une note numérique exploitable, ou null sinon.
+  const lireNote = (raw: unknown): number | null => {
+    if (raw === undefined || raw === null) return null;
+    const n = typeof raw === 'number' ? raw : Number(raw);
+    if (!Number.isFinite(n) || Number.isNaN(n)) return null;
+    return n;
+  };
 
   for (const i of inscriptions) {
-    const notesEleve = notes[i.eleveId] || {};
+    // Brut Firestore : peut contenir des entrées orphelines (legacy / import).
+    const notesEleveBrutes = notes[i.eleveId] || {};
+
+    // 🔒 Filtre défensif : on ne conserve que les notes dont l'evaluationId
+    //    appartient encore à `feuille.evaluations`. Les autres sont écartées.
+    const notesEleve: Record<string, number> = {};
+    for (const [evalId, raw] of Object.entries(notesEleveBrutes)) {
+      if (!idsValides.has(evalId)) continue; // note orpheline → ignorée
+      const n = lireNote(raw);
+      if (n !== null) notesEleve[evalId] = n;
+    }
 
     // Agrégateurs : moyennes pondérées sur chaque sous-ensemble
     let totalCoefD = 0, totalPointsD = 0;
     let totalCoefC = 0, totalPointsC = 0;
     let totalCoefAll = 0, totalPointsAll = 0;
 
+    // ── Boucle DEVOIRS : strictement les évaluations type='devoir' de cette feuille ──
     for (const e of evalsDevoirs) {
-      const n = notesEleve[e.id];
-      if (n !== undefined && n !== null && !Number.isNaN(n)) {
-        const coef = e.coefficient ?? 1;
-        totalPointsD += n * coef;
-        totalCoefD += coef;
-        totalPointsAll += n * coef;
-        totalCoefAll += coef;
-      }
+      const n = notesEleve[e.id]; // déjà filtré et numérique
+      if (n === undefined) continue;
+      const coef = e.coefficient && e.coefficient > 0 ? e.coefficient : 1;
+      totalPointsD += n * coef;
+      totalCoefD += coef;
+      totalPointsAll += n * coef;
+      totalCoefAll += coef;
     }
+    // ── Boucle COMPOSITIONS : strictement les évaluations type='composition' ──
     for (const e of evalsCompo) {
       const n = notesEleve[e.id];
-      if (n !== undefined && n !== null && !Number.isNaN(n)) {
-        const coef = e.coefficient ?? 1;
-        totalPointsC += n * coef;
-        totalCoefC += coef;
-        totalPointsAll += n * coef;
-        totalCoefAll += coef;
-      }
+      if (n === undefined) continue;
+      const coef = e.coefficient && e.coefficient > 0 ? e.coefficient : 1;
+      totalPointsC += n * coef;
+      totalCoefC += coef;
+      totalPointsAll += n * coef;
+      totalCoefAll += coef;
     }
 
     const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -304,6 +344,9 @@ export function buildLignesNotes(
       eleveId: i.eleveId,
       eleveNom: i.eleveNom,
       eleveEmail: i.eleveEmail,
+      // ⚠️ On expose `notesEleve` FILTRÉES (pas les brutes) : le rendu
+      //    voit donc exactement les mêmes notes que celles utilisées
+      //    pour le calcul, sans clés orphelines.
       notes: notesEleve,
       // `moyenne` conservée = moyenne générale (rétro-compat vues lecture)
       moyenne: moyenneGenerale,
