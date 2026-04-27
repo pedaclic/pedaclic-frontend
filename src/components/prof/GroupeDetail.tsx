@@ -479,19 +479,65 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   };
 
   /**
-   * Retire un élève du groupe
+   * Retire un élève du groupe — sans rechargement complet de la page.
+   *
+   *   ⚡ Optimistic update :
+   *     1. Lookup de l'inscription dans l'état local.
+   *     2. Suppression Firestore (`retirerEleve`).
+   *     3. Patch local sur :
+   *          • `inscriptions` (filter)
+   *          • `statsEleves` (filter)
+   *          • `alertes` (filter — celles qui ciblaient l'élève disparaissent)
+   *          • `statsGroupe.nombreEleves` (décrément ; jamais < 0)
+   *     4. Si l'élève retiré était sélectionné dans le panneau détail,
+   *        on referme le panneau pour éviter un état orphelin.
+   *
+   *   En cas d'échec Firestore, on tombe en repli sur un rechargement
+   *   complet pour ne pas laisser l'UI désynchronisée.
    */
   const handleRetirerEleve = async (eleveId: string) => {
+    const inscription = inscriptions.find((i) => i.eleveId === eleveId);
+    if (!inscription) {
+      // Cas rare : la liste locale n'a pas l'élève (désynchronisation
+      // en background, par exemple). On retombe alors sur le chemin
+      // Firestore complet pour rester sûr.
+      try {
+        setLoadingRetrait(eleveId);
+        const inscs = await getElevesGroupe(groupe.id);
+        const insc = inscs.find((i) => i.eleveId === eleveId);
+        if (insc) {
+          await retirerEleve(insc.id, groupe.id);
+          await chargerDonneesGroupe();
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoadingRetrait(null);
+      }
+      return;
+    }
+
     try {
       setLoadingRetrait(eleveId);
-      const inscriptions = await getElevesGroupe(groupe.id);
-      const inscription = inscriptions.find(i => i.eleveId === eleveId);
-      if (inscription) {
-        await retirerEleve(inscription.id, groupe.id);
-        await chargerDonneesGroupe();
+      await retirerEleve(inscription.id, groupe.id);
+
+      // ── Mise à jour locale (instantanée pour l'utilisateur) ──
+      setInscriptions((prev) => prev.filter((i) => i.eleveId !== eleveId));
+      setStatsEleves((prev) => prev.filter((s) => s.eleveId !== eleveId));
+      setAlertes((prev) => prev.filter((a) => a.eleveId !== eleveId));
+      setStatsGroupe((prev) =>
+        prev
+          ? { ...prev, nombreEleves: Math.max(0, prev.nombreEleves - 1) }
+          : prev,
+      );
+      // Si le panneau détail visait cet élève, on le referme.
+      if (eleveSelectionne === eleveId) {
+        setEleveSelectionne(null);
       }
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Impossible de retirer l'élève.");
+      // Sécurité : resync depuis Firestore en cas d'erreur de write
+      chargerDonneesGroupe().catch(() => {});
     } finally {
       setLoadingRetrait(null);
     }
@@ -512,27 +558,63 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
    *  et les feuilles de notes sont préservés (le nom est dénormalisé,
    *  donc il suffit de le mettre à jour à un seul endroit).
    */
+  /**
+   * Persiste le nouveau nom d'un élève et met à jour l'UI SANS recharger
+   * toute la page.
+   *
+   *   ⚡ Pattern « optimistic update » :
+   *      1. Validation locale (nom non vide).
+   *      2. Lookup de l'inscription dans l'état local `inscriptions`
+   *         (déjà chargé) — évite un round-trip Firestore inutile.
+   *      3. Si le nom a changé : appel `modifierNomEleve` (1 write).
+   *      4. Mise à jour locale en miroir de TOUS les états dérivés :
+   *           • `inscriptions` (source de vérité pour pictogrammes & co.)
+   *           • `statsEleves`  (utilisée par la liste + le panneau détail)
+   *           • `alertes`      (les messages incluent le nom — on patch
+   *                             aussi pour rester cohérent visuellement).
+   *      5. PAS de `chargerDonneesGroupe()` : la page reste fluide.
+   *
+   *   Si le write Firestore échoue, on rollback en re-déclenchant le
+   *   chargement complet (sécurité : l'état local doit refléter la base).
+   */
   const handleEditerNomEleve = async (eleveId: string) => {
     const valeur = draftEleveNom.trim();
     if (!valeur) {
       setError('Le nom ne peut pas être vide.');
       return;
     }
+    // Lookup via l'état local — pas de Firestore.
+    const inscription = inscriptions.find((i) => i.eleveId === eleveId);
+    if (!inscription) {
+      setError("Inscription introuvable pour cet élève.");
+      return;
+    }
+    // Pas de changement → on évite l'écriture inutile.
+    if (inscription.eleveNom === valeur) {
+      setEditEleveId(null);
+      return;
+    }
     try {
       setSavingEleveNom(eleveId);
-      const inscriptions = await getElevesGroupe(groupe.id);
-      const inscription = inscriptions.find(i => i.eleveId === eleveId);
-      if (!inscription) {
-        throw new Error("Inscription introuvable pour cet élève.");
-      }
-      // Pas de changement → on évite l'écriture inutile.
-      if (inscription.eleveNom !== valeur) {
-        await modifierNomEleve(inscription.id, valeur);
-        await chargerDonneesGroupe();
-      }
+      await modifierNomEleve(inscription.id, valeur);
+
+      // ── Mise à jour optimiste de TOUS les états dérivés ──
+      setInscriptions((prev) =>
+        prev.map((i) => (i.eleveId === eleveId ? { ...i, eleveNom: valeur } : i)),
+      );
+      setStatsEleves((prev) =>
+        prev.map((s) => (s.eleveId === eleveId ? { ...s, eleveNom: valeur } : s)),
+      );
+      setAlertes((prev) =>
+        prev.map((a) => (a.eleveId === eleveId ? { ...a, eleveNom: valeur } : a)),
+      );
+
       setEditEleveId(null);
     } catch (err: any) {
       setError(err.message || "Impossible de mettre à jour le nom.");
+      // Rollback de sécurité : on resynchronise depuis Firestore en cas
+      // d'écriture partielle / erreur de règles.
+      chargerDonneesGroupe().catch(() => {});
     } finally {
       setSavingEleveNom(null);
     }

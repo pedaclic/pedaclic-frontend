@@ -154,21 +154,50 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
     };
   }, [termeRecherche, groupeId]);
 
+  /**
+   * Inscrit un élève existant (compte PedaClic) — sans recharger la liste.
+   *
+   *   ⚡ Optimistic update : on construit l'objet `InscriptionGroupe`
+   *      directement à partir des données déjà connues + de l'ID retourné
+   *      par `inscrireEleveDirect`, et on l'ajoute en tête de la liste
+   *      `inscrits`. Le compteur 📋 « Élèves inscrits » s'incrémente,
+   *      la carte de recherche passe en « ✓ Inscrit ».
+   *
+   *   En cas d'erreur, on retombe sur un rechargement complet pour
+   *   resynchroniser proprement (rare).
+   */
   const handleInscrire = async (eleve: EleveResultat) => {
     if (actionEnCours) return;
     setActionEnCours(eleve.uid);
     setMessageSucces(null);
     try {
-      await inscrireEleveDirect(groupeId, eleve, profId);
-      setResultats(prev =>
-        prev.map(e => (e.uid === eleve.uid ? { ...e, dejaInscrit: true } : e))
+      const inscriptionId = await inscrireEleveDirect(groupeId, eleve, profId);
+      // Marqueur « déjà inscrit » sur la carte de recherche correspondante
+      setResultats((prev) =>
+        prev.map((e) => (e.uid === eleve.uid ? { ...e, dejaInscrit: true, inscriptionId } : e)),
       );
+      // Ajout local immédiat — pas d'appel Firestore supplémentaire pour
+      // recharger toute la liste. Les champs sexe/email seront pris depuis
+      // le doc `users/{uid}` au prochain rechargement complet (rare).
+      const nouvelleInscription: InscriptionGroupe = {
+        id: inscriptionId,
+        groupeId,
+        eleveId: eleve.uid,
+        eleveNom: eleve.displayName,
+        eleveEmail: eleve.email,
+        profId,
+        dateInscription: { toDate: () => new Date() } as unknown as InscriptionGroupe['dateInscription'],
+        statut: 'actif',
+        sourceInscription: 'direct',
+      };
+      setInscrits((prev) => [nouvelleInscription, ...prev]);
       setMessageSucces(`✅ ${eleve.displayName} a été inscrit dans ${groupeNom}.`);
-      await chargerInscrits();
       onSuccess?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'inscription.';
       setErreurRecherche(message);
+      // Resync sécuritaire en cas d'erreur (write partiel possible)
+      chargerInscrits().catch(() => {});
     } finally {
       setActionEnCours(null);
     }
@@ -228,7 +257,8 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
     }
     setOfflineEnCours(true);
     try {
-      await inscrireEleveOffline(
+      // Le service génère et retourne l'ID Firestore de la nouvelle inscription.
+      const inscriptionId = await inscrireEleveOffline(
         groupeId,
         nomPropre,
         profId,
@@ -236,17 +266,42 @@ const InscriptionDirecteModal: React.FC<InscriptionDirecteModalProps> = ({
         offlineSexe,
         offlineSexe === 'autre' ? offlineSexeAutre.trim() : undefined,
       );
+
+      // ⚡ Optimistic update : on construit localement l'objet et on
+      //    l'insère en tête de liste, sans relire Firestore (gain de
+      //    plusieurs centaines de ms et UX fluide pour les saisies en série).
+      const remarqueFinale = offlineRemarque.trim() || undefined;
+      const nouvelleInscription: InscriptionGroupe = {
+        id: inscriptionId,
+        groupeId,
+        // L'élève offline n'a pas d'UID Firebase ; on n'en a pas besoin
+        // ici puisque seules les opérations sur l'inscription comptent.
+        eleveId: `offline:${inscriptionId}`,
+        eleveNom: nomPropre,
+        eleveEmail: '',
+        eleveSexe: offlineSexe,
+        eleveSexeAutre: offlineSexe === 'autre' ? offlineSexeAutre.trim() : undefined,
+        profId,
+        dateInscription: { toDate: () => new Date() } as unknown as InscriptionGroupe['dateInscription'],
+        statut: 'actif',
+        sourceInscription: 'offline',
+        isOffline: true,
+        ...(remarqueFinale ? { remarque: remarqueFinale } : {}),
+      };
+      setInscrits((prev) => [nouvelleInscription, ...prev]);
+
       setMessageSucces(`✅ ${nomPropre} a été ajouté dans ${groupeNom} (sans compte PedaClic).`);
       // Reset des champs pour permettre un enchaînement rapide d'inscriptions
       setOfflineNom('');
       setOfflineRemarque('');
       setOfflineSexe(undefined);
       setOfflineSexeAutre('');
-      await chargerInscrits();
       onSuccess?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erreur lors de l\'ajout.';
       setOfflineErreur(message);
+      // Resync sécuritaire si l'erreur est intervenue après l'écriture
+      chargerInscrits().catch(() => {});
     } finally {
       setOfflineEnCours(false);
     }
