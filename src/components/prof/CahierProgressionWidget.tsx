@@ -1,10 +1,16 @@
 // ============================================================
 // PedaClic – Phase 29 : Widget de Progression du Cahier de Textes
 // Affiche le taux de réalisation global et par rubrique
+// + Phase 37 : Filtre des titres restants (par rubrique / statut / matière)
 // ============================================================
 
 import React, { useMemo, useState } from 'react';
-import type { EntreeCahier, RubriqueCahier } from '../../types/cahierTextes.types';
+import type {
+  EntreeCahier,
+  RubriqueCahier,
+  StatutTitre,
+  TitreRubrique,
+} from '../../types/cahierTextes.types';
 import { STATUT_TITRE_CONFIG } from '../../types/cahierTextes.types';
 import { calculerProgression, type ProgressionItem } from '../../services/cahierTextesService';
 import './CahierProgressionWidget.css';
@@ -14,6 +20,23 @@ interface CahierProgressionWidgetProps {
   rubriques: RubriqueCahier[];
   showDetails?: boolean;
   titre?: string;
+  /**
+   * Phase 37 — Matière courante du cahier (affichée dans le filtre des
+   * titres restants pour clarté lorsqu'on consulte plusieurs cahiers).
+   */
+  matiere?: string;
+}
+
+/**
+ * Phase 37 — Représente un titre restant (non achevé) avec son contexte
+ * de rubrique. Aplatit `RubriqueCahier.titres[]` en une liste plate
+ * filtrable par statut/rubrique/matière dans la section dédiée.
+ */
+interface TitreRestant {
+  rubriqueId: string;
+  rubriqueNom: string;
+  rubriqueCouleur: string;
+  titre: TitreRubrique;
 }
 
 const BarreProgression: React.FC<{
@@ -128,13 +151,69 @@ const CahierProgressionWidget: React.FC<CahierProgressionWidgetProps> = ({
   rubriques,
   showDetails = true,
   titre = 'Progression',
+  matiere,
 }) => {
   const [expanded, setExpanded] = useState<boolean>(false);
+
+  // ── Phase 37 — État local du filtre des titres restants ──────────
+  // On expose 3 dimensions : rubrique, statut, recherche texte.
+  // Persiste pendant la session de consultation du widget.
+  const [filtreRubriqueId, setFiltreRubriqueId] = useState<string>('toutes');
+  const [filtreStatut, setFiltreStatut] = useState<'tous' | StatutTitre>('tous');
+  const [filtreRecherche, setFiltreRecherche] = useState<string>('');
+  const [titresRestantsExpanded, setTitresRestantsExpanded] = useState<boolean>(true);
 
   const { progGlobal, parRubrique } = useMemo(() => {
     const { global, parRubrique: parR } = calculerProgression(entrees, rubriques);
     return { progGlobal: global, parRubrique: parR };
   }, [entrees, rubriques]);
+
+  // ──────────────────────────────────────────────────────────────────
+  // Phase 37 — Construction et filtrage des « titres restants »
+  // ──────────────────────────────────────────────────────────────────
+  //   « Restant » = statut différent de 'acheve'. On agrège les titres
+  //   de toutes les rubriques en une liste plate avec leur contexte
+  //   (rubrique, couleur) pour rendre le filtrage et l'affichage
+  //   simples côté UI.
+  const titresRestants = useMemo<TitreRestant[]>(() => {
+    const restants: TitreRestant[] = [];
+    rubriques.forEach((r) => {
+      (r.titres || []).forEach((t) => {
+        if (t.statut !== 'acheve') {
+          restants.push({
+            rubriqueId: r.id,
+            rubriqueNom: r.nom,
+            rubriqueCouleur: r.couleur ?? '#64748b',
+            titre: t,
+          });
+        }
+      });
+    });
+    return restants;
+  }, [rubriques]);
+
+  /** Liste filtrée selon les 3 dimensions du filtre (rubrique / statut / recherche). */
+  const titresRestantsFiltres = useMemo<TitreRestant[]>(() => {
+    const recherche = filtreRecherche.trim().toLowerCase();
+    return titresRestants
+      .filter((t) => filtreRubriqueId === 'toutes' || t.rubriqueId === filtreRubriqueId)
+      .filter((t) => filtreStatut === 'tous' || t.titre.statut === filtreStatut)
+      .filter((t) => !recherche || t.titre.nom.toLowerCase().includes(recherche))
+      .sort((a, b) => {
+        // Ordre : non_commence < en_cours, puis par ordre dans la rubrique
+        const sa = a.titre.statut === 'non_commence' ? 0 : 1;
+        const sb = b.titre.statut === 'non_commence' ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        if (a.rubriqueNom !== b.rubriqueNom) return a.rubriqueNom.localeCompare(b.rubriqueNom, 'fr-FR');
+        return (a.titre.ordre || 0) - (b.titre.ordre || 0);
+      });
+  }, [titresRestants, filtreRubriqueId, filtreStatut, filtreRecherche]);
+
+  /** Liste des rubriques qui contiennent au moins un titre restant (pour le select). */
+  const rubriquesAvecTitresRestants = useMemo(() => {
+    const ids = new Set(titresRestants.map((t) => t.rubriqueId));
+    return rubriques.filter((r) => ids.has(r.id));
+  }, [titresRestants, rubriques]);
 
   if (entrees.length === 0 && rubriques.length === 0) {
     return (
@@ -197,6 +276,145 @@ const CahierProgressionWidget: React.FC<CahierProgressionWidgetProps> = ({
                   />
                 ))}
               </div>
+            </>
+          )}
+
+          {/* ════════════════════════════════════════════════════════════
+              Phase 37 — Section « Titres restants » avec filtre
+              ────────────────────────────────────────────────────────────
+              Affichée uniquement s'il existe au moins un titre non
+              encore achevé. Permet au prof de :
+                • Filtrer par rubrique (chapitre / module)
+                • Filtrer par statut (non commencé / en cours)
+                • Rechercher par texte (nom du titre)
+              ════════════════════════════════════════════════════════════ */}
+          {titresRestants.length > 0 && (
+            <>
+              <div className="prog-separator">
+                <span>
+                  Titres restants
+                  {matiere && <> · {matiere}</>}
+                </span>
+              </div>
+
+              {/* Toggle pour replier/déplier la liste — utile sur mobile */}
+              <div className="prog-titres-restants-header">
+                <button
+                  type="button"
+                  className="prog-titres-restants-toggle"
+                  onClick={() => setTitresRestantsExpanded((v) => !v)}
+                  aria-expanded={titresRestantsExpanded}
+                  title={titresRestantsExpanded ? 'Replier' : 'Déplier'}
+                >
+                  <span className="prog-titres-restants-chevron">
+                    {titresRestantsExpanded ? '▾' : '▸'}
+                  </span>
+                  <span className="prog-titres-restants-count">
+                    {titresRestantsFiltres.length} / {titresRestants.length}
+                  </span>
+                  <span className="prog-titres-restants-label">
+                    titre{titresRestants.length > 1 ? 's' : ''} non achevé{titresRestants.length > 1 ? 's' : ''}
+                  </span>
+                </button>
+              </div>
+
+              {titresRestantsExpanded && (
+                <>
+                  {/* ── Barre de filtres (rubrique · statut · recherche) ── */}
+                  <div className="prog-titres-restants-filtres" role="group" aria-label="Filtres des titres restants">
+                    <select
+                      className="prog-filtre-select"
+                      value={filtreRubriqueId}
+                      onChange={(e) => setFiltreRubriqueId(e.target.value)}
+                      aria-label="Filtrer par rubrique"
+                      title="Filtrer par rubrique"
+                    >
+                      <option value="toutes">📂 Toutes les rubriques</option>
+                      {rubriquesAvecTitresRestants.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.nom}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      className="prog-filtre-select"
+                      value={filtreStatut}
+                      onChange={(e) => setFiltreStatut(e.target.value as 'tous' | StatutTitre)}
+                      aria-label="Filtrer par statut"
+                      title="Filtrer par statut"
+                    >
+                      <option value="tous">⏺ Tous statuts</option>
+                      <option value="non_commence">⬜ Non commencé</option>
+                      <option value="en_cours">🟡 En cours</option>
+                    </select>
+
+                    <input
+                      type="search"
+                      className="prog-filtre-recherche"
+                      value={filtreRecherche}
+                      onChange={(e) => setFiltreRecherche(e.target.value)}
+                      placeholder="🔎 Rechercher un titre…"
+                      aria-label="Rechercher dans les titres restants"
+                    />
+
+                    {(filtreRubriqueId !== 'toutes' || filtreStatut !== 'tous' || filtreRecherche) && (
+                      <button
+                        type="button"
+                        className="prog-filtre-reset"
+                        onClick={() => {
+                          setFiltreRubriqueId('toutes');
+                          setFiltreStatut('tous');
+                          setFiltreRecherche('');
+                        }}
+                        title="Réinitialiser les filtres"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+
+                  {/* ── Liste filtrée des titres restants ── */}
+                  {titresRestantsFiltres.length === 0 ? (
+                    <p className="prog-titres-restants-empty">
+                      Aucun titre ne correspond aux filtres actifs.
+                    </p>
+                  ) : (
+                    <ul className="prog-titres-restants-list" aria-label="Titres restants à traiter">
+                      {titresRestantsFiltres.map((t) => {
+                        const cfg = STATUT_TITRE_CONFIG[t.titre.statut];
+                        return (
+                          <li
+                            key={`${t.rubriqueId}_${t.titre.id}`}
+                            className="prog-titre-restant-item"
+                            style={{ borderLeftColor: t.rubriqueCouleur }}
+                          >
+                            <span
+                              className="prog-titre-restant-rubrique"
+                              style={{
+                                backgroundColor: t.rubriqueCouleur + '1a',
+                                color: t.rubriqueCouleur,
+                                borderColor: t.rubriqueCouleur,
+                              }}
+                              title={`Rubrique : ${t.rubriqueNom}`}
+                            >
+                              {t.rubriqueNom}
+                            </span>
+                            <span className="prog-titre-restant-nom">{t.titre.nom}</span>
+                            <span
+                              className="prog-titre-restant-statut"
+                              style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                              title={cfg.label}
+                            >
+                              {cfg.emoji} {cfg.label}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>

@@ -81,15 +81,30 @@ export interface MarquerAppelPayload {
   eleveIdsRetards?: string[];
   /** Détails minutes/motif/commentaire par élève en retard */
   retardsDetails?: Record<string, DetailRetard>;
+  /** @deprecated — utilisez `entreeIds` (Phase 38) */
   entreeId?: string;
+  /** @deprecated — utilisez `entreeTitres` (Phase 38) */
   entreeTitre?: string;
+  /** Phase 38 — séances liées à cet appel (multi-séances par jour) */
+  entreeIds?: string[];
+  entreeTitres?: string[];
 }
 
 /**
  * Enregistre l'appel du jour (absences + retards) pour un groupe.
  *
+ * Phase 38 — Multi-séances :
+ *   Le 5e paramètre peut désormais être :
+ *     • soit un `string` (legacy : 1 seule séance)
+ *     • soit un `string[]` (nouvelle API : N séances dans la journée)
+ *   Idem pour le 6e paramètre (titre / tableau de titres).
+ *   À l'écriture, on stocke TOUJOURS les nouveaux champs `entreeIds[]`
+ *   et `entreeTitres[]`, et on conserve aussi les legacy `entreeId/Titre`
+ *   (premier élément du tableau) pour compatibilité ascendante avec
+ *   les composants qui ne lisent que ces champs.
+ *
  * - Utilise `setDoc({ merge: true })` : conserve les champs existants
- *   non fournis dans le payload (ex. entreeId).
+ *   non fournis dans le payload.
  * - Assainit les `undefined` qui feraient échouer l'écriture Firestore.
  *
  * @throws rejette si l'écriture Firestore est refusée (permissions) —
@@ -100,8 +115,8 @@ export async function marquerAbsences(
   date: string,
   eleveIdsAbsents: string[],
   profId: string,
-  entreeId?: string,
-  entreeTitre?: string,
+  entreeIdOuIds?: string | string[],
+  entreeTitreOuTitres?: string | string[],
   eleveIdsRetards?: string[],
   retardsDetails?: Record<string, DetailRetard>,
 ): Promise<void> {
@@ -119,6 +134,25 @@ export async function marquerAbsences(
     (id) => !eleveIdsAbsents.includes(id),
   );
 
+  // ── Normalisation des paramètres séance(s) ─────────────────────
+  // On accepte les deux formes (string ou string[]) pour rester
+  // compatible avec les anciens appels du code.
+  const entreeIds: string[] = Array.isArray(entreeIdOuIds)
+    ? entreeIdOuIds.filter((s) => !!s)
+    : entreeIdOuIds
+    ? [entreeIdOuIds]
+    : [];
+  const entreeTitres: string[] = Array.isArray(entreeTitreOuTitres)
+    ? entreeTitreOuTitres.filter((s) => !!s)
+    : entreeTitreOuTitres
+    ? [entreeTitreOuTitres]
+    : [];
+
+  // Pour rétro-compatibilité : on dénormalise aussi le 1er élément
+  // dans les anciens champs entreeId/entreeTitre (lus par le code legacy).
+  const legacyId = entreeIds[0];
+  const legacyTitre = entreeTitres[0];
+
   const payload = stripUndefined({
     groupeId,
     date,
@@ -126,8 +160,12 @@ export async function marquerAbsences(
     eleveIdsRetards: retardsNets,
     retardsDetails: retardsDetails || {},
     profId,
-    entreeId,
-    entreeTitre: entreeId ? entreeTitre : undefined,
+    // Multi-séances (nouvelle API)
+    entreeIds: entreeIds.length > 0 ? entreeIds : undefined,
+    entreeTitres: entreeTitres.length > 0 ? entreeTitres : undefined,
+    // Legacy (1ère séance, pour compat) — undefined si aucune séance
+    entreeId: legacyId,
+    entreeTitre: legacyId ? legacyTitre : undefined,
     updatedAt: Timestamp.now(),
   });
 
@@ -159,8 +197,11 @@ export async function getAppelByDate(
     eleveIdsAbsents: data.eleveIdsAbsents || [],
     eleveIdsRetards: data.eleveIdsRetards || [],
     retardsDetails: data.retardsDetails || {},
+    // Phase 38 — Multi-séances : on relit les deux variantes
     entreeId: data.entreeId,
     entreeTitre: data.entreeTitre,
+    entreeIds: Array.isArray(data.entreeIds) ? data.entreeIds : undefined,
+    entreeTitres: Array.isArray(data.entreeTitres) ? data.entreeTitres : undefined,
     profId: data.profId,
     updatedAt: toDate(data.updatedAt),
   };
@@ -213,8 +254,12 @@ export async function getAbsencesByPeriod(
       eleveIdsAbsents: data.eleveIdsAbsents || [],
       eleveIdsRetards: data.eleveIdsRetards || [],
       retardsDetails: data.retardsDetails || {},
+      // Legacy
       entreeId: data.entreeId,
       entreeTitre: data.entreeTitre,
+      // Phase 38 — Multi-séances
+      entreeIds: Array.isArray(data.entreeIds) ? data.entreeIds : undefined,
+      entreeTitres: Array.isArray(data.entreeTitres) ? data.entreeTitres : undefined,
       profId: data.profId,
       updatedAt: toDate(data.updatedAt),
     } as AbsenceGroupe;

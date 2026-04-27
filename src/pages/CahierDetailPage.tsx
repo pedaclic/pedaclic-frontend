@@ -698,6 +698,9 @@ const CahierDetailPage: React.FC = () => {
           entrees={entrees}
           rubriques={rubriques}
           titre="Progression du cahier"
+          /* Phase 37 — Affiche la matière dans la section « Titres restants »
+             pour rappel visuel quand le prof ouvre plusieurs cahiers. */
+          matiere={cahier?.matiere}
         />
 
         <section className="cahier-rubriques-section" aria-label="Gestion des rubriques">

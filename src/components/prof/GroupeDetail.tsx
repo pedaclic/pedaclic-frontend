@@ -38,6 +38,8 @@ import {
   getObservationEleve,
 } from '../../services/groupeAbsencesService';
 import type { DetailRetard, MotifRetard } from '../../types/groupeAbsences.types';
+// Phase 38 — Helpers de lecture multi-séances (rétro-compat legacy)
+import { getEntreeTitres } from '../../types/groupeAbsences.types';
 // ✨ Formatage "Prénoms NOM" (dernier mot en MAJUSCULES)
 //    + tri alphabétique par nom de famille
 import { formatEleveNom, compareParNomFamille } from '../../utils/formatNom';
@@ -55,6 +57,8 @@ import FeuillesNotesManager from './FeuillesNotesManager';
 import CahierGroupeWidget from './CahierGroupeWidget';
 import PlanificationWidget from './PlanificationWidget';
 import InscriptionDirecteModal from './InscriptionDirecteModal';
+// Phase 38 — Modale "Bulletin de suivi des absences/retards" (PDF).
+import BulletinAbsencesModal from './BulletinAbsencesModal';
 import type {
   GroupeProf,
   StatsGroupe,
@@ -136,11 +140,17 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
         const sm: Record<string, string[]> = {};
         statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
+          // Phase 38 — On lit toutes les séances liées à cet appel
+          // (multi-séances par jour). `getEntreeTitres` couvre la
+          // rétrocompat legacy entreeTitre (string unique → tableau 1 élt).
+          const titresSeances = getEntreeTitres(a);
           // Comptage des absences
           (a.eleveIdsAbsents || []).forEach((id: string) => {
             if (c[id] !== undefined) c[id]++;
-            if (a.entreeTitre && sm[id]) {
-              sm[id].push(a.entreeTitre);
+            if (sm[id]) {
+              titresSeances.forEach((t) => {
+                if (t) sm[id].push(t);
+              });
             }
           });
           // Comptage des retards
@@ -269,7 +279,13 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   const [appelCahiers, setAppelCahiers] = useState<CahierTextes[]>([]);
   const [appelCahierId, setAppelCahierId] = useState('');
   const [appelEntrees, setAppelEntrees] = useState<EntreeCahier[]>([]);
-  const [appelEntreeId, setAppelEntreeId] = useState('');
+  /**
+   * Phase 38 — On supporte désormais une liste d'IDs de séances
+   * (multi-séances dans la même journée). Les anciens enregistrements
+   * (un seul `entreeId`) sont chargés sous forme de tableau à 1 élément
+   * lors de la lecture (cf. `getAppelByDate` plus bas).
+   */
+  const [appelEntreeIds, setAppelEntreeIds] = useState<string[]>([]);
 
   // ===== États : Travaux à faire =====
   const [nouveauTravailTitre, setNouveauTravailTitre] = useState('');
@@ -320,6 +336,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   const [draftSexeAutre, setDraftSexeAutre] = useState<string>('');
   const [savingSexeEleveId, setSavingSexeEleveId] = useState<string | null>(null);
   const [modalInscriptionOuvert, setModalInscriptionOuvert] = useState(false);
+  // Phase 38 — Modale Bulletin de suivi (absences/retards) ouverte ?
+  const [modalBulletinOuvert, setModalBulletinOuvert] = useState(false);
 
 
   // ==================== CHARGEMENT DES DONNÉES ====================
@@ -374,11 +392,25 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         setAbsentsIds(appel?.eleveIdsAbsents || []);
         setRetardsIds(appel?.eleveIdsRetards || []);
         setRetardsDetails(appel?.retardsDetails || {});
+        // Phase 38 — On restaure la sélection multi-séances (ou legacy
+        // unique si l'appel a été enregistré avant la Phase 38).
+        if (appel) {
+          if (Array.isArray(appel.entreeIds) && appel.entreeIds.length > 0) {
+            setAppelEntreeIds(appel.entreeIds);
+          } else if (appel.entreeId) {
+            setAppelEntreeIds([appel.entreeId]);
+          } else {
+            setAppelEntreeIds([]);
+          }
+        } else {
+          setAppelEntreeIds([]);
+        }
       })
       .catch(() => {
         setAbsentsIds([]);
         setRetardsIds([]);
         setRetardsDetails({});
+        setAppelEntreeIds([]);
       });
     if (currentUser?.uid) {
       getCahiersForGroupe(groupe.id, currentUser.uid)
@@ -389,7 +421,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
 
   /** Charge les entrées du cahier sélectionné pour l'appel (filtrées par date) */
   useEffect(() => {
-    if (!appelCahierId) { setAppelEntrees([]); setAppelEntreeId(''); return; }
+    if (!appelCahierId) { setAppelEntrees([]); setAppelEntreeIds([]); return; }
     getEntreesCahier(appelCahierId).then(entries => {
       const filtered = entries.filter(e => {
         const d = e.date?.toDate?.();
@@ -397,7 +429,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
       });
       // Si aucune séance ce jour, montrer toutes les séances pour sélection libre
       setAppelEntrees(filtered.length > 0 ? filtered : entries);
-      setAppelEntreeId('');
+      setAppelEntreeIds([]);
     }).catch(() => setAppelEntrees([]));
   }, [appelCahierId, dateAppel]);
 
@@ -685,7 +717,15 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
     try {
       setLoadingAppel(true);
       setAppelSaveState('idle');
-      const entreeSelectionnee = appelEntrees.find(e => e.id === appelEntreeId);
+      // Phase 38 — On collecte TOUTES les séances sélectionnées
+      // (multi-séances : un élève peut manquer maths le matin + français
+      //  l'après-midi → les deux séances sont liées au même appel).
+      const entreesSelectionnees = appelEntreeIds
+        .map((id) => appelEntrees.find((e) => e.id === id))
+        .filter((e): e is EntreeCahier => !!e);
+      const idsSeances = entreesSelectionnees.map((e) => e.id);
+      const titresSeances = entreesSelectionnees.map((e) => e.chapitre);
+
       // Ne conserve les détails que pour les élèves effectivement en retard
       const detailsNets: Record<string, DetailRetard> = {};
       retardsIds.forEach((id) => {
@@ -703,8 +743,10 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         dateAppel,
         absentsIds,
         currentUser.uid,
-        entreeSelectionnee?.id,
-        entreeSelectionnee?.chapitre,
+        // Tableaux d'IDs/titres (multi-séances) — le service accepte
+        // string | string[] et privilégie le format array depuis Phase 38.
+        idsSeances,
+        titresSeances,
         retardsIds,
         detailsNets,
       );
@@ -1627,10 +1669,23 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
             />
           </div>
 
-          {/* Liaison absence ↔ séance */}
+          {/* ─────────────────────────────────────────────────────────
+              Liaison absence ↔ séance(s)  — Phase 38 : MULTI-SÉANCES
+              ─────────────────────────────────────────────────────────
+              Un élève peut être absent à plusieurs séances dans la même
+              journée (ex. mathématiques le matin + français l'après-midi).
+              On affiche donc :
+                • Un select pour choisir le CAHIER (si plusieurs liés au groupe)
+                • Une grille de cases à cocher pour SÉLECTIONNER UNE OU
+                  PLUSIEURS séances de ce cahier sur le jour choisi.
+              Le mode legacy (1 seule séance via select) reste compatible
+              au stockage car le service accepte aussi un id unique.
+              ───────────────────────────────────────────────────────── */}
           {appelCahiers.length > 0 && (
             <div className="groupe-appel-seance">
-              <label className="groupe-appel-seance-label">📓 Lier à une séance :</label>
+              <label className="groupe-appel-seance-label">
+                📓 Lier à une ou plusieurs séances :
+              </label>
               <div className="groupe-appel-seance-selects">
                 {appelCahiers.length > 1 && (
                   <select
@@ -1644,35 +1699,84 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                     ))}
                   </select>
                 )}
-                {appelCahierId && appelEntrees.length > 0 && (
-                  <select
-                    className="prof-select prof-select-sm"
-                    value={appelEntreeId}
-                    onChange={e => setAppelEntreeId(e.target.value)}
-                  >
-                    <option value="">— Séance (optionnel) —</option>
-                    {appelEntrees.map(e => {
-                      const d = e.date?.toDate?.();
-                      const dateLabel = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
-                      return (
-                        <option key={e.id} value={e.id}>
-                          {dateLabel} — {e.chapitre}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
               </div>
-              {appelEntreeId && (() => {
-                const sel = appelEntrees.find(e => e.id === appelEntreeId);
-                if (!sel) return null;
-                return (
-                  <div className="groupe-appel-seance-info">
-                    📌 <strong>{sel.chapitre}</strong>
-                    {sel.heureDebut && <span> • 🕐 {sel.heureDebut}{sel.heureFin ? ` → ${sel.heureFin}` : ''}</span>}
-                  </div>
-                );
-              })()}
+
+              {/* Liste à cocher des séances disponibles ce jour-là */}
+              {appelCahierId && appelEntrees.length > 0 && (
+                <div
+                  className="groupe-appel-seances-checks"
+                  role="group"
+                  aria-label="Sélection des séances liées à cet appel"
+                  style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '0.4rem',
+                    marginTop: '0.4rem',
+                  }}
+                >
+                  {appelEntrees.map(e => {
+                    const d = e.date?.toDate?.();
+                    const dateLabel = d
+                      ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+                      : '';
+                    const heureLabel = e.heureDebut
+                      ? ` ${e.heureDebut}${e.heureFin ? `→${e.heureFin}` : ''}`
+                      : '';
+                    const checked = appelEntreeIds.includes(e.id);
+                    return (
+                      <label
+                        key={e.id}
+                        className={`groupe-appel-seance-check ${checked ? 'is-checked' : ''}`}
+                        title={`${dateLabel} — ${e.chapitre}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '0.35rem',
+                          padding: '0.25rem 0.6rem',
+                          border: `1px solid ${checked ? '#2563eb' : '#d1d5db'}`,
+                          borderRadius: 6,
+                          background: checked ? '#eff6ff' : '#ffffff',
+                          color: checked ? '#1e40af' : '#374151',
+                          fontSize: '0.78rem',
+                          fontWeight: checked ? 600 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => {
+                            setAppelEntreeIds((prev) =>
+                              prev.includes(e.id)
+                                ? prev.filter((id) => id !== e.id)
+                                : [...prev, e.id],
+                            );
+                          }}
+                          style={{ margin: 0 }}
+                          aria-label={`Lier à la séance ${e.chapitre}${heureLabel}`}
+                        />
+                        <span>
+                          {dateLabel}{heureLabel ? ` ·${heureLabel}` : ''} — {e.chapitre}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Récapitulatif des séances sélectionnées */}
+              {appelEntreeIds.length > 0 && (
+                <div
+                  className="groupe-appel-seance-info"
+                  style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#1e40af' }}
+                >
+                  📌 <strong>{appelEntreeIds.length} séance{appelEntreeIds.length > 1 ? 's' : ''} liée{appelEntreeIds.length > 1 ? 's' : ''}</strong> :{' '}
+                  {appelEntreeIds
+                    .map((id) => appelEntrees.find((e) => e.id === id)?.chapitre)
+                    .filter(Boolean)
+                    .join(' · ')}
+                </div>
+              )}
             </div>
           )}
 
@@ -1818,7 +1922,24 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
               {/* SUIVI SUR PÉRIODE — Absences + Retards       */}
               {/* ============================================ */}
               <div className="groupe-appel-suivi">
-                <h4>📊 Suivi des absences & retards</h4>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                  <h4 style={{ margin: 0 }}>📊 Suivi des absences &amp; retards</h4>
+                  {/*
+                    Phase 38 — Bouton « Bulletin de suivi »
+                    Ouvre une modale qui demande la période et le périmètre
+                    (élève précis ou tout le groupe), puis génère un PDF
+                    propre, signable, à remettre aux familles.
+                  */}
+                  <button
+                    type="button"
+                    className="prof-btn prof-btn-primary"
+                    onClick={() => setModalBulletinOuvert(true)}
+                    title="Générer un bulletin PDF des absences et retards"
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    📄 Bulletin de suivi (PDF)
+                  </button>
+                </div>
                 <div className="groupe-appel-suivi-btns">
                   {(['jour', 'semaine', 'mois'] as const).map((p) => (
                     <button
@@ -2315,6 +2436,18 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
           profId={currentUser.uid}
           onClose={() => setModalInscriptionOuvert(false)}
           onSuccess={chargerDonneesGroupe}
+        />
+      )}
+
+      {/* Phase 38 — Modal "Bulletin de suivi des absences/retards" (PDF) */}
+      {currentUser && (
+        <BulletinAbsencesModal
+          ouvert={modalBulletinOuvert}
+          onFermer={() => setModalBulletinOuvert(false)}
+          groupe={groupe}
+          eleves={statsEleves}
+          profId={currentUser.uid}
+          profNom={currentUser.displayName || undefined}
         />
       )}
     </div>

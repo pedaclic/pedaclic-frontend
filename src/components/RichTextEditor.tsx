@@ -10,10 +10,19 @@
 //   - Alignement : Gauche, Centre, Droite, Justifié
 //   - Listes à puces avec indentation hiérarchique
 //   - Listes ordonnées : Arabes, Romains MAJ/min, Lettres MAJ/min
-//   - Retrait : Augmenter / Diminuer (Tab / Shift+Tab)
+//   - Retrait : Augmenter / Diminuer (Tab / Shift+Tab) hors tableau
 //   - Couleur du texte
 //   - Insertion de tableau configurable
 //   - Historique : Annuler / Rétablir
+// ------------------------------------------------------------
+// Phase 38 — Améliorations Tableau :
+//   - Poignées de redimensionnement (drag) sur les bordures de colonne
+//   - Navigation cellule à cellule par Tabulation (Tab / Shift+Tab)
+//   - Tab sur la dernière cellule crée automatiquement une nouvelle ligne
+//   - Bouton dédié « + Colonne fin » dans la barre contextuelle
+//     (en plus des actions « avant / après » existantes)
+//   - Raccourcis clavier : Ctrl+Alt+→ ajoute une colonne à droite,
+//     Ctrl+Alt+↓ ajoute une ligne en-dessous
 // ============================================================
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
@@ -241,10 +250,17 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   }, []);
 
   // ── Émission des changements vers le parent ──────────────────
+  //   Phase 38 — On nettoie les éléments « visuels uniquement »
+  //   ajoutés par l'éditeur (poignées de redimensionnement) avant
+  //   d'envoyer le HTML au parent. Cela garde le contenu stocké
+  //   en base léger et propre (les poignées seront re-greffées
+  //   automatiquement via l'observer au prochain rendu).
   const emettrChangement = useCallback(() => {
-    if (zoneRef.current) {
-      onChange(zoneRef.current.innerHTML);
-    }
+    if (!zoneRef.current) return;
+    const clone = zoneRef.current.cloneNode(true) as HTMLElement;
+    // Strip toutes les poignées (.rte-col-resizer) du DOM cloné
+    clone.querySelectorAll('.rte-col-resizer').forEach((n) => n.remove());
+    onChange(clone.innerHTML);
   }, [onChange]);
 
   // ── Exécution d'une commande de formatage ────────────────────
@@ -297,17 +313,195 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     [emettrChangement, restaurerSelection]
   );
 
-  // ── Gestion du retrait via Tab / Shift+Tab ───────────────────
+  // ── Helpers pour la navigation/création dans les tableaux ────
+  //
+  //   Phase 38 :
+  //     • Tab dans un tableau = passe à la cellule suivante
+  //     • Shift+Tab = passe à la cellule précédente
+  //     • Tab sur la dernière cellule = crée une nouvelle ligne
+  //     • Hors tableau, Tab garde le comportement « indent » existant
+  //
+  //   On encapsule ici la logique pour que `handleKeyDown` reste lisible.
+
+  /** Place le curseur dans une cellule (au début de son contenu). */
+  const placerCurseurDansCellule = useCallback((cell: HTMLTableCellElement) => {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    // Si la cellule est vide, range au début. Sinon, sélection collapsed
+    // sur le 1er enfant texte (pour que le prof voie le curseur clignoter).
+    range.selectNodeContents(cell);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    // Pour iOS / accessibilité : scroll into view si la cellule sort du cadre
+    cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, []);
+
+  /** Récupère la cellule d'un nœud (td|th) ou null si hors tableau. */
+  const trouverCellule = useCallback((noeud: Node | null): HTMLTableCellElement | null => {
+    return (
+      (trouverAncetre(noeud, 'td') as HTMLTableCellElement | null) ||
+      (trouverAncetre(noeud, 'th') as HTMLTableCellElement | null)
+    );
+  }, []);
+
+  /**
+   * Insère une nouvelle ligne en bas du tableau et place le curseur
+   * dans sa première cellule. Utilisé par Tab sur la dernière cellule.
+   */
+  const ajouterLigneEnBas = useCallback((table: HTMLTableElement): HTMLTableCellElement | null => {
+    const nbCols = table.rows[0]?.cells.length ?? 0;
+    if (nbCols === 0) return null;
+    // On insère TOUJOURS dans <tbody> (jamais en <thead>) pour préserver l'en-tête.
+    let tbody = table.tBodies[0];
+    if (!tbody) {
+      tbody = document.createElement('tbody');
+      table.appendChild(tbody);
+    }
+    const tr = tbody.insertRow();
+    for (let i = 0; i < nbCols; i++) {
+      const td = tr.insertCell(i);
+      td.innerHTML = '&#8203;'; // zero-width space = curseur posable
+    }
+    return tr.cells[0] as HTMLTableCellElement;
+  }, []);
+
+  /**
+   * Calcule la prochaine cellule (sens = +1 ou -1).
+   * Retourne null si on est respectivement après la dernière / avant la première.
+   */
+  const cellulesAdjacente = useCallback(
+    (cell: HTMLTableCellElement, sens: 1 | -1): HTMLTableCellElement | null => {
+      const tr = cell.parentElement as HTMLTableRowElement | null;
+      const table = trouverAncetre(cell, 'table') as HTMLTableElement | null;
+      if (!tr || !table) return null;
+      const colIdx = cell.cellIndex;
+      // Cellule suivante / précédente sur la même ligne ?
+      const suivanteMemeLigne = tr.cells[colIdx + sens] as HTMLTableCellElement | undefined;
+      if (suivanteMemeLigne) return suivanteMemeLigne;
+      // Sinon, on saute à la ligne suivante / précédente
+      const allRows = Array.from(table.rows);
+      const rowIdx = allRows.indexOf(tr);
+      const ligneSuivante = allRows[rowIdx + sens] as HTMLTableRowElement | undefined;
+      if (!ligneSuivante) return null;
+      // En passant à la ligne suivante : 1ère cellule (sens=1) ou dernière (sens=-1)
+      return (sens === 1
+        ? ligneSuivante.cells[0]
+        : ligneSuivante.cells[ligneSuivante.cells.length - 1]
+      ) as HTMLTableCellElement | undefined ?? null;
+    },
+    []
+  );
+
+  /**
+   * Insère une colonne directement (utilisé par les raccourcis clavier
+   * dans handleKeyDown — défini ici en `cellule` plutôt qu'en captant
+   * la callback `tableauInsererColonne` pour éviter une référence
+   * forward avant déclaration).
+   */
+  const ajouterColonneAdjacente = useCallback(
+    (cell: HTMLTableCellElement, position: 'avant' | 'apres') => {
+      const table = trouverAncetre(cell, 'table') as HTMLTableElement | null;
+      if (!table) return;
+      const colIdx = cell.cellIndex + (position === 'avant' ? 0 : 1);
+      Array.from(table.rows).forEach((tr) => {
+        const isHeader =
+          tr.parentElement?.tagName.toLowerCase() === 'thead' ||
+          tr.cells[0]?.tagName.toLowerCase() === 'th';
+        const idxClamp = Math.min(colIdx, tr.cells.length);
+        const nouvelle = tr.insertCell(idxClamp);
+        if (isHeader) {
+          const th = document.createElement('th');
+          th.innerHTML = 'Colonne';
+          tr.replaceChild(th, nouvelle);
+        } else {
+          nouvelle.innerHTML = '&#8203;';
+        }
+      });
+      emettrChangement();
+    },
+    [emettrChangement]
+  );
+
+  /** Insère une ligne adjacente à la cellule (avant/après). */
+  const ajouterLigneAdjacente = useCallback(
+    (cell: HTMLTableCellElement, position: 'avant' | 'apres') => {
+      const ligne = trouverAncetre(cell, 'tr') as HTMLTableRowElement | null;
+      const table = trouverAncetre(cell, 'table') as HTMLTableElement | null;
+      if (!ligne || !table) return;
+      const nbCols = ligne.cells.length;
+      const nouvelle = table.insertRow(ligne.rowIndex + (position === 'avant' ? 0 : 1));
+      for (let i = 0; i < nbCols; i++) {
+        const td = nouvelle.insertCell(i);
+        td.innerHTML = '&#8203;';
+      }
+      emettrChangement();
+    },
+    [emettrChangement]
+  );
+
+  // ── Gestion du clavier (Tab dans/hors tableau, raccourcis tableau) ─
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
+      const sel = window.getSelection();
+      const noeud = sel?.anchorNode ?? null;
+      const cell = trouverCellule(noeud);
+
+      // ── Raccourcis tableau (Ctrl+Alt+→ / Ctrl+Alt+↓) ─────────
+      // Permet d'ajouter rapidement colonne / ligne sans passer par la souris.
+      if (cell && (e.ctrlKey || e.metaKey) && e.altKey) {
+        if (e.key === 'ArrowRight' || e.key === 'Right') {
+          e.preventDefault();
+          ajouterColonneAdjacente(cell, 'apres');
+          return;
+        }
+        if (e.key === 'ArrowDown' || e.key === 'Down') {
+          e.preventDefault();
+          ajouterLigneAdjacente(cell, 'apres');
+          return;
+        }
+      }
+
+      // ── Tabulation ────────────────────────────────────────────
       if (e.key === 'Tab') {
+        if (cell) {
+          // ── Dans un tableau : navigation / création ──
+          e.preventDefault();
+          const sens: 1 | -1 = e.shiftKey ? -1 : 1;
+          const suivante = cellulesAdjacente(cell, sens);
+          if (suivante) {
+            placerCurseurDansCellule(suivante);
+          } else if (sens === 1) {
+            // Tab sur la dernière cellule du tableau → créer une nouvelle ligne
+            const table = trouverAncetre(cell, 'table') as HTMLTableElement | null;
+            if (table) {
+              const premiere = ajouterLigneEnBas(table);
+              if (premiere) {
+                placerCurseurDansCellule(premiere);
+                emettrChangement();
+              }
+            }
+          }
+          // Shift+Tab sur la 1re cellule : on ne fait rien (déjà au début)
+          return;
+        }
+        // ── Hors tableau : comportement historique (indent / outdent) ──
         e.preventDefault();
         zoneRef.current?.focus();
         execCmd(e.shiftKey ? 'outdent' : 'indent');
         emettrChangement();
       }
     },
-    [emettrChangement]
+    [
+      emettrChangement,
+      trouverCellule,
+      cellulesAdjacente,
+      placerCurseurDansCellule,
+      ajouterLigneEnBas,
+      ajouterColonneAdjacente,
+      ajouterLigneAdjacente,
+    ]
   );
 
   // ── Construction et insertion du tableau HTML ────────────────
@@ -489,6 +683,110 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     document.addEventListener('mousedown', fermer);
     return () => document.removeEventListener('mousedown', fermer);
   }, []);
+
+  // ══════════════════════════════════════════════════════════════
+  //  Phase 38 — Poignées de redimensionnement de colonnes
+  // ══════════════════════════════════════════════════════════════
+  //   Approche :
+  //     1. Au clic sur le bord droit d'une cellule (ressenti visuellement
+  //        comme une poignée verticale via .rte-col-resizer), on saisit
+  //        la largeur initiale et la position X.
+  //     2. Pendant le mousemove, on calcule delta = current - startX et
+  //        applique cette largeur à TOUTES les cellules de la colonne
+  //        (style.width + style.minWidth).
+  //     3. Au mouseup, on émet le changement vers le parent.
+  //
+  //   La poignée est ajoutée dynamiquement dans chaque cellule via un
+  //   effet qui scrute la zone d'édition. On évite ainsi de modifier
+  //   le HTML stocké (les poignées sont des span purement visuels,
+  //   contentEditable=false, et sont supprimées avant lecture si besoin).
+  //
+  //   Avantage : fonctionne sur tableaux insérés à n'importe quel moment
+  //   (même collés depuis Word) et n'altère pas la sortie HTML stockée.
+
+  /** Applique une largeur (en px) à une colonne entière du tableau */
+  const appliquerLargeurColonne = useCallback(
+    (table: HTMLTableElement, colIdx: number, largeurPx: number) => {
+      const w = Math.max(40, Math.round(largeurPx));
+      Array.from(table.rows).forEach((tr) => {
+        const c = tr.cells[colIdx] as HTMLElement | undefined;
+        if (!c) return;
+        c.style.width = `${w}px`;
+        c.style.minWidth = `${w}px`;
+      });
+    },
+    []
+  );
+
+  useEffect(() => {
+    const zone = zoneRef.current;
+    if (!zone) return;
+
+    /** Ajoute (ou réutilise) une poignée à la fin de chaque cellule */
+    const ajouterPoignees = () => {
+      const cellules = zone.querySelectorAll('table td, table th');
+      cellules.forEach((td) => {
+        const cell = td as HTMLTableCellElement;
+        // S'assurer que la cellule est positionnée pour l'absolute child
+        const computed = getComputedStyle(cell);
+        if (computed.position === 'static') {
+          cell.style.position = 'relative';
+        }
+        // Vérifier si une poignée existe déjà
+        if (cell.querySelector(':scope > .rte-col-resizer')) return;
+        const handle = document.createElement('span');
+        handle.className = 'rte-col-resizer';
+        handle.setAttribute('contenteditable', 'false');
+        handle.setAttribute('aria-hidden', 'true');
+        handle.title = 'Redimensionner la colonne — glissez pour ajuster';
+        cell.appendChild(handle);
+      });
+    };
+
+    /** Gestion du drag : on capture mousedown sur la poignée. */
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || !target.classList.contains('rte-col-resizer')) return;
+      const cell = target.parentElement as HTMLTableCellElement | null;
+      const table = cell ? (trouverAncetre(cell, 'table') as HTMLTableElement | null) : null;
+      if (!cell || !table) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const colIdx = cell.cellIndex;
+      const startX = e.clientX;
+      const startWidth = cell.offsetWidth;
+
+      // Indique visuellement le drag (curseur sur tout le document)
+      document.body.classList.add('rte-col-resizing');
+
+      const onMove = (ev: MouseEvent) => {
+        const delta = ev.clientX - startX;
+        appliquerLargeurColonne(table, colIdx, startWidth + delta);
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.body.classList.remove('rte-col-resizing');
+        emettrChangement();
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    };
+
+    // Observer pour ajouter des poignées aux NOUVEAUX tableaux (insertion,
+    // collage, undo/redo). On lance aussi un premier passage immédiat.
+    const observer = new MutationObserver(() => ajouterPoignees());
+    observer.observe(zone, { childList: true, subtree: true });
+    ajouterPoignees();
+
+    zone.addEventListener('mousedown', onMouseDown);
+    return () => {
+      observer.disconnect();
+      zone.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [appliquerLargeurColonne, emettrChangement]);
 
   // ─────────────────────────────────────────────────────────────
   // RENDU
@@ -706,11 +1004,41 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
           <div className="rte-table-toolbar__group" aria-label="Colonnes">
-            <button type="button" className="rte-btn" title="Insérer une colonne à gauche" onClick={() => tableauInsererColonne('avant')}>
+            <button type="button" className="rte-btn" title="Insérer une colonne à gauche (Ctrl+Alt+←)" onClick={() => tableauInsererColonne('avant')}>
               ←+ Col.
             </button>
-            <button type="button" className="rte-btn" title="Insérer une colonne à droite" onClick={() => tableauInsererColonne('apres')}>
+            <button type="button" className="rte-btn" title="Insérer une colonne à droite (Ctrl+Alt+→)" onClick={() => tableauInsererColonne('apres')}>
               →+ Col.
+            </button>
+            {/* Phase 38 — Bouton dédié « ajouter en bout de tableau ».
+                Pratique pour étendre le tableau sans devoir cliquer
+                d'abord dans la dernière colonne. */}
+            <button
+              type="button"
+              className="rte-btn"
+              title="Ajouter une nouvelle colonne en bout de tableau"
+              onClick={() => {
+                // Insère après la DERNIÈRE colonne (pas seulement après l'active)
+                const table = getTableActif();
+                if (!table) return;
+                const lastIdx = (table.rows[0]?.cells.length ?? 1) - 1;
+                Array.from(table.rows).forEach((tr) => {
+                  const isHeader =
+                    tr.parentElement?.tagName.toLowerCase() === 'thead' ||
+                    tr.cells[0]?.tagName.toLowerCase() === 'th';
+                  const cell = tr.insertCell(lastIdx + 1);
+                  if (isHeader) {
+                    const th = document.createElement('th');
+                    th.innerHTML = 'Colonne';
+                    tr.replaceChild(th, cell);
+                  } else {
+                    cell.innerHTML = '&#8203;';
+                  }
+                });
+                emettrChangement();
+              }}
+            >
+              ＋ Colonne fin
             </button>
             <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la colonne" onClick={tableauSupprimerColonne}>
               🗑️ Col.

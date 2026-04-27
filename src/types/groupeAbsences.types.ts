@@ -40,12 +40,48 @@ export interface AbsenceGroupe {
    * Ne contient que les élèves marqués en retard.
    */
   retardsDetails?: Record<string, DetailRetard>;
-  /** ID de la séance (entrée cahier) liée à cet appel (optionnel) */
+  /**
+   * ─── Compatibilité historique (un seul couple séance) ────────────
+   * `entreeId` / `entreeTitre` restent supportés en lecture pour les
+   * anciens documents. À l'écriture, on privilégie désormais les
+   * tableaux ci-dessous.
+   * ─────────────────────────────────────────────────────────────── */
   entreeId?: string;
-  /** Titre de la séance liée (dénormalisé pour affichage rapide) */
   entreeTitre?: string;
+  /**
+   * Phase 38 — Liaison MULTI-séances :
+   *   Un élève peut être absent à plusieurs séances dans la même journée
+   *   (ex. matin maths + après-midi français → 2 séances manquées).
+   *   On stocke donc la liste des séances liées à cet appel.
+   *
+   *   `entreeIds`    : tableau d'IDs de séances (entrées du cahier de textes)
+   *   `entreeTitres` : titres dénormalisés correspondants (même longueur)
+   *
+   *   Lors de la lecture, fusionner avec `entreeId/entreeTitre` :
+   *     ids    = entreeIds    ?? (entreeId    ? [entreeId]    : [])
+   *     titres = entreeTitres ?? (entreeTitre ? [entreeTitre] : [])
+   *   afin de couvrir les documents écrits avant Phase 38.
+   */
+  entreeIds?: string[];
+  entreeTitres?: string[];
   profId: string;
   updatedAt: Date;
+}
+
+/**
+ * Phase 38 — Helpers de lecture rétro-compatibles.
+ *   Renvoient toujours une liste (jamais undefined) afin que les
+ *   composants qui affichent les « séances manquées » n'aient pas à
+ *   gérer eux-mêmes la double source (legacy `entreeId` vs nouveau
+ *   `entreeIds[]`).
+ */
+export function getEntreeIds(a: Partial<AbsenceGroupe>): string[] {
+  if (Array.isArray(a.entreeIds) && a.entreeIds.length > 0) return a.entreeIds;
+  return a.entreeId ? [a.entreeId] : [];
+}
+export function getEntreeTitres(a: Partial<AbsenceGroupe>): string[] {
+  if (Array.isArray(a.entreeTitres) && a.entreeTitres.length > 0) return a.entreeTitres;
+  return a.entreeTitre ? [a.entreeTitre] : [];
 }
 
 /** Observation sur un élève (dans un groupe) */

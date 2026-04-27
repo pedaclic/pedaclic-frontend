@@ -424,8 +424,58 @@ const ProfDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Total élèves */}
-            <div className="prof-overview-card">
+            {/*
+              ── Carte « Élèves inscrits » ────────────────────────────────
+              Cliquable depuis le tableau de bord prof :
+                - S'il n'existe qu'UN groupe → ouvre directement son détail
+                  sur l'onglet "Élèves" (ouverture en un clic).
+                - S'il existe plusieurs groupes → bascule sur la vue "groupes"
+                  pour laisser le prof choisir le groupe concerné.
+                - Aucun groupe → la carte reste informative (non cliquable).
+              Comportement clavier équivalent (Enter / Espace) pour
+              l'accessibilité.
+              ──────────────────────────────────────────────────────────── */}
+            <div
+              className={`prof-overview-card ${groupesRecap.length > 0 ? 'prof-overview-card-clickable' : ''}`}
+              onClick={() => {
+                if (groupesRecap.length === 0) return;
+                if (groupesRecap.length === 1) {
+                  // Un seul groupe → ouverture directe sur l'onglet « Élèves »
+                  setGroupeSelectionne(groupesRecap[0]);
+                  setInitialOnglet('eleves');
+                  setVueActive('detail');
+                } else {
+                  // Plusieurs groupes → vue de sélection (le prof choisit lequel)
+                  setVueActive('groupes');
+                }
+              }}
+              onKeyDown={(e) => {
+                if ((e.key === 'Enter' || e.key === ' ') && groupesRecap.length > 0) {
+                  e.preventDefault();
+                  if (groupesRecap.length === 1) {
+                    setGroupeSelectionne(groupesRecap[0]);
+                    setInitialOnglet('eleves');
+                    setVueActive('detail');
+                  } else {
+                    setVueActive('groupes');
+                  }
+                }
+              }}
+              role={groupesRecap.length > 0 ? 'button' : undefined}
+              tabIndex={groupesRecap.length > 0 ? 0 : -1}
+              title={
+                groupesRecap.length === 0
+                  ? 'Aucun élève inscrit'
+                  : groupesRecap.length === 1
+                  ? `Voir les élèves du groupe « ${groupesRecap[0].nom} »`
+                  : 'Choisir un groupe pour voir ses élèves'
+              }
+              aria-label={
+                groupesRecap.length === 0
+                  ? `${totalEleves} élève inscrit`
+                  : `Voir les ${totalEleves} élèves inscrits — cliquez pour ouvrir la liste`
+              }
+            >
               <div className="prof-overview-card-icon">👥</div>
               <div className="prof-overview-card-content">
                 <span className="prof-overview-card-value">{totalEleves}</span>

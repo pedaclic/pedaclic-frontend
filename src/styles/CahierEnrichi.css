@@ -1243,6 +1243,55 @@
   background: #eff6ff !important;
 }
 
+/* ============================================================
+   Phase 38 — Poignées de redimensionnement de colonnes
+   ────────────────────────────────────────────────────────────
+   Bande cliquable de 6 px sur le bord droit de chaque cellule.
+   Visible uniquement au hover sur la cellule (pour ne pas
+   surcharger visuellement le tableau au repos).
+   ============================================================ */
+.rte-content table td,
+.rte-content table th,
+.rte-content .rte-tableau td,
+.rte-content .rte-tableau th {
+  position: relative;
+}
+
+.rte-col-resizer {
+  position: absolute;
+  top: 0;
+  right: -3px;            /* chevauche légèrement la cellule suivante */
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  user-select: none;
+  z-index: 5;
+  background: transparent;
+  transition: background 0.12s ease;
+}
+
+/* Affichage discret de la poignée au hover de la cellule
+   ou directement de la poignée elle-même. */
+.rte-content table td:hover .rte-col-resizer,
+.rte-content table th:hover .rte-col-resizer,
+.rte-content .rte-tableau td:hover .rte-col-resizer,
+.rte-content .rte-tableau th:hover .rte-col-resizer,
+.rte-col-resizer:hover {
+  background: rgba(37, 99, 235, 0.35);   /* Bleu PedaClic translucide */
+}
+
+.rte-col-resizer:active {
+  background: rgba(37, 99, 235, 0.7);
+}
+
+/* Pendant le drag : bloque la sélection de texte sur tout le doc et
+   force le curseur col-resize partout. */
+body.rte-col-resizing,
+body.rte-col-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
 .rte-modale-overlay {
   position: fixed;
   inset: 0;
