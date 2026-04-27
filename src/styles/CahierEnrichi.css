@@ -3091,50 +3091,71 @@ body.rte-col-resizing * {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Barre contextuelle d'édition de tableau (Phase 38 — layout fix)
+   Barre contextuelle d'édition de tableau (Phase 39 — layout robuste)
    ──────────────────────────────────────────────────────────────
-   Structure flex robuste : la barre principale wrap en plusieurs
-   lignes si l'écran est étroit, et CHAQUE GROUPE peut aussi
-   se passer à la ligne pour éviter tout chevauchement entre
-   les boutons (constaté avec "↑+ Ligne", "↓+ Ligne", etc.).
+   Stratégie « zéro chevauchement » :
+     • La barre est en flex-wrap : si la largeur disponible est
+       insuffisante, les groupes passent à la ligne suivante.
+     • CHAQUE GROUPE est en flex non-wrap : ses boutons restent
+       toujours alignés et lisibles. C'est le PARENT qui wrap.
+     • CHAQUE BOUTON a `min-width: max-content` avec `!important`
+       pour neutraliser toute règle générique de `.rte-btn`
+       (CahierTextes.css définit aussi cette classe — d'où le besoin
+       de forcer ici).
+     • L'espace entre boutons et entre groupes est paramétré par
+       `gap` (CSS standard) — pas de `margin` directionnelle qui
+       provoquait des chevauchements en cas de wrap.
    ══════════════════════════════════════════════════════════════ */
 .rte-table-toolbar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  row-gap: 6px;
-  column-gap: 8px;
+  flex-flow: row wrap;          /* shorthand : direction + wrap explicites */
+  align-items: stretch;          /* hauteur uniforme pour tous les groupes */
+  justify-content: flex-start;
+  row-gap: 8px;
+  column-gap: 10px;
   padding: 8px 10px;
-  margin-top: 2px;
+  margin-top: 4px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 0.82rem;
   line-height: 1.2;
   animation: rtt-slide-in 0.15s ease;
 }
+.rte-table-toolbar > * {
+  flex-shrink: 0;                /* les enfants directs ne sont jamais compressés */
+}
+
 @keyframes rtt-slide-in {
   from { opacity: 0; transform: translateY(-4px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
 .rte-table-toolbar__label {
+  display: inline-flex;
+  align-items: center;
   font-weight: 700;
   color: #1d4ed8;
-  margin-right: 4px;
   white-space: nowrap;
+  padding: 0 6px;
   flex: 0 0 auto;
 }
+
 .rte-table-toolbar__group {
-  display: flex;             /* plus inline-flex : laisse au parent le contrôle du retour */
-  flex-wrap: wrap;           /* permet aux boutons internes de wrap si nécessaire */
+  display: inline-flex;          /* boutons collés horizontalement */
+  flex-wrap: nowrap;             /* JAMAIS de wrap interne — c'est le parent qui wrap */
   align-items: center;
-  gap: 4px;
-  flex: 0 0 auto;            /* ne se comprime pas, ne s'étire pas */
-  background: rgba(255, 255, 255, 0.55);
+  gap: 6px;
+  flex: 0 0 auto;
+  width: max-content;            /* garantit la largeur intrinsèque */
+  max-width: 100%;
+  background: #ffffff;
   border: 1px solid #dbeafe;
   border-radius: 6px;
-  padding: 3px 5px;
+  padding: 4px 8px;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05);
 }
+
 .rte-table-toolbar__hint {
   font-size: 0.72rem;
   color: #64748b;
@@ -3144,28 +3165,68 @@ body.rte-col-resizing * {
   white-space: nowrap;
 }
 
-/* Boutons spécifiques de la barre tableau : assurer la lisibilité
-   des libellés ("Ligne", "Col.", "Largeur", "Colonne fin") en
-   évitant qu'ils ne se chevauchent. */
+/* ───────────────────────────────────────────────────────────────
+   Boutons de la barre tableau : verrouillage de la largeur.
+   On utilise !important pour neutraliser le `min-width: 28-30px`
+   défini par les .rte-btn génériques de CahierEnrichi.css ET
+   CahierTextes.css (deux feuilles importées simultanément).
+   ─────────────────────────────────────────────────────────────── */
 .rte-table-toolbar .rte-btn {
-  flex: 0 0 auto;            /* bloque toute compression du bouton */
-  white-space: nowrap;       /* le label reste sur une seule ligne */
-  padding: 0 8px;
-  height: 28px;
-  min-width: auto;           /* override du min-width:30px par défaut */
-  font-size: 0.78rem;
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap !important;
+  padding: 0 10px !important;
+  height: 28px !important;
+  min-width: max-content !important;
+  width: auto !important;
+  font-size: 0.78rem !important;
   font-weight: 500;
+  line-height: 1;
+  border-radius: 5px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #334155;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-/* Séparateur visuel entre groupes — visible uniquement sur écrans
-   larges. Sur mobile, le wrap-flow remplace les séparateurs. */
-.rte-table-toolbar .rte-toolbar__sep {
-  height: 18px;
-  margin: 0 2px;
+.rte-table-toolbar .rte-btn:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
 }
+
+.rte-table-toolbar .rte-btn.rte-btn--danger:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+/* Séparateur visuel entre groupes (verticale fine).
+   On le cache automatiquement quand il devient le DERNIER élément
+   visible d'une ligne wrap-pée (cosmétique). */
+.rte-table-toolbar .rte-toolbar__sep {
+  width: 1px;
+  height: 22px;
+  background: #cbd5e1;
+  opacity: 0.6;
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0;
+}
+
+/* Sous 720 px : les séparateurs disparaissent et chaque groupe
+   prend la pleine largeur — l'utilisateur voit les actions
+   empilées proprement, sans la moindre superposition. */
 @media (max-width: 720px) {
   .rte-table-toolbar .rte-toolbar__sep { display: none; }
-  .rte-table-toolbar__group { width: 100%; justify-content: flex-start; }
+  .rte-table-toolbar__group {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;             /* sur mobile, on autorise le wrap interne */
+  }
 }
 
 /* ── Bouton "Dupliquer" d'une séance ── */

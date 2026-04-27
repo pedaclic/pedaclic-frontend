@@ -994,27 +994,52 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           <span className="rte-table-toolbar__label">⊞&nbsp;Tableau</span>
 
           {/* ── Groupe : Lignes ── */}
-          <div className="rte-table-toolbar__group" aria-label="Lignes">
-            <button type="button" className="rte-btn" title="Insérer une ligne au-dessus" onClick={() => tableauInsererLigne('avant')}>
-              + Ligne ↑
+          <div className="rte-table-toolbar__group" aria-label="Actions sur les lignes">
+            <button
+              type="button"
+              className="rte-btn"
+              title="Insérer une ligne au-dessus de la ligne courante"
+              onClick={() => tableauInsererLigne('avant')}
+            >
+              <span aria-hidden="true">↑+</span>&nbsp;Ligne
             </button>
-            <button type="button" className="rte-btn" title="Insérer une ligne en-dessous (Ctrl+Alt+↓)" onClick={() => tableauInsererLigne('apres')}>
-              + Ligne ↓
+            <button
+              type="button"
+              className="rte-btn"
+              title="Insérer une ligne en-dessous (Ctrl+Alt+↓)"
+              onClick={() => tableauInsererLigne('apres')}
+            >
+              <span aria-hidden="true">↓+</span>&nbsp;Ligne
             </button>
-            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la ligne courante" onClick={tableauSupprimerLigne}>
-              − Ligne
+            <button
+              type="button"
+              className="rte-btn rte-btn--danger"
+              title="Supprimer la ligne courante"
+              onClick={tableauSupprimerLigne}
+            >
+              <span aria-hidden="true">🗑</span>&nbsp;Ligne
             </button>
           </div>
 
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
           {/* ── Groupe : Colonnes ── */}
-          <div className="rte-table-toolbar__group" aria-label="Colonnes">
-            <button type="button" className="rte-btn" title="Insérer une colonne à gauche (Ctrl+Alt+←)" onClick={() => tableauInsererColonne('avant')}>
-              + Col. ←
+          <div className="rte-table-toolbar__group" aria-label="Actions sur les colonnes">
+            <button
+              type="button"
+              className="rte-btn"
+              title="Insérer une colonne à gauche (Ctrl+Alt+←)"
+              onClick={() => tableauInsererColonne('avant')}
+            >
+              <span aria-hidden="true">←+</span>&nbsp;Col.
             </button>
-            <button type="button" className="rte-btn" title="Insérer une colonne à droite (Ctrl+Alt+→)" onClick={() => tableauInsererColonne('apres')}>
-              + Col. →
+            <button
+              type="button"
+              className="rte-btn"
+              title="Insérer une colonne à droite (Ctrl+Alt+→)"
+              onClick={() => tableauInsererColonne('apres')}
+            >
+              <span aria-hidden="true">+→</span>&nbsp;Col.
             </button>
             {/* Phase 38 — Bouton dédié « ajouter en bout de tableau ».
                 Pratique pour étendre le tableau sans devoir cliquer
@@ -1043,22 +1068,37 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 emettrChangement();
               }}
             >
-              + Col. fin
+              <span aria-hidden="true">⇥</span>&nbsp;Col.&nbsp;fin
             </button>
-            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la colonne courante" onClick={tableauSupprimerColonne}>
-              − Col.
+            <button
+              type="button"
+              className="rte-btn rte-btn--danger"
+              title="Supprimer la colonne courante"
+              onClick={tableauSupprimerColonne}
+            >
+              <span aria-hidden="true">🗑</span>&nbsp;Col.
             </button>
           </div>
 
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
           {/* ── Groupe : Largeur de colonne ── */}
-          <div className="rte-table-toolbar__group" aria-label="Largeur de la colonne">
-            <button type="button" className="rte-btn" title="Diminuer la largeur (−20 px)" onClick={() => tableauRedimensionnerColonne(-20)}>
-              ⇠ −20
+          <div className="rte-table-toolbar__group" aria-label="Largeur de la colonne courante">
+            <button
+              type="button"
+              className="rte-btn"
+              title="Diminuer la largeur de la colonne courante (−20 px)"
+              onClick={() => tableauRedimensionnerColonne(-20)}
+            >
+              <span aria-hidden="true">⇠</span>&nbsp;−20&nbsp;px
             </button>
-            <button type="button" className="rte-btn" title="Augmenter la largeur (+20 px)" onClick={() => tableauRedimensionnerColonne(20)}>
-              +20 ⇢
+            <button
+              type="button"
+              className="rte-btn"
+              title="Augmenter la largeur de la colonne courante (+20 px)"
+              onClick={() => tableauRedimensionnerColonne(20)}
+            >
+              +20&nbsp;px&nbsp;<span aria-hidden="true">⇢</span>
             </button>
           </div>
 
@@ -1071,7 +1111,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             title="Supprimer le tableau en entier"
             onClick={tableauSupprimer}
           >
-            ✕ Supprimer
+            <span aria-hidden="true">✕</span>&nbsp;Supprimer&nbsp;le&nbsp;tableau
           </button>
         </div>
       )}
