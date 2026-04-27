@@ -140,23 +140,52 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
         const sm: Record<string, string[]> = {};
         statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
-          // Phase 38 — On lit toutes les séances liées à cet appel
-          // (multi-séances par jour). `getEntreeTitres` couvre la
-          // rétrocompat legacy entreeTitre (string unique → tableau 1 élt).
+          // Phase 38 + 39 — Comptage granulaire par séance.
+          //   Si `seancesAbsentsPar` est défini, on compte +1 par séance
+          //   où l'élève apparaît (ce qui permet d'avoir 1 absence sur
+          //   séance 1 mais "présent" sur séance 2).
+          //   Sinon, on retombe sur le legacy : +1 par appel pour
+          //   chaque élève dans `eleveIdsAbsents`.
           const titresSeances = getEntreeTitres(a);
-          // Comptage des absences
-          (a.eleveIdsAbsents || []).forEach((id: string) => {
-            if (c[id] !== undefined) c[id]++;
-            if (sm[id]) {
-              titresSeances.forEach((t) => {
-                if (t) sm[id].push(t);
+          const idsSeances = Array.isArray(a.entreeIds) && a.entreeIds.length > 0
+            ? a.entreeIds
+            : a.entreeId
+            ? [a.entreeId]
+            : [];
+
+          if (a.seancesAbsentsPar && Object.keys(a.seancesAbsentsPar).length > 0) {
+            // ── Mode granulaire (Phase 39) ─────────────────────
+            for (const [entreeId, eleveIds] of Object.entries(a.seancesAbsentsPar)) {
+              const titreSeance =
+                titresSeances[idsSeances.indexOf(entreeId)] || a.entreeTitre || '';
+              eleveIds.forEach((id) => {
+                if (c[id] !== undefined) c[id]++;
+                if (titreSeance && sm[id]) sm[id].push(titreSeance);
               });
             }
-          });
-          // Comptage des retards
-          (a.eleveIdsRetards || []).forEach((id: string) => {
-            if (r[id] !== undefined) r[id]++;
-          });
+          } else {
+            // ── Mode legacy : 1 absence comptée par appel ───────
+            (a.eleveIdsAbsents || []).forEach((id: string) => {
+              if (c[id] !== undefined) c[id]++;
+              if (sm[id]) {
+                titresSeances.forEach((t) => {
+                  if (t) sm[id].push(t);
+                });
+              }
+            });
+          }
+
+          if (a.seancesRetardsPar && Object.keys(a.seancesRetardsPar).length > 0) {
+            for (const eleveIds of Object.values(a.seancesRetardsPar)) {
+              eleveIds.forEach((id) => {
+                if (r[id] !== undefined) r[id]++;
+              });
+            }
+          } else {
+            (a.eleveIdsRetards || []).forEach((id: string) => {
+              if (r[id] !== undefined) r[id]++;
+            });
+          }
         });
         if (!cancelled) { setCounts(c); setRetards(r); setSeancesManquees(sm); }
       } finally {
@@ -287,6 +316,23 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
    */
   const [appelEntreeIds, setAppelEntreeIds] = useState<string[]>([]);
 
+  /**
+   * Phase 39 — Statut DÉTAILLÉ par élève ET par séance.
+   *   Structure : { [eleveId]: { [entreeId]: 'absent' | 'retard' | 'present' } }
+   *   - Un élève peut être 'absent' à la 1re heure et 'present' à la 2de.
+   *   - Si un élève n'a pas de clé pour une séance donnée, on retombe
+   *     sur le statut GLOBAL (`absentsIds` / `retardsIds`) qui s'applique
+   *     à TOUTES les séances liées (rétro-compat).
+   *   - Quand l'utilisateur clique sur un chip de séance, on bascule
+   *     l'override pour cette séance précise.
+   */
+  type StatutEleveSeance = 'absent' | 'retard' | 'present';
+  const [seancesParEleve, setSeancesParEleve] = useState<
+    Record<string /*eleveId*/, Record<string /*entreeId*/, StatutEleveSeance>>
+  >({});
+  /** Éleve dont la grille de détail-séance est dépliée (UI uniquement). */
+  const [detailSeanceEleve, setDetailSeanceEleve] = useState<string | null>(null);
+
   // ===== États : Travaux à faire =====
   const [nouveauTravailTitre, setNouveauTravailTitre] = useState('');
   const [nouveauTravailDesc, setNouveauTravailDesc] = useState('');
@@ -402,8 +448,29 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
           } else {
             setAppelEntreeIds([]);
           }
+          // Phase 39 — Reconstruction de l'index inversé eleveId → {entreeId: statut}.
+          //   Le stockage Firestore est par séance ; côté UI on indexe
+          //   plutôt par élève pour pouvoir afficher rapidement la
+          //   grille de détail dans la ligne de l'élève.
+          const idxEleveSeance: Record<string, Record<string, 'absent' | 'retard' | 'present'>> = {};
+          const remplir = (
+            src: Record<string, string[]> | undefined,
+            statut: 'absent' | 'retard',
+          ) => {
+            if (!src) return;
+            for (const [entreeId, eleveIds] of Object.entries(src)) {
+              for (const eId of eleveIds) {
+                idxEleveSeance[eId] = idxEleveSeance[eId] || {};
+                idxEleveSeance[eId][entreeId] = statut;
+              }
+            }
+          };
+          remplir(appel.seancesAbsentsPar, 'absent');
+          remplir(appel.seancesRetardsPar, 'retard');
+          setSeancesParEleve(idxEleveSeance);
         } else {
           setAppelEntreeIds([]);
+          setSeancesParEleve({});
         }
       })
       .catch(() => {
@@ -411,6 +478,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         setRetardsIds([]);
         setRetardsDetails({});
         setAppelEntreeIds([]);
+        setSeancesParEleve({});
       });
     if (currentUser?.uid) {
       getCahiersForGroupe(groupe.id, currentUser.uid)
@@ -738,6 +806,42 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         };
       });
 
+      // ── Phase 39 — Construction des index par-séance ────────────────
+      //   Pour chaque élève absent/retard globalement OU avec des
+      //   overrides par séance, on construit `seancesAbsentsPar[seance]`
+      //   = liste des eleveIds. Règle :
+      //     • Si l'élève a un override `seancesParEleve[id]` → on respecte
+      //       précisément les statuts par séance (chip cliqué).
+      //     • Sinon, on retombe sur le statut GLOBAL (toutes séances liées).
+      //   Cela rend le stockage minimal et préserve la rétro-compat.
+      const seancesAbsentsPar: Record<string, string[]> = {};
+      const seancesRetardsPar: Record<string, string[]> = {};
+      for (const seanceId of idsSeances) {
+        seancesAbsentsPar[seanceId] = [];
+        seancesRetardsPar[seanceId] = [];
+      }
+      // 1) On part des élèves marqués globalement
+      const tousElevesConcernes = new Set<string>([
+        ...absentsIds,
+        ...retardsIds,
+        ...Object.keys(seancesParEleve),
+      ]);
+      for (const eleveId of tousElevesConcernes) {
+        const overrides = seancesParEleve[eleveId];
+        // Statut par défaut au cas où il n'y a pas d'override
+        const statutGlobal: 'absent' | 'retard' | 'present' = absentsIds.includes(eleveId)
+          ? 'absent'
+          : retardsIds.includes(eleveId)
+          ? 'retard'
+          : 'present';
+        for (const seanceId of idsSeances) {
+          // Override prioritaire si défini, sinon statut global
+          const statut = overrides?.[seanceId] ?? statutGlobal;
+          if (statut === 'absent') seancesAbsentsPar[seanceId].push(eleveId);
+          else if (statut === 'retard') seancesRetardsPar[seanceId].push(eleveId);
+        }
+      }
+
       await marquerAbsences(
         groupe.id,
         dateAppel,
@@ -749,6 +853,9 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         titresSeances,
         retardsIds,
         detailsNets,
+        // Phase 39 — détail par séance/par élève (vides si 0 séance liée)
+        idsSeances.length > 0 ? seancesAbsentsPar : undefined,
+        idsSeances.length > 0 ? seancesRetardsPar : undefined,
       );
       setAppelSaveState('ok');
       // Le message "✅ Enregistré" disparaît après 3s
@@ -792,6 +899,81 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         );
       }
     }
+  };
+
+  /**
+   * Phase 39 — Statut effectif d'un élève pour une séance précise.
+   *   Priorité : override eleveId/seanceId → statut global (absentsIds/
+   *   retardsIds appliqués à toutes les séances) → présent.
+   */
+  const getStatutSeanceEleve = (
+    eleveId: string,
+    seanceId: string,
+  ): 'absent' | 'retard' | 'present' => {
+    const ov = seancesParEleve[eleveId]?.[seanceId];
+    if (ov) return ov;
+    if (absentsIds.includes(eleveId)) return 'absent';
+    if (retardsIds.includes(eleveId)) return 'retard';
+    return 'present';
+  };
+
+  /**
+   * Phase 39 — Cycle le statut d'un élève sur UNE séance précise :
+   *   présent → absent → retard → présent
+   *   et synchronise le statut global (cases « Absent / Retard » de la
+   *   ligne) selon que l'élève a au moins une séance dans chaque catégorie.
+   */
+  const cyclerStatutSeanceEleve = (eleveId: string, seanceId: string) => {
+    setSeancesParEleve((prev) => {
+      const current = prev[eleveId]?.[seanceId] ?? getStatutSeanceEleve(eleveId, seanceId);
+      const suivant: 'absent' | 'retard' | 'present' =
+        current === 'present' ? 'absent' : current === 'absent' ? 'retard' : 'present';
+      const elevePrev = { ...(prev[eleveId] || {}) };
+      // Si on revient à 'present' ET que c'est aussi le statut global
+      // par défaut → on enlève l'entrée pour garder le store minimal.
+      if (suivant === 'present' && !absentsIds.includes(eleveId) && !retardsIds.includes(eleveId)) {
+        delete elevePrev[seanceId];
+      } else {
+        elevePrev[seanceId] = suivant;
+      }
+      const next = { ...prev, [eleveId]: elevePrev };
+      if (Object.keys(elevePrev).length === 0) {
+        delete next[eleveId];
+      }
+      return next;
+    });
+
+    // Synchronisation des coches globales : si l'élève a au moins UNE
+    // séance "absent" → on coche Absent ; au moins UNE séance "retard"
+    // → on coche Retard ; sinon ni l'un ni l'autre.
+    setTimeout(() => {
+      setSeancesParEleve((latest) => {
+        const overrides = latest[eleveId] || {};
+        const seancesEffectives = appelEntreeIds;
+        let auMoinsUnAbsent = false;
+        let auMoinsUnRetard = false;
+        for (const sId of seancesEffectives) {
+          const st = overrides[sId]
+            ?? (absentsIds.includes(eleveId) ? 'absent' : retardsIds.includes(eleveId) ? 'retard' : 'present');
+          if (st === 'absent') auMoinsUnAbsent = true;
+          if (st === 'retard') auMoinsUnRetard = true;
+        }
+        // Bascule cohérente des cases globales
+        setAbsentsIds((prevAbs) => {
+          const has = prevAbs.includes(eleveId);
+          if (auMoinsUnAbsent && !has) return [...prevAbs, eleveId];
+          if (!auMoinsUnAbsent && has) return prevAbs.filter((x) => x !== eleveId);
+          return prevAbs;
+        });
+        setRetardsIds((prevRet) => {
+          const has = prevRet.includes(eleveId);
+          if (auMoinsUnRetard && !has) return [...prevRet, eleveId];
+          if (!auMoinsUnRetard && has) return prevRet.filter((x) => x !== eleveId);
+          return prevRet;
+        });
+        return latest;
+      });
+    }, 0);
   };
 
   /** Met à jour un champ des détails de retard pour un élève. */
@@ -1884,6 +2066,110 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                                 commentaire: e.target.value,
                               })}
                             />
+                          </div>
+                        )}
+
+                        {/* ════════════════════════════════════════════════════
+                            Phase 39 — Détail PAR SÉANCE pour cet élève
+                            ────────────────────────────────────────────────────
+                            Visible uniquement quand au moins 2 séances sont
+                            liées à l'appel. Permet à l'enseignant de marquer
+                            l'élève absent à la 1re heure et présent à la 2de
+                            (ou inversement). Chaque chip = 1 séance, cliquable
+                            pour cycler entre 🟢 Présent / 🔴 Absent / 🟠 Retard.
+                            Les coches globales en haut se synchronisent
+                            automatiquement.
+                            ════════════════════════════════════════════════════ */}
+                        {appelEntreeIds.length > 1 && (
+                          <div
+                            className="groupe-appel-detail-seances"
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              gap: '0.4rem',
+                              marginTop: '0.4rem',
+                              paddingLeft: '0.25rem',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setDetailSeanceEleve((cur) => (cur === eleve.eleveId ? null : eleve.eleveId))
+                              }
+                              className="prof-btn prof-btn-sm prof-btn-secondary"
+                              style={{
+                                fontSize: '0.72rem',
+                                padding: '0.2rem 0.55rem',
+                                whiteSpace: 'nowrap',
+                              }}
+                              aria-expanded={detailSeanceEleve === eleve.eleveId}
+                              title="Préciser le statut séance par séance"
+                            >
+                              {detailSeanceEleve === eleve.eleveId ? '▾' : '▸'} Détail séance
+                            </button>
+                            {detailSeanceEleve === eleve.eleveId &&
+                              appelEntreeIds.map((sId) => {
+                                const seance = appelEntrees.find((s) => s.id === sId);
+                                if (!seance) return null;
+                                const statut = getStatutSeanceEleve(eleve.eleveId, sId);
+                                const couleur =
+                                  statut === 'absent'
+                                    ? '#dc2626'
+                                    : statut === 'retard'
+                                    ? '#d97706'
+                                    : '#059669';
+                                const fond =
+                                  statut === 'absent'
+                                    ? '#fee2e2'
+                                    : statut === 'retard'
+                                    ? '#fef3c7'
+                                    : '#d1fae5';
+                                const emoji =
+                                  statut === 'absent'
+                                    ? '🔴'
+                                    : statut === 'retard'
+                                    ? '🟠'
+                                    : '🟢';
+                                const heureLabel = seance.heureDebut
+                                  ? ` ${seance.heureDebut}`
+                                  : '';
+                                return (
+                                  <button
+                                    key={sId}
+                                    type="button"
+                                    onClick={() =>
+                                      cyclerStatutSeanceEleve(eleve.eleveId, sId)
+                                    }
+                                    title={`${seance.chapitre}${heureLabel} — ${
+                                      statut === 'present'
+                                        ? 'Présent'
+                                        : statut === 'absent'
+                                        ? 'Absent'
+                                        : 'En retard'
+                                    } — cliquez pour changer`}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      padding: '0.2rem 0.55rem',
+                                      borderRadius: 14,
+                                      border: `1px solid ${couleur}`,
+                                      background: fond,
+                                      color: couleur,
+                                      fontSize: '0.72rem',
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    {emoji}
+                                    {heureLabel
+                                      ? `${heureLabel.trim()} · ${seance.chapitre}`
+                                      : seance.chapitre}
+                                  </button>
+                                );
+                              })}
                           </div>
                         )}
                       </div>

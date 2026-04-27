@@ -138,23 +138,68 @@ function calculerRecapEleve(
   const tries = [...absences].sort((a, b) => a.date.localeCompare(b.date));
 
   for (const a of tries) {
-    const seances = getEntreeTitres(a);
-    if (a.eleveIdsAbsents?.includes(eleve.eleveId)) {
+    const titresSeances = getEntreeTitres(a);
+    const idsSeances =
+      Array.isArray(a.entreeIds) && a.entreeIds.length > 0
+        ? a.entreeIds
+        : a.entreeId
+        ? [a.entreeId]
+        : [];
+
+    /**
+     * Phase 39 — Détail par séance par élève.
+     *  Si `seancesAbsentsPar` est défini, on liste précisément les
+     *  séances manquées par l'élève (1 ligne par séance pour la clarté
+     *  visuelle dans le bulletin). Sinon, fallback : 1 ligne par appel.
+     */
+    if (a.seancesAbsentsPar && Object.keys(a.seancesAbsentsPar).length > 0) {
+      for (const [entreeId, eleveIds] of Object.entries(a.seancesAbsentsPar)) {
+        if (!eleveIds.includes(eleve.eleveId)) continue;
+        const titreSeance =
+          titresSeances[idsSeances.indexOf(entreeId)] || a.entreeTitre || '';
+        nbAbsences++;
+        details.push({
+          date: a.date,
+          statut: 'absent',
+          seances: titreSeance ? [titreSeance] : [],
+        });
+      }
+    } else if (a.eleveIdsAbsents?.includes(eleve.eleveId)) {
+      // Fallback legacy : 1 ligne d'absence couvrant toutes les séances liées
       nbAbsences++;
       details.push({
         date: a.date,
         statut: 'absent',
-        seances,
+        seances: titresSeances,
       });
     }
-    if (a.eleveIdsRetards?.includes(eleve.eleveId)) {
+
+    if (a.seancesRetardsPar && Object.keys(a.seancesRetardsPar).length > 0) {
+      for (const [entreeId, eleveIds] of Object.entries(a.seancesRetardsPar)) {
+        if (!eleveIds.includes(eleve.eleveId)) continue;
+        const titreSeance =
+          titresSeances[idsSeances.indexOf(entreeId)] || a.entreeTitre || '';
+        nbRetards++;
+        const d = a.retardsDetails?.[eleve.eleveId];
+        if (d?.minutes) minutesRetardCumul += d.minutes;
+        details.push({
+          date: a.date,
+          statut: 'retard',
+          seances: titreSeance ? [titreSeance] : [],
+          minutes: d?.minutes,
+          motif: d?.motif,
+          commentaire: d?.commentaire,
+        });
+      }
+    } else if (a.eleveIdsRetards?.includes(eleve.eleveId)) {
+      // Fallback legacy : 1 ligne couvrant toutes les séances liées
       nbRetards++;
       const d = a.retardsDetails?.[eleve.eleveId];
       if (d?.minutes) minutesRetardCumul += d.minutes;
       details.push({
         date: a.date,
         statut: 'retard',
-        seances,
+        seances: titresSeances,
         minutes: d?.minutes,
         motif: d?.motif,
         commentaire: d?.commentaire,

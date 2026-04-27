@@ -88,6 +88,9 @@ export interface MarquerAppelPayload {
   /** Phase 38 — séances liées à cet appel (multi-séances par jour) */
   entreeIds?: string[];
   entreeTitres?: string[];
+  /** Phase 39 — par-séance par-élève (cf. type AbsenceGroupe) */
+  seancesAbsentsPar?: Record<string, string[]>;
+  seancesRetardsPar?: Record<string, string[]>;
 }
 
 /**
@@ -119,6 +122,17 @@ export async function marquerAbsences(
   entreeTitreOuTitres?: string | string[],
   eleveIdsRetards?: string[],
   retardsDetails?: Record<string, DetailRetard>,
+  /**
+   * Phase 39 — Détail par-séance par-élève.
+   *   Si fournis, `seancesAbsentsPar[entreeId] = [eleveIds...]` indique
+   *   précisément quels élèves étaient absents pour CETTE séance.
+   *   Idem pour `seancesRetardsPar`.
+   *   - `eleveIdsAbsents` reste l'union (ce qui sert aux compteurs).
+   *   - Si non fournis, on garde l'ancien comportement : tous les
+   *     `eleveIdsAbsents` sont absents pour TOUTES les séances liées.
+   */
+  seancesAbsentsPar?: Record<string, string[]>,
+  seancesRetardsPar?: Record<string, string[]>,
 ): Promise<void> {
   if (!profId) {
     throw new Error(
@@ -153,6 +167,26 @@ export async function marquerAbsences(
   const legacyId = entreeIds[0];
   const legacyTitre = entreeTitres[0];
 
+  // Phase 39 — Nettoyage seancesAbsentsPar / seancesRetardsPar :
+  //   On ne garde que les entrées qui correspondent à des séances
+  //   effectivement liées à l'appel, et on retire les listes vides.
+  const cleanSeancePar = (
+    src: Record<string, string[]> | undefined,
+  ): Record<string, string[]> | undefined => {
+    if (!src) return undefined;
+    const out: Record<string, string[]> = {};
+    let hasAny = false;
+    for (const [k, v] of Object.entries(src)) {
+      if (entreeIds.length > 0 && !entreeIds.includes(k)) continue;
+      const list = (v || []).filter(Boolean);
+      if (list.length > 0) {
+        out[k] = list;
+        hasAny = true;
+      }
+    }
+    return hasAny ? out : undefined;
+  };
+
   const payload = stripUndefined({
     groupeId,
     date,
@@ -163,6 +197,9 @@ export async function marquerAbsences(
     // Multi-séances (nouvelle API)
     entreeIds: entreeIds.length > 0 ? entreeIds : undefined,
     entreeTitres: entreeTitres.length > 0 ? entreeTitres : undefined,
+    // Phase 39 — répartition par séance / par élève
+    seancesAbsentsPar: cleanSeancePar(seancesAbsentsPar),
+    seancesRetardsPar: cleanSeancePar(seancesRetardsPar),
     // Legacy (1ère séance, pour compat) — undefined si aucune séance
     entreeId: legacyId,
     entreeTitre: legacyId ? legacyTitre : undefined,
@@ -202,6 +239,13 @@ export async function getAppelByDate(
     entreeTitre: data.entreeTitre,
     entreeIds: Array.isArray(data.entreeIds) ? data.entreeIds : undefined,
     entreeTitres: Array.isArray(data.entreeTitres) ? data.entreeTitres : undefined,
+    // Phase 39 — par-séance par-élève
+    seancesAbsentsPar: data.seancesAbsentsPar && typeof data.seancesAbsentsPar === 'object'
+      ? data.seancesAbsentsPar
+      : undefined,
+    seancesRetardsPar: data.seancesRetardsPar && typeof data.seancesRetardsPar === 'object'
+      ? data.seancesRetardsPar
+      : undefined,
     profId: data.profId,
     updatedAt: toDate(data.updatedAt),
   };
@@ -260,6 +304,13 @@ export async function getAbsencesByPeriod(
       // Phase 38 — Multi-séances
       entreeIds: Array.isArray(data.entreeIds) ? data.entreeIds : undefined,
       entreeTitres: Array.isArray(data.entreeTitres) ? data.entreeTitres : undefined,
+      // Phase 39 — par-séance par-élève
+      seancesAbsentsPar: data.seancesAbsentsPar && typeof data.seancesAbsentsPar === 'object'
+        ? data.seancesAbsentsPar
+        : undefined,
+      seancesRetardsPar: data.seancesRetardsPar && typeof data.seancesRetardsPar === 'object'
+        ? data.seancesRetardsPar
+        : undefined,
       profId: data.profId,
       updatedAt: toDate(data.updatedAt),
     } as AbsenceGroupe;

@@ -64,6 +64,28 @@ export interface AbsenceGroupe {
    */
   entreeIds?: string[];
   entreeTitres?: string[];
+  /**
+   * Phase 39 — Absence/retard par élève ET par séance.
+   *   Un élève peut être ABSENT à la 1ère heure et PRÉSENT à la 2de
+   *   (ou inversement). On indexe donc par séance puis par élève :
+   *
+   *     seancesAbsentsPar = {
+   *       "<entreeId-1>": ["eleveA", "eleveB"],   // absent à séance 1
+   *       "<entreeId-2>": ["eleveB"],             // absent à séance 2 seulement
+   *     }
+   *
+   *   Règles de fallback (rétro-compat) :
+   *     - Si un élève apparaît dans `eleveIdsAbsents` mais PAS dans
+   *       `seancesAbsentsPar`, on considère qu'il était absent à
+   *       TOUTES les séances liées à cet appel.
+   *     - Si `seancesAbsentsPar` est défini pour un élève, il a la
+   *       priorité (présence implicite aux séances non listées).
+   *
+   *   `eleveIdsAbsents` reste l'UNION des élèves absents à au moins
+   *   une séance (utilisé par les compteurs « jour/semaine/mois »).
+   */
+  seancesAbsentsPar?: Record<string /*entreeId*/, string[] /*eleveIds*/>;
+  seancesRetardsPar?: Record<string /*entreeId*/, string[] /*eleveIds*/>;
   profId: string;
   updatedAt: Date;
 }

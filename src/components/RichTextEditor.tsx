@@ -836,6 +836,10 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <option value="h1">Titre 1</option>
               <option value="h2">Titre 2</option>
               <option value="h3">Titre 3</option>
+              {/* Phase 39 — Niveau de titre supplémentaire (h4) :
+                  utile pour les sous-sections de leçons et les
+                  hiérarchies à 4 niveaux (ex. F.O.R.C.E. → analyses). */}
+              <option value="h4">Titre 4</option>
               <option value="blockquote">Citation</option>
             </select>
           </div>
@@ -987,28 +991,30 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           aria-label="Édition du tableau"
           onMouseDown={e => e.preventDefault() /* évite la perte de sélection */}
         >
-          <span className="rte-table-toolbar__label">⊞ Tableau</span>
+          <span className="rte-table-toolbar__label">⊞&nbsp;Tableau</span>
 
+          {/* ── Groupe : Lignes ── */}
           <div className="rte-table-toolbar__group" aria-label="Lignes">
             <button type="button" className="rte-btn" title="Insérer une ligne au-dessus" onClick={() => tableauInsererLigne('avant')}>
-              ↑+ Ligne
+              + Ligne ↑
             </button>
-            <button type="button" className="rte-btn" title="Insérer une ligne en-dessous" onClick={() => tableauInsererLigne('apres')}>
-              ↓+ Ligne
+            <button type="button" className="rte-btn" title="Insérer une ligne en-dessous (Ctrl+Alt+↓)" onClick={() => tableauInsererLigne('apres')}>
+              + Ligne ↓
             </button>
-            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la ligne" onClick={tableauSupprimerLigne}>
-              🗑️ Ligne
+            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la ligne courante" onClick={tableauSupprimerLigne}>
+              − Ligne
             </button>
           </div>
 
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
+          {/* ── Groupe : Colonnes ── */}
           <div className="rte-table-toolbar__group" aria-label="Colonnes">
             <button type="button" className="rte-btn" title="Insérer une colonne à gauche (Ctrl+Alt+←)" onClick={() => tableauInsererColonne('avant')}>
-              ←+ Col.
+              + Col. ←
             </button>
             <button type="button" className="rte-btn" title="Insérer une colonne à droite (Ctrl+Alt+→)" onClick={() => tableauInsererColonne('apres')}>
-              →+ Col.
+              + Col. →
             </button>
             {/* Phase 38 — Bouton dédié « ajouter en bout de tableau ».
                 Pratique pour étendre le tableau sans devoir cliquer
@@ -1018,7 +1024,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               className="rte-btn"
               title="Ajouter une nouvelle colonne en bout de tableau"
               onClick={() => {
-                // Insère après la DERNIÈRE colonne (pas seulement après l'active)
                 const table = getTableActif();
                 if (!table) return;
                 const lastIdx = (table.rows[0]?.cells.length ?? 1) - 1;
@@ -1038,34 +1043,35 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                 emettrChangement();
               }}
             >
-              ＋ Colonne fin
+              + Col. fin
             </button>
-            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la colonne" onClick={tableauSupprimerColonne}>
-              🗑️ Col.
+            <button type="button" className="rte-btn rte-btn--danger" title="Supprimer la colonne courante" onClick={tableauSupprimerColonne}>
+              − Col.
             </button>
           </div>
 
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
+          {/* ── Groupe : Largeur de colonne ── */}
           <div className="rte-table-toolbar__group" aria-label="Largeur de la colonne">
-            <button type="button" className="rte-btn" title="Diminuer la largeur de la colonne" onClick={() => tableauRedimensionnerColonne(-20)}>
-              ⇠
+            <button type="button" className="rte-btn" title="Diminuer la largeur (−20 px)" onClick={() => tableauRedimensionnerColonne(-20)}>
+              ⇠ −20
             </button>
-            <span className="rte-table-toolbar__hint">Largeur</span>
-            <button type="button" className="rte-btn" title="Augmenter la largeur de la colonne" onClick={() => tableauRedimensionnerColonne(20)}>
-              ⇢
+            <button type="button" className="rte-btn" title="Augmenter la largeur (+20 px)" onClick={() => tableauRedimensionnerColonne(20)}>
+              +20 ⇢
             </button>
           </div>
 
           <div className="rte-toolbar__sep" aria-hidden="true" />
 
+          {/* ── Bouton : Supprimer le tableau ── */}
           <button
             type="button"
             className="rte-btn rte-btn--danger"
             title="Supprimer le tableau en entier"
             onClick={tableauSupprimer}
           >
-            ✕ Supprimer le tableau
+            ✕ Supprimer
           </button>
         </div>
       )}

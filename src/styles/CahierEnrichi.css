@@ -1106,6 +1106,17 @@
   line-height: 1.4;
 }
 
+/* Phase 39 — Titre 4 : niveau de sous-section sous h3 */
+.rte-content h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e40af;
+  margin: 0.6em 0 0.25em;
+  line-height: 1.4;
+  text-transform: none;
+  letter-spacing: 0.01em;
+}
+
 .rte-content p { margin: 0 0 0.6em; }
 
 .rte-content hr {
@@ -3080,19 +3091,26 @@ body.rte-col-resizing * {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Barre contextuelle d'édition de tableau dans le RichTextEditor
+   Barre contextuelle d'édition de tableau (Phase 38 — layout fix)
+   ──────────────────────────────────────────────────────────────
+   Structure flex robuste : la barre principale wrap en plusieurs
+   lignes si l'écran est étroit, et CHAQUE GROUPE peut aussi
+   se passer à la ligne pour éviter tout chevauchement entre
+   les boutons (constaté avec "↑+ Ligne", "↓+ Ligne", etc.).
    ══════════════════════════════════════════════════════════════ */
 .rte-table-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  row-gap: 6px;
+  column-gap: 8px;
   padding: 8px 10px;
   margin-top: 2px;
   background: #eff6ff;
   border: 1px solid #bfdbfe;
   border-radius: 6px;
   font-size: 0.82rem;
+  line-height: 1.2;
   animation: rtt-slide-in 0.15s ease;
 }
 @keyframes rtt-slide-in {
@@ -3102,12 +3120,20 @@ body.rte-col-resizing * {
 .rte-table-toolbar__label {
   font-weight: 700;
   color: #1d4ed8;
-  margin-right: 6px;
+  margin-right: 4px;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 .rte-table-toolbar__group {
-  display: inline-flex;
-  gap: 4px;
+  display: flex;             /* plus inline-flex : laisse au parent le contrôle du retour */
+  flex-wrap: wrap;           /* permet aux boutons internes de wrap si nécessaire */
   align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;            /* ne se comprime pas, ne s'étire pas */
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid #dbeafe;
+  border-radius: 6px;
+  padding: 3px 5px;
 }
 .rte-table-toolbar__hint {
   font-size: 0.72rem;
@@ -3115,6 +3141,31 @@ body.rte-col-resizing * {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0 4px;
+  white-space: nowrap;
+}
+
+/* Boutons spécifiques de la barre tableau : assurer la lisibilité
+   des libellés ("Ligne", "Col.", "Largeur", "Colonne fin") en
+   évitant qu'ils ne se chevauchent. */
+.rte-table-toolbar .rte-btn {
+  flex: 0 0 auto;            /* bloque toute compression du bouton */
+  white-space: nowrap;       /* le label reste sur une seule ligne */
+  padding: 0 8px;
+  height: 28px;
+  min-width: auto;           /* override du min-width:30px par défaut */
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+/* Séparateur visuel entre groupes — visible uniquement sur écrans
+   larges. Sur mobile, le wrap-flow remplace les séparateurs. */
+.rte-table-toolbar .rte-toolbar__sep {
+  height: 18px;
+  margin: 0 2px;
+}
+@media (max-width: 720px) {
+  .rte-table-toolbar .rte-toolbar__sep { display: none; }
+  .rte-table-toolbar__group { width: 100%; justify-content: flex-start; }
 }
 
 /* ── Bouton "Dupliquer" d'une séance ── */
