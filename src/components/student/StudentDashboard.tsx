@@ -74,9 +74,30 @@ import {
   QuizResult,
 } from '../../services/progressionService';
 import type { BadgeDefinition, ProgressionGlobale } from '../../types'; // ★ Phase 14
-import { getQuizzesForEleve, Quiz } from '../../services/quizService';
-import { getQuizzesAvanceForEleve } from '../../services/quizAdvancedService';
-import type { QuizAvance } from '../../types/quiz-advanced';
+/* ──────────────────────────────────────────────────────────────────
+   ★ FIX (avril 2026) — Affichage des Quiz IA rattachés à une séance
+   ──────────────────────────────────────────────────────────────────
+   Avant : on appelait deux services séparés (getQuizzesForEleve +
+   getQuizzesAvanceForEleve), tous deux limités au filtrage par
+   `groupeId`. Conséquences :
+     1. Les quiz rattachés à une séance d'un cahier partagé pouvaient
+        être manqués si leur `groupeId` n'était pas (encore) renseigné.
+     2. Le tri était alphabétique (`titre asc`), donc un Quiz IA
+        nouvellement créé (titre « Quiz IA — … ») se retrouvait en
+        bas de liste et était tronqué par le `slice(0, 6)`.
+
+   Correctif : on utilise getQuizzesAccessiblesEleve (quizUnifiedService)
+   qui :
+     • Agrège quizzes (Classic) + quizzes_v2 (Avancé) en une seule liste.
+     • Inclut les quiz liés à une séance d'un cahier partagé à la classe
+       de l'élève (origine 'seance'), même sans groupeId direct.
+     • Trie par createdAt desc → le dernier quiz IA passé apparaît
+       en tête du dashboard.
+   ────────────────────────────────────────────────────────────────── */
+import {
+  getQuizzesAccessiblesEleve,
+  type QuizUnifie,
+} from '../../services/quizUnifiedService';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCodeInvitation } from '../../services/parentService';
 import { getGroupesEleve } from '../../services/profGroupeService';
@@ -107,8 +128,14 @@ const StudentDashboard: React.FC = () => {
   const [disciplineProgress, setDisciplineProgress] = useState<DisciplineProgress[]>([]);
   const [chartData, setChartData] = useState<ProgressionTemporelle[]>([]);
   const [recentResults, setRecentResults] = useState<QuizResult[]>([]);
-  const [availableQuizzes, setAvailableQuizzes] = useState<Quiz[]>([]);
-  const [availableQuizzesAvances, setAvailableQuizzesAvances] = useState<QuizAvance[]>([]);
+  /**
+   * ★ FIX avril 2026 — Liste UNIFIÉE des quiz accessibles à l'élève
+   * (Classic + Avancé), incluant ceux rattachés à une séance d'un
+   * cahier de textes partagé. Triée par createdAt décroissant.
+   * Remplace les anciens états `availableQuizzes` (Quiz[]) et
+   * `availableQuizzesAvances` (QuizAvance[]).
+   */
+  const [availableQuizUnifies, setAvailableQuizUnifies] = useState<QuizUnifie[]>([]);
 
   /* ── États Phase 14 (NOUVEAU) ── */
   const [progressionGlobale, setProgressionGlobale] = useState<ProgressionGlobale | null>(null);
@@ -172,16 +199,21 @@ const StudentDashboard: React.FC = () => {
           discProgress,
           temporal,
           history,
-          quizzes,
-          quizzesAvances,
+          quizUnifies,           // ★ FIX avril 2026 — liste unifiée Classic + Avancé
           progGlobale,           // ★ Phase 14
         ] = await Promise.all([
           getStudentProgress(currentUser.uid),
           getDisciplineProgress(currentUser.uid),
           getProgressionTemporelle(currentUser.uid, 20),
           getQuizHistory(currentUser.uid, 10),
-          getQuizzesForEleve(currentUser.uid, currentUser?.isPremium ?? false).catch(() => []),
-          getQuizzesAvanceForEleve(currentUser.uid, currentUser?.isPremium ?? false).catch(() => [] as QuizAvance[]),
+          // ★ FIX — Source unique pour les quiz disponibles : agrège
+          //   Classic (collection `quizzes`) + Avancé (collection `quizzes_v2`),
+          //   inclut les quiz rattachés à une séance d'un cahier partagé,
+          //   et trie par createdAt desc (le dernier Quiz IA en tête).
+          getQuizzesAccessiblesEleve(
+            currentUser.uid,
+            currentUser?.isPremium ?? false,
+          ).catch(() => [] as QuizUnifie[]),
           getProgressionGlobale(currentUser.uid),  // ★ Phase 14
         ]);
 
@@ -189,8 +221,7 @@ const StudentDashboard: React.FC = () => {
         setDisciplineProgress(discProgress);
         setChartData(temporal);
         setRecentResults(history);
-        setAvailableQuizzes(quizzes);
-        setAvailableQuizzesAvances(quizzesAvances);
+        setAvailableQuizUnifies(quizUnifies);      // ★ FIX avril 2026
         setProgressionGlobale(progGlobale);        // ★ Phase 14
 
         /* ── Calculer les badges (Phase 14 enrichi) ── */
@@ -738,22 +769,55 @@ const StudentDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* Quiz disponibles (classiques + avancés) */}
-          {(availableQuizzes.length > 0 || availableQuizzesAvances.length > 0) && (
+          {/* ══════════════════════════════════════════════
+              Quiz disponibles — liste UNIFIÉE
+              ──────────────────────────────────────────────
+              ★ FIX avril 2026 — Le rendu se base désormais sur
+              `availableQuizUnifies` (QuizUnifie[]) qui combine :
+                - Quiz Classic (collection `quizzes`)
+                - Quiz Avancé (collection `quizzes_v2`)
+                - Quiz rattachés à une séance d'un cahier partagé
+                  (cas typique des Quiz IA générés depuis l'onglet
+                  « Quiz » du Cahier de textes).
+              La liste est triée par createdAt décroissant : un Quiz
+              IA fraîchement généré apparaît donc en tête, et le
+              plafond a été relevé de 6 → 12 pour éviter de masquer
+              les quiz récents.
+              ══════════════════════════════════════════════ */}
+          {availableQuizUnifies.length > 0 && (
             <div className="sd-chart-card">
               <h3 className="sd-section-title"><Play size={18} /> Quiz disponibles</h3>
               <div className="sd-quiz-grid">
-                {/* ── Quiz avancés (liés à la classe) ── */}
-                {availableQuizzesAvances.slice(0, 6).map((quiz) => {
+                {availableQuizUnifies.slice(0, 12).map((quiz) => {
+                  // Détermine si l'élève peut lancer le quiz (Premium / non-premium)
                   const isLocked = quiz.isPremium && !currentUser?.isPremium;
+                  // Route player adaptée à la nature du quiz
+                  const route = quiz.nature === 'classic'
+                    ? `/quiz/${quiz.id}`
+                    : `/quiz-avance/${quiz.id}`;
                   return (
-                    <div key={`av-${quiz.id}`}
+                    <div
+                      key={`${quiz.nature}-${quiz.id}`}
                       className={`sd-quiz-card ${isLocked ? 'locked' : ''}`}
-                      onClick={() => !isLocked && navigate(`/quiz-avance/${quiz.id}`)}
+                      onClick={() => !isLocked && navigate(route)}
                     >
-                      <span className="sd-quiz-badge-avance">
-                        <Star size={10} /> Quiz avancé
-                      </span>
+                      {/* Badge Avancé (uniquement pour les quiz multi-types) */}
+                      {quiz.nature === 'avance' && (
+                        <span className="sd-quiz-badge-avance">
+                          <Star size={10} /> Quiz avancé
+                        </span>
+                      )}
+                      {/* ★ Badge Séance — visibilité du rattachement Cahier de textes */}
+                      {quiz.origine === 'seance' && (
+                        <span
+                          className="sd-quiz-badge-avance"
+                          title="Quiz rattaché à une séance de votre cahier de textes"
+                          style={{ background: '#eef2ff', color: '#4338ca' }}
+                        >
+                          <BookMarked size={10} /> Séance
+                        </span>
+                      )}
+                      {/* Badge Premium */}
                       {quiz.isPremium && (
                         <span className="sd-quiz-badge-premium">
                           {isLocked ? <Lock size={10} /> : <Star size={10} />} Premium
@@ -761,45 +825,23 @@ const StudentDashboard: React.FC = () => {
                       )}
                       <h4 className="sd-quiz-title">{quiz.titre}</h4>
                       <div className="sd-quiz-meta">
-                        <span><BookOpen size={12} /> {quiz.questions?.length ?? 0} questions</span>
-                        <span><Clock size={12} /> {quiz.duree} min</span>
+                        <span>
+                          <BookOpen size={12} /> {quiz.nombreQuestions} questions
+                        </span>
+                        <span>
+                          <Clock size={12} /> {quiz.duree} min
+                        </span>
                       </div>
                       {!isLocked && (
-                        <button className="sd-quiz-play-btn"><Play size={14} /> Commencer</button>
-                      )}
-                      {isLocked && (
-                        <button className="sd-quiz-unlock-btn"
-                          onClick={(e) => { e.stopPropagation(); navigate('/premium'); }}>
-                          <Lock size={14} /> Débloquer
+                        <button className="sd-quiz-play-btn">
+                          <Play size={14} /> Commencer
                         </button>
                       )}
-                    </div>
-                  );
-                })}
-                {/* ── Quiz classiques ── */}
-                {availableQuizzes.slice(0, Math.max(0, 6 - availableQuizzesAvances.length)).map((quiz) => {
-                  const isLocked = quiz.isPremium && !currentUser?.isPremium;
-                  return (
-                    <div key={quiz.id}
-                      className={`sd-quiz-card ${isLocked ? 'locked' : ''}`}
-                      onClick={() => !isLocked && navigate(`/quiz/${quiz.id}`)}
-                    >
-                      {quiz.isPremium && (
-                        <span className="sd-quiz-badge-premium">
-                          {isLocked ? <Lock size={10} /> : <Star size={10} />} Premium
-                        </span>
-                      )}
-                      <h4 className="sd-quiz-title">{quiz.titre}</h4>
-                      <div className="sd-quiz-meta">
-                        <span><BookOpen size={12} /> {quiz.questions.length} questions</span>
-                        <span><Clock size={12} /> {quiz.duree} min</span>
-                      </div>
-                      {!isLocked && (
-                        <button className="sd-quiz-play-btn"><Play size={14} /> Commencer</button>
-                      )}
                       {isLocked && (
-                        <button className="sd-quiz-unlock-btn"
-                          onClick={(e) => { e.stopPropagation(); navigate('/premium'); }}>
+                        <button
+                          className="sd-quiz-unlock-btn"
+                          onClick={(e) => { e.stopPropagation(); navigate('/premium'); }}
+                        >
                           <Lock size={14} /> Débloquer
                         </button>
                       )}
@@ -807,33 +849,43 @@ const StudentDashboard: React.FC = () => {
                   );
                 })}
               </div>
-              {availableQuizzesAvances.length > 6 && (
+              {/* Lien vers la page complète si la liste a été tronquée */}
+              {availableQuizUnifies.length > 12 && (
                 <div style={{ textAlign: 'center', marginTop: '0.75rem' }}>
-                  <button className="sd-btn sd-btn-secondary" onClick={() => navigate('/quiz-gratuits')}>
-                    Voir tous les quiz →
+                  <button
+                    className="sd-btn sd-btn-secondary"
+                    onClick={() => navigate('/quiz-gratuits')}
+                  >
+                    Voir tous les quiz ({availableQuizUnifies.length}) →
                   </button>
                 </div>
               )}
             </div>
           )}
 
-          {/* Aucune donnée */}
+          {/* Aucune donnée — propose le 1er quiz disponible (toutes natures confondues) */}
           {progress && progress.totalQuizPasses === 0 && (!progressionGlobale || progressionGlobale.totalRessourcesVues === 0) && (
             <div className="sd-empty-state">
               <Target size={48} />
               <h3>Commencez votre parcours !</h3>
               <p>Consultez une ressource ou passez un quiz pour voir votre progression.</p>
-              {availableQuizzesAvances.length > 0 ? (
-                <button className="sd-btn sd-btn-primary"
-                  onClick={() => navigate(`/quiz-avance/${availableQuizzesAvances[0].id}`)}>
-                  <Play size={18} /> Passer un quiz
-                </button>
-              ) : availableQuizzes.length > 0 ? (
-                <button className="sd-btn sd-btn-primary"
-                  onClick={() => navigate(`/quiz/${availableQuizzes[0].id}`)}>
-                  <Play size={18} /> Passer un quiz
-                </button>
-              ) : null}
+              {availableQuizUnifies.length > 0 && (() => {
+                // ★ FIX avril 2026 — Premier quiz de la liste unifiée
+                //   (le plus récent, IA inclus). On choisit la route player
+                //   selon la nature du quiz.
+                const first = availableQuizUnifies[0];
+                const route = first.nature === 'classic'
+                  ? `/quiz/${first.id}`
+                  : `/quiz-avance/${first.id}`;
+                return (
+                  <button
+                    className="sd-btn sd-btn-primary"
+                    onClick={() => navigate(route)}
+                  >
+                    <Play size={18} /> Passer un quiz
+                  </button>
+                );
+              })()}
             </div>
           )}
         </div>
