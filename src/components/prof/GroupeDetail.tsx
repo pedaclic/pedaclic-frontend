@@ -16,6 +16,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+// Navigation vers la page de planification complète (Phase 32 — branchement total)
+import { useNavigate } from 'react-router-dom';
 import {
   getStatsGroupe,
   getStatsElevesGroupe,
@@ -281,6 +283,8 @@ interface GroupeDetailProps {
 
 const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOnglet }) => {
   const { currentUser } = useAuth();
+  // Hook de navigation utilisé par l'onglet Planification pour ouvrir la page complète
+  const navigate = useNavigate();
 
   // ===== États : données =====
   const [statsGroupe, setStatsGroupe] = useState<StatsGroupe | null>(null);
@@ -2658,10 +2662,36 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
               )}
 
               {planifCahiers[planifCahierIdx] && (
-                <PlanificationWidget
-                  cahier={planifCahiers[planifCahierIdx]}
-                  entrees={planifEntrees}
-                />
+                <>
+                  {/* Widget de planification — affiche les séances triées du cahier sélectionné */}
+                  <PlanificationWidget
+                    cahier={planifCahiers[planifCahierIdx]}
+                    entrees={planifEntrees}
+                  />
+                  {/* Lien vers la page complète : ouvre PlanificationPage du cahier courant */}
+                  <div style={{ marginTop: '0.75rem', textAlign: 'right' }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/prof/cahiers/${planifCahiers[planifCahierIdx].id}/planification`,
+                        )
+                      }
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid #2563eb',
+                        color: '#2563eb',
+                        padding: '0.45rem 0.9rem',
+                        borderRadius: 8,
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Voir la planification complète →
+                    </button>
+                  </div>
+                </>
               )}
             </>
           )}
