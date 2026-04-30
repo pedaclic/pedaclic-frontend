@@ -15,6 +15,10 @@ import {
   where,
   orderBy,
   Timestamp,
+  // 🆕 Sentinel pour suppressions atomiques de champs imbriqués.
+  //    Évite les races read-modify-write quand plusieurs handlers
+  //    écrivent en parallèle sur `notes` et `absences`.
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getElevesGroupe } from './profGroupeService';
@@ -175,25 +179,33 @@ export async function updateNotesFeuille(
   await updateDoc(ref, { notes, updatedAt: Timestamp.now() });
 }
 
-/** Met à jour une note en une seule opération (optimisation) */
+/**
+ * Met à jour des notes en bulk de façon ATOMIQUE par champ imbriqué.
+ *
+ * 🐛 Correctif (avril 2026) — même problématique que `updateAbsenceBulk` :
+ *   l'ancien read-modify-write écrasait les écritures concurrentes sur
+ *   `absences`. On n'écrit plus que les chemins `notes.<eleveId>.<evalId>`
+ *   qui changent. Les autres notes (et toutes les absences) sont
+ *   préservées, quelle que soit la concurrence.
+ */
 export async function updateNoteBulk(
   feuilleId: string,
   updates: { eleveId: string; evaluationId: string; note: number | null }[]
 ): Promise<void> {
   const ref = doc(db, COL, feuilleId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Feuille introuvable');
-  const data = snap.data();
-  const notes = JSON.parse(JSON.stringify(data.notes || {}));
+  const payload: Record<string, unknown> = {
+    updatedAt: Timestamp.now(),
+  };
   for (const u of updates) {
-    if (!notes[u.eleveId]) notes[u.eleveId] = {};
+    const cheminNote = `notes.${u.eleveId}.${u.evaluationId}`;
     if (u.note === null || u.note === undefined || Number.isNaN(u.note)) {
-      delete notes[u.eleveId][u.evaluationId];
+      payload[cheminNote] = deleteField();
     } else {
-      notes[u.eleveId][u.evaluationId] = Math.max(0, Math.min(20, Number(u.note)));
+      // Clamp [0..20] côté serveur — défense en profondeur côté UI.
+      payload[cheminNote] = Math.max(0, Math.min(20, Number(u.note)));
     }
   }
-  await updateDoc(ref, { notes, updatedAt: Timestamp.now() });
+  await updateDoc(ref, payload);
 }
 
 /**
@@ -217,29 +229,54 @@ export async function updateAbsenceBulk(
   updates: { eleveId: string; evaluationId: string; statut: StatutAbsenceDevoir | null }[]
 ): Promise<void> {
   const ref = doc(db, COL, feuilleId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) throw new Error('Feuille introuvable');
-  const data = snap.data();
-  // Clones défensifs : ne mutent pas les références Firestore directement.
-  const absences = JSON.parse(JSON.stringify(data.absences || {}));
-  const notes = JSON.parse(JSON.stringify(data.notes || {}));
+
+  // 🐛 Correctif (avril 2026) — Bug « ANJ efface les notes saisies » :
+  //
+  //   AVANT, on faisait un read-modify-write : lecture du document
+  //   complet, clonage profond de `notes` et `absences`, modification
+  //   en mémoire, puis ré-écriture des MAPS COMPLÈTES via updateDoc.
+  //   Problème : si un appel concurrent à `updateNoteBulk` (saisie
+  //   d'une note pendant que le prof clique sur le badge ANJ d'une
+  //   autre cellule) terminait son `setDoc` entre notre lecture et
+  //   notre écriture, on écrasait sa nouvelle note avec la version
+  //   antérieure que nous avions clonée. Résultat : « les notes qui
+  //   précèdent reviennent, les notes qui suivent disparaissent ».
+  //
+  //   FIX : on n'écrit plus que les CHAMPS IMBRIQUÉS qui changent
+  //   (chemins en notation pointée acceptés par Firestore). Les
+  //   autres clés de `notes` / `absences` ne sont JAMAIS touchées
+  //   par cette transaction, donc plus aucun effet de bord sur les
+  //   saisies parallèles.
+  //
+  //   • Statut → present  : `absences.<eleveId>.<evalId> = deleteField()`
+  //   • Statut → AJ / ANJ : `absences.<eleveId>.<evalId> = '<statut>'`
+  //                         + `notes.<eleveId>.<evalId> = deleteField()`
+  //                         (cohérence pédagogique : un élève absent
+  //                         ne pouvait pas composer)
+
+  // Construction du payload partiel à appliquer.
+  // On utilise `Record<string, unknown>` pour pouvoir mêler valeurs
+  // primitives (`'absent_justifie'`) et sentinelles `deleteField()`.
+  const payload: Record<string, unknown> = {
+    updatedAt: Timestamp.now(),
+  };
 
   for (const u of updates) {
-    if (!absences[u.eleveId]) absences[u.eleveId] = {};
+    const cheminAbsence = `absences.${u.eleveId}.${u.evaluationId}`;
+    const cheminNote = `notes.${u.eleveId}.${u.evaluationId}`;
+
     if (u.statut === null || u.statut === 'present' || u.statut === undefined) {
-      // Retour à l'état présent → on retire la clé d'absence, on garde la note.
-      delete absences[u.eleveId][u.evaluationId];
+      // Retour « présent » → on supprime juste la clé d'absence ;
+      // la note (si elle existait) reste intacte.
+      payload[cheminAbsence] = deleteField();
     } else {
-      absences[u.eleveId][u.evaluationId] = u.statut;
-      // Cohérence pédagogique : un élève absent n'a pas pu composer ; toute
-      // note résiduelle est supprimée pour ne pas polluer l'affichage.
-      if (notes[u.eleveId]) {
-        delete notes[u.eleveId][u.evaluationId];
-      }
+      payload[cheminAbsence] = u.statut;
+      // Effacement atomique de la note correspondante uniquement.
+      payload[cheminNote] = deleteField();
     }
   }
 
-  await updateDoc(ref, { absences, notes, updatedAt: Timestamp.now() });
+  await updateDoc(ref, payload);
 }
 
 /** Met à jour les évaluations d'une feuille */

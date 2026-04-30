@@ -904,7 +904,18 @@
 
 /* ──────────────────────────────────────────────────────────
    Selects de la barre d'outils (Style / Police / Taille)
-   Phase 34 — Correction de la troncature :
+   Phase 34 — Correction de la troncature (cross-browser).
+   ──────────────────────────────────────────────────────────
+   ⚠️ Cross-browser :
+     L'ancienne règle de CahierTextes.css applique encore
+     `text-overflow: ellipsis; overflow: hidden;` sur ce même
+     sélecteur (cascade dans EntreeEditorPage). Sur Chrome
+     ces deux propriétés combinées au `border-radius` clippent
+     visuellement la moitié droite-bas du `<select>` — Firefox,
+     plus tolérant, ignore en pratique ces propriétés sur les
+     `<select>` natifs. On les NEUTRALISE explicitement ici
+     pour garantir un rendu identique sur les deux moteurs.
+   ──────────────────────────────────────────────────────────
    - Largeur élargie pour ne plus tronquer les libellés
      (« Times New Roman », « Paragraphe », « Très grand »…)
    - Chevron SVG agrandi (12px) et plus contrasté pour rester
@@ -921,9 +932,15 @@
   font-size: 0.85rem;
   font-family: inherit;
   color: #374151;
-  /* Chevron SVG agrandi pour rester lisible en HiDPI */
-  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23374151' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E") no-repeat right 10px center;
+  /* Chevron SVG agrandi pour rester lisible en HiDPI.
+     `background-clip: padding-box` empêche le SVG de déborder
+     visuellement sous la bordure arrondie sur Chrome. */
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23374151' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
   background-size: 12px 8px;
+  background-clip: padding-box;
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
@@ -934,12 +951,20 @@
   min-width: 160px;
   max-width: 220px;
   flex-shrink: 0;
-  /* On laisse le navigateur gérer l'affichage de l'option sélectionnée :
-     pas de text-overflow ici, qui n'est pas fiable sur les <select> natifs */
+  /* ✅ Neutralisation EXPLICITE des règles héritées de CahierTextes.css
+     qui, combinées au border-radius, provoquaient le clipping observé
+     sur Chrome (cf. en-tête de bloc). On force des valeurs sûres : */
+  text-overflow: clip;     /* annule l'ellipsis hérité (inutile sur <select>) */
+  overflow: visible;       /* annule overflow:hidden hérité (cause du clip Chrome) */
   white-space: nowrap;
   line-height: 1.2;
   box-sizing: border-box;
+  vertical-align: middle;  /* aligne précisément avec les boutons icône voisins */
 }
+
+/* IE11 / anciens Edge : masquer la flèche native vestigiale.
+   Inoffensif sur les navigateurs modernes. */
+.rte-select::-ms-expand { display: none; }
 
 .rte-select:focus {
   outline: none;

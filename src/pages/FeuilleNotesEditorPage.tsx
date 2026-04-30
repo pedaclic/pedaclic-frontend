@@ -5,7 +5,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Trash2, Pencil, Check, X, Plus, BookOpen, ChevronDown, ChevronUp, Award, GraduationCap } from 'lucide-react';
+import { ArrowLeft, Download, FileSpreadsheet, FileText, File, GripVertical, Trash2, Pencil, Check, X, Plus, BookOpen, ChevronDown, ChevronUp, Award, GraduationCap, BarChart2 } from 'lucide-react';
+// 🆕 Modale « Statistiques des notes » — vue analytique en fenêtre contextuelle
+import StatsNotesModal from '../components/prof/StatsNotesModal';
 import {
   getFeuilleById,
   updateNoteBulk,
@@ -74,6 +76,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
   //    Initialisé à `null` (= en cours de chargement / non encore chargé)
   //    pour éviter d'afficher « Aucun cahier » avant la requête.
   const [cahiersLies, setCahiersLies] = useState<CahierTextes[] | null>(null);
+  // 🆕 Ouverture / fermeture de la fenêtre contextuelle de statistiques.
+  //    L'état est local : la modale lit les `lignes` déjà calculées par
+  //    `buildLignesNotes`, donc les stats reflètent toujours l'état
+  //    courant (incluant exclusions de moyenne, ANJ, etc.).
+  const [showStatsModal, setShowStatsModal] = useState(false);
   // ── Navigation clavier dans la grille de notes ──
   //   On indexe chaque input note par (eleveId, evalId) pour pouvoir
   //   déplacer le focus via Enter / Tab / flèches sans perdre la
@@ -143,10 +150,29 @@ const FeuilleNotesEditorPage: React.FC = () => {
    * Sauvegarde une note saisie (Firestore + état local).
    * `keepEdit` permet de conserver la cellule ouverte (utile lors d'une
    * navigation clavier où l'on enchaîne sur la cellule suivante).
+   *
+   * 🐛 Correctif (avril 2026) — Désynchronisation `feuille` ⇄ `lignes` :
+   *   AVANT, ce handler ne mettait à jour QUE `lignes` (visuel). L'état
+   *   `feuille.notes` restait alors en retard sur les saisies récentes,
+   *   ce qui provoquait un bug majeur : à la première bascule d'absence
+   *   (ANJ / AJ) via `cycleAbsenceStatut`, ce dernier reclonait
+   *   `feuille.notes` STALE et reconstruisait `lignes` avec — toutes
+   *   les notes saisies « non encore reflétées dans feuille.notes »
+   *   disparaissaient à l'écran. Au rafraîchissement, celles déjà
+   *   persistées dans Firestore revenaient ; les plus récentes,
+   *   écrasées par l'écriture concurrente d'`updateAbsenceBulk`,
+   *   étaient perdues.
+   *
+   *   FIX : on synchronise SYSTÉMATIQUEMENT `feuille.notes` avec la
+   *   nouvelle valeur saisie. Les deux états restent ainsi cohérents,
+   *   et `cycleAbsenceStatut` peut s'appuyer sur `feuille.notes`
+   *   comme source de vérité unique.
    */
   const handleNoteChange = (eleveId: string, evalId: string, value: string, keepEdit = false) => {
     const num = value === '' ? null : parseFloat(value.replace(',', '.'));
     if (num !== null && (num < 0 || num > 20 || isNaN(num))) return;
+
+    // 1) Mise à jour optimiste de `lignes` (visuel)
     setLignes((prev) =>
       prev.map((l) =>
         l.eleveId === eleveId
@@ -154,7 +180,24 @@ const FeuilleNotesEditorPage: React.FC = () => {
           : l,
       ),
     );
-    // Sauvegarde immédiate (idempotente) — onBlur + onKeyDown appellent cette fonction
+
+    // 2) 🆕 Mise à jour synchrone de `feuille.notes` — évite la
+    //    désynchronisation décrite dans le JSDoc ci-dessus.
+    setFeuille((f) => {
+      if (!f) return f;
+      const notesEleve = { ...(f.notes?.[eleveId] || {}) };
+      if (num === null || num === undefined || Number.isNaN(num)) {
+        delete notesEleve[evalId];
+      } else {
+        notesEleve[evalId] = num;
+      }
+      return {
+        ...f,
+        notes: { ...(f.notes || {}), [eleveId]: notesEleve },
+      };
+    });
+
+    // 3) Sauvegarde immédiate (idempotente) — onBlur + onKeyDown appellent cette fonction
     if (feuilleId) {
       updateNoteBulk(feuilleId, [{ eleveId, evaluationId: evalId, note: num }]).catch(console.error);
     }
@@ -682,6 +725,22 @@ const FeuilleNotesEditorPage: React.FC = () => {
               </select>
             )
           )}
+          {/* ──────────────────────────────────────────────────────────
+              🆕 Bouton « Statistiques » : ouvre la fenêtre contextuelle
+              `StatsNotesModal` qui présente les statistiques générales
+              et par sexe (moyenne, médiane, écart-type, distribution,
+              taux de réussite / mention). Strictement non-destructif :
+              lit uniquement les `lignes` déjà calculées par
+              buildLignesNotes — aucun effet de bord.
+             ────────────────────────────────────────────────────────── */}
+          <button
+            className="prof-btn prof-btn-secondary"
+            onClick={() => setShowStatsModal(true)}
+            title="Voir les statistiques de la feuille (générales + par sexe)"
+            aria-haspopup="dialog"
+          >
+            <BarChart2 size={18} /> Statistiques
+          </button>
           <button className="prof-btn prof-btn-secondary" onClick={() => handleExport('excel')} title="Excel">
             <FileSpreadsheet size={18} /> Excel
           </button>
@@ -1256,6 +1315,25 @@ const FeuilleNotesEditorPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      {/* ════════════════════════════════════════════════════════════
+           🆕 Fenêtre contextuelle « Statistiques des notes »
+           ────────────────────────────────────────────────────────────
+           - Rendue tout en bas pour éviter tout impact sur les calculs
+             ou l'ordre des layers de la table.
+           - `lignes` est la source de vérité visible (déjà filtrée /
+             calculée par `buildLignesNotes`).
+           - `sexeMap` est alimentée au chargement de la feuille.
+           - `contexteLibelle` = nom du groupe + matière, pour afficher
+             un sous-titre informatif dans la modale.
+           ════════════════════════════════════════════════════════════ */}
+      <StatsNotesModal
+        ouvert={showStatsModal}
+        onFermer={() => setShowStatsModal(false)}
+        lignes={lignes}
+        sexeMap={sexeMap}
+        contexteLibelle={`${feuille.groupeNom} • ${feuille.matiereNom} • ${feuille.periodeLabel}`}
+      />
     </div>
   );
 };

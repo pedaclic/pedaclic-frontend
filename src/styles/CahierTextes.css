@@ -1325,9 +1325,11 @@
   /* Phase 34 : élargi pour afficher « Times New Roman » et « Paragraphe » en entier */
   min-width: 140px;
   max-width: 180px;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  overflow: hidden;
+  /* ⚠️ NE PAS remettre `text-overflow: ellipsis` ni `overflow: hidden` ici :
+     combinés au `border-radius` d'un `<select>` natif, ils provoquent un
+     clipping visible des coins arrondis sur Chrome (Firefox les ignore
+     en pratique). Le rendu unifié est piloté par CahierEnrichi.css. */
 }
 .rte-select:focus { border-color: var(--ct-blue); }
 
