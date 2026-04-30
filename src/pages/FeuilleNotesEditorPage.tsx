@@ -17,6 +17,9 @@ import {
   buildLignesNotes,
 } from '../services/feuillesNotesService';
 import { getElevesGroupe } from '../services/profGroupeService';
+// 🆕 Récupération des cahiers de textes liés au groupe (lien Feuille ↔ Cahier)
+import { getCahiersForGroupe } from '../services/cahierTextesService';
+import type { CahierTextes } from '../types/cahierTextes.types';
 import { exportFeuilleExcel, exportFeuillePDF, exportFeuilleWord } from '../utils/feuillesNotesExport';
 import type { FeuilleDeNotes, LigneNotes, CompetenceDef, CompetenceStatus, TypeEvaluation, StatutAbsenceDevoir } from '../types/feuillesNotes.types';
 import {
@@ -66,6 +69,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
   //    d'afficher le pictogramme ♂/♀ devant chaque nom dans la colonne
   //    « Élève » (cohérent avec l'onglet Élèves du dashboard).
   const [sexeMap, setSexeMap] = useState<Record<string, 'M' | 'F' | 'autre' | undefined>>({});
+  // 🆕 Cahiers de textes liés au groupe de cette feuille — pour le bouton de
+  //    navigation rapide « Cahier de textes » dans l'en-tête.
+  //    Initialisé à `null` (= en cours de chargement / non encore chargé)
+  //    pour éviter d'afficher « Aucun cahier » avant la requête.
+  const [cahiersLies, setCahiersLies] = useState<CahierTextes[] | null>(null);
   // ── Navigation clavier dans la grille de notes ──
   //   On indexe chaque input note par (eleveId, evalId) pour pouvoir
   //   déplacer le focus via Enter / Tab / flèches sans perdre la
@@ -114,6 +122,22 @@ const FeuilleNotesEditorPage: React.FC = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  /**
+   * 🆕 Récupère les cahiers de textes du prof rattachés au groupe de la
+   *    feuille courante. Sert à proposer le bouton « Cahier de textes »
+   *    dans l'en-tête (1 seul cahier → navigation directe ; plusieurs →
+   *    petit sélecteur). Pas bloquant pour l'éditeur : si la requête
+   *    échoue, le bouton est simplement masqué.
+   */
+  useEffect(() => {
+    if (!feuille?.groupeId || !currentUser?.uid) return;
+    let annulee = false;
+    getCahiersForGroupe(feuille.groupeId, currentUser.uid)
+      .then((liste) => { if (!annulee) setCahiersLies(liste); })
+      .catch((err) => { console.error('Erreur chargement cahiers liés:', err); if (!annulee) setCahiersLies([]); });
+    return () => { annulee = true; };
+  }, [feuille?.groupeId, currentUser?.uid]);
 
   /**
    * Sauvegarde une note saisie (Firestore + état local).
@@ -326,6 +350,29 @@ const FeuilleNotesEditorPage: React.FC = () => {
     const evals = feuille.evaluations.filter((e) => e.id !== evalId);
     setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
     updateEvaluationsFeuille(feuille.id, evals).catch(console.error);
+  };
+
+  /**
+   * 🆕 Bascule l'inclusion / exclusion d'une évaluation dans le calcul
+   *    de la moyenne (devoirs ou composition).
+   *
+   *   Cycle : incluse (défaut) ⇄ exclue.
+   *
+   *   - Mise à jour optimiste de l'état local pour rafraîchir
+   *     immédiatement les colonnes Moy. Devoirs / Compo / Moy. Gén / Rang.
+   *   - Persistance Firestore via `updateEvaluationsFeuille`.
+   *   - L'évaluation reste visible dans le tableau (les notes ne sont
+   *     pas effacées) — seul son poids dans la moyenne change.
+   */
+  const toggleExclusionEval = (evalId: string) => {
+    if (!feuille) return;
+    const evals = feuille.evaluations.map((e) =>
+      e.id === evalId ? { ...e, exclueDeMoyenne: !(e.exclueDeMoyenne === true) } : e,
+    );
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateEvaluationsFeuille(feuille.id, evals)
+      .then(() => load())
+      .catch(console.error);
   };
 
   // ── Compétences ──
@@ -585,6 +632,56 @@ const FeuilleNotesEditorPage: React.FC = () => {
           )}
         </div>
         <div className="feuille-editor-export">
+          {/* ──────────────────────────────────────────────────────────
+              🆕 Bouton « Cahier de textes » : ouvre le cahier lié au
+              groupe (si un seul) ou propose un menu de sélection (si
+              plusieurs cahiers du prof sont rattachés au même groupe,
+              ex. plusieurs matières / co-animation).
+
+              Comportement :
+                • cahiersLies === null   → en cours de chargement (rien)
+                • aucun cahier           → bouton désactivé (informatif)
+                • 1 cahier               → navigation directe
+                • plusieurs              → <select> stylé en bouton
+             ────────────────────────────────────────────────────────── */}
+          {cahiersLies !== null && (
+            cahiersLies.length === 0 ? (
+              <button
+                className="prof-btn prof-btn-secondary"
+                disabled
+                title="Aucun cahier de textes du prof n'est rattaché à ce groupe."
+                style={{ opacity: 0.6, cursor: 'not-allowed' }}
+              >
+                <BookOpen size={18} /> Cahier de textes
+              </button>
+            ) : cahiersLies.length === 1 ? (
+              <button
+                className="prof-btn prof-btn-secondary"
+                title={`Ouvrir le cahier « ${cahiersLies[0].titre} »`}
+                onClick={() => navigate(`/prof/cahiers/${cahiersLies[0].id}`)}
+              >
+                <BookOpen size={18} /> Cahier de textes
+              </button>
+            ) : (
+              <select
+                className="prof-btn prof-btn-secondary"
+                title="Choisir le cahier de textes à ouvrir"
+                defaultValue=""
+                onChange={(e) => {
+                  const cId = e.target.value;
+                  if (cId) navigate(`/prof/cahiers/${cId}`);
+                }}
+                style={{ cursor: 'pointer', fontWeight: 600 }}
+              >
+                <option value="" disabled>📒 Cahier de textes…</option>
+                {cahiersLies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.titre} — {c.matiere}
+                  </option>
+                ))}
+              </select>
+            )
+          )}
           <button className="prof-btn prof-btn-secondary" onClick={() => handleExport('excel')} title="Excel">
             <FileSpreadsheet size={18} /> Excel
           </button>
@@ -739,17 +836,31 @@ const FeuilleNotesEditorPage: React.FC = () => {
               {evals.map((e, idx) => {
                 const typeEval: TypeEvaluation = e.type ?? 'devoir';
                 const isCompo = typeEval === 'composition';
+                // 🆕 Indicateur d'exclusion du calcul de moyenne pour CETTE éval.
+                //    On combine la classe « eval-excluded » avec un style discret
+                //    (opacité réduite + fond rayé) pour que le prof voie d'un
+                //    coup d'œil les colonnes qui ne pèsent plus dans la moyenne.
+                const isExcluse = e.exclueDeMoyenne === true;
                 return (
                   <th
                     key={e.id}
-                    className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}${isCompo ? ' col-note--compo' : ''}`}
+                    className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}${isCompo ? ' col-note--compo' : ''}${isExcluse ? ' col-note--excluse' : ''}`}
                     draggable
                     onDragStart={() => handleDragStart(idx)}
                     onDragOver={(ev) => handleDragOver(ev, idx)}
                     onDrop={() => handleDrop(idx)}
                     onDragEnd={handleDragEnd}
-                    /* Bande colorée différenciante : violet pour composition */
-                    style={isCompo ? { background: '#7c3aed' } : undefined}
+                    /* Bande colorée différenciante : violet pour composition,
+                       rayée + dépolie pour les évaluations exclues du calcul. */
+                    style={{
+                      ...(isCompo ? { background: '#7c3aed' } : {}),
+                      ...(isExcluse
+                        ? {
+                            backgroundImage:
+                              'repeating-linear-gradient(45deg, rgba(255,255,255,0.0) 0 6px, rgba(0,0,0,0.06) 6px 12px)',
+                          }
+                        : {}),
+                    }}
                   >
                     <div className="eval-header">
                       <span className="eval-grip" title="Glisser pour réordonner"><GripVertical size={14} /></span>
@@ -790,10 +901,59 @@ const FeuilleNotesEditorPage: React.FC = () => {
                           {e.coefficient && e.coefficient !== 1 && (
                             <span className="coef"> (coef. {e.coefficient})</span>
                           )}
+                          {/* 🆕 Badge « hors moyenne » : signal visible à côté
+                              du libellé pour distinguer immédiatement les
+                              évaluations qui ne pèsent plus dans le calcul. */}
+                          {isExcluse && (
+                            <span
+                              title="Évaluation exclue du calcul de la moyenne"
+                              style={{
+                                marginLeft: 6,
+                                padding: '0 5px',
+                                borderRadius: 3,
+                                background: '#fef3c7',
+                                color: '#92400e',
+                                fontSize: '0.62rem',
+                                fontWeight: 700,
+                                letterSpacing: '0.02em',
+                                textTransform: 'uppercase',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Hors moyenne
+                            </span>
+                          )}
                         </span>
                       )}
                       {editEvalId !== e.id && (
                         <span className="eval-actions">
+                          {/* 🆕 Bouton bascule INCLURE / EXCLURE l'évaluation
+                              du calcul de la moyenne. Le tooltip décrit
+                              l'action qui sera réalisée au clic, et l'icône
+                              (✓ vert / ⊘ orange) reflète l'état actuel. */}
+                          <button
+                            type="button"
+                            className={`eval-action-btn eval-toggle-moyenne${isExcluse ? ' is-excluse' : ''}`}
+                            title={
+                              isExcluse
+                                ? 'Cette évaluation est EXCLUE du calcul de la moyenne — cliquer pour l\'inclure à nouveau'
+                                : 'Cette évaluation est INCLUSE dans le calcul de la moyenne — cliquer pour l\'exclure'
+                            }
+                            aria-label={
+                              isExcluse
+                                ? 'Inclure cette évaluation dans le calcul de la moyenne'
+                                : 'Exclure cette évaluation du calcul de la moyenne'
+                            }
+                            onClick={(ev) => { ev.stopPropagation(); toggleExclusionEval(e.id); }}
+                            style={{
+                              color: isExcluse ? '#f59e0b' : '#16a34a',
+                              fontWeight: 800,
+                              fontSize: '0.78rem',
+                              lineHeight: 1,
+                            }}
+                          >
+                            {isExcluse ? '⊘' : '✓'}
+                          </button>
                           <button className="eval-action-btn" title="Renommer" onClick={() => { setEditEvalId(e.id); setDraftLibelle(e.libelle); }}><Pencil size={12} /></button>
                           {evals.length > 1 && (
                             <button className="eval-action-btn eval-delete" title="Supprimer" onClick={() => supprimerEval(e.id)}><Trash2 size={12} /></button>
@@ -854,8 +1014,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
                   const statutAbs: StatutAbsenceDevoir | 'present' =
                     feuille.absences?.[ligne.eleveId]?.[e.id] ?? 'present';
                   const estAbsent = statutAbs !== 'present';
+                  // 🆕 Marquage visuel des cellules dont l'évaluation est exclue
+                  //    du calcul de la moyenne (la note reste éditable).
+                  const cellExcluse = e.exclueDeMoyenne === true;
                   return (
-                    <td key={e.id} className="col-note">
+                    <td key={e.id} className={`col-note${cellExcluse ? ' col-note--excluse' : ''}`}>
                       {/* ────────────────────────────────────────────────
                           Bouton de BASCULE STATUT D'ABSENCE
                           ────────────────────────────────────────────────

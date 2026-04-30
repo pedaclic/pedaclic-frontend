@@ -823,6 +823,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
             <button type="button" className="rte-btn" onClick={() => formater('superscript')} title="Exposant (x²)" aria-label="Exposant">{Ico.sup}</button>
           </div>
           <div className="rte-toolbar__sep" aria-hidden="true" />
+          {/* Sélecteur « Style de paragraphe » — placeholder explicite (sans ellipsis,
+              qui peut être tronquée par le rendu natif des <select> sur certains
+              navigateurs et donner l'impression d'un libellé incomplet). */}
           <div className="rte-toolbar__group" aria-label="Style de paragraphe">
             <select
               className="rte-select"
@@ -831,7 +834,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               title="Style de paragraphe"
               aria-label="Style de paragraphe"
             >
-              <option value="" disabled>Style…</option>
+              <option value="" disabled>Style de paragraphe</option>
               <option value="p">Paragraphe</option>
               <option value="h1">Titre 1</option>
               <option value="h2">Titre 2</option>
@@ -843,6 +846,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               <option value="blockquote">Citation</option>
             </select>
           </div>
+          {/* Sélecteur « Police » — l'option par défaut « Par défaut » s'affiche
+              en entier grâce à la largeur élargie du .rte-select--font. */}
           <div className="rte-toolbar__group" aria-label="Police">
             <select
               className="rte-select rte-select--font"
@@ -856,6 +861,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               ))}
             </select>
           </div>
+          {/* Sélecteur « Taille » — placeholder explicite « Taille du texte ». */}
           <div className="rte-toolbar__group" aria-label="Taille">
             <select
               className="rte-select rte-select--size"
@@ -864,7 +870,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
               title="Taille du texte"
               aria-label="Taille du texte"
             >
-              <option value="" disabled>Taille…</option>
+              <option value="" disabled>Taille du texte</option>
               {TAILLES_POLICE.map(t => (
                 <option key={t.valeur} value={t.valeur}>{t.label}</option>
               ))}

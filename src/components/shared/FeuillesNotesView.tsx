@@ -134,11 +134,35 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
               <thead>
                 <tr>
                   <th className="col-eleve">Élève</th>
-                  {(selectedFeuille.evaluations || []).map((e) => (
-                    <th key={e.id} className="col-note">
-                      {e.libelle}
-                    </th>
-                  ))}
+                  {(selectedFeuille.evaluations || []).map((e) => {
+                    // 🆕 Indication « hors moyenne » : élève / parent voient
+                    //    explicitement les évaluations qui ne pèsent pas dans
+                    //    la moyenne générale, pour éviter toute confusion.
+                    const horsMoyenne = e.exclueDeMoyenne === true;
+                    return (
+                      <th key={e.id} className={`col-note${horsMoyenne ? ' col-note--excluse' : ''}`}>
+                        {e.libelle}
+                        {horsMoyenne && (
+                          <span
+                            title="Cette évaluation n'entre pas dans le calcul de la moyenne"
+                            style={{
+                              marginLeft: 6,
+                              padding: '0 5px',
+                              borderRadius: 3,
+                              background: '#fef3c7',
+                              color: '#92400e',
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.02em',
+                            }}
+                          >
+                            Hors moyenne
+                          </span>
+                        )}
+                      </th>
+                    );
+                  })}
                   {/* Colonnes de synthèse : titres explicites + tooltip */}
                   <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">
                     Moy. Devoirs

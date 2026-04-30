@@ -666,6 +666,86 @@ const CahierDetailPage: React.FC = () => {
               </div>
             </div>
           )}
+          {/* ──────────────────────────────────────────────────────────
+              🆕 Lien rapide vers la FEUILLE DE NOTES du / des groupe(s)
+              lié(s) au cahier. Pratique pour passer du planning de classe
+              à la saisie des notes en un clic, sans repasser par le
+              tableau de bord.
+
+              Comportement :
+                • 0 groupe lié    → bouton désactivé + tooltip explicite.
+                • 1 groupe lié    → ouvre le tableau de bord du groupe sur
+                                     l'onglet « Notes ».
+                • N groupes liés  → ouvre une petite liste pour choisir le
+                                     groupe (premier groupe par défaut).
+             ────────────────────────────────────────────────────────── */}
+          {(() => {
+            const groupeIds = cahier.groupeIds ?? [];
+            const groupeNoms = cahier.groupeNoms ?? [];
+            const nbGroupes = groupeIds.length;
+
+            // Aucun groupe lié → bouton informatif désactivé
+            if (nbGroupes === 0) {
+              return (
+                <button
+                  className="btn-secondary"
+                  disabled
+                  title="Aucun groupe classe n'est lié à ce cahier — éditez le cahier pour lier un groupe puis accédez à sa feuille de notes."
+                  style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                >
+                  📝 Feuille de notes
+                </button>
+              );
+            }
+
+            // 1 groupe lié → navigation directe sur l'onglet Notes du groupe
+            if (nbGroupes === 1) {
+              return (
+                <button
+                  className="btn-secondary"
+                  title={`Ouvrir la feuille de notes du groupe « ${groupeNoms[0] ?? 'lié'} »`}
+                  onClick={() =>
+                    navigate('/prof/dashboard', {
+                      state: { openGroupeId: groupeIds[0], openTab: 'notes' },
+                    })
+                  }
+                >
+                  📝 Feuille de notes
+                </button>
+              );
+            }
+
+            // N groupes liés → menu déroulant simple via <select> stylé
+            return (
+              <select
+                className="btn-secondary"
+                title="Choisir le groupe pour ouvrir sa feuille de notes"
+                defaultValue=""
+                onChange={(e) => {
+                  const gId = e.target.value;
+                  if (!gId) return;
+                  navigate('/prof/dashboard', {
+                    state: { openGroupeId: gId, openTab: 'notes' },
+                  });
+                }}
+                style={{
+                  padding: '0.45rem 0.9rem',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                }}
+              >
+                <option value="" disabled>📝 Feuille de notes…</option>
+                {groupeIds.map((gid, i) => (
+                  <option key={gid} value={gid}>
+                    {groupeNoms[i] ?? `Groupe ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            );
+          })()}
+
           <button
             className="btn-primary"
             onClick={() => navigate(`/prof/cahiers/${cahierId}/nouvelle`)}

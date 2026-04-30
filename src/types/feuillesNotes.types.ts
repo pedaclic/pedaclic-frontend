@@ -106,6 +106,21 @@ export interface EvaluationNote {
   type?: TypeEvaluation;
   /** Compétences évaluées dans ce devoir (optionnel) */
   competences?: CompetenceDef[];
+  /**
+   * 🆕 Inclusion / exclusion de l'évaluation dans le calcul de la moyenne.
+   *
+   *   - `false` ou champ absent (par défaut) → l'évaluation entre dans le
+   *     calcul de la moyenne (devoirs ou composition selon son `type`).
+   *   - `true` → l'évaluation est INCLUSE dans le tableau (les notes
+   *     restent visibles et exportées) mais EXCLUE du calcul de la
+   *     moyenne des devoirs / composition / moyenne générale et donc
+   *     du rang. Utile pour des évaluations de soutien, des rattrapages
+   *     non comptabilisés, des séances diagnostiques, etc.
+   *
+   * 💡 Conservé optionnel pour rétro-compatibilité avec les feuilles
+   *    existantes (qui n'ont jamais ce champ).
+   */
+  exclueDeMoyenne?: boolean;
 }
 
 /** Notes d'un élève : evaluationId -> note (sur 20) */

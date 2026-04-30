@@ -322,9 +322,18 @@ export function buildLignesNotes(
   const evalsDevoirs = evals.filter((e) => (e.type ?? 'devoir') === 'devoir');
   const evalsCompo = evals.filter((e) => e.type === 'composition');
 
+  // 🆕 Helper d'inclusion : exclueDeMoyenne === true → on n'agrège PAS
+  //    cette évaluation dans la moyenne (devoirs / compo), mais on la
+  //    laisse visible dans le tableau et les exports.
+  //
+  //    Cas par défaut (champ absent ou false) → évaluation incluse.
+  const estIncluseDansMoyenne = (e: EvaluationNote): boolean => e.exclueDeMoyenne !== true;
+
   // ── Sets d'IDs autorisés (référence absolue : la feuille courante) ──
   //   Toute clé de `notes[eleveId]` ABSENTE de ces sets sera ignorée :
   //   c'est le verrou anti-contamination demandé par l'utilisateur.
+  //   On NE filtre PAS sur `exclueDeMoyenne` ici : les notes des
+  //   évaluations exclues doivent rester accessibles à l'affichage.
   const idsDevoirs = new Set(evalsDevoirs.map((e) => e.id));
   const idsCompo = new Set(evalsCompo.map((e) => e.id));
   const idsValides = new Set<string>([...idsDevoirs, ...idsCompo]);
@@ -384,6 +393,11 @@ export function buildLignesNotes(
      * `bucket` indique dans quels accumulateurs sommer ('devoir' ou 'compo').
      */
     const consommerEval = (e: EvaluationNote, bucket: 'devoir' | 'compo') => {
+      // 🆕 Court-circuit : évaluation exclue du calcul de moyenne ne contribue
+      //    NI aux totaux devoirs/compo, NI à la moyenne générale, NI au rang.
+      //    Les notes restent toutefois consultables dans la grille et exportées.
+      if (!estIncluseDansMoyenne(e)) return;
+
       const statut = absencesEleve[e.id]; // déjà filtré
       if (statut === 'absent_justifie') return; // ignorée
 

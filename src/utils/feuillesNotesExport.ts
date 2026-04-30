@@ -13,14 +13,18 @@ import type {
 import { formatEleveNom } from './formatNom';
 
 /**
- * Étiquette de colonne enrichie : inclut le type (D/C) et le coef. éventuel
- * pour que les exports soient lisibles seuls (sans le contexte écran).
+ * Étiquette de colonne enrichie : inclut le type (D/C), le coef. éventuel
+ * et un suffixe « [Hors moyenne] » si le prof a exclu l'évaluation du
+ * calcul de la moyenne. Permet aux exports d'être lisibles seuls (sans
+ * le contexte écran) et explicite la raison pour laquelle la note ne
+ * pèse pas dans la moyenne générale.
  */
 function labelEvalExport(e: EvaluationNote): string {
   const t: TypeEvaluation = e.type ?? 'devoir';
   const marqueur = t === 'composition' ? ' [Compo]' : '';
   const coef = e.coefficient && e.coefficient !== 1 ? ` (coef. ${e.coefficient})` : '';
-  return `${e.libelle}${marqueur}${coef}`;
+  const horsMoyenne = e.exclueDeMoyenne === true ? ' [Hors moyenne]' : '';
+  return `${e.libelle}${marqueur}${coef}${horsMoyenne}`;
 }
 
 /**

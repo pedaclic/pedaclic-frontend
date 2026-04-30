@@ -308,6 +308,51 @@ th.col-note:hover .eval-actions { opacity: 1; }
 .eval-action-btn.eval-delete:hover { background: #ef4444; }
 .eval-action-btn.eval-ok { background: #22c55e; }
 .eval-action-btn.eval-cancel { background: rgba(255,255,255,0.25); }
+
+/* ──────────────────────────────────────────────────────────────
+   🆕 Bouton bascule « inclure / exclure du calcul de moyenne »
+   - État INCLUSE → coche verte (✓), fond blanc translucide
+   - État EXCLUE  → cercle barré (⊘), fond ambré pour signaler
+     visuellement que l'évaluation ne pèse plus dans la moyenne.
+   - L'opacité 1 garantit la lisibilité par-dessus l'en-tête bleu.
+   ────────────────────────────────────────────────────────────── */
+.eval-action-btn.eval-toggle-moyenne {
+  background: rgba(255,255,255,0.92);
+  color: #16a34a;
+}
+.eval-action-btn.eval-toggle-moyenne:hover {
+  background: #ffffff;
+  outline: 2px solid rgba(255,255,255,0.5);
+}
+.eval-action-btn.eval-toggle-moyenne.is-excluse {
+  background: #fde68a;
+  color: #92400e;
+}
+.eval-action-btn.eval-toggle-moyenne.is-excluse:hover {
+  background: #fcd34d;
+}
+
+/* ──────────────────────────────────────────────────────────────
+   🆕 Colonne dont l'évaluation est exclue du calcul de la moyenne.
+   - Trame rayée discrète sur l'en-tête (déjà appliquée inline).
+   - Cellules (corps du tableau) légèrement assombries pour
+     indiquer visuellement que ces notes ne contribuent pas à
+     la moyenne — sans les rendre illisibles pour autant.
+   ────────────────────────────────────────────────────────────── */
+.feuille-editor-table th.col-note--excluse {
+  /* Le fond rayé est posé en inline (compose avec la couleur de
+     base devoir/compo) ; on ajoute juste un liseré ambré en bas
+     pour rappeler le badge « Hors moyenne ». */
+  border-bottom: 2px solid #f59e0b;
+}
+.feuille-editor-table tbody td.col-note--excluse,
+.feuille-editor-table tbody tr td.col-note--excluse {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0,0,0,0) 0 6px,
+    rgba(245, 158, 11, 0.07) 6px 12px
+  );
+}
 .eval-rename {
   display: inline-flex;
   align-items: center;
