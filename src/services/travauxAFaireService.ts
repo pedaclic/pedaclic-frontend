@@ -182,13 +182,25 @@ export async function getTravauxByGroupe(groupeId: string): Promise<TravailAFair
 
 /**
  * Récupère les travaux à faire pour un élève (tous ses groupes).
- * Ne retourne que les travaux dont l'échéance est aujourd'hui ou ultérieure.
+ *
+ * Par défaut, ne retourne que les travaux dont l'échéance est aujourd'hui
+ * ou ultérieure. L'option `lookbackDays` permet d'inclure aussi les
+ * travaux passés des N derniers jours — utile pour que l'élève puisse
+ * consulter les exercices à domicile récemment échus (et voir leur
+ * statut corrigé) depuis son tableau de bord.
  */
-export async function getTravauxForEleve(groupeIds: string[]): Promise<TravailAFaire[]> {
+export async function getTravauxForEleve(
+  groupeIds: string[],
+  options?: { lookbackDays?: number }
+): Promise<TravailAFaire[]> {
   if (groupeIds.length === 0) return [];
   const all: TravailAFaire[] = [];
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const lookbackDays = Math.max(0, options?.lookbackDays ?? 0);
+  const borneMin = new Date();
+  borneMin.setHours(0, 0, 0, 0);
+  if (lookbackDays > 0) {
+    borneMin.setDate(borneMin.getDate() - lookbackDays);
+  }
   for (const gid of groupeIds.slice(0, 10)) {
     const q2 = query(
       collection(db, COL_TRAVAUX),
@@ -204,7 +216,7 @@ export async function getTravauxForEleve(groupeIds: string[]): Promise<TravailAF
         dateEcheance: toDate(d.data().dateEcheance),
         createdAt: toDate(d.data().createdAt),
       } as TravailAFaire;
-      if (t.dateEcheance >= todayStart) all.push(t);
+      if (t.dateEcheance >= borneMin) all.push(t);
     });
   }
   all.sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());

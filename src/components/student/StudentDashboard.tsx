@@ -151,8 +151,17 @@ const StudentDashboard: React.FC = () => {
   const [codeLoading, setCodeLoading] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
 
-  /* ── États Travaux de ma classe (onglet Travaux) ── */
-  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string; corrige?: boolean }>>([]);
+  /* ── États Travaux de ma classe (onglet Travaux) ──
+   *
+   * Deux sous-onglets :
+   *   - `domicile` : exercices à domicile (travail rattaché à une séance,
+   *     reconnaissable par la présence d'un `seanceId` — auto-créé par le
+   *     prof depuis le cahier de textes).
+   *   - `autres`   : travaux assignés manuellement depuis l'onglet
+   *     « Travaux » d'un groupe-classe, sans séance associée.
+   */
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string; corrige?: boolean; seanceId?: string; profNom?: string }>>([]);
+  const [travauxTab, setTravauxTab] = useState<'domicile' | 'autres'>('domicile');
   const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
   const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
 
@@ -232,7 +241,11 @@ const StudentDashboard: React.FC = () => {
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
         const [travauxData, cahiersListe] = await Promise.all([
-          getTravauxForEleve(groupeIds),
+          // ★ Inclut les travaux des 30 derniers jours pour que l'élève
+          //   puisse encore consulter les exercices à domicile récemment
+          //   échus (notamment ceux auto-créés depuis une séance) et voir
+          //   leur statut "corrigé".
+          getTravauxForEleve(groupeIds, { lookbackDays: 30 }),
           getCahiersPartagesForEleve(groupeIds).catch(() => []),
         ]);
         setCahiersCount(cahiersListe.length);
@@ -246,6 +259,9 @@ const StudentDashboard: React.FC = () => {
           matiere: t.matiere,
           rubriqueId: t.rubriqueId,
           rubriqueNom: t.rubriqueNom,
+          corrige: t.corrige,
+          seanceId: t.seanceId,
+          profNom: t.profNom,
         })));
       } catch (error) {
         console.error('Erreur chargement dashboard :', error);
@@ -478,54 +494,19 @@ const StudentDashboard: React.FC = () => {
           <PenLine size={18} /> Travaux de ma classe
         </h3>
         <p style={{ color: '#6b7280', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
-          Travaux assignés par votre professeur dans l&apos;onglet « Travaux » de votre classe.
+          Retrouvez ici les exercices à domicile (liés à une séance) et les travaux assignés par votre professeur.
         </p>
 
-        {/* Phase 31 — Filtres travaux côté élève */}
-        {travaux.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
-            <Filter size={14} style={{ color: '#6b7280' }} />
-            <select
-              style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
-              value={filtreTravailEcheance}
-              onChange={(e) => setFiltreTravailEcheance(e.target.value as any)}
-            >
-              <option value="tous">Toutes échéances</option>
-              <option value="aujourdhui">Aujourd&apos;hui</option>
-              <option value="semaine">Cette semaine</option>
-              <option value="mois">Ce mois</option>
-            </select>
-            {(() => {
-              const rubriquesUniques = new Map<string, string>();
-              travaux.forEach(t => { if (t.rubriqueId && t.rubriqueNom) rubriquesUniques.set(t.rubriqueId, t.rubriqueNom); });
-              if (rubriquesUniques.size === 0) return null;
-              return (
-                <select
-                  style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
-                  value={filtreTravailRubrique}
-                  onChange={(e) => setFiltreTravailRubrique(e.target.value)}
-                >
-                  <option value="tous">Toutes rubriques</option>
-                  {[...rubriquesUniques.entries()].map(([id, nom]) => (
-                    <option key={id} value={id}>{nom}</option>
-                  ))}
-                  <option value="__sans_rubrique__">Sans rubrique</option>
-                </select>
-              );
-            })()}
-            {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
-              <button
-                style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#f1f5f9', cursor: 'pointer', color: '#374151' }}
-                onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
-              >
-                ✕ Réinitialiser
-              </button>
-            )}
-          </div>
-        )}
-
         {(() => {
-          const travauxFiltres = travaux.filter(t => {
+          // ── Séparation en deux listes ───────────────────────
+          //   • domicile : travail rattaché à une séance (seanceId renseigné)
+          //   • autres   : travail assigné manuellement (sans séance)
+          const travauxDomicile = travaux.filter(t => !!t.seanceId);
+          const travauxAutres = travaux.filter(t => !t.seanceId);
+          const active = travauxTab === 'domicile' ? travauxDomicile : travauxAutres;
+
+          // Filtres appliqués à la liste active uniquement
+          const travauxFiltres = active.filter(t => {
             if (filtreTravailRubrique !== 'tous') {
               if (filtreTravailRubrique === '__sans_rubrique__') {
                 if (t.rubriqueId) return false;
@@ -549,64 +530,195 @@ const StudentDashboard: React.FC = () => {
             return true;
           });
 
-          if (travauxFiltres.length === 0) {
-            return (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                {travaux.length === 0
-                  ? <>Aucun travail assigné pour le moment. Votre professeur peut en ajouter dans l&apos;onglet « Travaux » de la classe.</>
-                  : 'Aucun travail ne correspond aux filtres.'}
-              </p>
-            );
-          }
+          // Rubriques disponibles dans la liste active (pour le filtre)
+          const rubriquesUniques = new Map<string, string>();
+          active.forEach(t => { if (t.rubriqueId && t.rubriqueNom) rubriquesUniques.set(t.rubriqueId, t.rubriqueNom); });
+
+          const renderEmpty = () => (
+            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+              {active.length === 0
+                ? (travauxTab === 'domicile'
+                    ? <>Aucun exercice à domicile pour le moment. Votre professeur peut en ajouter depuis l&apos;&laquo;&nbsp;Exercice à domicile&nbsp;&raquo; d&apos;une séance du cahier de textes.</>
+                    : <>Aucun travail assigné pour le moment. Votre professeur peut en ajouter dans l&apos;onglet «&nbsp;Travaux&nbsp;» de la classe.</>)
+                : 'Aucun travail ne correspond aux filtres.'}
+            </p>
+          );
+
+          const now = new Date();
+          const nowTime = now.getTime();
 
           return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {travauxFiltres.slice(0, 8).map((t) => (
-                <div
-                  key={t.id}
-                  className="sd-travaux-item"
+            <>
+              {/* ── Onglets Exercices à domicile / Travaux ── */}
+              <div
+                role="tablist"
+                aria-label="Catégories de travaux"
+                style={{
+                  display: 'flex',
+                  gap: '0.25rem',
+                  borderBottom: '1px solid #e5e7eb',
+                  marginBottom: '0.75rem',
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={travauxTab === 'domicile'}
+                  onClick={() => setTravauxTab('domicile')}
                   style={{
-                    padding: '0.75rem 1rem',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '8px',
-                    transition: 'background 0.2s, border-color 0.2s',
+                    padding: '0.5rem 0.9rem',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: travauxTab === 'domicile' ? '2px solid #2563eb' : '2px solid transparent',
+                    color: travauxTab === 'domicile' ? '#2563eb' : '#6b7280',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: '0.95rem', ...(t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : {}) }}>📋 {t.titre}</strong>
-                    {t.rubriqueNom && (
-                      <span style={{
-                        fontSize: '0.7rem',
-                        background: '#eff6ff',
-                        color: '#2563eb',
-                        padding: '2px 8px',
-                        borderRadius: 9999,
-                        fontWeight: 600,
-                      }}>
-                        📂 {t.rubriqueNom}
-                      </span>
-                    )}
-                    {t.corrige && (
-                      <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>✅ Fait & corrigé</span>
-                    )}
-                  </div>
-                  {t.description && (
-                    <div
-                      className="sd-travaux-desc sd-travaux-desc--html"
-                      style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}
-                      dangerouslySetInnerHTML={{ __html: t.description }}
-                    />
+                  🏠 Exercices à domicile
+                  <span style={{
+                    fontSize: '0.72rem',
+                    background: travauxTab === 'domicile' ? '#eff6ff' : '#f1f5f9',
+                    color: travauxTab === 'domicile' ? '#2563eb' : '#475569',
+                    padding: '1px 8px',
+                    borderRadius: 9999,
+                    fontWeight: 700,
+                  }}>{travauxDomicile.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={travauxTab === 'autres'}
+                  onClick={() => setTravauxTab('autres')}
+                  style={{
+                    padding: '0.5rem 0.9rem',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: travauxTab === 'autres' ? '2px solid #2563eb' : '2px solid transparent',
+                    color: travauxTab === 'autres' ? '#2563eb' : '#6b7280',
+                    fontWeight: 600,
+                    fontSize: '0.9rem',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                  }}
+                >
+                  📋 Travaux
+                  <span style={{
+                    fontSize: '0.72rem',
+                    background: travauxTab === 'autres' ? '#eff6ff' : '#f1f5f9',
+                    color: travauxTab === 'autres' ? '#2563eb' : '#475569',
+                    padding: '1px 8px',
+                    borderRadius: 9999,
+                    fontWeight: 700,
+                  }}>{travauxAutres.length}</span>
+                </button>
+              </div>
+
+              {/* Phase 31 — Filtres travaux côté élève */}
+              {active.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+                  <Filter size={14} style={{ color: '#6b7280' }} />
+                  <select
+                    style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
+                    value={filtreTravailEcheance}
+                    onChange={(e) => setFiltreTravailEcheance(e.target.value as any)}
+                  >
+                    <option value="tous">Toutes échéances</option>
+                    <option value="aujourdhui">Aujourd&apos;hui</option>
+                    <option value="semaine">Cette semaine</option>
+                    <option value="mois">Ce mois</option>
+                  </select>
+                  {rubriquesUniques.size > 0 && (
+                    <select
+                      style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
+                      value={filtreTravailRubrique}
+                      onChange={(e) => setFiltreTravailRubrique(e.target.value)}
+                    >
+                      <option value="tous">Toutes rubriques</option>
+                      {[...rubriquesUniques.entries()].map(([id, nom]) => (
+                        <option key={id} value={id}>{nom}</option>
+                      ))}
+                      <option value="__sans_rubrique__">Sans rubrique</option>
+                    </select>
                   )}
-                  <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
-                    📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}
-                    {t.heureEcheance && ` à ${t.heureEcheance}`}
-                    {t.matiere && ` • 📚 ${t.matiere}`}
-                    {` • 👥 ${t.groupeNom}`}
-                  </span>
+                  {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
+                    <button
+                      style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#f1f5f9', cursor: 'pointer', color: '#374151' }}
+                      onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
+                    >
+                      ✕ Réinitialiser
+                    </button>
+                  )}
                 </div>
-              ))}
-            </div>
+              )}
+
+              {travauxFiltres.length === 0 ? renderEmpty() : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {travauxFiltres.slice(0, 12).map((t) => {
+                    const echuNonCorrige = !t.corrige && t.dateEcheance.getTime() < nowTime;
+                    return (
+                      <div
+                        key={t.id}
+                        className="sd-travaux-item"
+                        style={{
+                          padding: '0.75rem 1rem',
+                          background: t.corrige ? '#f0fdf4' : (echuNonCorrige ? '#fef2f2' : '#f8fafc'),
+                          border: `1px solid ${t.corrige ? '#bbf7d0' : (echuNonCorrige ? '#fecaca' : '#e2e8f0')}`,
+                          borderRadius: '8px',
+                          transition: 'background 0.2s, border-color 0.2s',
+                          opacity: t.corrige ? 0.8 : 1,
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <strong style={{ fontSize: '0.95rem', ...(t.corrige ? { textDecoration: 'line-through', color: '#6b7280' } : {}) }}>
+                            {travauxTab === 'domicile' ? '🏠' : '📋'} {t.titre}
+                          </strong>
+                          {t.rubriqueNom && (
+                            <span style={{
+                              fontSize: '0.7rem',
+                              background: '#eff6ff',
+                              color: '#2563eb',
+                              padding: '2px 8px',
+                              borderRadius: 9999,
+                              fontWeight: 600,
+                            }}>
+                              📂 {t.rubriqueNom}
+                            </span>
+                          )}
+                          {t.corrige && (
+                            <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 600 }}>✅ Fait & corrigé</span>
+                          )}
+                          {echuNonCorrige && (
+                            <span style={{ fontSize: '0.7rem', color: '#dc2626', fontWeight: 600 }}>⏰ Échéance passée</span>
+                          )}
+                        </div>
+                        {t.description && (
+                          <div
+                            className="sd-travaux-desc sd-travaux-desc--html"
+                            style={{ fontSize: '0.875rem', color: '#64748b', margin: '0.25rem 0 0', lineHeight: 1.4 }}
+                            dangerouslySetInnerHTML={{ __html: t.description }}
+                          />
+                        )}
+                        <span style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', display: 'block' }}>
+                          📅 Échéance : {t.dateEcheance.toLocaleDateString('fr-FR')}
+                          {t.heureEcheance && ` à ${t.heureEcheance}`}
+                          {t.matiere && ` • 📚 ${t.matiere}`}
+                          {` • 👥 ${t.groupeNom}`}
+                          {t.profNom && ` • 👤 ${t.profNom}`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           );
         })()}
       </div>
