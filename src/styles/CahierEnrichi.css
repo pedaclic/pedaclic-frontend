@@ -905,9 +905,20 @@
 /* ──────────────────────────────────────────────────────────
    Selects de la barre d'outils (Style / Police / Taille)
    Phase 34 — Correction de la troncature (cross-browser).
+   Phase 40 — Fix Chrome : largeur calée sur le PLACEHOLDER.
    ──────────────────────────────────────────────────────────
-   ⚠️ Cross-browser :
-     L'ancienne règle de CahierTextes.css applique encore
+   ⚠️ Différence Chrome ↔ Firefox (cause racine de la troncature) :
+     Sur un <select> avec `appearance: none` + `width: auto`,
+     • CHROME calcule la largeur d'après la plus longue <option>
+       (jamais d'après la valeur affichée → le placeholder
+       « Style de paragraphe » est plus long que « Paragraphe »
+       et finit par être tronqué).
+     • FIREFOX prend aussi en compte la valeur affichée, donc le
+       placeholder s'affiche en entier, ce qui masque le bug.
+     SOLUTION : forcer un `min-width` SUFFISANT pour contenir le
+     placeholder + le padding réservé au chevron (12 + 32 = 44 px).
+   ──────────────────────────────────────────────────────────
+   ⚠️ L'ancienne règle de CahierTextes.css applique encore
      `text-overflow: ellipsis; overflow: hidden;` sur ce même
      sélecteur (cascade dans EntreeEditorPage). Sur Chrome
      ces deux propriétés combinées au `border-radius` clippent
@@ -917,7 +928,7 @@
      pour garantir un rendu identique sur les deux moteurs.
    ──────────────────────────────────────────────────────────
    - Largeur élargie pour ne plus tronquer les libellés
-     (« Times New Roman », « Paragraphe », « Très grand »…)
+     (« Style de paragraphe », « Times New Roman », « Très grand »…)
    - Chevron SVG agrandi (12px) et plus contrasté pour rester
      parfaitement visible sur écrans HiDPI / Retina
    - Padding droit (32px) suffisant pour que le texte ne
@@ -946,10 +957,18 @@
   -moz-appearance: none;
   cursor: pointer;
   transition: border-color 0.12s, box-shadow 0.12s;
-  /* Largeurs élargies — défaut « Style » : 160px (auto-grow possible) */
+  /* Largeur — défaut « Style de paragraphe » :
+     ┌──────────────────────────────────────────────────────┐
+     │ Calcul (0.85rem ≈ 13.6 px, sans-serif) :             │
+     │   « Style de paragraphe » texte ≈ 155 px             │
+     │   + padding gauche 12 px                             │
+     │   + padding droit 32 px (réserve chevron)            │
+     │   = 199 px MINIMUM pour ne pas tronquer sur Chrome.  │
+     │   → on borne à 220–250 px (marge de sécurité fonts). │
+     └──────────────────────────────────────────────────────┘ */
   width: auto;
-  min-width: 160px;
-  max-width: 220px;
+  min-width: 220px;
+  max-width: 250px;
   flex-shrink: 0;
   /* ✅ Neutralisation EXPLICITE des règles héritées de CahierTextes.css
      qui, combinées au border-radius, provoquaient le clipping observé
@@ -1016,13 +1035,23 @@
   font-size: 0.85rem;
 }
 
-/* Tailles affinées pour éviter la troncature (Phase 34 — révisé) :
-   - Police  : 200px → affiche « Times New Roman » ou « Par défaut » sans coupure
-   - Taille  : 160px → affiche « Très grand » / « Très petit » en entier
-   On garde une largeur auto pour permettre au select d'épouser son contenu,
-   bornée par min-width / max-width pour rester aligné avec les autres outils. */
-.rte-select--font { min-width: 200px; max-width: 240px; width: auto; }
-.rte-select--size { min-width: 160px; max-width: 180px; width: auto; }
+/* Tailles affinées pour éviter la troncature (Phase 40 — Chrome) :
+   ─────────────────────────────────────────────────────────────────
+   On dimensionne d'abord pour que le PLACEHOLDER s'affiche en entier
+   sur Chrome (qui ignore la valeur affichée pour le calcul auto),
+   puis on vérifie que les options les plus longues passent aussi.
+
+   • Police (« Par défaut » placeholder ≈ 80 px, mais option la plus
+     longue « Times New Roman » ≈ 140 px → 140 + 44 padding = 184 px
+     min ; on garde 210 px pour rester confortable).
+
+   • Taille (« Taille du texte » placeholder ≈ 125 px, donc
+     125 + 44 padding = 169 px min ; on cale à 190 px).
+
+   On garde une largeur `auto` (avec `min-width` qui force la base)
+   pour rester aligné visuellement avec les autres outils de la barre. */
+.rte-select--font { min-width: 210px; max-width: 250px; width: auto; }
+.rte-select--size { min-width: 190px; max-width: 210px; width: auto; }
 
 .rte-dropdown {
   position: absolute;
@@ -1553,12 +1582,16 @@ body.rte-col-resizing * {
   .rte-toolbar__row { gap: 6px 10px; justify-content: flex-start; }
   .rte-toolbar__sep { display: none; }
   .rte-btn { min-width: 32px; height: 30px; font-size: 0.88rem; }
-  /* Sous 720 px : on garde des largeurs lisibles (les selects restent
+  /* Sous 640 px : on garde des largeurs lisibles (les selects restent
      plus larges que les boutons-icônes), mais on autorise le wrap
-     de la barre d'outils via flex-wrap déjà défini sur .rte-toolbar__row */
-  .rte-select { height: 32px; font-size: 0.8rem; min-width: 140px; max-width: 200px; }
-  .rte-select--font { min-width: 170px; max-width: 220px; }
-  .rte-select--size { min-width: 140px; max-width: 170px; }
+     de la barre d'outils via flex-wrap déjà défini sur .rte-toolbar__row.
+     Phase 40 — On respecte la même logique que sur desktop : la
+     `min-width` doit contenir le placeholder en entier pour que
+     Chrome ne tronque pas (à 0.8rem ≈ 12.8 px, les calculs sont
+     ~6 % plus petits qu'à 0.85rem). */
+  .rte-select { height: 32px; font-size: 0.8rem; min-width: 200px; max-width: 230px; }
+  .rte-select--font { min-width: 195px; max-width: 230px; }
+  .rte-select--size { min-width: 175px; max-width: 200px; }
   .rte-content { padding: 12px; font-size: 0.875rem; }
   .rte-modale-overlay { align-items: flex-end; padding: 0; }
   .rte-modale {
