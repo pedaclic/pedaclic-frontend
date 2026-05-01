@@ -934,13 +934,16 @@
    - Padding droit (32px) suffisant pour que le texte ne
      chevauche jamais le chevron
    ────────────────────────────────────────────────────────── */
-.rte-select {
+.rte-toolbar .rte-select {
   height: 32px;
-  /* padding : haut/droit/bas/gauche — droit = 32px pour le chevron */
-  padding: 0 32px 0 12px;
+  /* Phase 41bis — compactage pour rangee 1 unique :
+     padding droit 24px (chevron a 6px) au lieu de 32, gauche 8px,
+     font-size 0.72rem au lieu de 0.85 → ‘Style de paragraphe’
+     tient en ~108px + 30 padding = 138px de largeur. */
+  padding: 0 24px 0 8px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-family: inherit;
   color: #374151;
   /* Chevron SVG agrandi pour rester lisible en HiDPI.
@@ -949,8 +952,8 @@
   background-color: #fff;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23374151' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 12px 8px;
+  background-position: right 6px center;
+  background-size: 10px 7px;
   background-clip: padding-box;
   appearance: none;
   -webkit-appearance: none;
@@ -967,8 +970,10 @@
      │   → on borne à 220–250 px (marge de sécurité fonts). │
      └──────────────────────────────────────────────────────┘ */
   width: auto;
-  min-width: 220px;
-  max-width: 250px;
+  /* Phase 41bis — mins recalcules a 0.72rem pour le placeholder
+     le plus long « Style de paragraphe » (~108px) + 30 padding. */
+  min-width: 142px;
+  max-width: 170px;
   flex-shrink: 0;
   /* ✅ Neutralisation EXPLICITE des règles héritées de CahierTextes.css
      qui, combinées au border-radius, provoquaient le clipping observé
@@ -983,9 +988,9 @@
 
 /* IE11 / anciens Edge : masquer la flèche native vestigiale.
    Inoffensif sur les navigateurs modernes. */
-.rte-select::-ms-expand { display: none; }
+.rte-toolbar .rte-select::-ms-expand { display: none; }
 
-.rte-select:focus {
+.rte-toolbar .rte-select:focus {
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
@@ -1050,8 +1055,10 @@
 
    On garde une largeur `auto` (avec `min-width` qui force la base)
    pour rester aligné visuellement avec les autres outils de la barre. */
-.rte-select--font { min-width: 210px; max-width: 250px; width: auto; }
-.rte-select--size { min-width: 190px; max-width: 210px; width: auto; }
+/* Phase 41bis — « Times New Roman » ~91px / « Taille du texte » ~86px,
+   chacun + 30 padding => 125px et 120px de minimum. */
+.rte-toolbar .rte-select--font { min-width: 128px; max-width: 160px; width: auto; }
+.rte-toolbar .rte-select--size { min-width: 122px; max-width: 150px; width: auto; }
 
 .rte-dropdown {
   position: absolute;
@@ -1589,9 +1596,11 @@ body.rte-col-resizing * {
      `min-width` doit contenir le placeholder en entier pour que
      Chrome ne tronque pas (à 0.8rem ≈ 12.8 px, les calculs sont
      ~6 % plus petits qu'à 0.85rem). */
-  .rte-select { height: 32px; font-size: 0.8rem; min-width: 200px; max-width: 230px; }
-  .rte-select--font { min-width: 195px; max-width: 230px; }
-  .rte-select--size { min-width: 175px; max-width: 200px; }
+  /* Sous 640 px : la toolbar wrap deja, on peut donc redonner un peu
+     d’air aux libelles compares au desktop compact (Phase 41bis). */
+  .rte-toolbar .rte-select { height: 32px; font-size: 0.72rem; min-width: 138px; max-width: 170px; padding: 0 24px 0 8px; }
+  .rte-toolbar .rte-select--font { min-width: 125px; max-width: 160px; }
+  .rte-toolbar .rte-select--size { min-width: 120px; max-width: 150px; }
   .rte-content { padding: 12px; font-size: 0.875rem; }
   .rte-modale-overlay { align-items: flex-end; padding: 0; }
   .rte-modale {
