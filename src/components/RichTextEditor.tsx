@@ -180,6 +180,134 @@ function appliquerStyleListeOrdonnee(type: TypeListeOrdonnee): void {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Phase 40 — Helpers <colgroup>/<col> pour redimensionnement
+//
+// Bug corrigé : avec `table-layout: auto` (défaut), fixer une
+// largeur sur les cellules de la DERNIÈRE colonne n'a aucun
+// effet visible — le tableau occupe toute sa largeur disponible
+// et c'est la colonne adjacente qui rétrécit / grandit.
+//
+// Solution : convertir le tableau en `table-layout: fixed` et
+// piloter les largeurs via un <colgroup> contenant un <col>
+// explicite par colonne. Chaque colonne (dernière comprise)
+// devient alors indépendamment redimensionnable.
+//
+// Les helpers sont des fonctions pures (pas d'état React) pour
+// qu'elles restent utilisables quel que soit l'ordre de
+// déclaration des callbacks du composant.
+// ─────────────────────────────────────────────────────────────
+
+/** Recalcule la largeur totale du tableau = somme des <col>. */
+function recalculerLargeurTableau(
+  table: HTMLTableElement,
+  colgroup: HTMLTableColElement
+): void {
+  const total = Array.from(colgroup.children).reduce(
+    (s, c) => s + (parseFloat((c as HTMLElement).style.width) || 0),
+    0
+  );
+  if (total > 0) table.style.width = `${total}px`;
+}
+
+/**
+ * Garantit la présence d'un <colgroup> avec un <col> par colonne,
+ * passe le tableau en `table-layout: fixed` et initialise les
+ * largeurs des <col> d'après le rendu actuel pour éviter tout
+ * « saut » visuel lors de la bascule.
+ */
+function garantirColgroupFixe(
+  table: HTMLTableElement
+): HTMLTableColElement | null {
+  const premiereLigne = table.rows[0];
+  if (!premiereLigne) return null;
+  const nbCols = premiereLigne.cells.length;
+
+  // Mesure AVANT toute modification du layout
+  const largeursRendues = Array.from(premiereLigne.cells).map(
+    (c) => (c as HTMLElement).getBoundingClientRect().width
+  );
+
+  // Récupère / crée le <colgroup> en 1er enfant du <table>
+  let colgroup = table.querySelector(
+    ':scope > colgroup'
+  ) as HTMLTableColElement | null;
+  if (!colgroup) {
+    colgroup = document.createElement('colgroup');
+    table.insertBefore(colgroup, table.firstChild);
+  }
+
+  // Aligne le nombre de <col> sur le nombre de colonnes
+  while (colgroup.children.length < nbCols) {
+    colgroup.appendChild(document.createElement('col'));
+  }
+  while (colgroup.children.length > nbCols) {
+    colgroup.removeChild(colgroup.lastChild!);
+  }
+
+  // Initialise les <col> sans largeur avec la valeur mesurée
+  for (let i = 0; i < nbCols; i++) {
+    const col = colgroup.children[i] as HTMLTableColElement;
+    if (!col.style.width) {
+      const w = Math.max(40, Math.round(largeursRendues[i] || 100));
+      col.style.width = `${w}px`;
+    }
+  }
+
+  // Passage en layout fixed + largeur totale explicite (sans cela
+  // le tableau resterait collé à la largeur du conteneur parent
+  // et la dernière colonne ne pourrait pas rétrécir).
+  table.style.tableLayout = 'fixed';
+  recalculerLargeurTableau(table, colgroup);
+
+  // Nettoie les largeurs inline des <td>/<th> qui entreraient en
+  // conflit avec les <col> en mode fixed.
+  Array.from(table.rows).forEach((tr) => {
+    Array.from(tr.cells).forEach((c) => {
+      (c as HTMLElement).style.width = '';
+      (c as HTMLElement).style.minWidth = '';
+    });
+  });
+
+  return colgroup;
+}
+
+/**
+ * Synchronise le <colgroup> après une insertion de colonne dans le
+ * tableau. No-op si le tableau n'a pas encore de <colgroup>
+ * (l'utilisateur n'a pas encore touché aux largeurs).
+ */
+function insererColDansColgroup(
+  table: HTMLTableElement,
+  colIdx: number,
+  largeurPx = 120
+): void {
+  const colgroup = table.querySelector(
+    ':scope > colgroup'
+  ) as HTMLTableColElement | null;
+  if (!colgroup) return;
+  const col = document.createElement('col');
+  col.style.width = `${Math.max(40, Math.round(largeurPx))}px`;
+  const ref = colgroup.children[colIdx] as HTMLElement | undefined;
+  if (ref) colgroup.insertBefore(col, ref);
+  else colgroup.appendChild(col);
+  recalculerLargeurTableau(table, colgroup);
+}
+
+/** Synchronise le <colgroup> après la suppression d'une colonne. */
+function supprimerColDansColgroup(
+  table: HTMLTableElement,
+  colIdx: number
+): void {
+  const colgroup = table.querySelector(
+    ':scope > colgroup'
+  ) as HTMLTableColElement | null;
+  if (!colgroup) return;
+  const col = colgroup.children[colIdx];
+  if (col) colgroup.removeChild(col);
+  recalculerLargeurTableau(table, colgroup);
+}
+
+// ─────────────────────────────────────────────────────────────
 // COMPOSANT PRINCIPAL
 // ─────────────────────────────────────────────────────────────
 
@@ -419,6 +547,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           nouvelle.innerHTML = '&#8203;';
         }
       });
+      // Phase 40 — si le tableau utilise déjà un colgroup (layout fixed),
+      // on insère le <col> correspondant pour préserver l'alignement.
+      insererColDansColgroup(table, colIdx);
       emettrChangement();
     },
     [emettrChangement]
@@ -619,6 +750,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         nouvelleCellule.innerHTML = '&#8203;';
       }
     });
+    // Phase 40 — synchronise le colgroup si le tableau est en layout fixed
+    insererColDansColgroup(table, colIdx);
     emettrChangement();
   }, [getTableActif, celluleActive, emettrChangement]);
 
@@ -644,6 +777,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     Array.from(table.rows).forEach(tr => {
       if (tr.cells[colIdx]) tr.deleteCell(colIdx);
     });
+    // Phase 40 — retire le <col> correspondant du colgroup
+    supprimerColDansColgroup(table, colIdx);
     setCelluleActive(null);
     emettrChangement();
   }, [getTableActif, celluleActive, emettrChangement]);
@@ -662,15 +797,13 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const table = getTableActif();
     if (!table || !celluleActive) return;
     const colIdx = (celluleActive as HTMLTableCellElement).cellIndex;
-    // Applique à toutes les cellules de la même colonne (première ligne sert de référence)
-    Array.from(table.rows).forEach(tr => {
-      const c = tr.cells[colIdx] as HTMLElement | undefined;
-      if (!c) return;
-      const largeurActuelle = c.offsetWidth || 100;
-      const nouvelle = Math.max(40, largeurActuelle + delta);
-      c.style.width = `${nouvelle}px`;
-      c.style.minWidth = `${nouvelle}px`;
-    });
+    const colgroup = garantirColgroupFixe(table);
+    if (!colgroup) return;
+    const col = colgroup.children[colIdx] as HTMLTableColElement | undefined;
+    if (!col) return;
+    const actuelle = parseFloat(col.style.width) || 100;
+    col.style.width = `${Math.max(40, Math.round(actuelle + delta))}px`;
+    recalculerLargeurTableau(table, colgroup);
     emettrChangement();
   }, [getTableActif, celluleActive, emettrChangement]);
 
@@ -704,16 +837,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   //   Avantage : fonctionne sur tableaux insérés à n'importe quel moment
   //   (même collés depuis Word) et n'altère pas la sortie HTML stockée.
 
-  /** Applique une largeur (en px) à une colonne entière du tableau */
+  /**
+   * Applique une largeur (en px) à une colonne entière du tableau.
+   * Phase 40 — passe par le `<colgroup>`/`<col>` pour que la dernière
+   * colonne soit effectivement redimensionnable (cf. explication
+   * dans garantirColgroupFixe ci-dessus).
+   */
   const appliquerLargeurColonne = useCallback(
     (table: HTMLTableElement, colIdx: number, largeurPx: number) => {
-      const w = Math.max(40, Math.round(largeurPx));
-      Array.from(table.rows).forEach((tr) => {
-        const c = tr.cells[colIdx] as HTMLElement | undefined;
-        if (!c) return;
-        c.style.width = `${w}px`;
-        c.style.minWidth = `${w}px`;
-      });
+      const colgroup = garantirColgroupFixe(table);
+      if (!colgroup) return;
+      const col = colgroup.children[colIdx] as HTMLTableColElement | undefined;
+      if (!col) return;
+      col.style.width = `${Math.max(40, Math.round(largeurPx))}px`;
+      recalculerLargeurTableau(table, colgroup);
     },
     []
   );
@@ -1071,6 +1208,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
                     cell.innerHTML = '&#8203;';
                   }
                 });
+                // Phase 40 — ajoute le <col> correspondant si nécessaire
+                insererColDansColgroup(table, lastIdx + 1);
                 emettrChangement();
               }}
             >
