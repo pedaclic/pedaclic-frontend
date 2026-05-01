@@ -535,6 +535,62 @@ th.col-note:hover .eval-actions { opacity: 1; }
   }
 }
 
+/* ───────────────────────────────────────────────────────────────
+   Variante "grid" — utilisée côté élève (StudentDashboard).
+   La liste des feuilles s'étale en cartes 3 à 4 colonnes au-dessus
+   du panneau de détail, qui reprend toute la largeur.
+   ─────────────────────────────────────────────────────────────── */
+.feuilles-notes-view--grid {
+  display: block;          /* on désactive la grille à 2 colonnes */
+}
+
+.feuilles-notes-view--grid .feuilles-notes-view-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Le titre "📝 Feuilles de notes" doit occuper toute la première ligne
+   de la grille pour rester aligné à gauche. */
+.feuilles-notes-view--grid .feuilles-notes-view-list h4 {
+  grid-column: 1 / -1;
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Les boutons-cartes prennent automatiquement la cellule de grille,
+   donc on annule la largeur 100% historique et on aligne le contenu. */
+.feuilles-notes-view--grid .feuille-select-btn {
+  margin-bottom: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 64px;
+}
+
+/* Plafonner à 4 colonnes au-delà de 1280px pour éviter des cartes
+   trop étroites sur écrans très larges. */
+@media (min-width: 1280px) {
+  .feuilles-notes-view--grid .feuilles-notes-view-list {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Sur tablette / petit laptop : 2 colonnes. */
+@media (max-width: 900px) {
+  .feuilles-notes-view--grid .feuilles-notes-view-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile : 1 colonne. */
+@media (max-width: 540px) {
+  .feuilles-notes-view--grid .feuilles-notes-view-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .feuilles-notes-view-list h4,
 .feuilles-notes-view-detail h4 {
   margin-bottom: var(--spacing-md);

@@ -731,7 +731,7 @@ const StudentDashboard: React.FC = () => {
           <h3 className="sd-section-title">
             <FileSpreadsheet size={18} /> Mes notes
           </h3>
-          <FeuillesNotesView eleveIds={[currentUser.uid]} showGroupeNom={true} filterForEleves={true} />
+          <FeuillesNotesView eleveIds={[currentUser.uid]} showGroupeNom={true} filterForEleves={true} listLayout="grid" />
         </div>
       )}
 

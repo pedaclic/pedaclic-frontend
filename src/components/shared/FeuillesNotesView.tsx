@@ -23,9 +23,17 @@ interface FeuillesNotesViewProps {
   showGroupeNom?: boolean;
   /** Si true, on filtre les lignes pour n'afficher que les élèves concernés (élève ou enfants du parent) */
   filterForEleves?: boolean;
+  /**
+   * Disposition de la liste des feuilles.
+   *   • `sidebar` (défaut) — colonne 240px à gauche + détail à droite
+   *     (comportement historique, conservé pour la vue parent).
+   *   • `grid` — grille responsive 3 à 4 colonnes au-dessus du détail
+   *     (utilisé côté élève pour exploiter toute la largeur).
+   */
+  listLayout?: 'sidebar' | 'grid';
 }
 
-const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGroupeNom = true, filterForEleves = true }) => {
+const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGroupeNom = true, filterForEleves = true, listLayout = 'sidebar' }) => {
   const [feuilles, setFeuilles] = useState<FeuilleDeNotes[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedFeuille, setSelectedFeuille] = useState<FeuilleDeNotes | null>(null);
@@ -86,7 +94,7 @@ const FeuillesNotesView: React.FC<FeuillesNotesViewProps> = ({ eleveIds, showGro
     );
 
   return (
-    <div className="feuilles-notes-view">
+    <div className={`feuilles-notes-view feuilles-notes-view--${listLayout}`}>
       <div className="feuilles-notes-view-list">
         <h4>📝 Feuilles de notes</h4>
         {feuilles.map((f) => (
