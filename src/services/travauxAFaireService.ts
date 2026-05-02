@@ -201,10 +201,25 @@ export async function getTravauxForEleve(
   if (lookbackDays > 0) {
     borneMin.setDate(borneMin.getDate() - lookbackDays);
   }
+  // ⚠️ Filtre la date au niveau de la requête Firestore.
+  //
+  //   L'ancienne implémentation faisait `orderBy(dateEcheance asc) + limit(50)`
+  //   puis filtrait en mémoire sur `>= borneMin`. Pour un groupe-classe qui
+  //   cumule beaucoup d'historique (ex. une classe utilisée depuis le début
+  //   de l'année), les 50 plus anciens travaux étaient TOUS antérieurs à
+  //   `borneMin` → la liste résultante était vide alors que des travaux
+  //   récents existaient bel et bien en base.
+  //
+  //   On passe donc la borne temporelle à Firestore (`where >= borneMin`)
+  //   pour que `limit(50)` porte sur les travaux pertinents (les N plus
+  //   anciens À PARTIR de la borne), ce qui couvre largement les besoins
+  //   de la vue élève.
+  const borneTs = Timestamp.fromDate(borneMin);
   for (const gid of groupeIds.slice(0, 10)) {
     const q2 = query(
       collection(db, COL_TRAVAUX),
       where('groupeId', '==', gid),
+      where('dateEcheance', '>=', borneTs),
       orderBy('dateEcheance', 'asc'),
       limit(50)
     );
@@ -216,7 +231,7 @@ export async function getTravauxForEleve(
         dateEcheance: toDate(d.data().dateEcheance),
         createdAt: toDate(d.data().createdAt),
       } as TravailAFaire;
-      if (t.dateEcheance >= borneMin) all.push(t);
+      all.push(t);
     });
   }
   all.sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());

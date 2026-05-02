@@ -292,6 +292,14 @@
       ]
     },
     {
+      "collectionGroup": "travaux_a_faire",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "dateEcheance", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "cahiers_textes",
       "queryScope": "COLLECTION",
       "fields": [
