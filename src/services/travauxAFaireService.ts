@@ -201,31 +201,36 @@ export async function getTravauxForEleve(
   if (lookbackDays > 0) {
     borneMin.setDate(borneMin.getDate() - lookbackDays);
   }
-  // ⚠️ Filtre la date au niveau de la requête Firestore.
+  // ⚠️ Stratégie de requête :
   //
-  //   L'ancienne implémentation faisait `orderBy(dateEcheance asc) + limit(50)`
-  //   puis filtrait en mémoire sur `>= borneMin`. Pour un groupe-classe qui
-  //   cumule beaucoup d'historique (ex. une classe utilisée depuis le début
-  //   de l'année), les 50 plus anciens travaux étaient TOUS antérieurs à
-  //   `borneMin` → la liste résultante était vide alors que des travaux
-  //   récents existaient bel et bien en base.
+  //   - L'ancienne version faisait `orderBy(dateEcheance asc) + limit(50)`
+  //     SANS filtre de date → pour un groupe avec beaucoup d'historique,
+  //     les 50 plus anciens travaux étaient tous antérieurs à `borneMin`
+  //     et éliminés en mémoire → liste vide à tort.
   //
-  //   On passe donc la borne temporelle à Firestore (`where >= borneMin`)
-  //   pour que `limit(50)` porte sur les travaux pertinents (les N plus
-  //   anciens À PARTIR de la borne), ce qui couvre largement les besoins
-  //   de la vue élève.
-  const borneTs = Timestamp.fromDate(borneMin);
-  const debug: Array<{ gid: string; count: number }> = [];
+  //   - Tenter `where('dateEcheance', '>=', borneTs) + orderBy(asc)` passait
+  //     à côté des travaux dont le champ `dateEcheance` n'est pas un
+  //     Timestamp Firestore (anciens docs saisis avec un format différent)
+  //     car ni `where` ni `orderBy` ne les renvoient.
+  //
+  //   - Solution retenue : `orderBy(dateEcheance desc) + limit(50)` SANS
+  //     `where` sur la date → on ramène les 50 travaux les plus récents
+  //     par groupe, puis on filtre en mémoire. Cela couvre largement le
+  //     besoin de la vue élève/parent (au plus 50 travaux actifs/récents
+  //     par classe) et reste robuste aux données hétérogènes.
+  //
+  //   Si un élève devait vraiment voir > 50 travaux récents, il faudrait
+  //   paginer — pas notre cas d'usage actuel.
+  const debug: Array<{ gid: string; fetched: number; kept: number }> = [];
   for (const gid of groupeIds.slice(0, 10)) {
     const q2 = query(
       collection(db, COL_TRAVAUX),
       where('groupeId', '==', gid),
-      where('dateEcheance', '>=', borneTs),
-      orderBy('dateEcheance', 'asc'),
+      orderBy('dateEcheance', 'desc'),
       limit(50)
     );
     const snap = await getDocs(q2);
-    debug.push({ gid, count: snap.size });
+    let kept = 0;
     snap.docs.forEach((d) => {
       const t = {
         id: d.id,
@@ -233,15 +238,19 @@ export async function getTravauxForEleve(
         dateEcheance: toDate(d.data().dateEcheance),
         createdAt: toDate(d.data().createdAt),
       } as TravailAFaire;
-      all.push(t);
+      if (t.dateEcheance >= borneMin) {
+        all.push(t);
+        kept++;
+      }
     });
+    debug.push({ gid, fetched: snap.size, kept });
   }
-  // Diagnostic console : indique combien de travaux ont été trouvés
-  // par groupe-classe — utile si l'élève ne voit pas certains travaux
-  // pour vérifier que la base contient bien quelque chose.
-  // À retirer une fois les retours utilisateurs stabilisés.
+  // Diagnostic console : combien de travaux trouvés vs. retenus après
+  // filtrage par la borne `lookbackDays`. Utile pour différencier
+  // "pas de travail en base" de "travail trop ancien".
+  // À retirer une fois la situation stabilisée.
   if (typeof console !== 'undefined' && console.info) {
-    console.info('[getTravauxForEleve] travaux par groupe (borne >=', borneMin.toISOString(), ')', debug);
+    console.info('[getTravauxForEleve] borne >=', borneMin.toISOString(), '— par groupe :', debug);
   }
   all.sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());
   return all;
