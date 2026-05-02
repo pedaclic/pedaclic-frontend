@@ -215,6 +215,7 @@ export async function getTravauxForEleve(
   //   anciens À PARTIR de la borne), ce qui couvre largement les besoins
   //   de la vue élève.
   const borneTs = Timestamp.fromDate(borneMin);
+  const debug: Array<{ gid: string; count: number }> = [];
   for (const gid of groupeIds.slice(0, 10)) {
     const q2 = query(
       collection(db, COL_TRAVAUX),
@@ -224,6 +225,7 @@ export async function getTravauxForEleve(
       limit(50)
     );
     const snap = await getDocs(q2);
+    debug.push({ gid, count: snap.size });
     snap.docs.forEach((d) => {
       const t = {
         id: d.id,
@@ -233,6 +235,13 @@ export async function getTravauxForEleve(
       } as TravailAFaire;
       all.push(t);
     });
+  }
+  // Diagnostic console : indique combien de travaux ont été trouvés
+  // par groupe-classe — utile si l'élève ne voit pas certains travaux
+  // pour vérifier que la base contient bien quelque chose.
+  // À retirer une fois les retours utilisateurs stabilisés.
+  if (typeof console !== 'undefined' && console.info) {
+    console.info('[getTravauxForEleve] travaux par groupe (borne >=', borneMin.toISOString(), ')', debug);
   }
   all.sort((a, b) => a.dateEcheance.getTime() - b.dateEcheance.getTime());
   return all;

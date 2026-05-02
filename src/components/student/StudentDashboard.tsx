@@ -524,13 +524,17 @@ const StudentDashboard: React.FC = () => {
           //   • autres   : travail assigné manuellement (sans séance)
           const travauxDomicile = travaux.filter(t => !!t.seanceId);
           const travauxAutres = travaux.filter(t => !t.seanceId);
-          const active = travauxTab === 'domicile' ? travauxDomicile : travauxAutres;
+          // Liste de l'onglet actif, restreinte par le filtre Classe.
+          // Le filtre Classe est appliqué AVANT la construction des
+          // listes de filtres dérivés (rubriques) pour qu'elles ne
+          // mélangent pas les rubriques d'autres classes.
+          const activeBrut = travauxTab === 'domicile' ? travauxDomicile : travauxAutres;
+          const active = filtreTravailGroupe === 'tous'
+            ? activeBrut
+            : activeBrut.filter(t => t.groupeId === filtreTravailGroupe);
 
-          // Filtres appliqués à la liste active uniquement
+          // Filtres appliqués à la liste active (groupe déjà filtré)
           const travauxFiltres = active.filter(t => {
-            if (filtreTravailGroupe !== 'tous' && t.groupeId !== filtreTravailGroupe) {
-              return false;
-            }
             if (filtreTravailRubrique !== 'tous') {
               if (filtreTravailRubrique === '__sans_rubrique__') {
                 if (t.rubriqueId) return false;
