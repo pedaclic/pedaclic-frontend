@@ -160,10 +160,26 @@ const StudentDashboard: React.FC = () => {
    *   - `autres`   : travaux assignés manuellement depuis l'onglet
    *     « Travaux » d'un groupe-classe, sans séance associée.
    */
-  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string; corrige?: boolean; seanceId?: string; profNom?: string }>>([]);
+  const [travaux, setTravaux] = useState<Array<{ id: string; titre: string; description?: string; dateEcheance: Date; heureEcheance?: string; groupeId: string; groupeNom: string; matiere?: string; rubriqueId?: string; rubriqueNom?: string; corrige?: boolean; seanceId?: string; profNom?: string }>>([]);
   const [travauxTab, setTravauxTab] = useState<'domicile' | 'autres'>('domicile');
   const [filtreTravailEcheance, setFiltreTravailEcheance] = useState<'tous' | 'aujourdhui' | 'semaine' | 'mois'>('tous');
   const [filtreTravailRubrique, setFiltreTravailRubrique] = useState<string>('tous');
+  /**
+   * Filtre « Classe » — permet à l'élève inscrit dans plusieurs
+   * groupes-classes de restreindre l'affichage à une classe précise.
+   * Valeur `'tous'` = aucune restriction (toutes les classes).
+   * La valeur correspond à un `groupeId`.
+   */
+  const [filtreTravailGroupe, setFiltreTravailGroupe] = useState<string>('tous');
+  /**
+   * Liste des groupes-classes dans lesquels l'élève est inscrit
+   * (indépendamment de la présence de travaux). Utilisée pour
+   * alimenter le sélecteur "Classe" dès qu'il y a ≥ 2 classes,
+   * même si certaines n'ont encore aucun travail assigné —
+   * sinon l'élève n'aurait aucun moyen de comprendre pourquoi
+   * seule une de ses classes remonte des travaux.
+   */
+  const [mesGroupesIds, setMesGroupesIds] = useState<Array<{ id: string; nom: string }>>([]);
 
   /* ── États Cahier de textes ── */
   const [cahiersCount, setCahiersCount] = useState(0);
@@ -240,6 +256,10 @@ const StudentDashboard: React.FC = () => {
         /* ── Travaux à faire + Cahiers (groupes de l'élève) ── */
         const mesGroupes = await getGroupesEleve(currentUser.uid);
         const groupeIds = mesGroupes.map(g => g.id);
+        // Mémorise la liste complète des groupes-classes de l'élève
+        // pour alimenter le sélecteur "Classe" (même pour les groupes
+        // qui n'ont encore aucun travail).
+        setMesGroupesIds(mesGroupes.map(g => ({ id: g.id, nom: g.nom })));
         const [travauxData, cahiersListe] = await Promise.all([
           // ★ Inclut les travaux des 30 derniers jours pour que l'élève
           //   puisse encore consulter les exercices à domicile récemment
@@ -255,6 +275,7 @@ const StudentDashboard: React.FC = () => {
           description: t.description,
           dateEcheance: t.dateEcheance instanceof Date ? t.dateEcheance : new Date(t.dateEcheance),
           heureEcheance: t.heureEcheance,
+          groupeId: t.groupeId,
           groupeNom: t.groupeNom,
           matiere: t.matiere,
           rubriqueId: t.rubriqueId,
@@ -507,6 +528,9 @@ const StudentDashboard: React.FC = () => {
 
           // Filtres appliqués à la liste active uniquement
           const travauxFiltres = active.filter(t => {
+            if (filtreTravailGroupe !== 'tous' && t.groupeId !== filtreTravailGroupe) {
+              return false;
+            }
             if (filtreTravailRubrique !== 'tous') {
               if (filtreTravailRubrique === '__sans_rubrique__') {
                 if (t.rubriqueId) return false;
@@ -533,6 +557,16 @@ const StudentDashboard: React.FC = () => {
           // Rubriques disponibles dans la liste active (pour le filtre)
           const rubriquesUniques = new Map<string, string>();
           active.forEach(t => { if (t.rubriqueId && t.rubriqueNom) rubriquesUniques.set(t.rubriqueId, t.rubriqueNom); });
+
+          // Classes (groupes) disponibles dans le sélecteur "Classe".
+          // On part de TOUS les groupes-classes de l'élève (même ceux
+          // qui n'ont pas encore de travail), puis on enrichit avec les
+          // noms éventuellement plus à jour remontés dans les travaux.
+          // Objectif : l'élève voit bien toutes ses classes, et peut
+          // constater explicitement qu'une classe n'a aucun travail.
+          const groupesUniques = new Map<string, string>();
+          mesGroupesIds.forEach(g => groupesUniques.set(g.id, g.nom));
+          travaux.forEach(t => { if (t.groupeId) groupesUniques.set(t.groupeId, t.groupeNom || groupesUniques.get(t.groupeId) || t.groupeId); });
 
           const renderEmpty = () => (
             <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
@@ -621,10 +655,27 @@ const StudentDashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Phase 31 — Filtres travaux côté élève */}
-              {active.length > 0 && (
+              {/* Phase 31 — Filtres travaux côté élève.
+                  Le filtre "Classe" est visible dès que l'élève est
+                  inscrit dans 2 groupes-classes ou plus (même si
+                  l'onglet actif est vide), pour qu'il puisse revenir
+                  vers la classe qui a effectivement des travaux. */}
+              {(active.length > 0 || groupesUniques.size > 1) && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
                   <Filter size={14} style={{ color: '#6b7280' }} />
+                  {groupesUniques.size > 1 && (
+                    <select
+                      style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
+                      value={filtreTravailGroupe}
+                      onChange={(e) => setFiltreTravailGroupe(e.target.value)}
+                      title="Filtrer par classe"
+                    >
+                      <option value="tous">Toutes les classes</option>
+                      {[...groupesUniques.entries()].map(([id, nom]) => (
+                        <option key={id} value={id}>👥 {nom}</option>
+                      ))}
+                    </select>
+                  )}
                   <select
                     style={{ fontSize: '0.8rem', padding: '4px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff' }}
                     value={filtreTravailEcheance}
@@ -648,10 +699,10 @@ const StudentDashboard: React.FC = () => {
                       <option value="__sans_rubrique__">Sans rubrique</option>
                     </select>
                   )}
-                  {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous') && (
+                  {(filtreTravailEcheance !== 'tous' || filtreTravailRubrique !== 'tous' || filtreTravailGroupe !== 'tous') && (
                     <button
                       style={{ fontSize: '0.72rem', padding: '3px 8px', borderRadius: 6, border: '1px solid #d1d5db', background: '#f1f5f9', cursor: 'pointer', color: '#374151' }}
-                      onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); }}
+                      onClick={() => { setFiltreTravailEcheance('tous'); setFiltreTravailRubrique('tous'); setFiltreTravailGroupe('tous'); }}
                     >
                       ✕ Réinitialiser
                     </button>
