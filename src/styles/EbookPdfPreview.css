@@ -1,0 +1,87 @@
+/* ==================== EBOOK PDF PREVIEW (Phase 20bis) ==================== */
+/* Rendu canvas des N premières pages d'un ebook PDF (non-Premium).         */
+/* ========================================================================= */
+
+.ebook-pdf-preview {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: calc(100vh - 60px);
+  background: #f3f4f6;
+  overflow-y: auto;
+  padding: 24px 12px 120px; /* padding bas généreux pour ne pas masquer la dernière page sous l'overlay Premium */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ebook-pdf-preview__pages {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.ebook-pdf-preview__page-wrapper {
+  position: relative;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.ebook-pdf-preview__page {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.ebook-pdf-preview__page-label {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: rgba(30, 58, 95, 0.85);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.ebook-pdf-preview__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(243, 244, 246, 0.92);
+  gap: 14px;
+  color: #475569;
+  font-size: 0.95rem;
+  z-index: 5;
+}
+
+.ebook-pdf-preview__error {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 14px 18px;
+  border-radius: 8px;
+  font-weight: 600;
+  margin: 12px 0;
+}
+
+/* --- Mode sombre --- */
+[data-theme="dark"] .ebook-pdf-preview {
+  background: #1e293b;
+}
+[data-theme="dark"] .ebook-pdf-preview__page-wrapper {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+[data-theme="dark"] .ebook-pdf-preview__loading {
+  background: rgba(30, 41, 59, 0.92);
+  color: #cbd5e1;
+}

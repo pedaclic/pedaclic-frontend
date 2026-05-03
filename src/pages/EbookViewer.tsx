@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Ebook, CATEGORIE_LABELS, CATEGORIE_ICONS } from '../types/ebook.types';
 import { incrementVues, incrementTelechargements, formatFileSize } from '../services/ebookService';
+import { EbookPdfPreview } from '../components/eleve/EbookPdfPreview';
 import '../styles/EbookViewer.css';
 
 // --- Interface des props ---
@@ -36,20 +37,36 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   // ==================== HANDLERS ====================
 
   /**
-   * Détermine l'URL du PDF à afficher
-   * Premium → fichier complet | Non-Premium → aperçu ou complet limité
+   * Détermine la stratégie d'affichage du document selon le statut Premium
+   * et la présence d'un PDF aperçu séparé :
+   *  - Premium                                   → iframe sur le PDF complet
+   *  - Non-Premium + aperçuURL fourni            → iframe sur le PDF aperçu
+   *  - Non-Premium sans aperçuURL + fichierURL  → rendu canvas limité à pagesApercu
+   *  - Aucun fichier disponible                  → écran de blocage Premium
    */
-  const getPdfUrl = (): string | null => {
-    if (isPremium) {
-      return ebook.fichierURL;
+  type ViewStrategy =
+    | { kind: 'iframe'; url: string }
+    | { kind: 'limited-render'; url: string; maxPages: number }
+    | { kind: 'blocked' };
+
+  const getViewStrategy = (): ViewStrategy => {
+    if (isPremium && ebook.fichierURL) {
+      return { kind: 'iframe', url: ebook.fichierURL };
     }
-    // Si un aperçu séparé existe, l'utiliser
     if (ebook.aperçuURL) {
-      return ebook.aperçuURL;
+      return { kind: 'iframe', url: ebook.aperçuURL };
     }
-    // Pas d'aperçu disponible → bloquer l'accès
-    return null;
+    if (ebook.fichierURL && ebook.pagesApercu > 0) {
+      return {
+        kind: 'limited-render',
+        url: ebook.fichierURL,
+        maxPages: ebook.pagesApercu
+      };
+    }
+    return { kind: 'blocked' };
   };
+
+  const strategy = getViewStrategy();
 
   /**
    * Gère le téléchargement (Premium uniquement)
@@ -225,27 +242,22 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
       {viewMode === 'read' && (
         <div className="viewer-read-panel">
 
-          {/* --- PDF disponible --- */}
-          {getPdfUrl() ? (
+          {/* --- Stratégie 1 : iframe (Premium ou aperçu PDF dédié) --- */}
+          {strategy.kind === 'iframe' && (
             <>
-              {/* Chargement du PDF */}
               {loading && (
                 <div className="viewer-loading">
                   <div className="loading-spinner"></div>
                   <p>Chargement du document...</p>
                 </div>
               )}
-
-              {/* iframe PDF */}
               <iframe
-                src={`${getPdfUrl()}#toolbar=1&navpanes=0`}
+                src={`${strategy.url}#toolbar=1&navpanes=0`}
                 className="pdf-iframe"
                 title={ebook.titre}
                 onLoad={handleIframeLoad}
                 style={{ display: loading ? 'none' : 'block' }}
               />
-
-              {/* Overlay Premium pour aperçu */}
               {!isPremium && (
                 <div className="viewer-premium-overlay">
                   <div className="overlay-content">
@@ -265,8 +277,37 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                 </div>
               )}
             </>
-          ) : (
-            /* --- Pas d'aperçu disponible (non-Premium sans fichier aperçu) --- */
+          )}
+
+          {/* --- Stratégie 2 : rendu canvas limité (non-Premium, aucun aperçu PDF dédié) --- */}
+          {strategy.kind === 'limited-render' && (
+            <>
+              <EbookPdfPreview
+                pdfUrl={strategy.url}
+                maxPages={strategy.maxPages}
+                totalPages={ebook.nombrePages}
+              />
+              <div className="viewer-premium-overlay">
+                <div className="overlay-content">
+                  <div className="overlay-lock">🔒</div>
+                  <h3>Aperçu gratuit — {strategy.maxPages} premières pages</h3>
+                  <p>
+                    Pour lire l'intégralité de ce document ({ebook.nombrePages} pages)
+                    et le télécharger, passez à PedaClic Premium.
+                  </p>
+                  <button onClick={onGoPremium} className="btn-overlay-premium">
+                    Passer Premium — 2 000 FCFA/mois
+                  </button>
+                  <button onClick={onBack} className="btn-overlay-back">
+                    Retour à la bibliothèque
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* --- Stratégie 3 : aucun fichier disponible → blocage --- */}
+          {strategy.kind === 'blocked' && (
             <div className="viewer-no-preview">
               <div className="no-preview-content">
                 <div className="overlay-lock">🔒</div>

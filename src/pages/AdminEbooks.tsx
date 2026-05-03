@@ -8,13 +8,13 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Ebook,
   EbookFormData,
-  EbookStats,
   CategorieEbook,
   CATEGORIE_LABELS,
   CATEGORIE_ICONS
 } from '../types/ebook.types';
 import {
   getAllEbooksAdmin,
+  subscribeToAllEbooksAdmin,
   addEbook,
   updateEbook,
   deleteEbook,
@@ -37,7 +37,11 @@ export const AdminEbooks: React.FC = () => {
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState<EbookStats | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // --- Stats dérivées : recalculées automatiquement à chaque changement de la liste ---
+  // (vues/téléchargements/actifs reste donc toujours synchrone avec Firestore)
+  const stats = useMemo(() => calculateEbookStats(ebooks), [ebooks]);
 
   // --- État du formulaire ---
   const [showForm, setShowForm] = useState(false);
@@ -80,23 +84,43 @@ export const AdminEbooks: React.FC = () => {
     };
   }
 
-  // ==================== CHARGEMENT ====================
+  // ==================== CHARGEMENT TEMPS RÉEL ====================
+  // Abonnement onSnapshot : les stats (vues, téléchargements, statut actif)
+  // se mettent à jour automatiquement dès qu'un élève consulte / télécharge
+  // un ebook, ou qu'un autre admin modifie la collection.
   useEffect(() => {
-    loadEbooks();
+    setLoading(true);
+    setError(null);
+    const unsubscribe = subscribeToAllEbooksAdmin(
+      (data) => {
+        setEbooks(data);
+        setLoading(false);
+      },
+      (err) => {
+        setError('Erreur lors du chargement des ebooks');
+        console.error(err);
+        setLoading(false);
+      }
+    );
+    return unsubscribe;
   }, []);
 
-  const loadEbooks = async () => {
+  /**
+   * Force une lecture serveur (bypass du cache IndexedDB).
+   * Utile si l'admin doute de la fraîcheur des compteurs après un long
+   * fonctionnement hors-ligne. Ne casse pas l'abonnement onSnapshot.
+   */
+  const handleRefresh = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
       setError(null);
-      const data = await getAllEbooksAdmin();
+      const data = await getAllEbooksAdmin(true);
       setEbooks(data);
-      setStats(calculateEbookStats(data));
     } catch (err: any) {
-      setError('Erreur lors du chargement des ebooks');
+      setError('Erreur lors de l\'actualisation');
       console.error(err);
     } finally {
-      setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -146,25 +170,51 @@ export const AdminEbooks: React.FC = () => {
       setSaving(true);
       setError(null);
 
+      // --- Timeout de sécurité : 2 min max pour un upload PDF ---
+      // Évite que le bouton reste figé indéfiniment en cas d'échec
+      // silencieux (CORS bloqué, réseau coupé, App Check refusé, etc.)
+      const TIMEOUT_MS = 120_000;
+      const withTimeout = <T,>(p: Promise<T>): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(
+              () => reject(new Error(
+                'Délai dépassé (2 min). Vérifiez votre connexion ou la configuration CORS du bucket Firebase Storage. Voir la console pour le détail.'
+              )),
+              TIMEOUT_MS
+            )
+          )
+        ]);
+
       if (editingEbook) {
         // --- Mode modification ---
-        await updateEbook(editingEbook.id, formData, pdfFile, coverFile, previewFile);
+        await withTimeout(updateEbook(editingEbook.id, formData, pdfFile, coverFile, previewFile));
         setSuccessMessage(`✅ Ebook "${formData.titre}" modifié avec succès`);
       } else {
         // --- Mode ajout ---
-        await addEbook(formData, pdfFile!, coverFile, previewFile);
+        await withTimeout(addEbook(formData, pdfFile!, coverFile, previewFile));
         setSuccessMessage(`✅ Ebook "${formData.titre}" ajouté avec succès`);
       }
 
-      // --- Réinitialisation ---
+      // --- Réinitialisation (la liste se met à jour automatiquement via onSnapshot) ---
       resetForm();
-      await loadEbooks();
 
       // Masquer le message après 4 secondes
       setTimeout(() => setSuccessMessage(null), 4000);
 
     } catch (err: any) {
-      setError(err.message || 'Erreur lors de la sauvegarde');
+      // Détection d'erreurs CORS / réseau pour message plus explicite
+      const raw = err?.message || String(err) || 'Erreur lors de la sauvegarde';
+      const code = err?.code || '';
+      let msg = raw;
+      if (code === 'storage/unauthorized' || /unauthorized/i.test(raw)) {
+        msg = "Upload refusé : vérifiez les règles Firebase Storage (storage.rules) ou App Check.";
+      } else if (/CORS|NetworkError|Failed to fetch|network-request-failed/i.test(raw)) {
+        msg = "Échec réseau / CORS sur le bucket Firebase Storage. Vérifiez la configuration CORS du bucket (voir cors.json à la racine du projet).";
+      }
+      console.error('[AdminEbooks] handleSubmit error:', err);
+      setError(msg);
     } finally {
       setSaving(false);
     }
@@ -203,7 +253,7 @@ export const AdminEbooks: React.FC = () => {
       await deleteEbook(id);
       setDeleteConfirm(null);
       setSuccessMessage('✅ Ebook supprimé avec succès');
-      await loadEbooks();
+      // La liste est rafraîchie automatiquement par onSnapshot.
       setTimeout(() => setSuccessMessage(null), 4000);
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la suppression');
@@ -215,7 +265,7 @@ export const AdminEbooks: React.FC = () => {
   const handleToggleActive = async (id: string, currentState: boolean) => {
     try {
       await toggleEbookActive(id, !currentState);
-      await loadEbooks();
+      // La liste est rafraîchie automatiquement par onSnapshot.
     } catch (err: any) {
       setError(err.message);
     }
@@ -255,15 +305,25 @@ export const AdminEbooks: React.FC = () => {
       {/* <!-- En-tête Admin --> */}
       <div className="admin-ebooks-header">
         <h1>📚 Gestion de la Bibliothèque</h1>
-        <button
-          className="btn-add-ebook"
-          onClick={() => {
-            resetForm();
-            setShowForm(!showForm);
-          }}
-        >
-          {showForm ? '✕ Fermer' : '+ Ajouter un ebook'}
-        </button>
+        <div className="admin-ebooks-header-actions">
+          <button
+            className="btn-refresh-ebooks"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Forcer la récupération des dernières statistiques depuis le serveur"
+          >
+            {refreshing ? '⏳ Actualisation…' : '🔄 Actualiser'}
+          </button>
+          <button
+            className="btn-add-ebook"
+            onClick={() => {
+              resetForm();
+              setShowForm(!showForm);
+            }}
+          >
+            {showForm ? '✕ Fermer' : '+ Ajouter un ebook'}
+          </button>
+        </div>
       </div>
 
       {/* <!-- Messages --> */}

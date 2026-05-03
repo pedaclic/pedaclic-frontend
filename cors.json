@@ -1,0 +1,24 @@
+[
+  {
+    "origin": [
+      "https://pedaclic.sn",
+      "https://www.pedaclic.sn",
+      "https://pedaclic-app.web.app",
+      "https://pedaclic-app.firebaseapp.com",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://localhost:4173"
+    ],
+    "method": ["GET", "HEAD", "PUT", "POST", "DELETE", "OPTIONS"],
+    "responseHeader": [
+      "Content-Type",
+      "Authorization",
+      "Content-Length",
+      "User-Agent",
+      "x-goog-resumable",
+      "x-goog-meta-*",
+      "x-firebase-appcheck"
+    ],
+    "maxAgeSeconds": 3600
+  }
+]

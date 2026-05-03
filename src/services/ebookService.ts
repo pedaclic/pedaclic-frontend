@@ -7,17 +7,22 @@ import {
   collection,
   doc,
   getDocs,
+  getDocsFromServer,
   getDoc,
   addDoc,
   updateDoc,
   deleteDoc,
+  onSnapshot,
   query,
   where,
   orderBy,
   limit,
   increment,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  type QuerySnapshot,
+  type DocumentData,
+  type Unsubscribe
 } from 'firebase/firestore';
 import {
   ref,
@@ -66,25 +71,61 @@ export async function getAllEbooks(): Promise<Ebook[]> {
 }
 
 /**
- * Récupère tous les ebooks (y compris inactifs) pour l'admin
+ * Mappe un QuerySnapshot Firestore vers un tableau d'Ebook[].
+ * Centralise la conversion Timestamp → Date pour éviter la duplication.
  */
-export async function getAllEbooksAdmin(): Promise<Ebook[]> {
+function mapSnapshotToEbooks(snapshot: QuerySnapshot<DocumentData>): Ebook[] {
+  return snapshot.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt?.toDate() || new Date(),
+    updatedAt: d.data().updatedAt?.toDate() || null
+  })) as Ebook[];
+}
+
+/**
+ * Récupère tous les ebooks (y compris inactifs) pour l'admin.
+ * @param forceServer - si true, contourne le cache IndexedDB et force une lecture serveur
+ */
+export async function getAllEbooksAdmin(forceServer = false): Promise<Ebook[]> {
   try {
     const q = query(
       collection(db, EBOOKS_COLLECTION),
       orderBy('ordre', 'asc')
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate() || new Date(),
-      updatedAt: doc.data().updatedAt?.toDate() || null
-    })) as Ebook[];
+    const snapshot = forceServer ? await getDocsFromServer(q) : await getDocs(q);
+    return mapSnapshotToEbooks(snapshot);
   } catch (error) {
     console.error('❌ Erreur récupération ebooks admin:', error);
     throw error;
   }
+}
+
+/**
+ * S'abonne en temps réel à la collection ebooks (admin).
+ * Toute modification serveur (incrément vues/téléchargements, ajout, édition,
+ * suppression) déclenche `onUpdate` immédiatement.
+ *
+ * @param onUpdate - callback invoqué à chaque changement avec la liste à jour
+ * @param onError  - callback invoqué en cas d'erreur du listener
+ * @returns la fonction `unsubscribe` à appeler au démontage du composant
+ */
+export function subscribeToAllEbooksAdmin(
+  onUpdate: (ebooks: Ebook[]) => void,
+  onError?: (error: Error) => void
+): Unsubscribe {
+  const q = query(
+    collection(db, EBOOKS_COLLECTION),
+    orderBy('ordre', 'asc')
+  );
+  return onSnapshot(
+    q,
+    (snapshot) => onUpdate(mapSnapshotToEbooks(snapshot)),
+    (error) => {
+      console.error('❌ Erreur listener ebooks admin:', error);
+      onError?.(error);
+    }
+  );
 }
 
 /**
