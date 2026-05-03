@@ -16,6 +16,7 @@ import {
   getAllEbooks,
   filterEbooks,
   formatFileSize,
+  incrementTelechargements,
   MATIERES_DISPONIBLES_FALLBACK
 } from '../services/ebookService';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
@@ -347,12 +348,21 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
             {isPremium ? '📖 Lire' : `👁️ Aperçu (${ebook.pagesApercu} pages)`}
           </button>
           {isPremium && (
+            // <!-- Lien de téléchargement : on déclenche d'abord l'incrément
+            //      du compteur (fire-and-forget pour ne pas bloquer le
+            //      téléchargement), puis le navigateur suit le href.
+            //      Le tracking n'altère pas le comportement natif du <a>. -->
             <a
               href={ebook.fichierURL}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-download"
               download
+              onClick={() => {
+                // Fire-and-forget : si l'incrément échoue, le téléchargement
+                // se fait quand même. L'erreur est captée dans le service.
+                incrementTelechargements(ebook.id);
+              }}
             >
               ⬇️ Télécharger
             </a>

@@ -29,9 +29,32 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   const [viewMode, setViewMode] = useState<'read' | 'info'>('info');
 
   // ==================== EFFETS ====================
+  // --- Incrément du compteur de vues, dédoublonné par session ---
+  // Pourquoi un guard ?
+  //   1. React.StrictMode (dev) déclenche useEffect 2 fois → +2 vues
+  //   2. Un refresh accidentel de l'onglet ne doit pas compter 2 fois
+  //      la même consultation pour le même ebook dans la même session.
+  // Implémentation : sessionStorage (purgé à la fermeture de l'onglet)
+  // → un seul incrément par (ebook × session navigateur).
   useEffect(() => {
-    // Incrémenter le compteur de vues à l'ouverture
-    incrementVues(ebook.id);
+    const SESSION_KEY = 'pedaclic_ebook_viewed';
+    try {
+      const viewedRaw = sessionStorage.getItem(SESSION_KEY);
+      const viewed: string[] = viewedRaw ? JSON.parse(viewedRaw) : [];
+
+      if (!viewed.includes(ebook.id)) {
+        // Marquer AVANT l'appel async pour bloquer le second pass StrictMode
+        sessionStorage.setItem(
+          SESSION_KEY,
+          JSON.stringify([...viewed, ebook.id])
+        );
+        incrementVues(ebook.id);
+      }
+    } catch {
+      // sessionStorage indisponible (navigation privée stricte) :
+      // on retombe sur le comportement précédent (incrément simple).
+      incrementVues(ebook.id);
+    }
   }, [ebook.id]);
 
   // ==================== HANDLERS ====================

@@ -477,13 +477,49 @@ service cloud.firestore {
       );
     }
 
-    // ──────────────────────────────────────────────────────────
-    // COLLECTION: ebooks — inchangée
-    // ──────────────────────────────────────────────────────────
-
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 5 — ebooks : incréments compteurs (vues / téléchargements)
+    //
+    // AVANT (problème) :
+    //   allow update: if isAdmin();
+    //   → seul l'admin pouvait écrire dans /ebooks
+    //   → incrementVues() et incrementTelechargements() appelés
+    //     côté élève étaient rejetés silencieusement (PERMISSION_DENIED)
+    //   → les statistiques (Vues / DL) restaient figées à 0
+    //
+    // APRÈS (corrigé) :
+    //   - Lecture : tout utilisateur connecté (inchangé)
+    //   - Création / suppression / update complet : admin uniquement
+    //   - Update partiel autorisé pour TOUT utilisateur connecté SI
+    //     et seulement si la mutation porte UNIQUEMENT sur le compteur
+    //     'nombreVues' OU 'nombreTelechargements', avec un delta de +1.
+    //   - Aucun autre champ ne peut être modifié par ce biais
+    //     (titre, fichierURL, isActive, etc. restent admin-only).
+    //   - Les autres champs ne peuvent être ni ajoutés ni supprimés
+    //     (hasOnly garantit qu'aucun autre key n'est touchée).
+    // ══════════════════════════════════════════════════════════
     match /ebooks/{ebookId} {
+
+      // --- Lecture : tous les utilisateurs connectés ---
       allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
+
+      // --- Création / suppression : admin uniquement ---
+      allow create, delete: if isAdmin();
+
+      // --- Update complet (tous champs) : admin uniquement ---
+      allow update: if isAdmin();
+
+      // --- Update partiel : incrément du compteur de vues (+1) ---
+      // Autorisé pour tout utilisateur connecté (élève, prof, parent…)
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombreVues'])
+        && request.resource.data.nombreVues == resource.data.nombreVues + 1;
+
+      // --- Update partiel : incrément du compteur de téléchargements (+1) ---
+      // Autorisé pour tout utilisateur connecté (typiquement un Premium)
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombreTelechargements'])
+        && request.resource.data.nombreTelechargements == resource.data.nombreTelechargements + 1;
     }
 
     // ══════════════════════════════════════════════════════════
