@@ -1089,6 +1089,11 @@
   background: rgba(251, 146, 60, 0.08); /* orange très léger */
 }
 
+/* Phase 40 — fond brique clair pour les exclusions disciplinaires */
+.groupe-appel-item--v2.is-exclu {
+  background: rgba(124, 45, 18, 0.06);
+}
+
 /* Nom de l'élève dans la liste d'appel */
 .groupe-appel-item--v2 .groupe-appel-nom {
   grid-area: nom;
@@ -1146,6 +1151,20 @@
   background: #f59e0b;
   color: #fff;
   border-color: #f59e0b;
+}
+
+/* Phase 40 — pilule « Exclu » : ton brique pour distinguer
+   nettement la mesure disciplinaire de la simple absence. */
+.statut-pill.statut-exclu.active {
+  background: #7c2d12;
+  color: #fff;
+  border-color: #7c2d12;
+}
+
+/* Légende — variante visuelle pour le statut exclu */
+.groupe-appel-legende .legende-item.legende-exclu {
+  color: #7c2d12;
+  font-weight: 600;
 }
 
 /* Bloc détails de retard (minutes + motif + commentaire) */

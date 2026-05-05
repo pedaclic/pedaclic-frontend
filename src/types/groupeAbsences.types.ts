@@ -12,6 +12,24 @@
 export type MotifRetard = 'justifie' | 'non_justifie';
 
 /**
+ * Phase 40 — Détail d'une EXCLUSION (renvoi de cours / mise à pied).
+ *  - dureeJours   : nombre de jours d'exclusion (1 = ce jour ; 2-15 = sanction).
+ *                   Sert de base aux compteurs (ex. « X j d'exclusion ce mois »).
+ *  - motif        : raison brève saisie par l'enseignant (texte libre).
+ *  - decideePar   : qui a prononcé la mesure (prof, CPE, direction).
+ *  - dateRetour   : date prévue de retour en cours au format ISO (YYYY-MM-DD).
+ *                   Permet de rappeler à la direction quand l'élève revient.
+ *  - commentaire  : observation supplémentaire (transmis aux parents).
+ */
+export interface DetailExclusion {
+  dureeJours: number;
+  motif?: string;
+  decideePar?: 'prof' | 'cpe' | 'direction';
+  dateRetour?: string;
+  commentaire?: string;
+}
+
+/**
  * Détail d'un retard pour un élève donné — enregistré dans le doc d'appel.
  *  - minutes : minutes de retard saisies par le prof (0 si non précisé)
  *  - motif   : justifié / non justifié (optionnel à la saisie initiale)
@@ -40,6 +58,19 @@ export interface AbsenceGroupe {
    * Ne contient que les élèves marqués en retard.
    */
   retardsDetails?: Record<string, DetailRetard>;
+  /**
+   * PHASE 40 — IDs des élèves EXCLUS (renvoi de cours / mise à pied).
+   *   Mutuellement exclusif avec `eleveIdsAbsents` et `eleveIdsRetards` :
+   *   un élève exclu n'est ni absent ni en retard, c'est un statut
+   *   distinct qui doit être tracé séparément pour les bulletins
+   *   disciplinaires et la communication aux familles.
+   */
+  eleveIdsExclus?: string[];
+  /**
+   * PHASE 40 — Détails des exclusions par élève (clé = eleveId).
+   *   Ne contient que les élèves marqués exclus le jour de l'appel.
+   */
+  exclusionsDetails?: Record<string, DetailExclusion>;
   /**
    * ─── Compatibilité historique (un seul couple séance) ────────────
    * `entreeId` / `entreeTitre` restent supportés en lecture pour les
@@ -86,6 +117,12 @@ export interface AbsenceGroupe {
    */
   seancesAbsentsPar?: Record<string /*entreeId*/, string[] /*eleveIds*/>;
   seancesRetardsPar?: Record<string /*entreeId*/, string[] /*eleveIds*/>;
+  /**
+   * PHASE 40 — Élèves EXCLUS répartis par séance (même logique que
+   * `seancesAbsentsPar`/`seancesRetardsPar`). Permet d'exclure un
+   * élève d'une séance précise sans toucher aux autres.
+   */
+  seancesExclusPar?: Record<string /*entreeId*/, string[] /*eleveIds*/>;
   profId: string;
   updatedAt: Date;
 }

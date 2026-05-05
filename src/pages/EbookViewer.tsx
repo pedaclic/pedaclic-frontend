@@ -274,8 +274,16 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                   <p>Chargement du document...</p>
                 </div>
               )}
+              {/* <!-- Paramètres d'URL du PDF :
+                   - toolbar=1     : barre d'outils PDF native visible
+                   - navpanes=0    : panneau latéral (vignettes) masqué par défaut
+                   - zoom=page-width (PDF.js) + view=FitH (Adobe) : la page
+                     est ajustée à la LARGEUR du viewer → plus de bandes grises
+                     latérales sur grand écran. Les deux paramètres sont
+                     utilisés en parallèle pour maximiser la compatibilité
+                     navigateur (Firefox/Chrome/Edge). --> */}
               <iframe
-                src={`${strategy.url}#toolbar=1&navpanes=0`}
+                src={`${strategy.url}#toolbar=1&navpanes=0&zoom=page-width&view=FitH&pagemode=none`}
                 className="pdf-iframe"
                 title={ebook.titre}
                 onLoad={handleIframeLoad}

@@ -6,11 +6,70 @@
 // PedaClic — www.pedaclic.sn
 // ============================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
+
+/* ─────────────────────────────────────────────────────────────
+   PHASE 40 — Reprise sur la dernière activité
+   ─────────────────────────────────────────────────────────────
+   Clé localStorage où l'on persiste le couple (cahierId, entreeId)
+   ouvert par l'utilisateur. À l'arrivée sur /prof/cahiers, si
+   cette clé existe ET que le cahier existe toujours, on redirige
+   automatiquement vers la dernière activité consultée.
+
+   La redirection est désactivable :
+     • via l'URL : `/prof/cahiers?vue=liste`  (lien explicite)
+     • automatiquement quand l'utilisateur a DÉJÀ utilisé la
+       reprise dans la session (sessionStorage flag) — on ne veut
+       pas rebondir indéfiniment lorsqu'il revient à la liste pour
+       créer un nouveau cahier ou consulter ses archives.
+   ───────────────────────────────────────────────────────────── */
+const LS_LAST_CAHIER_KEY = 'pedaclic.cahier.lastActivity';
+/** Flag de session : empêche la reprise de jouer plus d'une fois par onglet. */
+const SS_AUTO_RESUME_DONE = 'pedaclic.cahier.autoResumeDone';
+
+interface LastCahierActivity {
+  cahierId: string;
+  entreeId?: string;
+  /** Timestamp ISO — utilisé pour expirer la reprise après 14 jours. */
+  visitedAt: string;
+}
+
+/** Lit la dernière activité Cahier — null si vide ou expirée (>14 j). */
+function readLastCahierActivity(): LastCahierActivity | null {
+  try {
+    const raw = localStorage.getItem(LS_LAST_CAHIER_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as LastCahierActivity;
+    if (!data?.cahierId) return null;
+    // Expire après 14 jours pour éviter de rouvrir un cahier oublié
+    const ageMs = Date.now() - new Date(data.visitedAt).getTime();
+    if (ageMs > 14 * 24 * 60 * 60 * 1000) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/** Vrai si l'auto-redirection a déjà eu lieu dans cette session. */
+function autoResumeDejaFait(): boolean {
+  try {
+    return sessionStorage.getItem(SS_AUTO_RESUME_DONE) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function marquerAutoResumeFait(): void {
+  try {
+    sessionStorage.setItem(SS_AUTO_RESUME_DONE, '1');
+  } catch {
+    // sessionStorage bloqué : la reprise pourra rejouer (acceptable)
+  }
+}
 
 import {
   subscribeToCahiers,
@@ -75,7 +134,14 @@ const CahierTextesPage: React.FC = () => {
 
   // Matières et niveaux dynamiques depuis Firestore
   const { matieres: matieresDispos, niveaux: niveauxDispos, loading: loadingDisciplines } = useDisciplinesOptions();
-  
+
+  /* ─────────────────────────────────────────────────────────────
+     Reprise sur la dernière activité — ne s'exécute QU'UNE fois
+     par chargement de page (ref pour éviter les redirections en
+     boucle si l'utilisateur revient avec ?vue=liste).
+     ───────────────────────────────────────────────────────────── */
+  const reprisefaite = useRef(false);
+
 
 
   // ── Phase 22 — états groupes ─────────────────────────────
@@ -114,6 +180,46 @@ const CahierTextesPage: React.FC = () => {
       (data) => {
         setCahiers(data);
         setLoading(false);
+
+        /* ─────────────────────────────────────────────────────────────
+           PHASE 40 — Auto-redirection sur la dernière activité
+           ─────────────────────────────────────────────────────────────
+           Conditions strictes pour éviter les surprises :
+             • Pas déjà fait dans cette navigation (ref)
+             • Pas de paramètres URL (création/lien direct, ?vue=liste, etc.)
+             • Une dernière activité valide ET correspondant à un cahier
+               toujours présent (sinon on nettoie le storage)
+           Si toutes les conditions sont réunies → on redirige.
+           ───────────────────────────────────────────────────────────── */
+        if (reprisefaite.current) return;
+        reprisefaite.current = true;          // verrou local (cet effet)
+
+        // Si la reprise a DÉJÀ joué dans cette session (l'utilisateur est
+        // revenu volontairement à la liste), on ne rebondit pas.
+        if (autoResumeDejaFait()) return;
+
+        // L'utilisateur arrive avec un contexte explicite (lien direct
+        // vers la création, ?vue=liste, redirection depuis un widget…).
+        // On respecte son intention et on désactive la reprise pour la
+        // suite de la session.
+        const aDesParams = Array.from(searchParams.keys()).length > 0;
+        if (aDesParams) { marquerAutoResumeFait(); return; }
+
+        const last = readLastCahierActivity();
+        if (!last) { marquerAutoResumeFait(); return; }
+
+        const cahierExisteToujours = data.some(c => c.id === last.cahierId);
+        if (!cahierExisteToujours) {
+          // Cahier supprimé/archivé entre-temps : on nettoie le pointeur.
+          try { localStorage.removeItem(LS_LAST_CAHIER_KEY); } catch { /* noop */ }
+          marquerAutoResumeFait();
+          return;
+        }
+
+        // ✅ Toutes les conditions réunies : on rebondit sur le dernier
+        //    cahier ouvert, en `replace` pour ne pas polluer l'historique.
+        marquerAutoResumeFait();
+        navigate(`/prof/cahiers/${last.cahierId}`, { replace: true });
       },
       (err) => {
         console.error('Erreur chargement cahiers:', err);
@@ -121,7 +227,7 @@ const CahierTextesPage: React.FC = () => {
       }
     );
     return () => unsubscribe();
-  }, [currentUser?.uid, filtreAnnee]);
+  }, [currentUser?.uid, filtreAnnee, navigate, searchParams]);
 
   // ── Phase 22 — chargement des groupes + pré-remplissage ──
   useEffect(() => {

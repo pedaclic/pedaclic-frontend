@@ -151,17 +151,33 @@
   margin-bottom: var(--spacing-md);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Conteneur du tableau Feuille de notes
+   ─────────────────────────────────────────────────────────────
+   On limite la HAUTEUR (max-height) afin d'activer le défilement
+   VERTICAL : sans cela, la sticky-header (thead) n'aurait rien
+   contre quoi se "coller". L'utilisateur peut donc faire défiler
+   les élèves en gardant la ligne d'évaluations toujours visible.
+   `overflow: auto` (pas seulement -x) → défilements X et Y actifs.
+   ───────────────────────────────────────────────────────────── */
 .feuille-editor-table-wrapper {
-  overflow-x: auto;
+  overflow: auto;                   /* défilement horizontal + vertical */
+  max-height: calc(100vh - 240px);  /* laisse place à l'en-tête de page */
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  /* Améliore l'inertie sur iPad/Mac */
+  -webkit-overflow-scrolling: touch;
 }
 
 .feuille-editor-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;        /* `separate` REQUIS pour sticky :
+                                       avec `collapse`, les bordures
+                                       traversent la zone fixe et le
+                                       fond devient transparent. */
+  border-spacing: 0;
   font-size: var(--text-sm);
 }
 
@@ -172,22 +188,52 @@
   text-align: center;
 }
 
-.feuille-editor-table th {
+/* ─────────────────────────────────────────────────────────────
+   THEAD STICKY — Ligne des titres figée verticalement
+   ─────────────────────────────────────────────────────────────
+   Tous les <th> de l'en-tête restent visibles pendant le scroll
+   vertical. On utilise `top: 0` pour les coller en haut du
+   `.feuille-editor-table-wrapper`, et un z-index supérieur aux
+   cellules de la 1re colonne pour gérer correctement la zone
+   de croisement (haut-gauche, voir règle dédiée plus bas).
+   ───────────────────────────────────────────────────────────── */
+.feuille-editor-table thead th {
   background: var(--color-primary);
   color: white;
   font-weight: var(--font-semibold);
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   PREMIÈRE COLONNE STICKY — Colonne « Élève » figée à gauche
+   ─────────────────────────────────────────────────────────────
+   On épingle la colonne de l'élève pour qu'elle reste visible
+   pendant le défilement horizontal (utile dès qu'il y a beaucoup
+   d'évaluations). Le `background` opaque est OBLIGATOIRE : sinon,
+   le contenu défilant transparaîtrait à travers la colonne.
+   ───────────────────────────────────────────────────────────── */
 .feuille-editor-table .col-eleve {
   text-align: left;
   min-width: 180px;
   position: sticky;
   left: 0;
-  background: inherit;
+  z-index: 2;                                 /* > cellules normales */
+  background: var(--color-bg);                /* opaque (tbody) */
 }
 
+/* Lignes alternées (pair) : la colonne sticky doit aussi recevoir
+   la couleur de fond pour rester lisible quand on scrolle. */
+.feuille-editor-table tbody tr:nth-child(even) .col-eleve {
+  background: var(--color-bg-secondary);
+}
+
+/* En-tête de la 1re colonne — angle haut/gauche : doit dominer
+   à la fois le sticky-top (thead) et le sticky-left (col-eleve). */
 .feuille-editor-table thead .col-eleve {
   background: var(--color-primary);
+  z-index: 4;                                  /* dessus de tout */
 }
 
 .feuille-editor-table .col-note {

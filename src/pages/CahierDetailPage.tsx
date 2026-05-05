@@ -57,6 +57,27 @@ import CorrigeTravailCell from '../components/prof/CorrigeTravailCell';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
+/* ─────────────────────────────────────────────────────────────
+   PHASE 40 — Persistance « dernière activité »
+   ─────────────────────────────────────────────────────────────
+   Doit utiliser EXACTEMENT la même clé que CahierTextesPage afin
+   que la liste sache où rebondir. On écrit le couple
+   (cahierId, entreeId facultatif) avec un horodatage à chaque
+   ouverture/édition d'entrée.
+   ───────────────────────────────────────────────────────────── */
+const LS_LAST_CAHIER_KEY = 'pedaclic.cahier.lastActivity';
+
+function ecrireDerniereActivite(cahierId: string, entreeId?: string) {
+  try {
+    localStorage.setItem(
+      LS_LAST_CAHIER_KEY,
+      JSON.stringify({ cahierId, entreeId, visitedAt: new Date().toISOString() }),
+    );
+  } catch {
+    // localStorage indisponible (mode privé) → on ignore silencieusement
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────
 type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats' | 'travaux';
 type SortDirection = 'asc' | 'desc';
@@ -160,6 +181,10 @@ const CahierDetailPage: React.FC = () => {
         if (!data) { navigate('/prof/cahiers'); return; }
         setCahier(data);
         setRubriques(data.rubriques ?? []);
+        // Phase 40 — Mémorise l'ouverture du cahier comme « dernière activité ».
+        // L'entrée précise (entreeId) sera mise à jour ultérieurement
+        // si l'utilisateur ouvre/édite une séance particulière.
+        ecrireDerniereActivite(cahierId);
       } finally {
         setLoadingCahier(false);
       }

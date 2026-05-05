@@ -39,7 +39,7 @@ import {
   sauvegarderObservation,
   getObservationEleve,
 } from '../../services/groupeAbsencesService';
-import type { DetailRetard, MotifRetard } from '../../types/groupeAbsences.types';
+import type { DetailRetard, MotifRetard, DetailExclusion } from '../../types/groupeAbsences.types';
 // Phase 38 — Helpers de lecture multi-séances (rétro-compat legacy)
 import { getEntreeTitres } from '../../types/groupeAbsences.types';
 // ✨ Formatage "Prénoms NOM" (dernier mot en MAJUSCULES)
@@ -112,6 +112,8 @@ interface AppelSuiviTableProps {
 function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: AppelSuiviTableProps) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [retards, setRetards] = useState<Record<string, number>>({});
+  // Phase 40 — compteur d'exclusions sur la période sélectionnée
+  const [exclusions, setExclusions] = useState<Record<string, number>>({});
   const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
@@ -139,8 +141,10 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
         const absences = await getAbsencesByPeriod(groupeId, debut, fin, profId);
         const c: Record<string, number> = {};
         const r: Record<string, number> = {};
+        // Phase 40 — accumulateur des exclusions par élève
+        const x: Record<string, number> = {};
         const sm: Record<string, string[]> = {};
-        statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; sm[e.eleveId] = []; });
+        statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; x[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
           // Phase 38 + 39 — Comptage granulaire par séance.
           //   Si `seancesAbsentsPar` est défini, on compte +1 par séance
@@ -188,8 +192,23 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
               if (r[id] !== undefined) r[id]++;
             });
           }
+
+          // Phase 40 — Comptage des exclusions (granulaire ou legacy)
+          if (a.seancesExclusPar && Object.keys(a.seancesExclusPar).length > 0) {
+            for (const eleveIds of Object.values(a.seancesExclusPar)) {
+              eleveIds.forEach((id) => {
+                if (x[id] !== undefined) x[id]++;
+              });
+            }
+          } else {
+            (a.eleveIdsExclus || []).forEach((id: string) => {
+              if (x[id] !== undefined) x[id]++;
+            });
+          }
         });
-        if (!cancelled) { setCounts(c); setRetards(r); setSeancesManquees(sm); }
+        if (!cancelled) {
+          setCounts(c); setRetards(r); setExclusions(x); setSeancesManquees(sm);
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -215,6 +234,8 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
           <th>Élève</th>
           <th>Absences ({periode})</th>
           <th>Retards ({periode})</th>
+          {/* Phase 40 — colonne Exclusions (mesures disciplinaires) */}
+          <th title="Nombre d'exclusions disciplinaires sur la période">Exclusions ({periode})</th>
           <th>Séances manquées</th>
         </tr>
       </thead>
@@ -245,6 +266,14 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
             </td>
             <td className={retards[e.eleveId] > 0 ? 'prof-note-insuffisant' : ''}>
               {retards[e.eleveId] || 0}
+            </td>
+            {/* Phase 40 — Cellule Exclusions : style brique si > 0 */}
+            <td
+              style={exclusions[e.eleveId] > 0
+                ? { color: '#7c2d12', background: '#fed7aa', fontWeight: 700 }
+                : undefined}
+            >
+              {exclusions[e.eleveId] || 0}
             </td>
             <td className="groupe-appel-seances-manquees">
               {(seancesManquees[e.eleveId] || []).length > 0
@@ -304,6 +333,13 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   // ✨ Retards : IDs des élèves en retard + détails (minutes, motif, commentaire)
   const [retardsIds, setRetardsIds] = useState<string[]>([]);
   const [retardsDetails, setRetardsDetails] = useState<Record<string, DetailRetard>>({});
+  /* PHASE 40 — Exclusions
+     Statut disciplinaire : un élève renvoyé du cours (ou exclu pour
+     plusieurs jours) ne doit pas être confondu avec un absent ou un
+     retardataire. Détails : durée en jours, motif, décideur, commentaire.
+     Mutuellement exclusif avec absent/retard côté UI ET côté service. */
+  const [exclusIds, setExclusIds] = useState<string[]>([]);
+  const [exclusionsDetails, setExclusionsDetails] = useState<Record<string, DetailExclusion>>({});
   const [loadingAppel, setLoadingAppel] = useState(false);
   // Feedback de sauvegarde ("idle" | "ok" | "err") pour l'utilisateur
   const [appelSaveState, setAppelSaveState] = useState<'idle' | 'ok' | 'err'>('idle');
@@ -390,6 +426,67 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   const [modalBulletinOuvert, setModalBulletinOuvert] = useState(false);
 
 
+  /* ═══════════════════════════════════════════════════════════════════
+     PHASE 40 — Rappel des antécédents (30 derniers jours)
+     ═══════════════════════════════════════════════════════════════════
+     Pour chaque élève du groupe, on calcule (à l'ouverture de l'onglet
+     « Appel ») le nombre d'absences, retards et exclusions sur les 30
+     derniers jours qui précèdent la date d'appel sélectionnée. Ces
+     compteurs sont affichés sous forme de mini-badges à côté du nom,
+     pour que l'enseignant ait immédiatement à l'œil le profil
+     d'assiduité de chaque élève au moment du marquage.
+     Mis en cache côté client (state) pour éviter les recalculs.
+     ═══════════════════════════════════════════════════════════════════ */
+  type AntecedentsCount = { absences: number; retards: number; exclusions: number };
+  const [antecedentsParEleve, setAntecedentsParEleve] = useState<Record<string, AntecedentsCount>>({});
+
+  useEffect(() => {
+    if (ongletActif !== 'appel') return;
+    if (!currentUser?.uid) return;
+    if (!dateAppel) return;
+
+    let annule = false;
+    // Fenêtre : 30 jours avant la date d'appel (exclu)
+    const fin = new Date(dateAppel);
+    const debut = new Date(fin);
+    debut.setDate(debut.getDate() - 30);
+    const debutStr = debut.toISOString().slice(0, 10);
+    // On regarde JUSQU'À la veille de l'appel pour ne pas inclure
+    // l'appel en cours lui-même (sinon l'enseignant verrait
+    // immédiatement ses propres saisies récentes).
+    const veille = new Date(fin);
+    veille.setDate(veille.getDate() - 1);
+    const finStr = veille.toISOString().slice(0, 10);
+    if (finStr < debutStr) return;
+
+    getAbsencesByPeriod(groupe.id, debutStr, finStr, currentUser.uid)
+      .then((appels) => {
+        if (annule) return;
+        const acc: Record<string, AntecedentsCount> = {};
+        appels.forEach((a) => {
+          (a.eleveIdsAbsents || []).forEach((id) => {
+            acc[id] = acc[id] || { absences: 0, retards: 0, exclusions: 0 };
+            acc[id].absences += 1;
+          });
+          (a.eleveIdsRetards || []).forEach((id) => {
+            acc[id] = acc[id] || { absences: 0, retards: 0, exclusions: 0 };
+            acc[id].retards += 1;
+          });
+          (a.eleveIdsExclus || []).forEach((id) => {
+            acc[id] = acc[id] || { absences: 0, retards: 0, exclusions: 0 };
+            acc[id].exclusions += 1;
+          });
+        });
+        setAntecedentsParEleve(acc);
+      })
+      .catch((err) => {
+        // Silencieux : la fonction de rappel est non bloquante pour l'appel
+        console.warn('Antécédents indisponibles :', err);
+      });
+
+    return () => { annule = true; };
+  }, [ongletActif, groupe.id, currentUser?.uid, dateAppel]);
+
   // ==================== CHARGEMENT DES DONNÉES ====================
 
   /**
@@ -442,6 +539,9 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         setAbsentsIds(appel?.eleveIdsAbsents || []);
         setRetardsIds(appel?.eleveIdsRetards || []);
         setRetardsDetails(appel?.retardsDetails || {});
+        // Phase 40 — Restauration des exclusions persistées
+        setExclusIds(appel?.eleveIdsExclus || []);
+        setExclusionsDetails(appel?.exclusionsDetails || {});
         // Phase 38 — On restaure la sélection multi-séances (ou legacy
         // unique si l'appel a été enregistré avant la Phase 38).
         if (appel) {
@@ -846,6 +946,16 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         }
       }
 
+      // Phase 40 — Construction du dispatch par séance pour les exclusions
+      // (même logique que absents/retards : si overrides, on les respecte ;
+      //  sinon, on étend l'exclusion globale à toutes les séances liées).
+      const seancesExclusPar: Record<string, string[]> = {};
+      for (const seanceId of idsSeances) seancesExclusPar[seanceId] = [];
+      for (const eleveId of tousElevesConcernes) {
+        if (!exclusIds.includes(eleveId)) continue;
+        for (const seanceId of idsSeances) seancesExclusPar[seanceId].push(eleveId);
+      }
+
       await marquerAbsences(
         groupe.id,
         dateAppel,
@@ -860,6 +970,10 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         // Phase 39 — détail par séance/par élève (vides si 0 séance liée)
         idsSeances.length > 0 ? seancesAbsentsPar : undefined,
         idsSeances.length > 0 ? seancesRetardsPar : undefined,
+        // Phase 40 — Exclusions
+        exclusIds,
+        exclusionsDetails,
+        idsSeances.length > 0 ? seancesExclusPar : undefined,
       );
       setAppelSaveState('ok');
       // Le message "✅ Enregistré" disparaît après 3s
@@ -878,31 +992,62 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   };
 
   /**
-   * Bascule un élève entre Présent / Retard / Absent (exclusif).
-   * @param action 'absent' | 'retard' — si l'élève est déjà dans cet état, il redevient présent.
+   * Bascule un élève entre Présent / Retard / Absent / Exclu (exclusifs).
+   * Phase 40 : ajout du statut « exclu » (mesure disciplinaire).
+   * @param action 'absent' | 'retard' | 'exclu' — si l'élève est déjà dans cet état, il redevient présent.
    */
-  const toggleStatutEleve = (eleveId: string, action: 'absent' | 'retard') => {
+  const toggleStatutEleve = (eleveId: string, action: 'absent' | 'retard' | 'exclu') => {
     if (action === 'absent') {
       if (absentsIds.includes(eleveId)) {
         setAbsentsIds(prev => prev.filter(id => id !== eleveId));
       } else {
         setAbsentsIds(prev => [...prev, eleveId]);
-        // Mutuellement exclusif : si on marque absent, on retire le retard
+        // Mutuellement exclusif : un absent n'est ni en retard ni exclu
         setRetardsIds(prev => prev.filter(id => id !== eleveId));
+        setExclusIds(prev => prev.filter(id => id !== eleveId));
       }
-    } else {
+    } else if (action === 'retard') {
       if (retardsIds.includes(eleveId)) {
         setRetardsIds(prev => prev.filter(id => id !== eleveId));
       } else {
         setRetardsIds(prev => [...prev, eleveId]);
         setAbsentsIds(prev => prev.filter(id => id !== eleveId));
+        setExclusIds(prev => prev.filter(id => id !== eleveId));
         // Initialise les détails par défaut si vide
         setRetardsDetails(prev => prev[eleveId]
           ? prev
           : { ...prev, [eleveId]: { minutes: 0 } }
         );
       }
+    } else {
+      // Phase 40 — exclusion (mesure disciplinaire)
+      if (exclusIds.includes(eleveId)) {
+        setExclusIds(prev => prev.filter(id => id !== eleveId));
+      } else {
+        setExclusIds(prev => [...prev, eleveId]);
+        setAbsentsIds(prev => prev.filter(id => id !== eleveId));
+        setRetardsIds(prev => prev.filter(id => id !== eleveId));
+        // Initialise une exclusion d'1 jour par défaut, décidée par le prof
+        setExclusionsDetails(prev => prev[eleveId]
+          ? prev
+          : { ...prev, [eleveId]: { dureeJours: 1, decideePar: 'prof' } }
+        );
+      }
     }
+  };
+
+  /** Phase 40 — Met à jour un champ des détails d'exclusion pour un élève. */
+  const updateExclusionDetail = (
+    eleveId: string,
+    patch: Partial<DetailExclusion>,
+  ) => {
+    setExclusionsDetails(prev => {
+      const current: DetailExclusion = prev[eleveId] ?? { dureeJours: 1 };
+      return {
+        ...prev,
+        [eleveId]: { ...current, ...patch },
+      };
+    });
   };
 
   /**
@@ -1983,6 +2128,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                     <span className="legende-item legende-present">🟢 Présent (par défaut)</span>
                     <span className="legende-item legende-retard">🟠 Retard</span>
                     <span className="legende-item legende-absent">🔴 Absent</span>
+                    <span className="legende-item legende-exclu">⛔ Exclu</span>
                   </div>
                 </div>
 
@@ -1992,20 +2138,56 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                   .map((eleve) => {
                     const estAbsent = absentsIds.includes(eleve.eleveId);
                     const estRetard = retardsIds.includes(eleve.eleveId);
+                    const estExclu = exclusIds.includes(eleve.eleveId);
                     const detail = retardsDetails[eleve.eleveId] || { minutes: 0 };
+                    const detailExcl = exclusionsDetails[eleve.eleveId] || { dureeJours: 1 };
+                    // Phase 40 — Rappel des antécédents :
+                    //   on lit l'agrégat 'mois' calculé par le service de suivi
+                    //   pour TOUTES les statsEleves. Affiche un badge si > 0.
+                    const antecedents = antecedentsParEleve[eleve.eleveId];
                     return (
                       <div
                         key={eleve.eleveId}
                         className={`groupe-appel-item groupe-appel-item--v2 ${
-                          estAbsent ? 'is-absent' : estRetard ? 'is-retard' : ''
+                          estAbsent ? 'is-absent' : estRetard ? 'is-retard' : estExclu ? 'is-exclu' : ''
                         }`}
                       >
-                        {/* Nom de l'élève — format "Prénoms NOM" */}
+                        {/* Nom de l'élève — format "Prénoms NOM" + badge antécédents */}
                         <span className="groupe-appel-nom">
                           {formatEleveNom(eleve.eleveNom)}
+                          {antecedents && (antecedents.absences > 0 || antecedents.retards > 0 || antecedents.exclusions > 0) && (
+                            <span
+                              className="groupe-appel-antecedents"
+                              title={`Antécédents (30 derniers jours) : ${antecedents.absences} absence(s), ${antecedents.retards} retard(s), ${antecedents.exclusions} exclusion(s)`}
+                              style={{
+                                marginLeft: 8,
+                                display: 'inline-flex',
+                                gap: 4,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                verticalAlign: 'middle',
+                              }}
+                            >
+                              {antecedents.absences > 0 && (
+                                <span style={{ color: '#dc2626', background: '#fee2e2', padding: '1px 6px', borderRadius: 10 }}>
+                                  🔴 {antecedents.absences}
+                                </span>
+                              )}
+                              {antecedents.retards > 0 && (
+                                <span style={{ color: '#d97706', background: '#fef3c7', padding: '1px 6px', borderRadius: 10 }}>
+                                  🟠 {antecedents.retards}
+                                </span>
+                              )}
+                              {antecedents.exclusions > 0 && (
+                                <span style={{ color: '#7c2d12', background: '#fed7aa', padding: '1px 6px', borderRadius: 10 }}>
+                                  ⛔ {antecedents.exclusions}
+                                </span>
+                              )}
+                            </span>
+                          )}
                         </span>
 
-                        {/* Boutons radio visuels : Présent / Retard / Absent */}
+                        {/* Boutons radio visuels : Présent / Retard / Absent / Exclu */}
                         <div className="groupe-appel-statuts">
                           <label
                             className={`statut-pill statut-absent ${estAbsent ? 'active' : ''}`}
@@ -2028,6 +2210,18 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                               onChange={() => toggleStatutEleve(eleve.eleveId, 'retard')}
                             />
                             <span>Retard</span>
+                          </label>
+                          {/* Phase 40 — Statut « Exclu » (mesure disciplinaire) */}
+                          <label
+                            className={`statut-pill statut-exclu ${estExclu ? 'active' : ''}`}
+                            title="Marquer exclu(e) du cours"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={estExclu}
+                              onChange={() => toggleStatutEleve(eleve.eleveId, 'exclu')}
+                            />
+                            <span>Exclu</span>
                           </label>
                         </div>
 
@@ -2067,6 +2261,85 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                               className="prof-input prof-input-sm retard-commentaire"
                               value={detail.commentaire || ''}
                               onChange={(e) => updateRetardDetail(eleve.eleveId, {
+                                commentaire: e.target.value,
+                              })}
+                            />
+                          </div>
+                        )}
+
+                        {/* ════════════════════════════════════════════════════
+                            Phase 40 — Détails de l'EXCLUSION
+                            ────────────────────────────────────────────────────
+                            Affiché uniquement quand l'élève est exclu.
+                            Champs :
+                              • durée en jours (1 par défaut, max 30)
+                              • motif (texte libre)
+                              • décideur (prof / CPE / direction)
+                              • date de retour prévue (calculée par défaut
+                                = date appel + dureeJours, modifiable)
+                              • commentaire libre
+                            ════════════════════════════════════════════════════ */}
+                        {estExclu && (
+                          <div className="groupe-appel-exclu-details" style={{
+                            display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center',
+                            marginTop: '0.4rem', padding: '0.4rem 0.5rem',
+                            background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 6,
+                          }}>
+                            <input
+                              type="number"
+                              min={1}
+                              max={30}
+                              step={1}
+                              aria-label={`Durée d'exclusion en jours pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm"
+                              style={{ width: 70 }}
+                              value={detailExcl.dureeJours || 1}
+                              onChange={(e) => updateExclusionDetail(eleve.eleveId, {
+                                dureeJours: Math.max(1, Math.min(30, Number(e.target.value) || 1)),
+                              })}
+                            />
+                            <span style={{ fontSize: '0.78rem', color: '#7c2d12' }}>jour(s)</span>
+                            <select
+                              aria-label={`Décideur de l'exclusion pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-select prof-select-sm"
+                              value={detailExcl.decideePar || 'prof'}
+                              onChange={(e) => updateExclusionDetail(eleve.eleveId, {
+                                decideePar: e.target.value as 'prof' | 'cpe' | 'direction',
+                              })}
+                            >
+                              <option value="prof">👨‍🏫 Décision prof</option>
+                              <option value="cpe">📋 CPE</option>
+                              <option value="direction">🏛️ Direction</option>
+                            </select>
+                            <input
+                              type="text"
+                              placeholder="Motif (ex. comportement)"
+                              aria-label={`Motif de l'exclusion pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm"
+                              style={{ minWidth: 180, flex: 1 }}
+                              value={detailExcl.motif || ''}
+                              onChange={(e) => updateExclusionDetail(eleve.eleveId, {
+                                motif: e.target.value,
+                              })}
+                            />
+                            <input
+                              type="date"
+                              aria-label={`Date de retour prévue pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm"
+                              value={detailExcl.dateRetour || ''}
+                              onChange={(e) => updateExclusionDetail(eleve.eleveId, {
+                                dateRetour: e.target.value || undefined,
+                              })}
+                              title="Date de retour prévue"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Commentaire (optionnel)"
+                              aria-label={`Commentaire d'exclusion pour ${formatEleveNom(eleve.eleveNom)}`}
+                              className="prof-input prof-input-sm"
+                              style={{ minWidth: 180, flex: 1 }}
+                              value={detailExcl.commentaire || ''}
+                              onChange={(e) => updateExclusionDetail(eleve.eleveId, {
                                 commentaire: e.target.value,
                               })}
                             />
@@ -2204,7 +2477,8 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                 )}
                 <span className="groupe-appel-compteur">
                   {absentsIds.length} absent{absentsIds.length > 1 ? 's' : ''} •{' '}
-                  {retardsIds.length} retard{retardsIds.length > 1 ? 's' : ''}
+                  {retardsIds.length} retard{retardsIds.length > 1 ? 's' : ''} •{' '}
+                  {exclusIds.length} exclu{exclusIds.length > 1 ? 's' : ''}
                 </span>
               </div>
 

@@ -4,10 +4,14 @@
    Mobile-first responsive
    ================================================================== */
 
-/* ===== CONTENEUR PRINCIPAL ===== */
+/* ===== CONTENEUR PRINCIPAL =====
+   Le conteneur prend désormais toute la largeur disponible afin que
+   l'iframe PDF (mode lecture) puisse exploiter pleinement l'écran.
+   Chaque panneau enfant gère sa propre largeur interne :
+   - .info-layout  : max-width 1000px (panneau Détails — lisible)
+   - .pdf-iframe   : 100% du conteneur (lecture plein écran) */
 .ebook-viewer {
-  max-width: 1200px;
-  margin: 0 auto;
+  width: 100%;
   min-height: 100vh;
   display: flex;
   flex-direction: column;

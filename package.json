@@ -9,7 +9,8 @@
     "deploy": "npm run build && gh-pages -d dist && firebase deploy --only hosting",
     "deploy:gh": "npm run build && gh-pages -d dist",
     "deploy:firebase": "npm run build && firebase deploy --only hosting",
-    "deploy:full": "firebase deploy"
+    "deploy:full": "firebase deploy",
+    "deploy:prod": "echo '🚀 Déploiement production PedaClic...' && git add -A && (git diff --cached --quiet && echo '✓ Aucune modification à committer — redéploiement du dernier état' || git commit) && git push && npm run deploy:firebase && echo '✅ Déploiement terminé — https://www.pedaclic.sn'"
   },
   "dependencies": {
     "firebase": "^12.8.0",

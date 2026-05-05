@@ -144,6 +144,10 @@ import MaintenanceGate from './components/MaintenanceGate';
 /* ==================== GÉNÉRATEUR IA — KEEP-ALIVE ==================== */
 import { pingServeurIA } from './services/aiGeneratorService';
 
+/* ==================== PHASE 40 — PERSISTANCE DE ROUTE ==================== */
+/* Restaure la dernière route après un F5 (cf. useRoutePersistence). */
+import { RoutePersistence } from './hooks/useRoutePersistence';
+
 // ==================== APPLICATION ====================
 
 const App: React.FC = () => {
@@ -161,6 +165,8 @@ const App: React.FC = () => {
     <ConfirmProvider>
     <AuthProvider>
       <MaintenanceGate>
+        {/* Phase 40 — Sauvegarde et restaure le chemin courant après un F5 */}
+        <RoutePersistence />
         <InstallPrompt />
         <NetworkIndicator />
         <CookieBanner />

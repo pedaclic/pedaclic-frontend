@@ -9,19 +9,28 @@
   min-height: calc(100vh - 60px);
   background: #f3f4f6;
   overflow-y: auto;
-  padding: 24px 12px 120px; /* padding bas généreux pour ne pas masquer la dernière page sous l'overlay Premium */
+  /* Padding bas généreux pour ne pas masquer la dernière page sous l'overlay Premium fixé au bas */
+  padding: 24px 0 220px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
 }
 
+/* Conteneur des pages : pleine largeur du viewer (aligné sur le comportement
+   de l'iframe Premium → pas de bandes blanches latérales côté élève). */
 .ebook-pdf-preview__pages {
   width: 100%;
-  max-width: 900px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 24px;
+  padding: 0 12px;
+  box-sizing: border-box;
+}
+
+.ebook-pdf-preview__pages > * {
+  width: 100%;
+  max-width: 1400px; /* lisibilité sur très grand écran (≥ UHD), tout en restant large */
 }
 
 .ebook-pdf-preview__page-wrapper {

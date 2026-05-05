@@ -62,11 +62,15 @@ export const EbookPdfPreview: React.FC<EbookPdfPreviewProps> = ({
           if (cancelled) return;
 
           const page = await pdfDoc.getPage(pageNum);
-          // Échelle adaptée à la largeur disponible (max 900px pour la lisibilité)
-          const containerWidth = Math.min(container.clientWidth || 800, 900);
+          // Échelle adaptée à la largeur réelle du conteneur (comportement aligné
+          // sur l'iframe Premium : pleine largeur, plafond 1400 px pour lisibilité
+          // sur très grand écran). Prise en compte du devicePixelRatio pour un rendu
+          // net sur écrans Retina / HiDPI.
+          const availableWidth = Math.min(container.clientWidth || 1000, 1400);
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
           const baseViewport = page.getViewport({ scale: 1 });
-          const scale = containerWidth / baseViewport.width;
-          const viewport = page.getViewport({ scale });
+          const cssScale = availableWidth / baseViewport.width;
+          const viewport = page.getViewport({ scale: cssScale * dpr });
 
           const canvas = document.createElement('canvas');
           canvas.className = 'ebook-pdf-preview__page';

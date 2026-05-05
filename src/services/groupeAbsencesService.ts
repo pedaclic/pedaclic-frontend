@@ -31,6 +31,7 @@ import { db } from '../firebase';
 import type {
   AbsenceGroupe,
   DetailRetard,
+  DetailExclusion,
   ObservationEleve,
 } from '../types/groupeAbsences.types';
 
@@ -81,6 +82,10 @@ export interface MarquerAppelPayload {
   eleveIdsRetards?: string[];
   /** Détails minutes/motif/commentaire par élève en retard */
   retardsDetails?: Record<string, DetailRetard>;
+  /** Phase 40 — Élèves EXCLUS (mutuellement exclusif avec absents/retards) */
+  eleveIdsExclus?: string[];
+  /** Phase 40 — Détails durée/motif/décideur par élève exclu */
+  exclusionsDetails?: Record<string, DetailExclusion>;
   /** @deprecated — utilisez `entreeIds` (Phase 38) */
   entreeId?: string;
   /** @deprecated — utilisez `entreeTitres` (Phase 38) */
@@ -91,6 +96,8 @@ export interface MarquerAppelPayload {
   /** Phase 39 — par-séance par-élève (cf. type AbsenceGroupe) */
   seancesAbsentsPar?: Record<string, string[]>;
   seancesRetardsPar?: Record<string, string[]>;
+  /** Phase 40 — par-séance par-élève pour les exclusions */
+  seancesExclusPar?: Record<string, string[]>;
 }
 
 /**
@@ -133,6 +140,15 @@ export async function marquerAbsences(
    */
   seancesAbsentsPar?: Record<string, string[]>,
   seancesRetardsPar?: Record<string, string[]>,
+  /**
+   * Phase 40 — Exclusions (renvoi de cours / mise à pied).
+   *   Mutuellement exclusif avec absents/retards. Voir `DetailExclusion`
+   *   pour la durée, le motif et le décideur. `seancesExclusPar`
+   *   suit la même logique que `seancesAbsentsPar` côté multi-séance.
+   */
+  eleveIdsExclus?: string[],
+  exclusionsDetails?: Record<string, DetailExclusion>,
+  seancesExclusPar?: Record<string, string[]>,
 ): Promise<void> {
   if (!profId) {
     throw new Error(
@@ -142,10 +158,16 @@ export async function marquerAbsences(
 
   const ref = doc(db, COL_ABSENCES, docId(groupeId, date));
 
-  // On sépare absences / retards : un même élève ne peut pas être dans
-  // les deux listes. En cas de conflit accidentel, l'absence prévaut.
-  const retardsNets = (eleveIdsRetards || []).filter(
+  // On sépare absences / retards / exclusions : un même élève ne peut
+  // figurer que dans UNE seule liste. Ordre de priorité (du plus
+  // contraignant au moins contraignant) :
+  //    absent  >  exclu  >  retard
+  // En cas de doublon accidentel, on tronque les listes inférieures.
+  const exclusNets = (eleveIdsExclus || []).filter(
     (id) => !eleveIdsAbsents.includes(id),
+  );
+  const retardsNets = (eleveIdsRetards || []).filter(
+    (id) => !eleveIdsAbsents.includes(id) && !exclusNets.includes(id),
   );
 
   // ── Normalisation des paramètres séance(s) ─────────────────────
@@ -187,12 +209,31 @@ export async function marquerAbsences(
     return hasAny ? out : undefined;
   };
 
+  // Phase 40 — On ne conserve les détails d'exclusion que pour les
+  // élèves effectivement exclus, en filtrant les `undefined` que
+  // Firestore refuserait à l'écriture.
+  const exclusionsNetes: Record<string, DetailExclusion> = {};
+  for (const id of exclusNets) {
+    const d = exclusionsDetails?.[id];
+    exclusionsNetes[id] = {
+      dureeJours:
+        typeof d?.dureeJours === 'number' && d.dureeJours > 0 ? d.dureeJours : 1,
+      ...(d?.motif ? { motif: d.motif } : {}),
+      ...(d?.decideePar ? { decideePar: d.decideePar } : {}),
+      ...(d?.dateRetour ? { dateRetour: d.dateRetour } : {}),
+      ...(d?.commentaire ? { commentaire: d.commentaire } : {}),
+    };
+  }
+
   const payload = stripUndefined({
     groupeId,
     date,
     eleveIdsAbsents,
     eleveIdsRetards: retardsNets,
     retardsDetails: retardsDetails || {},
+    // Phase 40 — Exclusions (statut disciplinaire distinct)
+    eleveIdsExclus: exclusNets,
+    exclusionsDetails: exclusionsNetes,
     profId,
     // Multi-séances (nouvelle API)
     entreeIds: entreeIds.length > 0 ? entreeIds : undefined,
@@ -200,6 +241,8 @@ export async function marquerAbsences(
     // Phase 39 — répartition par séance / par élève
     seancesAbsentsPar: cleanSeancePar(seancesAbsentsPar),
     seancesRetardsPar: cleanSeancePar(seancesRetardsPar),
+    // Phase 40 — répartition par séance pour les exclusions
+    seancesExclusPar: cleanSeancePar(seancesExclusPar),
     // Legacy (1ère séance, pour compat) — undefined si aucune séance
     entreeId: legacyId,
     entreeTitre: legacyId ? legacyTitre : undefined,
@@ -234,6 +277,9 @@ export async function getAppelByDate(
     eleveIdsAbsents: data.eleveIdsAbsents || [],
     eleveIdsRetards: data.eleveIdsRetards || [],
     retardsDetails: data.retardsDetails || {},
+    // Phase 40 — Exclusions
+    eleveIdsExclus: data.eleveIdsExclus || [],
+    exclusionsDetails: data.exclusionsDetails || {},
     // Phase 38 — Multi-séances : on relit les deux variantes
     entreeId: data.entreeId,
     entreeTitre: data.entreeTitre,
@@ -245,6 +291,9 @@ export async function getAppelByDate(
       : undefined,
     seancesRetardsPar: data.seancesRetardsPar && typeof data.seancesRetardsPar === 'object'
       ? data.seancesRetardsPar
+      : undefined,
+    seancesExclusPar: data.seancesExclusPar && typeof data.seancesExclusPar === 'object'
+      ? data.seancesExclusPar
       : undefined,
     profId: data.profId,
     updatedAt: toDate(data.updatedAt),
@@ -298,6 +347,9 @@ export async function getAbsencesByPeriod(
       eleveIdsAbsents: data.eleveIdsAbsents || [],
       eleveIdsRetards: data.eleveIdsRetards || [],
       retardsDetails: data.retardsDetails || {},
+      // Phase 40 — Exclusions
+      eleveIdsExclus: data.eleveIdsExclus || [],
+      exclusionsDetails: data.exclusionsDetails || {},
       // Legacy
       entreeId: data.entreeId,
       entreeTitre: data.entreeTitre,
@@ -310,6 +362,9 @@ export async function getAbsencesByPeriod(
         : undefined,
       seancesRetardsPar: data.seancesRetardsPar && typeof data.seancesRetardsPar === 'object'
         ? data.seancesRetardsPar
+        : undefined,
+      seancesExclusPar: data.seancesExclusPar && typeof data.seancesExclusPar === 'object'
+        ? data.seancesExclusPar
         : undefined,
       profId: data.profId,
       updatedAt: toDate(data.updatedAt),
@@ -354,6 +409,28 @@ export async function countRetardsEleve(
   );
   return appels.filter((a) => (a.eleveIdsRetards || []).includes(eleveId))
     .length;
+}
+
+/**
+ * Phase 40 — Compte les exclusions d'un élève sur une période.
+ *   Comptabilise CHAQUE journée où l'élève apparaît dans
+ *   `eleveIdsExclus`. La durée saisie (`dureeJours`) reste consultable
+ *   via `exclusionsDetails` pour les bulletins disciplinaires.
+ */
+export async function countExclusionsEleve(
+  groupeId: string,
+  eleveId: string,
+  dateDebut: string,
+  dateFin: string,
+  profId?: string,
+): Promise<number> {
+  const appels = await getAbsencesByPeriod(
+    groupeId,
+    dateDebut,
+    dateFin,
+    profId,
+  );
+  return appels.filter((a) => (a.eleveIdsExclus || []).includes(eleveId)).length;
 }
 
 // -------------------------------------------------------------
