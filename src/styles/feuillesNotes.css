@@ -158,33 +158,63 @@
    VERTICAL : sans cela, la sticky-header (thead) n'aurait rien
    contre quoi se "coller". L'utilisateur peut donc faire défiler
    les élèves en gardant la ligne d'évaluations toujours visible.
-   `overflow: auto` (pas seulement -x) → défilements X et Y actifs.
+
+   Pour la sticky HORIZONTALE de la colonne « Élève », il est
+   IMPORTANT que :
+     1. Le wrapper soit un véritable scroll-container horizontal
+        → `overflow-x: auto` (explicite, pas via `overflow:` raccourci
+        — certains moteurs Webkit ignoraient le sticky-left avec la
+        forme courte dans un `display: flex` parent).
+     2. Le wrapper soit borné en LARGEUR (`max-width: 100%`) pour
+        que le tableau soit forcé à overflow horizontalement
+        au lieu de pousser la page entière à scroller.
+     3. Aucun ancêtre n'ait `overflow: hidden` ou `transform`
+        (vérifié : `.feuille-editor-page` et `.layout__main` sont OK).
    ───────────────────────────────────────────────────────────── */
 .feuille-editor-table-wrapper {
-  overflow: auto;                   /* défilement horizontal + vertical */
-  max-height: calc(100vh - 240px);  /* laisse place à l'en-tête de page */
+  overflow-x: auto;                  /* défilement HORIZONTAL explicite */
+  overflow-y: auto;                  /* défilement vertical */
+  max-height: calc(100vh - 240px);   /* laisse place à l'en-tête de page */
+  width: 100%;                       /* prend la largeur du parent */
+  max-width: 100%;                   /* ne dépasse jamais le parent */
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   /* Améliore l'inertie sur iPad/Mac */
   -webkit-overflow-scrolling: touch;
+  /* `contain: layout` aide certains moteurs (Chromium) à bien
+     délimiter le scroll-container pour le sticky positioning. */
+  contain: layout;
 }
 
+/* `min-width: max-content` force le tableau à être au moins aussi large
+   que la somme des min-widths de ses colonnes (Élève + N évaluations + 4
+   colonnes synthèse). Ainsi, dès que le wrapper devient plus étroit
+   (demi-écran, fenêtre redimensionnée…), le tableau OVERFLOW et le
+   wrapper active son scroll horizontal — déclencheur indispensable au
+   `position: sticky` de la colonne « Élève ».
+
+   Bordures : `separate` + `border-spacing: 0` est requis pour fiabiliser
+   le sticky cross-browser. Pour éviter le doublement visuel des bordures
+   (par rapport à l'ancien `collapse`), on ne pose que `border-right` et
+   `border-bottom` sur les cellules ; la table ferme l'encadrement à
+   gauche et en haut. Aspect visuel identique au mode `collapse`. */
 .feuille-editor-table {
   width: 100%;
-  border-collapse: separate;        /* `separate` REQUIS pour sticky :
-                                       avec `collapse`, les bordures
-                                       traversent la zone fixe et le
-                                       fond devient transparent. */
+  min-width: max-content;
+  border-collapse: separate;
   border-spacing: 0;
+  border-top: 1px solid var(--color-border);
+  border-left: 1px solid var(--color-border);
   font-size: var(--text-sm);
 }
 
 .feuille-editor-table th,
 .feuille-editor-table td {
   padding: var(--spacing-sm) var(--spacing-md);
-  border: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
   text-align: center;
 }
 
