@@ -183,9 +183,12 @@
   box-shadow: var(--shadow-sm);
   /* Améliore l'inertie sur iPad/Mac */
   -webkit-overflow-scrolling: touch;
-  /* `contain: layout` aide certains moteurs (Chromium) à bien
-     délimiter le scroll-container pour le sticky positioning. */
-  contain: layout;
+  /* IMPORTANT : ne PAS utiliser `contain: layout` ici — Chromium/Gecko
+     traitent ce hint comme si l'élément devenait son propre containing
+     block pour les descendants `position: fixed/absolute`, ce qui peut
+     casser `position: sticky` sur les cellules enfants (le wrapper
+     n'est plus reconnu comme scroll-container ancestor « pur »).
+     Sur Safari, le moteur ignore l'effet, d'où le différentiel observé. */
 }
 
 /* `min-width: max-content` force le tableau à être au moins aussi large
@@ -243,6 +246,16 @@
    pour qu'elle reste visible pendant le défilement horizontal.
    On cible explicitement `th.col-eleve` et `td.col-eleve` pour
    garantir une spécificité supérieure aux règles concurrentes.
+
+   COMPATIBILITÉ CROSS-BROWSER :
+     • Safari supporte sticky sur TD/TH nativement depuis longtemps.
+     • Chrome (≥ 91) et Firefox (≥ 59) le supportent aussi MAIS sont
+       sensibles au mode de bordures du tableau et à la présence d'un
+       contexte de stacking suffisant. On force donc :
+         - `border-collapse: separate` (cf. règle table)
+         - `will-change: transform` → crée un calque de composition
+           dédié, ce qui stabilise le sticky dans Chromium quand le
+           tableau est plus large que le viewport.
    ───────────────────────────────────────────────────────────── */
 .feuille-editor-table th.col-eleve,
 .feuille-editor-table td.col-eleve {
@@ -256,6 +269,8 @@
   /* Séparation visuelle : ombre portée vers la droite indique
      clairement la limite de la zone gelée pendant le scroll. */
   box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08);
+  /* Stabilise sticky dans Chromium / Gecko : force le calque GPU. */
+  will-change: transform;
 }
 
 /* Lignes alternées (pair) : la colonne sticky doit aussi recevoir
