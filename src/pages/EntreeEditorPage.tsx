@@ -218,8 +218,22 @@ const EntreeEditorPage: React.FC = () => {
       setLoading(true);
       try {
         const cahierData = await getCahierById(cahierId);
-        if (!cahierData) { navigate('/prof/cahiers'); return; }
+        if (!cahierData) { navigate('/prof/cahiers?vue=liste'); return; }
         setCahier(cahierData);
+
+        /* PHASE 40 — Mémoriser l'activité courante (cahier + séance)
+           pour que la prochaine ouverture de Cahier de textes
+           rebondisse directement sur cette dernière séance éditée. */
+        try {
+          localStorage.setItem(
+            'pedaclic.cahier.lastActivity',
+            JSON.stringify({
+              cahierId,
+              entreeId: entreeId || undefined,
+              visitedAt: new Date().toISOString(),
+            }),
+          );
+        } catch { /* localStorage indisponible : on ignore */ }
 
         if (isEdit && entreeId) {
           const entreeData = await getEntreeById(entreeId);
@@ -457,7 +471,10 @@ const EntreeEditorPage: React.FC = () => {
     <div className="entree-editor-page">
       {/* ── Fil d'Ariane ── */}
       <Breadcrumbs items={[
-        { label: 'Cahiers de textes', path: '/prof/cahiers' },
+        // Phase 40 — `?vue=liste` pour bypasser l'auto-redirection
+        // « ouvrir sur la dernière activité » : depuis le breadcrumb,
+        // l'utilisateur veut explicitement la liste de tous ses cahiers.
+        { label: 'Cahiers de textes', path: '/prof/cahiers?vue=liste' },
         { label: cahier.titre || 'Cahier', path: `/prof/cahiers/${cahierId}` },
         { label: isEdit ? 'Modifier la séance' : 'Nouvelle séance' },
       ]} />

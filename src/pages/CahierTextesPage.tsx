@@ -20,16 +20,13 @@ import { useConfirm } from '../contexts/ConfirmContext';
    cette clé existe ET que le cahier existe toujours, on redirige
    automatiquement vers la dernière activité consultée.
 
-   La redirection est désactivable :
-     • via l'URL : `/prof/cahiers?vue=liste`  (lien explicite)
-     • automatiquement quand l'utilisateur a DÉJÀ utilisé la
-       reprise dans la session (sessionStorage flag) — on ne veut
-       pas rebondir indéfiniment lorsqu'il revient à la liste pour
-       créer un nouveau cahier ou consulter ses archives.
+   ESCAPE : la redirection est désactivée si l'URL contient
+   `?vue=liste` (paramètre passé par les boutons « Retour aux cahiers »
+   du détail/éditeur d'entrée). Cela permet à l'utilisateur de
+   revenir à la liste sans rebondir indéfiniment vers le dernier
+   cahier ouvert.
    ───────────────────────────────────────────────────────────── */
 const LS_LAST_CAHIER_KEY = 'pedaclic.cahier.lastActivity';
-/** Flag de session : empêche la reprise de jouer plus d'une fois par onglet. */
-const SS_AUTO_RESUME_DONE = 'pedaclic.cahier.autoResumeDone';
 
 interface LastCahierActivity {
   cahierId: string;
@@ -51,23 +48,6 @@ function readLastCahierActivity(): LastCahierActivity | null {
     return data;
   } catch {
     return null;
-  }
-}
-
-/** Vrai si l'auto-redirection a déjà eu lieu dans cette session. */
-function autoResumeDejaFait(): boolean {
-  try {
-    return sessionStorage.getItem(SS_AUTO_RESUME_DONE) === '1';
-  } catch {
-    return false;
-  }
-}
-
-function marquerAutoResumeFait(): void {
-  try {
-    sessionStorage.setItem(SS_AUTO_RESUME_DONE, '1');
-  } catch {
-    // sessionStorage bloqué : la reprise pourra rejouer (acceptable)
   }
 }
 
@@ -194,31 +174,25 @@ const CahierTextesPage: React.FC = () => {
         if (reprisefaite.current) return;
         reprisefaite.current = true;          // verrou local (cet effet)
 
-        // Si la reprise a DÉJÀ joué dans cette session (l'utilisateur est
-        // revenu volontairement à la liste), on ne rebondit pas.
-        if (autoResumeDejaFait()) return;
-
-        // L'utilisateur arrive avec un contexte explicite (lien direct
-        // vers la création, ?vue=liste, redirection depuis un widget…).
-        // On respecte son intention et on désactive la reprise pour la
-        // suite de la session.
+        /* ESCAPE — l'utilisateur veut explicitement la liste.
+           Détecté via `?vue=liste` (ajouté par les boutons « Retour »
+           des sous-pages cahier) ou tout autre paramètre URL non vide
+           (création depuis widget : ?groupeId=…, etc.). */
         const aDesParams = Array.from(searchParams.keys()).length > 0;
-        if (aDesParams) { marquerAutoResumeFait(); return; }
+        if (aDesParams) return;
 
         const last = readLastCahierActivity();
-        if (!last) { marquerAutoResumeFait(); return; }
+        if (!last) return;
 
         const cahierExisteToujours = data.some(c => c.id === last.cahierId);
         if (!cahierExisteToujours) {
           // Cahier supprimé/archivé entre-temps : on nettoie le pointeur.
           try { localStorage.removeItem(LS_LAST_CAHIER_KEY); } catch { /* noop */ }
-          marquerAutoResumeFait();
           return;
         }
 
         // ✅ Toutes les conditions réunies : on rebondit sur le dernier
         //    cahier ouvert, en `replace` pour ne pas polluer l'historique.
-        marquerAutoResumeFait();
         navigate(`/prof/cahiers/${last.cahierId}`, { replace: true });
       },
       (err) => {

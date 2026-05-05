@@ -192,48 +192,64 @@
    THEAD STICKY — Ligne des titres figée verticalement
    ─────────────────────────────────────────────────────────────
    Tous les <th> de l'en-tête restent visibles pendant le scroll
-   vertical. On utilise `top: 0` pour les coller en haut du
-   `.feuille-editor-table-wrapper`, et un z-index supérieur aux
-   cellules de la 1re colonne pour gérer correctement la zone
-   de croisement (haut-gauche, voir règle dédiée plus bas).
+   vertical. `!important` car certaines règles plus loin redéfinissent
+   `position` via inline-style ou via `td.col-note { position: relative }`,
+   ce qui pouvait neutraliser le sticky dans des contextes spécifiques.
    ───────────────────────────────────────────────────────────── */
 .feuille-editor-table thead th {
   background: var(--color-primary);
   color: white;
   font-weight: var(--font-semibold);
-  position: sticky;
-  top: 0;
+  position: -webkit-sticky;
+  position: sticky !important;
+  top: 0 !important;
   z-index: 3;
 }
 
 /* ─────────────────────────────────────────────────────────────
    PREMIÈRE COLONNE STICKY — Colonne « Élève » figée à gauche
    ─────────────────────────────────────────────────────────────
-   On épingle la colonne de l'élève pour qu'elle reste visible
-   pendant le défilement horizontal (utile dès qu'il y a beaucoup
-   d'évaluations). Le `background` opaque est OBLIGATOIRE : sinon,
-   le contenu défilant transparaîtrait à travers la colonne.
+   On épingle la colonne de l'élève (TH du thead ET TD du tbody)
+   pour qu'elle reste visible pendant le défilement horizontal.
+   On cible explicitement `th.col-eleve` et `td.col-eleve` pour
+   garantir une spécificité supérieure aux règles concurrentes.
    ───────────────────────────────────────────────────────────── */
-.feuille-editor-table .col-eleve {
+.feuille-editor-table th.col-eleve,
+.feuille-editor-table td.col-eleve {
   text-align: left;
   min-width: 180px;
-  position: sticky;
-  left: 0;
+  position: -webkit-sticky;
+  position: sticky !important;
+  left: 0 !important;
   z-index: 2;                                 /* > cellules normales */
   background: var(--color-bg);                /* opaque (tbody) */
+  /* Séparation visuelle : ombre portée vers la droite indique
+     clairement la limite de la zone gelée pendant le scroll. */
+  box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08);
 }
 
 /* Lignes alternées (pair) : la colonne sticky doit aussi recevoir
-   la couleur de fond pour rester lisible quand on scrolle. */
-.feuille-editor-table tbody tr:nth-child(even) .col-eleve {
+   la couleur de fond pour rester lisible quand on scrolle.
+   IMPORTANT : on cible TD spécifiquement (pas TH) pour ne pas
+   écraser le bleu primaire de l'en-tête. */
+.feuille-editor-table tbody tr:nth-child(even) td.col-eleve {
   background: var(--color-bg-secondary);
 }
 
+/* Hover de ligne : reflet aussi sur la cellule sticky */
+.feuille-editor-table tbody tr:hover td.col-eleve {
+  background: color-mix(in srgb, var(--color-primary) 5%, white);
+}
+
 /* En-tête de la 1re colonne — angle haut/gauche : doit dominer
-   à la fois le sticky-top (thead) et le sticky-left (col-eleve). */
-.feuille-editor-table thead .col-eleve {
-  background: var(--color-primary);
-  z-index: 4;                                  /* dessus de tout */
+   à la fois le sticky-top (thead) et le sticky-left (col-eleve).
+   z-index 5 pour passer au-dessus de tout, y compris des badges
+   internes (.absence-toggle z-index: 1). */
+.feuille-editor-table thead th.col-eleve {
+  background: var(--color-primary) !important;
+  z-index: 5 !important;
+  top: 0 !important;
+  left: 0 !important;
 }
 
 .feuille-editor-table .col-note {

@@ -980,6 +980,27 @@
   transform: translateY(-1px);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Phase 40 — Surbrillance « dernière activité »
+   ─────────────────────────────────────────────────────────────
+   Halo lumineux temporaire (3 s) appliqué automatiquement sur
+   la séance la plus récente — ou celle mémorisée — à l'ouverture
+   du cahier. Aide l'enseignant à retrouver instantanément où il
+   s'est arrêté la fois précédente.
+   ───────────────────────────────────────────────────────────── */
+@keyframes entree-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(37, 99, 235, 0.55); }
+  60%  { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);    }
+  100% { box-shadow: 0 0 0 0   rgba(37, 99, 235, 0);    }
+}
+.entree-card.entree-focus {
+  /* L'animation se joue 2 fois (≈ 3 s total) puis le halo disparaît.
+     `forwards` garde l'état final pour éviter un retour brusque. */
+  animation: entree-pulse 1.5s ease-out 2;
+  /* Légère élévation pour appuyer le focus pendant l'animation. */
+  border-color: rgba(37, 99, 235, 0.55);
+}
+
 /* Numéro de séance */
 .entree-num {
   display: flex;

@@ -153,7 +153,10 @@ const PlanificationPage: React.FC = () => {
         </div>
         <button
           type="button"
-          onClick={() => navigate('/prof/cahiers')}
+          /* Phase 40 — `?vue=liste` empêche la redirection auto vers
+             le dernier cahier ouvert (boucle non désirée depuis ce
+             bouton de retour à la liste). */
+          onClick={() => navigate('/prof/cahiers?vue=liste')}
           style={{
             marginTop: '1rem',
             padding: '0.5rem 1rem',

@@ -78,6 +78,18 @@ function ecrireDerniereActivite(cahierId: string, entreeId?: string) {
   }
 }
 
+/** Lit l'éventuel entreeId mémorisé pour ce cahier (utilisé pour scroll). */
+function lireEntreeIdMemorisee(cahierId: string): string | undefined {
+  try {
+    const raw = localStorage.getItem(LS_LAST_CAHIER_KEY);
+    if (!raw) return undefined;
+    const data = JSON.parse(raw) as { cahierId: string; entreeId?: string };
+    return data.cahierId === cahierId ? data.entreeId : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ─── Types ───────────────────────────────────────────────────
 type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats' | 'travaux';
 type SortDirection = 'asc' | 'desc';
@@ -148,7 +160,12 @@ const CahierDetailPage: React.FC = () => {
   const [filtreRubrique, setFiltreRubrique] = useState<string>('tous');
   const [filtreMois, setFiltreMois] = useState<string>('tous');
   const [filtreSemaine, setFiltreSemaine] = useState<string | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  /* PHASE 40 — Tri par défaut : descendant (plus récent en premier).
+     Permet à l'enseignant de tomber directement sur la « dernière activité »
+     du cahier à l'ouverture (séances enregistrées le plus récemment).
+     L'utilisateur peut toujours inverser via le bouton de tri en haut
+     de la liste — son choix est conservé pendant la session. */
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   // Phase 31 — Jours repliés (groupement séances par jour)
   const [joursReplies, setJoursReplies] = useState<Set<string>>(new Set());
@@ -178,19 +195,60 @@ const CahierDetailPage: React.FC = () => {
       setLoadingCahier(true);
       try {
         const data = await getCahierById(cahierId);
-        if (!data) { navigate('/prof/cahiers'); return; }
+        if (!data) { navigate('/prof/cahiers?vue=liste'); return; }
         setCahier(data);
         setRubriques(data.rubriques ?? []);
-        // Phase 40 — Mémorise l'ouverture du cahier comme « dernière activité ».
-        // L'entrée précise (entreeId) sera mise à jour ultérieurement
-        // si l'utilisateur ouvre/édite une séance particulière.
-        ecrireDerniereActivite(cahierId);
+        /* Phase 40 — Mémorise l'ouverture du cahier comme « dernière activité ».
+           NOTE : on conserve l'éventuel `entreeId` mémorisé précédemment afin
+           que le retour sur le détail garde la dernière séance éditée comme
+           ancre de scroll. Si l'utilisateur ouvre une autre séance, le
+           `EntreeEditorPage` réécrira la clé avec son propre entreeId. */
+        const entreeMemo = lireEntreeIdMemorisee(cahierId);
+        ecrireDerniereActivite(cahierId, entreeMemo);
       } finally {
         setLoadingCahier(false);
       }
     };
     fetch();
   }, [cahierId, navigate]);
+
+  /* PHASE 40 — Scroll automatique vers la « dernière activité »
+     ──────────────────────────────────────────────────────────
+     Une fois les entrées chargées :
+       • si un `entreeId` est mémorisé pour ce cahier → on scrolle
+         vers cette ligne précise, puis on la met en surbrillance
+         brièvement (animation CSS) ;
+       • sinon → on scrolle vers la séance la plus récente
+         (la plus haute du tri descendant).
+     L'effet ne se joue qu'une seule fois par chargement de cahier
+     pour ne pas perturber le scroll quand l'utilisateur défile
+     manuellement.
+     ─────────────────────────────────────────────────────────── */
+  const scrollFait = React.useRef(false);
+  useEffect(() => {
+    if (scrollFait.current) return;
+    if (!cahierId) return;
+    if (loadingEntrees) return;
+    if (entrees.length === 0) return;
+
+    const cibleId =
+      lireEntreeIdMemorisee(cahierId) ||
+      // Fallback : la séance avec la date la plus récente
+      [...entrees].sort((a, b) => b.date.toMillis() - a.date.toMillis())[0]?.id;
+
+    if (!cibleId) return;
+    scrollFait.current = true;
+
+    // requestAnimationFrame x2 → garantit que React a déjà rendu la liste
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-entree-id="${cibleId}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Halo de surbrillance temporaire (3 s) pour l'attirance du regard
+      el.classList.add('entree-focus');
+      window.setTimeout(() => el.classList.remove('entree-focus'), 3000);
+    }));
+  }, [cahierId, loadingEntrees, entrees]);
 
   // ── Abonnement temps réel aux entrées ──────────────────────
   // Utilise onSnapshot pour éviter les incohérences de cache (IndexedDB)
@@ -586,7 +644,10 @@ const CahierDetailPage: React.FC = () => {
       <div className="cahier-detail-header">
         <button
           className="btn-retour no-print"
-          onClick={() => navigate('/prof/cahiers')}
+          /* PHASE 40 — `?vue=liste` empêche la redirection auto vers ce
+             même cahier (sinon le bouton « Retour » bouclerait sur lui-même
+             puisque la liste rebondit toujours sur le dernier cahier ouvert). */
+          onClick={() => navigate('/prof/cahiers?vue=liste')}
           title="Retour à la liste"
         >
           ← Retour
@@ -1462,6 +1523,9 @@ const CahierDetailPage: React.FC = () => {
                 return (
                   <div
                     key={entree.id}
+                    /* Phase 40 — `data-entree-id` est l'ancre utilisée par
+                       l'effet de scroll auto vers la dernière activité. */
+                    data-entree-id={entree.id}
                     className="entree-card"
                     style={{ borderLeftColor: typeCfg.color }}
                     onClick={() => navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`)}
