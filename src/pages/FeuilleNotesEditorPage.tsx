@@ -1046,7 +1046,20 @@ const FeuilleNotesEditorPage: React.FC = () => {
         </div>
       )}
 
-      <div className="feuille-editor-table-wrapper">
+      <div
+        className="feuille-editor-table-wrapper"
+        /*
+          🆕 Variable CSS `--col-eleve-width` propagée à l'arborescence.
+          Pilote la largeur de la colonne tampon (col-spacer) en fin
+          de tableau, qui doit toujours être ≥ largeur de la colonne
+          sticky Élève. Sinon, au défilement maximum, la sticky
+          continuerait de chevaucher la 1ère colonne d'évaluation.
+          On ajoute 4 px de marge pour compenser les bordures/padding.
+        */
+        style={{
+          ['--col-eleve-width' as any]: `${(colWidths['eleve'] ?? 200) + 4}px`,
+        }}
+      >
         <table
           className={`feuille-editor-table${resizingKey ? ' is-col-resizing' : ''}`}
           ref={tableRef}
@@ -1058,6 +1071,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
               1. Élève (sticky)
               2..N+1 : évaluations (devoir / composition)
               N+2..N+5 : Moy. Devoirs / Compo / Moy. Gén. / Rang
+              N+6 : COLONNE TAMPON (col-spacer) — étend la zone
+                    scrollable horizontale d'une largeur égale à
+                    celle de la colonne sticky Élève, pour que la
+                    1ère colonne d'évaluation reste pleinement
+                    visible au défilement maximum (cf. règle CSS
+                    `.col-spacer` pour le détail du correctif).
             La largeur est lue depuis `colWidths`, fallback aux
             min-widths historiques si non personnalisée par le prof.
             Cette approche est la plus robuste pour fixer une
@@ -1074,18 +1093,23 @@ const FeuilleNotesEditorPage: React.FC = () => {
             <col style={{ width: widthFor('compo', 80) }} />
             <col style={{ width: widthFor('moy_gen', 90) }} />
             <col style={{ width: widthFor('rang', 70) }} />
+            {/* Spacer : largeur calquée sur la colonne Élève via
+                CSS variable (cf. wrapper ci-dessus). */}
+            <col className="col-spacer" />
           </colgroup>
           <thead>
             <tr>
               <th className="col-eleve">
                 Élève
                 {/* Poignée de resize de la colonne Élève — discrète,
-                    placée en bord droit. Largeur min : 140 px pour
-                    garantir la lisibilité du nom complet. */}
+                    placée en bord droit. Largeur min : 90 px (≃ moitié
+                    de la largeur historique 180 px), aligné avec la
+                    nouvelle min-width CSS pour autoriser un
+                    redimensionnement descendant jusqu'à la moitié. */}
                 <span
                   className={`col-resize-handle${resizingKey === 'eleve' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('eleve', 140)}
-                  onTouchStart={handleResizeStart('eleve', 140)}
+                  onMouseDown={handleResizeStart('eleve', 90)}
+                  onTouchStart={handleResizeStart('eleve', 90)}
                   title="Glisser pour redimensionner la colonne Élève"
                   aria-label="Redimensionner la colonne Élève"
                   role="separator"
@@ -1220,13 +1244,14 @@ const FeuilleNotesEditorPage: React.FC = () => {
                         </span>
                       )}
                       {/* 🆕 POIGNÉE DE RESIZE — bord droit de la colonne
-                          d'évaluation. Largeur min 70 px : assez pour
-                          afficher 2 chiffres + badge type. */}
+                          d'évaluation. Largeur min 50 px (= moitié de la
+                          largeur historique 100 px), aligné avec la
+                          nouvelle min-width CSS .col-note. */}
                       {editEvalId !== e.id && (
                         <span
                           className={`col-resize-handle${resizingKey === e.id ? ' is-resizing' : ''}`}
-                          onMouseDown={handleResizeStart(e.id, 70)}
-                          onTouchStart={handleResizeStart(e.id, 70)}
+                          onMouseDown={handleResizeStart(e.id, 50)}
+                          onTouchStart={handleResizeStart(e.id, 50)}
                           title="Glisser pour redimensionner la colonne"
                           aria-label="Redimensionner la colonne d'évaluation"
                           role="separator"
@@ -1279,12 +1304,16 @@ const FeuilleNotesEditorPage: React.FC = () => {
               {/* Colonnes de synthèse : distinctes pour la lisibilité du bulletin.
                   Chaque <th> reçoit une poignée de resize en bord droit, sauf la
                   toute dernière (Rang) où une poignée n'aurait pas d'utilité. */}
+              {/* 🛠️ Min-width JS abaissé de 70 → 40 px sur les 3
+                  colonnes synthèse, pour permettre la réduction à
+                  la moitié de leur largeur initiale (alignement
+                  avec les nouvelles min-widths CSS). */}
               <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">
                 Moy. Devoirs
                 <span
                   className={`col-resize-handle${resizingKey === 'moy_devoirs' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('moy_devoirs', 70)}
-                  onTouchStart={handleResizeStart('moy_devoirs', 70)}
+                  onMouseDown={handleResizeStart('moy_devoirs', 40)}
+                  onTouchStart={handleResizeStart('moy_devoirs', 40)}
                   title="Glisser pour redimensionner la colonne Moy. Devoirs"
                   role="separator"
                   draggable={false}
@@ -1294,8 +1323,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 Compo
                 <span
                   className={`col-resize-handle${resizingKey === 'compo' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('compo', 70)}
-                  onTouchStart={handleResizeStart('compo', 70)}
+                  onMouseDown={handleResizeStart('compo', 40)}
+                  onTouchStart={handleResizeStart('compo', 40)}
                   title="Glisser pour redimensionner la colonne Compo"
                   role="separator"
                   draggable={false}
@@ -1305,14 +1334,19 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 Moy. Gén.
                 <span
                   className={`col-resize-handle${resizingKey === 'moy_gen' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('moy_gen', 70)}
-                  onTouchStart={handleResizeStart('moy_gen', 70)}
+                  onMouseDown={handleResizeStart('moy_gen', 40)}
+                  onTouchStart={handleResizeStart('moy_gen', 40)}
                   title="Glisser pour redimensionner la colonne Moy. Gén."
                   role="separator"
                   draggable={false}
                 />
               </th>
               <th className="col-moyenne" title="Rang de classe (1 = meilleur)">Rang</th>
+              {/* 🆕 SPACER — colonne tampon vide en fin d'en-tête.
+                  Détails dans la règle CSS `.col-spacer`. Marquée
+                  `aria-hidden` pour ne pas perturber les lecteurs
+                  d'écran (purement visuelle / mécanique de scroll). */}
+              <th className="col-spacer" aria-hidden="true" />
             </tr>
           </thead>
           <tbody>
@@ -1522,6 +1556,9 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     </span>
                   ) : '—'}
                 </td>
+                {/* 🆕 SPACER — cellule tampon vide pour étendre la
+                    zone scrollable horizontale (cf. règle CSS). */}
+                <td className="col-spacer" aria-hidden="true" />
               </tr>
             ))}
             <tr className="feuille-moyenne-classe">
@@ -1542,6 +1579,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 <strong>{moyenneClasse > 0 ? moyenneClasse.toFixed(2) : '—'}</strong>
               </td>
               <td className="col-moyenne" />
+              {/* 🆕 SPACER — cohérence avec les autres lignes. */}
+              <td className="col-spacer" aria-hidden="true" />
             </tr>
 
             {/* ─────────────────────────────────────────────────────────
@@ -1595,6 +1634,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     ANJ : {totalAbsNJ}
                   </span>
                 </td>
+                {/* 🆕 SPACER — cohérence avec les autres lignes. */}
+                <td className="col-spacer" aria-hidden="true" />
               </tr>
             )}
           </tbody>

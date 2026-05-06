@@ -274,7 +274,12 @@
 .feuille-editor-table th.col-eleve,
 .feuille-editor-table td.col-eleve {
   text-align: left;
-  min-width: 180px;
+  /* 🛠️ FIX (mai 2026) — min-width abaissé de 180 → 90 px pour
+     autoriser un redimensionnement DESCENDANT jusqu'à la moitié de
+     la largeur historique. Au-delà, le contenu (nom élève) wrappe
+     ou se tronque, mais l'utilisateur peut toujours élargir à
+     nouveau via la poignée de resize si besoin. */
+  min-width: 90px;
   /* `-webkit-sticky` reste utile pour iOS Safari < 13 (legacy).
      L'ordre est important : la valeur préfixée doit venir AVANT
      la valeur standard, sinon Chrome ignore la déclaration finale. */
@@ -326,7 +331,9 @@
 }
 
 .feuille-editor-table .col-note {
-  min-width: 80px;
+  /* 🛠️ FIX (mai 2026) — min-width abaissé de 80 → 50 px pour
+     permettre la réduction à la moitié via la poignée de resize. */
+  min-width: 50px;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -336,7 +343,9 @@
    <th> et rendrait le texte blanc des titres invisible.
    ───────────────────────────────────────────────────────────── */
 .feuille-editor-table tbody .col-moyenne {
-  min-width: 70px;
+  /* 🛠️ FIX (mai 2026) — min-width abaissé de 70 → 40 px pour
+     permettre la réduction à la moitié via la poignée de resize. */
+  min-width: 40px;
   font-weight: var(--font-semibold);
   background: var(--color-bg-secondary);
 }
@@ -345,7 +354,8 @@
    autres <th> du tableau, pour que « Moy. Devoirs / Compo / Moy.
    Gén. / Rang » soient bien lisibles. */
 .feuille-editor-table thead .col-moyenne {
-  min-width: 70px;
+  /* min-width aligné sur tbody pour cohérence du resize. */
+  min-width: 40px;
   background: var(--color-primary);
   color: white;
   font-weight: var(--font-semibold);
@@ -953,4 +963,50 @@ th.col-note:hover .eval-actions { opacity: 1; }
 }
 .feuille-editor-table th.col-note:active {
   cursor: default;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🆕 COLONNE TAMPON DE DÉFILEMENT (spacer) — mai 2026
+   ══════════════════════════════════════════════════════════════════
+   PROBLÈME RÉSOLU :
+     Au défilement horizontal maximum, la colonne sticky « Élève »
+     (figée à gauche) chevauchait la 1ère colonne d'évaluation, qui
+     n'apparaissait plus qu'à moitié. L'utilisateur ne pouvait pas
+     scroller assez loin pour la voir entièrement.
+   SOLUTION :
+     On insère une colonne supplémentaire EN FIN de tableau, dont la
+     largeur est égale à celle de la colonne sticky (pilotée par
+     `--col-eleve-width` — variable CSS posée en inline-style sur
+     le wrapper depuis le composant React). Cette colonne, vide et
+     transparente, étend la zone scrollable d'autant. Au défilement
+     maximum, elle se positionne sous la sticky Élève, libérant
+     ainsi la colonne adjacente qui devient pleinement visible.
+     Pas de bordure, pas de fond → invisible pour l'utilisateur,
+     mais bien réelle pour la mécanique de scroll.
+   ══════════════════════════════════════════════════════════════════ */
+.feuille-editor-table th.col-spacer,
+.feuille-editor-table td.col-spacer {
+  /* Largeur calquée sur la colonne Élève (CSS variable mise à jour
+     en temps réel par le composant React quand l'utilisateur
+     redimensionne la colonne Élève). Fallback à 200 px si la
+     variable n'est pas définie. */
+  min-width: var(--col-eleve-width, 200px);
+  width: var(--col-eleve-width, 200px);
+  /* On retire toute trace visuelle : pas de bordure, pas de fond,
+     pas de padding, pas d'ombre. La cellule existe uniquement
+     pour étendre la largeur scrollable du tableau. */
+  border: none !important;
+  background: transparent !important;
+  background-image: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Sécurité : la colonne tampon ne doit JAMAIS recevoir de hover/zebra
+   issus des règles tbody précédentes, même quand elle est dans une
+   ligne paire ou survolée. */
+.feuille-editor-table tbody tr:nth-child(even) td.col-spacer,
+.feuille-editor-table tbody tr:hover td.col-spacer,
+.feuille-editor-table .feuille-moyenne-classe td.col-spacer {
+  background: transparent !important;
 }
