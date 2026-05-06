@@ -183,6 +183,20 @@
   box-shadow: var(--shadow-sm);
   /* Améliore l'inertie sur iPad/Mac */
   -webkit-overflow-scrolling: touch;
+  /* 🆕 ISOLATION DU CONTEXTE D'EMPILEMENT
+     `isolation: isolate` crée un nouveau contexte d'empilement pour
+     ce wrapper sans toucher à la position. Cela force Chromium et
+     Firefox à traiter les sticky descendants comme des éléments
+     positionnés DANS ce wrapper, fiabilisant ainsi le figement de
+     la 1ère colonne (col-eleve) sur tous les navigateurs et
+     plus uniquement sur Safari. */
+  isolation: isolate;
+  /* `position: relative` garantit que le wrapper est l'ancêtre
+     positionné de référence pour les éléments sticky internes —
+     condition nécessaire dans certains moteurs (Chromium ≥ 95 et
+     Gecko ≥ 78) pour que le sticky horizontal s'active sans
+     ambiguïté quand le tableau dépasse en largeur. */
+  position: relative;
   /* IMPORTANT : ne PAS utiliser `contain: layout` ici — Chromium/Gecko
      traitent ce hint comme si l'élément devenait son propre containing
      block pour les descendants `position: fixed/absolute`, ce qui peut
@@ -261,6 +275,9 @@
 .feuille-editor-table td.col-eleve {
   text-align: left;
   min-width: 180px;
+  /* `-webkit-sticky` reste utile pour iOS Safari < 13 (legacy).
+     L'ordre est important : la valeur préfixée doit venir AVANT
+     la valeur standard, sinon Chrome ignore la déclaration finale. */
   position: -webkit-sticky;
   position: sticky !important;
   left: 0 !important;
@@ -269,8 +286,19 @@
   /* Séparation visuelle : ombre portée vers la droite indique
      clairement la limite de la zone gelée pendant le scroll. */
   box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 0.08);
-  /* Stabilise sticky dans Chromium / Gecko : force le calque GPU. */
-  will-change: transform;
+  /* 🛠️ FIX CROSS-BROWSER (mai 2026) — `will-change: transform`
+     créait un nouveau "containing block" dans Chromium/Gecko, ce qui
+     pouvait court-circuiter le scroll-container ancêtre et empêcher
+     le mécanisme `position: sticky` de prendre effet (la colonne ne
+     se figeait que sur Safari, qui ignore cet effet).
+     On le retire purement et simplement : la propriété crée plus de
+     problèmes qu'elle n'en résout. Le figement repose désormais sur :
+       1. `isolation: isolate` posé sur le wrapper (nouveau contexte
+          d'empilement sans rupture du scroll-container).
+       2. `position: relative` sur le wrapper (référence positionnée
+          stable pour le calcul du sticky).
+       3. `border-collapse: separate` sur le tableau (déjà présent).
+     Ce trio est fiable sur Safari, Chrome ≥ 91, Firefox ≥ 78 et Edge. */
 }
 
 /* Lignes alternées (pair) : la colonne sticky doit aussi recevoir
@@ -756,4 +784,173 @@ th.col-note:hover .eval-actions { opacity: 1; }
 
 .feuilles-notes-empty p {
   margin-top: var(--spacing-md);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🆕 POIGNÉES DE REDIMENSIONNEMENT DES COLONNES (mai 2026)
+   ══════════════════════════════════════════════════════════════════
+   Chaque <th> du tableau accueille en bord droit une fine poignée
+   verticale qui, au survol, change le curseur en `col-resize`.
+   Le mousedown déclenche un handler JS qui modifie la largeur
+   de la colonne via `<col style="width: …">` du <colgroup>.
+   La poignée est volontairement étroite (6 px de hit-zone, 2 px
+   visibles) pour ne pas gêner la lecture du libellé.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* La <th> doit être un containing block positionné pour pouvoir
+   poser la poignée en `position: absolute`. C'est déjà le cas car :
+     - `.feuille-editor-table thead th` est `position: sticky` (cf.
+       règle plus haut), ce qui établit un containing block au même
+       titre que `position: relative`.
+     - `.col-eleve` (sticky également) hérite de cette propriété.
+   Aucune redéfinition n'est donc nécessaire ici — la poignée
+   s'aligne correctement sur tous les <th> du thead. */
+
+/* La poignée elle-même : étroite, transparente par défaut, visible
+   au hover. Largeur 6 px de hit-zone, le trait visuel (2 px) est
+   posé via un pseudo-élément ::after pour ne pas perturber la
+   géométrie de la cellule. */
+.col-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;                          /* collée au bord droit du <th> */
+  width: 6px;                        /* zone d'accroche confortable */
+  height: 100%;
+  cursor: col-resize;
+  z-index: 4;                        /* > au-dessus du contenu interne */
+  user-select: none;
+  /* `touch-action: none` empêche le scroll tactile pendant qu'on
+     redimensionne sur trackpad/écran tactile. */
+  touch-action: none;
+  background: transparent;
+  /* Empêche les événements drag-and-drop des colonnes : la poignée
+     ne doit JAMAIS déclencher un drag de réordonnancement. */
+}
+
+/* Trait fin visible au hover / pendant le resize, pour donner un
+   feedback visuel clair à l'utilisateur. */
+.col-resize-handle::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  right: 2px;
+  width: 2px;
+  background: transparent;
+  border-radius: 1px;
+  transition: background 0.15s;
+}
+
+/* Au survol : trait blanc semi-transparent (le <th> a un fond bleu
+   primaire, donc le blanc se voit nettement). */
+.col-resize-handle:hover::after,
+.col-resize-handle.is-resizing::after {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* Pendant le redimensionnement actif : on étend le trait sur toute
+   la hauteur du tbody pour visualiser la nouvelle frontière. */
+.col-resize-handle.is-resizing {
+  /* Curseur globalisé via JS (document.body.style.cursor) ; on garde
+     ici un cursor explicite pour cohérence. */
+  cursor: col-resize;
+}
+
+/* Quand le tableau est en cours de resize, on désactive la
+   sélection texte sur tout le tableau pour une UX propre.
+   La classe est posée sur le <table> par le code TSX. */
+.feuille-editor-table.is-col-resizing,
+.feuille-editor-table.is-col-resizing * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: col-resize !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🆕 INDICATEUR DE DROP (drag & drop colonnes) — mai 2026
+   ══════════════════════════════════════════════════════════════════
+   Le système précédent surlignait simplement la colonne survolée
+   (`box-shadow inset`). Problème : on ne savait pas si la colonne
+   tirée allait être insérée AVANT ou APRÈS la cible.
+   Nouvelle approche : on dessine une fine barre verticale BLEUE
+   qui indique précisément la position d'insertion (gauche ou
+   droite du <th> survolé), permettant de glisser une colonne
+   jusqu'à la dernière sans ambiguïté.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Bande à GAUCHE du <th> = insertion AVANT la colonne survolée. */
+.feuille-editor-table th.col-note.drop-before::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;                        /* chevauche le bord gauche */
+  width: 4px;
+  background: #2563eb;               /* bleu primaire PedaClic */
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7);
+  z-index: 5;                        /* au-dessus de tout dans le <th> */
+  pointer-events: none;              /* n'intercepte pas le drag */
+}
+
+/* Bande à DROITE du <th> = insertion APRÈS la colonne survolée.
+   Permet notamment de glisser une colonne en dernière position. */
+.feuille-editor-table th.col-note.drop-after::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -2px;                       /* chevauche le bord droit */
+  width: 4px;
+  background: #2563eb;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(37, 99, 235, 0.7);
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* On retire l'ancien `box-shadow inset` pour ne pas doubler le
+   feedback visuel : seule la bande verticale subsiste. */
+.feuille-editor-table th.eval-drag-over {
+  box-shadow: none;
+}
+
+/* La <th> en cours de drag reste à 0.4 d'opacité (déjà défini),
+   mais on ajoute un curseur grabbing explicite. */
+.feuille-editor-table th.eval-dragging .eval-grip {
+  cursor: grabbing;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   🆕 EVAL-GRIP comme HANDLE de drag exclusif
+   ══════════════════════════════════════════════════════════════════
+   Auparavant, toute la <th> était `draggable`. Conséquence :
+   un clic sur les boutons (renommer, exclure, supprimer) ou la
+   poignée de resize pouvait, sur certains navigateurs, démarrer
+   un drag intempestif. Désormais, seul l'icône GripVertical
+   (.eval-grip) déclenche le drag de la colonne — comportement
+   plus prévisible et compatible avec la poignée de resize.
+   ══════════════════════════════════════════════════════════════════ */
+.eval-grip {
+  cursor: grab;
+  padding: 2px;
+  border-radius: 3px;
+  transition: background 0.15s, opacity 0.15s;
+}
+.eval-grip:hover {
+  background: rgba(255, 255, 255, 0.18);
+  opacity: 1;
+}
+.eval-grip:active {
+  cursor: grabbing;
+}
+
+/* La <th> elle-même n'est plus draggable visuellement : on retire
+   le cursor grab par défaut sur la cellule pour ne pas tromper
+   l'utilisateur (la souris reste pointer sauf sur le handle). */
+.feuille-editor-table th.col-note {
+  cursor: default;
+}
+.feuille-editor-table th.col-note:active {
+  cursor: default;
 }

@@ -57,6 +57,26 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [draftNote, setDraftNote] = useState<string>('');
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [overIdx, setOverIdx] = useState<number | null>(null);
+  // 🆕 Position d'insertion (avant/après la colonne survolée).
+  //    Permet de glisser une colonne jusqu'à la dernière en
+  //    distinguant clairement « insérer à gauche » vs. « insérer
+  //    à droite » de la cible. La bande bleue verticale rendue
+  //    via les classes `drop-before` / `drop-after` reflète ce
+  //    choix en temps réel pendant le survol.
+  const [dropPos, setDropPos] = useState<'before' | 'after' | null>(null);
+  // 🆕 LARGEURS PERSONNALISÉES DES COLONNES (poignées de resize).
+  //    Map clé → pixels :
+  //      • 'eleve'                    → 1ère colonne figée
+  //      • '<id de l'évaluation>'     → colonnes du milieu
+  //      • 'moy_devoirs' | 'compo'    → synthèse
+  //      • 'moy_gen'    | 'rang'      → synthèse
+  //    Persistées en localStorage par feuilleId, donc le prof
+  //    retrouve sa mise en page d'une session à l'autre.
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  // Indicateur global : un resize est en cours (désactive sélection
+  // texte et change le curseur via la classe `is-col-resizing`).
+  const [resizingKey, setResizingKey] = useState<string | null>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
   const [editEvalId, setEditEvalId] = useState<string | null>(null);
   const [draftLibelle, setDraftLibelle] = useState<string>('');
   // ✨ Édition inline du TITRE de la feuille (en haut de l'éditeur).
@@ -363,22 +383,161 @@ const FeuilleNotesEditorPage: React.FC = () => {
       .catch(console.error);
   };
 
-  const handleDragStart = (idx: number) => setDragIdx(idx);
+  // ════════════════════════════════════════════════════════════════
+  // 🆕 DRAG & DROP DES COLONNES — VERSION ROBUSTE (mai 2026)
+  // ────────────────────────────────────────────────────────────────
+  // Correctif du bug rapporté : « seule la 2ème colonne se glisse
+  // sous la 1ère colonne figée ». Cause racine : l'ancien handler
+  // `handleDrop` insérait toujours à `idx` sans tenir compte de la
+  // direction du drag (gauche → droite vs. droite → gauche), ni de
+  // la position fine du curseur (avant / après la cible). Résultat :
+  // dans certains cas, le drop n'aboutissait pas à la position
+  // attendue ou Chrome refusait le drop sur la dernière colonne.
+  //
+  // Nouveau modèle :
+  //   1. `dragIdx`  = index de la colonne tirée (source).
+  //   2. `overIdx`  = index de la colonne survolée (cible).
+  //   3. `dropPos`  = 'before' | 'after' selon que le curseur est
+  //                   à gauche ou à droite de la moitié du <th>.
+  //   4. À la dépose, on calcule l'index final en tenant compte
+  //      du décalage induit par le retrait de l'élément source.
+  //
+  // Le drag est désormais initié depuis l'icône `eval-grip` (et non
+  // toute la <th>), pour ne pas entrer en conflit avec la poignée
+  // de redimensionnement et les boutons d'action.
+  // ════════════════════════════════════════════════════════════════
+  const handleDragStart = (idx: number) => (e: React.DragEvent) => {
+    setDragIdx(idx);
+    // Active le drop dans Firefox (qui exige un dataTransfer non vide)
+    try {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(idx));
+    } catch {/* certains navigateurs bridés ignorent setData */}
+  };
   const handleDragOver = (e: React.DragEvent, idx: number) => {
     e.preventDefault();
-    setOverIdx(idx);
+    e.dataTransfer.dropEffect = 'move';
+    // Détermine si le curseur est dans la moitié GAUCHE ou DROITE
+    // du <th> survolé → choix de la position d'insertion.
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const middle = rect.left + rect.width / 2;
+    const pos: 'before' | 'after' = e.clientX < middle ? 'before' : 'after';
+    if (overIdx !== idx) setOverIdx(idx);
+    if (dropPos !== pos) setDropPos(pos);
   };
   const handleDrop = (idx: number) => {
-    if (dragIdx === null || dragIdx === idx || !feuille) { setDragIdx(null); setOverIdx(null); return; }
+    if (dragIdx === null || !feuille) {
+      setDragIdx(null); setOverIdx(null); setDropPos(null); return;
+    }
     const evals = [...(feuille.evaluations || [])];
-    const [moved] = evals.splice(dragIdx, 1);
-    evals.splice(idx, 0, moved);
+    const moved = evals[dragIdx];
+    if (!moved) { setDragIdx(null); setOverIdx(null); setDropPos(null); return; }
+    // Index d'insertion brut = idx de la cible, ajusté pour la
+    // position fine (avant / après).
+    let insertIdx = idx + (dropPos === 'after' ? 1 : 0);
+    // Quand on retire la source, tous les index supérieurs à dragIdx
+    // sont décrémentés de 1. On normalise donc l'index d'insertion.
+    if (dragIdx < insertIdx) insertIdx -= 1;
+    // Pas de mouvement utile si la cible est l'élément lui-même.
+    if (insertIdx === dragIdx) {
+      setDragIdx(null); setOverIdx(null); setDropPos(null); return;
+    }
+    evals.splice(dragIdx, 1);
+    insertIdx = Math.max(0, Math.min(evals.length, insertIdx));
+    evals.splice(insertIdx, 0, moved);
     setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
     updateEvaluationsFeuille(feuille.id, evals).catch(console.error);
     setDragIdx(null);
     setOverIdx(null);
+    setDropPos(null);
   };
-  const handleDragEnd = () => { setDragIdx(null); setOverIdx(null); };
+  const handleDragEnd = () => { setDragIdx(null); setOverIdx(null); setDropPos(null); };
+
+  // ════════════════════════════════════════════════════════════════
+  // 🆕 REDIMENSIONNEMENT DES COLONNES — handlers + persistance
+  // ────────────────────────────────────────────────────────────────
+  // Persistance localStorage par feuilleId : chaque feuille mémorise
+  // SA propre mise en page. Si l'utilisateur ouvre une autre feuille,
+  // on repart sur les largeurs par défaut.
+  // ════════════════════════════════════════════════════════════════
+  const lsKeyWidths = feuilleId ? `feuille-notes-col-widths-${feuilleId}` : null;
+
+  // Charge les largeurs sauvegardées au montage / changement de feuille.
+  useEffect(() => {
+    if (!lsKeyWidths) return;
+    try {
+      const raw = localStorage.getItem(lsKeyWidths);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === 'object') setColWidths(parsed);
+      } else {
+        setColWidths({});
+      }
+    } catch {/* JSON corrompu : on ignore et on repart à zéro */}
+  }, [lsKeyWidths]);
+
+  // Sauvegarde sur changement (debounce léger via timeout).
+  useEffect(() => {
+    if (!lsKeyWidths) return;
+    const t = setTimeout(() => {
+      try { localStorage.setItem(lsKeyWidths, JSON.stringify(colWidths)); }
+      catch {/* quota dépassé : silencieux, comportement non bloquant */}
+    }, 200);
+    return () => clearTimeout(t);
+  }, [colWidths, lsKeyWidths]);
+
+  /**
+   * Démarre le redimensionnement d'une colonne.
+   * @param key      Clé de la colonne (eleve | <evalId> | moy_devoirs | …)
+   * @param minWidth Largeur minimale plancher (px)
+   */
+  const handleResizeStart = (key: string, minWidth: number) =>
+    (e: React.MouseEvent | React.TouchEvent) => {
+      // Ne pas propager au <th> draggable parent : un clic sur la
+      // poignée NE DOIT PAS démarrer un drag de réorganisation.
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Récupère la largeur initiale réelle de la colonne via le
+      // <th> parent (plus fiable que le state, qui peut être vide
+      // avant le 1er resize).
+      const thEl = (e.currentTarget as HTMLElement).closest('th');
+      const startWidth = colWidths[key] ?? (thEl ? thEl.getBoundingClientRect().width : minWidth);
+      const startX = 'touches' in e
+        ? (e.touches[0]?.clientX ?? 0)
+        : (e as React.MouseEvent).clientX;
+
+      setResizingKey(key);
+
+      const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+        const clientX = 'touches' in moveEvent
+          ? (moveEvent.touches[0]?.clientX ?? 0)
+          : (moveEvent as MouseEvent).clientX;
+        const delta = clientX - startX;
+        const newWidth = Math.max(minWidth, Math.round(startWidth + delta));
+        setColWidths((prev) => ({ ...prev, [key]: newWidth }));
+      };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        setResizingKey(null);
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    };
+
+  /** Largeur effective d'une colonne (pour <col style={width}>). */
+  const widthFor = (key: string, fallback: number) =>
+    colWidths[key] ? `${colWidths[key]}px` : `${fallback}px`;
 
   const renommerEval = (evalId: string) => {
     if (!feuille || !draftLibelle.trim()) { setEditEvalId(null); return; }
@@ -888,10 +1047,50 @@ const FeuilleNotesEditorPage: React.FC = () => {
       )}
 
       <div className="feuille-editor-table-wrapper">
-        <table className="feuille-editor-table">
+        <table
+          className={`feuille-editor-table${resizingKey ? ' is-col-resizing' : ''}`}
+          ref={tableRef}
+        >
+          {/*
+            🆕 COLGROUP — pilote la largeur de chaque colonne
+            ────────────────────────────────────────────────────
+            Un <col> par colonne du tableau, dans l'ordre :
+              1. Élève (sticky)
+              2..N+1 : évaluations (devoir / composition)
+              N+2..N+5 : Moy. Devoirs / Compo / Moy. Gén. / Rang
+            La largeur est lue depuis `colWidths`, fallback aux
+            min-widths historiques si non personnalisée par le prof.
+            Cette approche est la plus robuste pour fixer une
+            largeur de colonne dans un tableau HTML : elle se
+            propage automatiquement à TOUTES les <td> du <tbody>
+            sans avoir à styler chaque cellule individuellement.
+          */}
+          <colgroup>
+            <col style={{ width: widthFor('eleve', 200) }} />
+            {feuille.evaluations?.map((e) => (
+              <col key={e.id} style={{ width: widthFor(e.id, 110) }} />
+            ))}
+            <col style={{ width: widthFor('moy_devoirs', 90) }} />
+            <col style={{ width: widthFor('compo', 80) }} />
+            <col style={{ width: widthFor('moy_gen', 90) }} />
+            <col style={{ width: widthFor('rang', 70) }} />
+          </colgroup>
           <thead>
             <tr>
-              <th className="col-eleve">Élève</th>
+              <th className="col-eleve">
+                Élève
+                {/* Poignée de resize de la colonne Élève — discrète,
+                    placée en bord droit. Largeur min : 140 px pour
+                    garantir la lisibilité du nom complet. */}
+                <span
+                  className={`col-resize-handle${resizingKey === 'eleve' ? ' is-resizing' : ''}`}
+                  onMouseDown={handleResizeStart('eleve', 140)}
+                  onTouchStart={handleResizeStart('eleve', 140)}
+                  title="Glisser pour redimensionner la colonne Élève"
+                  aria-label="Redimensionner la colonne Élève"
+                  role="separator"
+                />
+              </th>
               {evals.map((e, idx) => {
                 const typeEval: TypeEvaluation = e.type ?? 'devoir';
                 const isCompo = typeEval === 'composition';
@@ -900,12 +1099,31 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 //    (opacité réduite + fond rayé) pour que le prof voie d'un
                 //    coup d'œil les colonnes qui ne pèsent plus dans la moyenne.
                 const isExcluse = e.exclueDeMoyenne === true;
+                // 🆕 Classes d'indicateur de drop : `drop-before` /
+                //    `drop-after` selon la position du curseur dans la
+                //    cible. Une seule des deux est active à la fois.
+                const isOver = overIdx === idx && dragIdx !== null && dragIdx !== idx;
+                const dropBefore = isOver && dropPos === 'before';
+                const dropAfter = isOver && dropPos === 'after';
                 return (
                   <th
                     key={e.id}
-                    className={`col-note${overIdx === idx ? ' eval-drag-over' : ''}${dragIdx === idx ? ' eval-dragging' : ''}${isCompo ? ' col-note--compo' : ''}${isExcluse ? ' col-note--excluse' : ''}`}
-                    draggable
-                    onDragStart={() => handleDragStart(idx)}
+                    className={[
+                      'col-note',
+                      isOver ? 'eval-drag-over' : '',
+                      dragIdx === idx ? 'eval-dragging' : '',
+                      isCompo ? 'col-note--compo' : '',
+                      isExcluse ? 'col-note--excluse' : '',
+                      dropBefore ? 'drop-before' : '',
+                      dropAfter ? 'drop-after' : '',
+                    ].filter(Boolean).join(' ')}
+                    /*
+                      🆕 Le drag est déclenché par le GRIP uniquement
+                      (cf. `draggable` ci-dessous sur .eval-grip).
+                      Les handlers `onDragOver` / `onDrop` restent sur
+                      la <th> pour accepter la dépose à n'importe quel
+                      endroit de l'en-tête (pas seulement sur le grip).
+                    */
                     onDragOver={(ev) => handleDragOver(ev, idx)}
                     onDrop={() => handleDrop(idx)}
                     onDragEnd={handleDragEnd}
@@ -922,7 +1140,24 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     }}
                   >
                     <div className="eval-header">
-                      <span className="eval-grip" title="Glisser pour réordonner"><GripVertical size={14} /></span>
+                      {/*
+                        🆕 GRIP DRAGGABLE — handle de drag exclusif
+                        ────────────────────────────────────────────
+                        - `draggable={true}` UNIQUEMENT sur ce span.
+                        - Démarre le drag au mousedown sur l'icône.
+                        - Évite les drags accidentels depuis les
+                          boutons d'action ou la poignée de resize.
+                      */}
+                      <span
+                        className="eval-grip"
+                        title="Glisser pour réordonner cette colonne"
+                        draggable
+                        onDragStart={handleDragStart(idx)}
+                        onDragEnd={handleDragEnd}
+                        aria-label="Glisser pour réordonner"
+                      >
+                        <GripVertical size={14} />
+                      </span>
                       {editEvalId === e.id ? (
                         <span className="eval-rename">
                           <input
@@ -984,6 +1219,24 @@ const FeuilleNotesEditorPage: React.FC = () => {
                           )}
                         </span>
                       )}
+                      {/* 🆕 POIGNÉE DE RESIZE — bord droit de la colonne
+                          d'évaluation. Largeur min 70 px : assez pour
+                          afficher 2 chiffres + badge type. */}
+                      {editEvalId !== e.id && (
+                        <span
+                          className={`col-resize-handle${resizingKey === e.id ? ' is-resizing' : ''}`}
+                          onMouseDown={handleResizeStart(e.id, 70)}
+                          onTouchStart={handleResizeStart(e.id, 70)}
+                          title="Glisser pour redimensionner la colonne"
+                          aria-label="Redimensionner la colonne d'évaluation"
+                          role="separator"
+                          /* `draggable={false}` interdit explicitement le
+                             drag de la poignée — sécurité supplémentaire
+                             par rapport à la délégation au grip. */
+                          draggable={false}
+                          onDragStart={(ev) => ev.preventDefault()}
+                        />
+                      )}
                       {editEvalId !== e.id && (
                         <span className="eval-actions">
                           {/* 🆕 Bouton bascule INCLURE / EXCLURE l'évaluation
@@ -1023,10 +1276,42 @@ const FeuilleNotesEditorPage: React.FC = () => {
                   </th>
                 );
               })}
-              {/* Colonnes de synthèse : distinctes pour la lisibilité du bulletin */}
-              <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">Moy. Devoirs</th>
-              <th className="col-moyenne" title="Note de composition (moyenne pondérée si plusieurs)">Compo</th>
-              <th className="col-moyenne" title="Moyenne générale = (Moy. Devoirs + Compo) / 2">Moy. Gén.</th>
+              {/* Colonnes de synthèse : distinctes pour la lisibilité du bulletin.
+                  Chaque <th> reçoit une poignée de resize en bord droit, sauf la
+                  toute dernière (Rang) où une poignée n'aurait pas d'utilité. */}
+              <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">
+                Moy. Devoirs
+                <span
+                  className={`col-resize-handle${resizingKey === 'moy_devoirs' ? ' is-resizing' : ''}`}
+                  onMouseDown={handleResizeStart('moy_devoirs', 70)}
+                  onTouchStart={handleResizeStart('moy_devoirs', 70)}
+                  title="Glisser pour redimensionner la colonne Moy. Devoirs"
+                  role="separator"
+                  draggable={false}
+                />
+              </th>
+              <th className="col-moyenne" title="Note de composition (moyenne pondérée si plusieurs)">
+                Compo
+                <span
+                  className={`col-resize-handle${resizingKey === 'compo' ? ' is-resizing' : ''}`}
+                  onMouseDown={handleResizeStart('compo', 70)}
+                  onTouchStart={handleResizeStart('compo', 70)}
+                  title="Glisser pour redimensionner la colonne Compo"
+                  role="separator"
+                  draggable={false}
+                />
+              </th>
+              <th className="col-moyenne" title="Moyenne générale = (Moy. Devoirs + Compo) / 2">
+                Moy. Gén.
+                <span
+                  className={`col-resize-handle${resizingKey === 'moy_gen' ? ' is-resizing' : ''}`}
+                  onMouseDown={handleResizeStart('moy_gen', 70)}
+                  onTouchStart={handleResizeStart('moy_gen', 70)}
+                  title="Glisser pour redimensionner la colonne Moy. Gén."
+                  role="separator"
+                  draggable={false}
+                />
+              </th>
               <th className="col-moyenne" title="Rang de classe (1 = meilleur)">Rang</th>
             </tr>
           </thead>
