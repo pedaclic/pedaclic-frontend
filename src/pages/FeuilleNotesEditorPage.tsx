@@ -1046,20 +1046,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
         </div>
       )}
 
-      <div
-        className="feuille-editor-table-wrapper"
-        /*
-          🆕 Variable CSS `--col-eleve-width` propagée à l'arborescence.
-          Pilote la largeur de la colonne tampon (col-spacer) en fin
-          de tableau, qui doit toujours être ≥ largeur de la colonne
-          sticky Élève. Sinon, au défilement maximum, la sticky
-          continuerait de chevaucher la 1ère colonne d'évaluation.
-          On ajoute 4 px de marge pour compenser les bordures/padding.
-        */
-        style={{
-          ['--col-eleve-width' as any]: `${(colWidths['eleve'] ?? 200) + 4}px`,
-        }}
-      >
+      <div className="feuille-editor-table-wrapper">
         <table
           className={`feuille-editor-table${resizingKey ? ' is-col-resizing' : ''}`}
           ref={tableRef}
@@ -1071,12 +1058,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
               1. Élève (sticky)
               2..N+1 : évaluations (devoir / composition)
               N+2..N+5 : Moy. Devoirs / Compo / Moy. Gén. / Rang
-              N+6 : COLONNE TAMPON (col-spacer) — étend la zone
-                    scrollable horizontale d'une largeur égale à
-                    celle de la colonne sticky Élève, pour que la
-                    1ère colonne d'évaluation reste pleinement
-                    visible au défilement maximum (cf. règle CSS
-                    `.col-spacer` pour le détail du correctif).
             La largeur est lue depuis `colWidths`, fallback aux
             min-widths historiques si non personnalisée par le prof.
             Cette approche est la plus robuste pour fixer une
@@ -1093,9 +1074,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
             <col style={{ width: widthFor('compo', 80) }} />
             <col style={{ width: widthFor('moy_gen', 90) }} />
             <col style={{ width: widthFor('rang', 70) }} />
-            {/* Spacer : largeur calquée sur la colonne Élève via
-                CSS variable (cf. wrapper ci-dessus). */}
-            <col className="col-spacer" />
           </colgroup>
           <thead>
             <tr>
@@ -1342,11 +1320,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 />
               </th>
               <th className="col-moyenne" title="Rang de classe (1 = meilleur)">Rang</th>
-              {/* 🆕 SPACER — colonne tampon vide en fin d'en-tête.
-                  Détails dans la règle CSS `.col-spacer`. Marquée
-                  `aria-hidden` pour ne pas perturber les lecteurs
-                  d'écran (purement visuelle / mécanique de scroll). */}
-              <th className="col-spacer" aria-hidden="true" />
             </tr>
           </thead>
           <tbody>
@@ -1556,9 +1529,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     </span>
                   ) : '—'}
                 </td>
-                {/* 🆕 SPACER — cellule tampon vide pour étendre la
-                    zone scrollable horizontale (cf. règle CSS). */}
-                <td className="col-spacer" aria-hidden="true" />
               </tr>
             ))}
             <tr className="feuille-moyenne-classe">
@@ -1579,8 +1549,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 <strong>{moyenneClasse > 0 ? moyenneClasse.toFixed(2) : '—'}</strong>
               </td>
               <td className="col-moyenne" />
-              {/* 🆕 SPACER — cohérence avec les autres lignes. */}
-              <td className="col-spacer" aria-hidden="true" />
             </tr>
 
             {/* ─────────────────────────────────────────────────────────
@@ -1634,8 +1602,6 @@ const FeuilleNotesEditorPage: React.FC = () => {
                     ANJ : {totalAbsNJ}
                   </span>
                 </td>
-                {/* 🆕 SPACER — cohérence avec les autres lignes. */}
-                <td className="col-spacer" aria-hidden="true" />
               </tr>
             )}
           </tbody>

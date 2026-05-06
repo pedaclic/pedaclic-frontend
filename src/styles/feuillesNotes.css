@@ -966,47 +966,22 @@ th.col-note:hover .eval-actions { opacity: 1; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   🆕 COLONNE TAMPON DE DÉFILEMENT (spacer) — mai 2026
+   🛠️ NOTE — DÉFILEMENT HORIZONTAL & STICKY (mai 2026)
    ══════════════════════════════════════════════════════════════════
-   PROBLÈME RÉSOLU :
-     Au défilement horizontal maximum, la colonne sticky « Élève »
-     (figée à gauche) chevauchait la 1ère colonne d'évaluation, qui
-     n'apparaissait plus qu'à moitié. L'utilisateur ne pouvait pas
-     scroller assez loin pour la voir entièrement.
-   SOLUTION :
-     On insère une colonne supplémentaire EN FIN de tableau, dont la
-     largeur est égale à celle de la colonne sticky (pilotée par
-     `--col-eleve-width` — variable CSS posée en inline-style sur
-     le wrapper depuis le composant React). Cette colonne, vide et
-     transparente, étend la zone scrollable d'autant. Au défilement
-     maximum, elle se positionne sous la sticky Élève, libérant
-     ainsi la colonne adjacente qui devient pleinement visible.
-     Pas de bordure, pas de fond → invisible pour l'utilisateur,
-     mais bien réelle pour la mécanique de scroll.
+   La précédente tentative d'ajout d'une colonne tampon (col-spacer)
+   en fin de tableau pour étendre le scroll a été ABANDONNÉE :
+     • Elle apparaissait comme une colonne vierge dans le cadre
+       du tableau lorsque le contenu ne défilait pas.
+     • La cellule du spacer dans le thead héritait du
+       `position: sticky` global, ce qui pouvait, dans certains
+       scénarios, perturber le sticky de la colonne Élève
+       (1ère colonne qui semblait disparaître au défilement).
+   APPROCHE RETENUE :
+     On laisse le scroll horizontal se comporter nativement. La
+     1ère colonne d'évaluation peut être partiellement masquée par
+     la sticky Élève au défilement maximum — c'est le comportement
+     standard d'une colonne figée. Pour libérer pleinement la 1ère
+     colonne d'évaluation, l'utilisateur dispose désormais de la
+     POIGNÉE DE RESIZE sur la colonne Élève, qui peut être réduite
+     jusqu'à 90 px (la moitié de sa largeur d'origine de 180 px).
    ══════════════════════════════════════════════════════════════════ */
-.feuille-editor-table th.col-spacer,
-.feuille-editor-table td.col-spacer {
-  /* Largeur calquée sur la colonne Élève (CSS variable mise à jour
-     en temps réel par le composant React quand l'utilisateur
-     redimensionne la colonne Élève). Fallback à 200 px si la
-     variable n'est pas définie. */
-  min-width: var(--col-eleve-width, 200px);
-  width: var(--col-eleve-width, 200px);
-  /* On retire toute trace visuelle : pas de bordure, pas de fond,
-     pas de padding, pas d'ombre. La cellule existe uniquement
-     pour étendre la largeur scrollable du tableau. */
-  border: none !important;
-  background: transparent !important;
-  background-image: none !important;
-  padding: 0 !important;
-  box-shadow: none !important;
-}
-
-/* Sécurité : la colonne tampon ne doit JAMAIS recevoir de hover/zebra
-   issus des règles tbody précédentes, même quand elle est dans une
-   ligne paire ou survolée. */
-.feuille-editor-table tbody tr:nth-child(even) td.col-spacer,
-.feuille-editor-table tbody tr:hover td.col-spacer,
-.feuille-editor-table .feuille-moyenne-classe td.col-spacer {
-  background: transparent !important;
-}
