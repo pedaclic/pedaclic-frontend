@@ -1080,14 +1080,15 @@ const FeuilleNotesEditorPage: React.FC = () => {
               <th className="col-eleve">
                 Élève
                 {/* Poignée de resize de la colonne Élève — discrète,
-                    placée en bord droit. Largeur min : 90 px (≃ moitié
-                    de la largeur historique 180 px), aligné avec la
-                    nouvelle min-width CSS pour autoriser un
-                    redimensionnement descendant jusqu'à la moitié. */}
+                    placée en bord droit. Plancher abaissé à 15 px
+                    (cf. spec utilisateur, mai 2026) : à cette taille
+                    extrême, la sticky n'occulte quasiment plus rien,
+                    libérant la 1ère colonne d'évaluation au scroll
+                    horizontal maximum. */}
                 <span
                   className={`col-resize-handle${resizingKey === 'eleve' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('eleve', 90)}
-                  onTouchStart={handleResizeStart('eleve', 90)}
+                  onMouseDown={handleResizeStart('eleve', 15)}
+                  onTouchStart={handleResizeStart('eleve', 15)}
                   title="Glisser pour redimensionner la colonne Élève"
                   aria-label="Redimensionner la colonne Élève"
                   role="separator"
@@ -1222,14 +1223,15 @@ const FeuilleNotesEditorPage: React.FC = () => {
                         </span>
                       )}
                       {/* 🆕 POIGNÉE DE RESIZE — bord droit de la colonne
-                          d'évaluation. Largeur min 50 px (= moitié de la
-                          largeur historique 100 px), aligné avec la
-                          nouvelle min-width CSS .col-note. */}
+                          d'évaluation. Plancher abaissé à 15 px
+                          (cf. spec utilisateur, mai 2026). Le titre
+                          de l'évaluation s'enroule alors sur plusieurs
+                          lignes (cf. règle CSS `.eval-label`). */}
                       {editEvalId !== e.id && (
                         <span
                           className={`col-resize-handle${resizingKey === e.id ? ' is-resizing' : ''}`}
-                          onMouseDown={handleResizeStart(e.id, 50)}
-                          onTouchStart={handleResizeStart(e.id, 50)}
+                          onMouseDown={handleResizeStart(e.id, 15)}
+                          onTouchStart={handleResizeStart(e.id, 15)}
                           title="Glisser pour redimensionner la colonne"
                           aria-label="Redimensionner la colonne d'évaluation"
                           role="separator"
@@ -1282,16 +1284,16 @@ const FeuilleNotesEditorPage: React.FC = () => {
               {/* Colonnes de synthèse : distinctes pour la lisibilité du bulletin.
                   Chaque <th> reçoit une poignée de resize en bord droit, sauf la
                   toute dernière (Rang) où une poignée n'aurait pas d'utilité. */}
-              {/* 🛠️ Min-width JS abaissé de 70 → 40 px sur les 3
-                  colonnes synthèse, pour permettre la réduction à
-                  la moitié de leur largeur initiale (alignement
-                  avec les nouvelles min-widths CSS). */}
+              {/* 🛠️ Min-width JS abaissé à 15 px sur les 3 colonnes
+                  synthèse (cf. spec utilisateur, mai 2026). Le titre
+                  s'enroule sur plusieurs lignes via les règles CSS
+                  `.feuille-editor-table th` (white-space: normal). */}
               <th className="col-moyenne" title="Moyenne des devoirs (pondérée par coef.)">
                 Moy. Devoirs
                 <span
                   className={`col-resize-handle${resizingKey === 'moy_devoirs' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('moy_devoirs', 40)}
-                  onTouchStart={handleResizeStart('moy_devoirs', 40)}
+                  onMouseDown={handleResizeStart('moy_devoirs', 15)}
+                  onTouchStart={handleResizeStart('moy_devoirs', 15)}
                   title="Glisser pour redimensionner la colonne Moy. Devoirs"
                   role="separator"
                   draggable={false}
@@ -1301,8 +1303,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 Compo
                 <span
                   className={`col-resize-handle${resizingKey === 'compo' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('compo', 40)}
-                  onTouchStart={handleResizeStart('compo', 40)}
+                  onMouseDown={handleResizeStart('compo', 15)}
+                  onTouchStart={handleResizeStart('compo', 15)}
                   title="Glisser pour redimensionner la colonne Compo"
                   role="separator"
                   draggable={false}
@@ -1312,8 +1314,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 Moy. Gén.
                 <span
                   className={`col-resize-handle${resizingKey === 'moy_gen' ? ' is-resizing' : ''}`}
-                  onMouseDown={handleResizeStart('moy_gen', 40)}
-                  onTouchStart={handleResizeStart('moy_gen', 40)}
+                  onMouseDown={handleResizeStart('moy_gen', 15)}
+                  onTouchStart={handleResizeStart('moy_gen', 15)}
                   title="Glisser pour redimensionner la colonne Moy. Gén."
                   role="separator"
                   draggable={false}
