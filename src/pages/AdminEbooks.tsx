@@ -55,10 +55,18 @@ export const AdminEbooks: React.FC = () => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [previewFile, setPreviewFile] = useState<File | null>(null);
 
+  // --- Sources HTML (format 'html') ---
+  // L'admin peut soit uploader un fichier .html, soit coller le code source
+  // dans la zone de texte. Si les deux sont fournis, le fichier est prioritaire
+  // (cf. buildHtmlBlob dans ebookService).
+  const [htmlFile, setHtmlFile] = useState<File | null>(null);
+  const [htmlCode, setHtmlCode] = useState<string>('');
+
   // --- Refs pour les inputs file ---
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const previewInputRef = useRef<HTMLInputElement>(null);
+  const htmlInputRef = useRef<HTMLInputElement>(null);
 
   // --- Confirmation suppression ---
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -73,6 +81,7 @@ export const AdminEbooks: React.FC = () => {
       niveau: 'college',
       classe: 'all',
       matiere: '',
+      format: 'pdf',          // PDF par défaut → comportement historique
       nombrePages: 0,
       pagesApercu: 5,
       annee: '',
@@ -161,9 +170,20 @@ export const AdminEbooks: React.FC = () => {
       setError('Le titre est obligatoire');
       return;
     }
-    if (!editingEbook && !pdfFile) {
-      setError('Le fichier PDF est obligatoire');
-      return;
+    // Validation du contenu principal selon le format choisi.
+    // À la création (pas d'editingEbook), une source de contenu est obligatoire.
+    // À la modification, on n'exige rien : l'admin peut juste mettre à jour
+    // les métadonnées sans toucher au fichier source.
+    const fmt = formData.format || 'pdf';
+    if (!editingEbook) {
+      if (fmt === 'pdf' && !pdfFile) {
+        setError('Le fichier PDF est obligatoire pour un ebook au format PDF.');
+        return;
+      }
+      if (fmt === 'html' && !htmlFile && !htmlCode.trim()) {
+        setError("Pour un ebook HTML, importez un fichier .html OU collez le code source dans la zone prévue.");
+        return;
+      }
     }
 
     try {
@@ -189,11 +209,19 @@ export const AdminEbooks: React.FC = () => {
 
       if (editingEbook) {
         // --- Mode modification ---
-        await withTimeout(updateEbook(editingEbook.id, formData, pdfFile, coverFile, previewFile));
+        // On transmet aussi htmlFile/htmlCode pour permettre la mise à jour
+        // d'un contenu HTML (ou un changement de format PDF↔HTML).
+        await withTimeout(
+          updateEbook(editingEbook.id, formData, pdfFile, coverFile, previewFile, htmlFile, htmlCode)
+        );
         setSuccessMessage(`✅ Ebook "${formData.titre}" modifié avec succès`);
       } else {
         // --- Mode ajout ---
-        await withTimeout(addEbook(formData, pdfFile!, coverFile, previewFile));
+        // pdfFile peut être null si le format est 'html' : la validation plus
+        // haut garantit qu'au moins une source HTML est alors fournie.
+        await withTimeout(
+          addEbook(formData, pdfFile, coverFile, previewFile, undefined, htmlFile, htmlCode)
+        );
         setSuccessMessage(`✅ Ebook "${formData.titre}" ajouté avec succès`);
       }
 
@@ -232,6 +260,9 @@ export const AdminEbooks: React.FC = () => {
       niveau: ebook.niveau,
       classe: ebook.classe,
       matiere: ebook.matiere || '',
+      // Rétrocompatibilité : un ebook créé avant l'introduction du champ
+      // `format` est implicitement un PDF.
+      format: ebook.format || 'pdf',
       nombrePages: ebook.nombrePages,
       pagesApercu: ebook.pagesApercu,
       annee: ebook.annee || '',
@@ -241,6 +272,14 @@ export const AdminEbooks: React.FC = () => {
       ordre: ebook.ordre,
       isActive: ebook.isActive
     });
+    // Réinitialise les sources fichiers : l'admin doit re-uploader explicitement
+    // s'il veut remplacer le contenu (sécurité contre une mise à jour
+    // involontaire du fichier source).
+    setPdfFile(null);
+    setCoverFile(null);
+    setPreviewFile(null);
+    setHtmlFile(null);
+    setHtmlCode('');
     setShowForm(true);
     // Scroll vers le formulaire
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -279,10 +318,13 @@ export const AdminEbooks: React.FC = () => {
     setPdfFile(null);
     setCoverFile(null);
     setPreviewFile(null);
+    setHtmlFile(null);
+    setHtmlCode('');
     setShowForm(false);
     if (pdfInputRef.current) pdfInputRef.current.value = '';
     if (coverInputRef.current) coverInputRef.current.value = '';
     if (previewInputRef.current) previewInputRef.current.value = '';
+    if (htmlInputRef.current) htmlInputRef.current.value = '';
   };
 
   // ==================== RENDER STATES ====================
@@ -490,19 +532,26 @@ export const AdminEbooks: React.FC = () => {
               </div>
             </div>
 
-            {/* <!-- Ligne 4 : Pages + Aperçu + Ordre --> */}
+            {/* <!-- Ligne 4 : Pages + Aperçu + Ordre -->
+                 Pour un ebook HTML, la notion de "pages" n'existe pas vraiment :
+                 on garde 1 par défaut et on désactive l'aperçu partiel. */}
             <div className="form-row form-row-3">
               <div className="form-group">
-                <label htmlFor="nombrePages">Nombre de pages *</label>
+                <label htmlFor="nombrePages">
+                  {formData.format === 'html' ? 'Nombre de sections' : 'Nombre de pages *'}
+                </label>
                 <input
                   id="nombrePages"
                   name="nombrePages"
                   type="number"
                   value={formData.nombrePages}
                   onChange={handleInputChange}
-                  min="1"
-                  required
+                  min={formData.format === 'html' ? 0 : 1}
+                  required={formData.format !== 'html'}
                 />
+                {formData.format === 'html' && (
+                  <small>Optionnel — purement informatif pour les pages HTML.</small>
+                )}
               </div>
               <div className="form-group">
                 <label htmlFor="pagesApercu">Pages en aperçu gratuit</label>
@@ -514,8 +563,13 @@ export const AdminEbooks: React.FC = () => {
                   onChange={handleInputChange}
                   min="1"
                   max="20"
+                  disabled={formData.format === 'html'}
                 />
-                <small>Nombre de pages visibles sans Premium (1-20)</small>
+                <small>
+                  {formData.format === 'html'
+                    ? 'Non applicable au HTML (le contenu est servi en bloc).'
+                    : 'Nombre de pages visibles sans Premium (1-20)'}
+                </small>
               </div>
               <div className="form-group">
                 <label htmlFor="ordre">Ordre d'affichage</label>
@@ -542,31 +596,163 @@ export const AdminEbooks: React.FC = () => {
               />
             </div>
 
-            {/* <!-- Upload fichiers --> */}
+            {/*
+                ==============================================================
+                SÉLECTEUR DE FORMAT (PDF ou HTML)
+                --------------------------------------------------------------
+                Détermine la nature du contenu principal de l'ebook :
+                  - PDF  : flux historique (upload d'un fichier PDF complet
+                           + éventuel PDF d'aperçu pour les non-Premium).
+                  - HTML : intégration de code HTML autonome (page web
+                           interactive). L'admin importe un fichier .html OU
+                           colle directement le code source dans la textarea.
+                Le choix est rétrocompatible : un ebook existant sans champ
+                `format` est traité comme un PDF (cf. handleEdit).
+                ============================================================== */}
+            <div className="form-group">
+              <label>Format de l'ebook *</label>
+              <div className="format-radio-group" role="radiogroup" aria-label="Format de l'ebook">
+                <label className={`format-radio ${(formData.format || 'pdf') === 'pdf' ? 'is-checked' : ''}`}>
+                  <input
+                    type="radio"
+                    name="format"
+                    value="pdf"
+                    checked={(formData.format || 'pdf') === 'pdf'}
+                    onChange={() => setFormData(prev => ({ ...prev, format: 'pdf' }))}
+                  />
+                  <span className="format-radio__icon">📄</span>
+                  <span className="format-radio__title">PDF</span>
+                  <span className="format-radio__desc">Manuel, annale ou document scanné</span>
+                </label>
+                <label className={`format-radio ${formData.format === 'html' ? 'is-checked' : ''}`}>
+                  <input
+                    type="radio"
+                    name="format"
+                    value="html"
+                    checked={formData.format === 'html'}
+                    onChange={() => setFormData(prev => ({ ...prev, format: 'html' }))}
+                  />
+                  <span className="format-radio__icon">🌐</span>
+                  <span className="format-radio__title">HTML</span>
+                  <span className="format-radio__desc">Page web interactive (fiche, infographie)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* <!-- Upload fichiers — varie selon le format --> */}
             <div className="form-files-section">
               <h3>📁 Fichiers</h3>
 
-              {/* PDF complet */}
-              <div className="form-group file-group">
-                <label>
-                  Fichier PDF complet {!editingEbook && '*'}
-                  {editingEbook && <small>(laisser vide pour garder l'actuel)</small>}
-                </label>
-                <input
-                  ref={pdfInputRef}
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
-                  className="file-input"
-                />
-                {pdfFile && (
-                  <span className="file-info">
-                    📄 {pdfFile.name} ({formatFileSize(pdfFile.size)})
-                  </span>
-                )}
-              </div>
+              {/* ============================================================
+                  Branche FORMAT === 'pdf' : champs historiques inchangés.
+                  ============================================================ */}
+              {(formData.format || 'pdf') === 'pdf' && (
+                <>
+                  {/* PDF complet */}
+                  <div className="form-group file-group">
+                    <label>
+                      Fichier PDF complet {!editingEbook && '*'}
+                      {editingEbook && <small>(laisser vide pour garder l'actuel)</small>}
+                    </label>
+                    <input
+                      ref={pdfInputRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
+                      className="file-input"
+                    />
+                    {pdfFile && (
+                      <span className="file-info">
+                        📄 {pdfFile.name} ({formatFileSize(pdfFile.size)})
+                      </span>
+                    )}
+                  </div>
 
-              {/* Image de couverture */}
+                  {/* PDF aperçu (uniquement pertinent pour le format PDF) */}
+                  <div className="form-group file-group">
+                    <label>
+                      PDF Aperçu (premières pages uniquement)
+                      <small>(optionnel — sinon le PDF complet est affiché aux non-Premium)</small>
+                    </label>
+                    <input
+                      ref={previewInputRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setPreviewFile(e.target.files?.[0] || null)}
+                      className="file-input"
+                    />
+                    {previewFile && (
+                      <span className="file-info">
+                        📄 {previewFile.name} ({formatFileSize(previewFile.size)})
+                      </span>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ============================================================
+                  Branche FORMAT === 'html' : import .html OU collage de code.
+                  Les deux sources sont alternatives ; si l'admin renseigne les
+                  deux, le fichier importé est prioritaire (cf. buildHtmlBlob).
+                  ============================================================ */}
+              {formData.format === 'html' && (
+                <>
+                  {/* Fichier .html à importer */}
+                  <div className="form-group file-group">
+                    <label>
+                      Fichier HTML
+                      <small>
+                        {editingEbook
+                          ? '(laisser vide ET la zone de code vide pour garder l\'actuel)'
+                          : '(.html — alternative à la zone de code ci-dessous)'}
+                      </small>
+                    </label>
+                    <input
+                      ref={htmlInputRef}
+                      type="file"
+                      accept=".html,.htm,text/html"
+                      onChange={(e) => setHtmlFile(e.target.files?.[0] || null)}
+                      className="file-input"
+                    />
+                    {htmlFile && (
+                      <span className="file-info">
+                        🌐 {htmlFile.name} ({formatFileSize(htmlFile.size)})
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Zone de saisie du code HTML brut */}
+                  <div className="form-group">
+                    <label htmlFor="htmlCode">
+                      …ou collez le code HTML directement
+                      <small>(autonome : doit contenir &lt;!DOCTYPE html&gt;, CSS et JS embarqués)</small>
+                    </label>
+                    <textarea
+                      id="htmlCode"
+                      name="htmlCode"
+                      value={htmlCode}
+                      onChange={(e) => setHtmlCode(e.target.value)}
+                      placeholder={'<!DOCTYPE html>\n<html lang="fr">\n  <head>…</head>\n  <body>…</body>\n</html>'}
+                      rows={12}
+                      spellCheck={false}
+                      className="html-code-textarea"
+                    />
+                    {htmlCode.trim() && (
+                      <small className="file-info">
+                        ✅ {(new Blob([htmlCode]).size / 1024).toFixed(1)} Ko de code prêts à être uploadés
+                      </small>
+                    )}
+                  </div>
+
+                  <div className="admin-alert info">
+                    💡 Le contenu HTML sera affiché aux élèves dans une fenêtre
+                    isolée (iframe sandbox) — assurez-vous qu'il est autonome
+                    (CSS et scripts inline, ressources via CDN).
+                  </div>
+                </>
+              )}
+
+              {/* Image de couverture (commun aux deux formats) */}
               <div className="form-group file-group">
                 <label>
                   Image de couverture
@@ -582,26 +768,6 @@ export const AdminEbooks: React.FC = () => {
                 {coverFile && (
                   <span className="file-info">
                     🖼️ {coverFile.name} ({formatFileSize(coverFile.size)})
-                  </span>
-                )}
-              </div>
-
-              {/* PDF aperçu */}
-              <div className="form-group file-group">
-                <label>
-                  PDF Aperçu (premières pages uniquement)
-                  <small>(optionnel — sinon le PDF complet est affiché aux non-Premium)</small>
-                </label>
-                <input
-                  ref={previewInputRef}
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setPreviewFile(e.target.files?.[0] || null)}
-                  className="file-input"
-                />
-                {previewFile && (
-                  <span className="file-info">
-                    📄 {previewFile.name} ({formatFileSize(previewFile.size)})
                   </span>
                 )}
               </div>
@@ -681,10 +847,15 @@ export const AdminEbooks: React.FC = () => {
                       )}
                     </td>
 
-                    {/* Titre + Auteur */}
+                    {/* Titre + Auteur + petit badge de format */}
                     <td className="td-title">
                       <strong>{ebook.titre}</strong>
                       <span className="td-author">{ebook.auteur}</span>
+                      {/* Badge format : visible uniquement pour HTML afin de ne
+                          pas alourdir visuellement le cas dominant (PDF). */}
+                      {ebook.format === 'html' && (
+                        <span className="td-format-badge" title="Ebook HTML interactif">🌐 HTML</span>
+                      )}
                     </td>
 
                     {/* Catégorie */}

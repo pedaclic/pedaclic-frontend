@@ -60,19 +60,43 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   // ==================== HANDLERS ====================
 
   /**
-   * Détermine la stratégie d'affichage du document selon le statut Premium
-   * et la présence d'un PDF aperçu séparé :
-   *  - Premium                                   → iframe sur le PDF complet
-   *  - Non-Premium + aperçuURL fourni            → iframe sur le PDF aperçu
-   *  - Non-Premium sans aperçuURL + fichierURL  → rendu canvas limité à pagesApercu
-   *  - Aucun fichier disponible                  → écran de blocage Premium
+   * Détermine la stratégie d'affichage du document selon le format de
+   * l'ebook (PDF/HTML), le statut Premium et la présence d'un aperçu :
+   *
+   *  Format HTML (nouveau)
+   *    - Premium     → iframe sandbox sur le HTML complet (allow-scripts +
+   *                    allow-same-origin pour les polices Google et tous les
+   *                    scripts internes au document)
+   *    - Non-Premium → écran de blocage Premium (pas d'aperçu HTML partiel
+   *                    fiable : on ne peut pas tronquer du HTML arbitraire)
+   *
+   *  Format PDF (historique, comportement inchangé)
+   *    - Premium                                   → iframe sur le PDF complet
+   *    - Non-Premium + aperçuURL fourni            → iframe sur le PDF aperçu
+   *    - Non-Premium sans aperçuURL + fichierURL  → rendu canvas limité à pagesApercu
+   *    - Aucun fichier disponible                  → écran de blocage Premium
    */
   type ViewStrategy =
     | { kind: 'iframe'; url: string }
+    | { kind: 'html-iframe'; url: string }
     | { kind: 'limited-render'; url: string; maxPages: number }
     | { kind: 'blocked' };
 
+  // Rétrocompat : un ebook sans champ `format` est un PDF historique.
+  const ebookFormat = ebook.format || 'pdf';
+
   const getViewStrategy = (): ViewStrategy => {
+    // ----- Format HTML : stratégie dédiée (sandbox iframe) -----
+    if (ebookFormat === 'html') {
+      // On exige Premium pour servir un HTML potentiellement long ; sinon
+      // on bloque. Dégrader un HTML en "n premières pages" n'a pas de sens.
+      if (isPremium && ebook.fichierURL) {
+        return { kind: 'html-iframe', url: ebook.fichierURL };
+      }
+      return { kind: 'blocked' };
+    }
+
+    // ----- Format PDF : stratégies historiques inchangées -----
     if (isPremium && ebook.fichierURL) {
       return { kind: 'iframe', url: ebook.fichierURL };
     }
@@ -164,17 +188,33 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
               )}
 
               {/* <!-- Boutons principaux --> */}
+              {/* Les libellés s'adaptent au format de l'ebook :
+                   - PDF  : "Lire le document" / "Aperçu (n pages)" / "Télécharger le PDF"
+                   - HTML : "Consulter la page" (Premium) / "Accès Premium" (sinon)
+                            / "Télécharger le HTML" */}
               <div className="info-actions">
                 <button
                   className="btn-action-read"
                   onClick={() => setViewMode('read')}
+                  // En HTML non-Premium, on bloque l'entrée en mode lecture :
+                  // le viewer affichera l'écran "blocked", mais l'expérience
+                  // est plus claire si l'on incite directement au passage Premium.
+                  disabled={ebookFormat === 'html' && !isPremium}
+                  title={
+                    ebookFormat === 'html' && !isPremium
+                      ? 'Réservé aux abonnés Premium'
+                      : undefined
+                  }
                 >
-                  📖 {isPremium ? 'Lire le document' : `Aperçu (${ebook.pagesApercu} pages)`}
+                  {ebookFormat === 'html'
+                    ? (isPremium ? '📖 Consulter la page' : '🔒 Réservé Premium')
+                    : `📖 ${isPremium ? 'Lire le document' : `Aperçu (${ebook.pagesApercu} pages)`}`
+                  }
                 </button>
 
                 {isPremium ? (
                   <button className="btn-action-download" onClick={handleDownload}>
-                    ⬇️ Télécharger le PDF
+                    ⬇️ {ebookFormat === 'html' ? 'Télécharger le HTML' : 'Télécharger le PDF'}
                   </button>
                 ) : (
                   <button className="btn-action-premium" onClick={onGoPremium}>
@@ -220,10 +260,19 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                     <span className="metadata-value">{ebook.matiere}</span>
                   </div>
                 )}
-                <div className="metadata-item">
-                  <span className="metadata-label">Pages</span>
-                  <span className="metadata-value">{ebook.nombrePages}</span>
-                </div>
+                {/* "Pages" n'a de sens que pour un PDF. Pour un HTML on
+                     remplace par un libellé "Format" plus pertinent. */}
+                {ebookFormat === 'pdf' ? (
+                  <div className="metadata-item">
+                    <span className="metadata-label">Pages</span>
+                    <span className="metadata-value">{ebook.nombrePages}</span>
+                  </div>
+                ) : (
+                  <div className="metadata-item">
+                    <span className="metadata-label">Format</span>
+                    <span className="metadata-value">🌐 Page web interactive</span>
+                  </div>
+                )}
                 <div className="metadata-item">
                   <span className="metadata-label">Taille</span>
                   <span className="metadata-value">{formatFileSize(ebook.tailleFichier)}</span>
@@ -264,6 +313,33 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
       {/* ==================== MODE LECTURE ==================== */}
       {viewMode === 'read' && (
         <div className="viewer-read-panel">
+
+          {/* --- Stratégie 0 : iframe HTML sandboxée (format HTML, Premium) ---
+                Sécurité : le sandbox isole le document de l'application
+                principale. On autorise les scripts et `same-origin` pour
+                permettre aux fiches interactives (intersection observer,
+                accordions, polices Google) de fonctionner. On EXCLUT
+                délibérément `allow-top-navigation` : un script malveillant
+                ne peut pas rediriger PedaClic. */}
+          {strategy.kind === 'html-iframe' && (
+            <>
+              {loading && (
+                <div className="viewer-loading">
+                  <div className="loading-spinner"></div>
+                  <p>Chargement du document HTML...</p>
+                </div>
+              )}
+              <iframe
+                src={strategy.url}
+                className="pdf-iframe html-iframe"
+                title={ebook.titre}
+                onLoad={handleIframeLoad}
+                style={{ display: loading ? 'none' : 'block' }}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                referrerPolicy="no-referrer"
+              />
+            </>
+          )}
 
           {/* --- Stratégie 1 : iframe (Premium ou aperçu PDF dédié) --- */}
           {strategy.kind === 'iframe' && (

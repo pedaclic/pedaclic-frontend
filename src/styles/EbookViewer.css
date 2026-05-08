@@ -340,6 +340,24 @@
   border: none;
 }
 
+/* iframe HTML : même comportement plein écran que le PDF mais avec un
+   fond blanc (les pages HTML peuvent avoir un body transparent et nous
+   ne voulons pas voir le fond gris du conteneur). */
+.html-iframe {
+  background: #ffffff;
+}
+
+/* Désactivation du bouton "Lire/Consulter" lorsqu'inaccessible (HTML
+   non-Premium par exemple) — visuellement explicite. */
+.btn-action-read:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+.btn-action-read:disabled:hover {
+  background: #94a3b8;
+}
+
 /* ===== OVERLAY PREMIUM ===== */
 .viewer-premium-overlay {
   position: fixed;

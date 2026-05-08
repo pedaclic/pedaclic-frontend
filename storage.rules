@@ -38,6 +38,23 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
+    /* ==================== EBOOKS HTML (Phase 20+) ====================
+       Ebooks publiés sous forme de page HTML autonome (fiche interactive,
+       infographie, etc.). Mêmes restrictions que les PDF :
+         - lecture : tout utilisateur authentifié (le viewer côté client
+           contrôle ensuite l'accès Premium / l'écran de blocage) ;
+         - écriture : admin uniquement ;
+         - taille max 5 Mo (largement suffisant pour une page HTML
+           autonome avec CSS et JS embarqués — la page d'exemple
+           Wangrin fait ~80 Ko).
+       Le contentType doit être text/html (text/htm accepté en variante). */
+    match /ebooks/html/{fileName} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin()
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('text/html.*');
+    }
+
     /* ==================== CAHIER DE TEXTES — pièces jointes ====================
        Chemin côté app : cahiers/{profId}/{entreeId|sous-dossier}/{fichier}
        (MediaPlayer : entreeId ; uploadPieceJointe : cahierId — même motif à 3 segments.)

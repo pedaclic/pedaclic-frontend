@@ -562,3 +562,122 @@
     text-align: center;
   }
 }
+
+/* ====================================================================
+   FORMAT EBOOK : SÉLECTEUR PDF / HTML
+   --------------------------------------------------------------------
+   Deux cartes côte à côte (radio "stylisé"). Le choix est mémorisé
+   dans formData.format et conditionne l'affichage des champs PDF
+   (PDF complet + aperçu) ou HTML (fichier .html + zone de code collé).
+   ==================================================================== */
+.format-radio-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.format-radio {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  background: white;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.format-radio:hover {
+  border-color: #93c5fd;
+  background: #f8fafc;
+}
+
+.format-radio.is-checked {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08);
+}
+
+/* On masque la radio native pour ne garder que le visuel "carte" */
+.format-radio input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.format-radio__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.format-radio__title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+.format-radio__desc {
+  font-size: 0.82rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+/* ====================================================================
+   ZONE DE COLLAGE DU CODE HTML (textarea spécialisée)
+   --------------------------------------------------------------------
+   Police monospace + fond foncé léger pour bien distinguer la saisie
+   de code des autres champs textuels. Hauteur min raisonnable, mais
+   redimensionnable verticalement par l'utilisateur.
+   ==================================================================== */
+.html-code-textarea {
+  font-family: 'JetBrains Mono', 'Menlo', 'Monaco', 'Consolas', monospace !important;
+  font-size: 0.82rem !important;
+  line-height: 1.55 !important;
+  color: #1e293b !important;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  min-height: 220px;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.html-code-textarea:focus {
+  background: #ffffff !important;
+}
+
+/* ====================================================================
+   ALERTE INFORMATIVE (utilisée pour expliquer la sandbox HTML)
+   ==================================================================== */
+.admin-alert.info {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+/* ====================================================================
+   BADGE FORMAT DANS LE TABLEAU ADMIN (visible uniquement pour HTML)
+   ==================================================================== */
+.td-format-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  background: #ecfeff;
+  color: #155e75;
+  border: 1px solid #a5f3fc;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Mobile : empile les deux cartes de format */
+@media (max-width: 480px) {
+  .format-radio-group {
+    grid-template-columns: 1fr;
+  }
+}

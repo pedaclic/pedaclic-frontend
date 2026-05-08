@@ -17,6 +17,22 @@ export type CategorieEbook =
   | 'fiche';        // Fiches de lectures
 
 /**
+ * Format de stockage de l'ebook.
+ *  - 'pdf'  : ebook publié sous forme de fichier PDF (comportement historique).
+ *  - 'html' : ebook publié sous forme de page HTML autonome (fiche interactive,
+ *             page éducative, infographie web). Le code HTML/CSS/JS est uploadé
+ *             dans Firebase Storage en tant que fichier .html avec
+ *             contentType = 'text/html; charset=utf-8'. L'affichage côté élève
+ *             se fait via un <iframe sandbox> pour isoler le contenu de
+ *             l'application principale (sécurité XSS).
+ *
+ * Les ebooks créés AVANT l'introduction de ce champ ne possèdent pas la
+ * propriété `format` ; l'absence est traitée comme 'pdf' (rétrocompatibilité)
+ * dans tous les composants consommateurs.
+ */
+export type FormatEbook = 'pdf' | 'html';
+
+/**
  * Labels lisibles pour chaque catégorie
  */
 export const CATEGORIE_LABELS: Record<CategorieEbook, string> = {
@@ -51,10 +67,16 @@ export interface Ebook {
   classe: Classe | 'all';           // Classe spécifique ou toutes
   matiere?: string;                 // Matière associée (optionnel)
   couvertureURL?: string;           // URL de l'image de couverture
-  fichierURL: string;               // URL du fichier PDF complet (Firebase Storage)
-  aperçuURL?: string;               // URL du PDF aperçu (premières pages)
-  nombrePages: number;              // Nombre total de pages
-  pagesApercu: number;              // Nombre de pages en aperçu gratuit
+  // ⚠️ `fichierURL` reste l'URL canonique du contenu principal :
+  //   - format 'pdf'  → URL du PDF complet
+  //   - format 'html' → URL du fichier .html stocké dans Storage
+  // Cette double-utilisation est volontaire pour préserver la rétro-
+  // compatibilité de tous les ebooks PDF existants.
+  fichierURL: string;               // URL du fichier complet (Firebase Storage)
+  aperçuURL?: string;               // URL du PDF aperçu (premières pages — PDF uniquement)
+  format?: FormatEbook;             // 'pdf' (défaut implicite) ou 'html' — voir FormatEbook
+  nombrePages: number;              // Nombre total de pages (HTML : 1 par défaut)
+  pagesApercu: number;              // Nombre de pages en aperçu gratuit (PDF uniquement)
   tailleFichier: number;            // Taille du fichier en octets
   annee?: string;                   // Année de publication (ex: "2024-2025")
   editeur?: string;                 // Éditeur du document
@@ -71,6 +93,11 @@ export interface Ebook {
 
 /**
  * Données du formulaire d'ajout/modification d'ebook
+ *
+ * Le champ `format` est inclus pour permettre à l'admin de choisir
+ * entre un upload PDF (par défaut) ou une intégration de code HTML.
+ * Le champ reste optionnel pour la rétrocompatibilité du formulaire :
+ * en l'absence de valeur, le format 'pdf' est utilisé.
  */
 export interface EbookFormData {
   titre: string;
@@ -80,6 +107,7 @@ export interface EbookFormData {
   niveau: Niveau;
   classe: Classe | 'all';
   matiere?: string;
+  format?: FormatEbook;             // Choix admin : PDF (défaut) ou HTML
   nombrePages: number;
   pagesApercu: number;
   annee?: string;

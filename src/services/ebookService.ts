@@ -37,6 +37,7 @@ import {
   EbookFilters,
   EbookStats,
   CategorieEbook,
+  FormatEbook,
   CATEGORIE_LABELS
 } from '../types/ebook.types';
 import { normaliserClassePourComparaison } from '../types/cahierTextes.types';
@@ -197,52 +198,132 @@ export function filterEbooks(ebooks: Ebook[], filters: EbookFilters): Ebook[] {
 // ==================== ÉCRITURE (Admin) ====================
 
 /**
+ * Sanitise un nom de fichier pour éviter les caractères problématiques
+ * dans Firebase Storage (slashs, accents, espaces multiples).
+ * Conserve les lettres ASCII, chiffres, point, tiret et underscore.
+ */
+function sanitizeStorageFileName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // retire les diacritiques (marques combinantes unicode)
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .slice(0, 120) || 'fichier';
+}
+
+/**
+ * Construit un Blob HTML à partir d'un fichier .html OU d'un code source collé.
+ * Le contentType est forcé à 'text/html; charset=utf-8' pour que le navigateur
+ * affiche correctement le document depuis Firebase Storage (sinon Storage
+ * sert le fichier en `application/octet-stream` et l'iframe ne le rendra pas).
+ *
+ * @param htmlFile  fichier .html sélectionné par l'admin (prioritaire)
+ * @param htmlCode  code HTML brut collé dans le formulaire (fallback)
+ * @returns un Blob prêt à être uploadé, ou null si aucune source n'est fournie
+ */
+function buildHtmlBlob(
+  htmlFile?: File | null,
+  htmlCode?: string | null
+): { blob: Blob; fileName: string } | null {
+  // Priorité 1 : un fichier .html a été uploadé par l'admin
+  if (htmlFile) {
+    // On reconstruit un Blob avec le bon contentType (un File a hérité de
+    // celui détecté par le navigateur, parfois vide ou mauvais).
+    const blob = new Blob([htmlFile], { type: 'text/html; charset=utf-8' });
+    return { blob, fileName: sanitizeStorageFileName(htmlFile.name) };
+  }
+  // Priorité 2 : du code HTML collé directement dans la textarea
+  const trimmed = (htmlCode || '').trim();
+  if (trimmed.length > 0) {
+    const blob = new Blob([trimmed], { type: 'text/html; charset=utf-8' });
+    return { blob, fileName: 'contenu.html' };
+  }
+  return null;
+}
+
+/**
  * Ajoute un nouvel ebook
- * Upload le PDF + la couverture dans Firebase Storage
+ * Upload le PDF (ou HTML) + la couverture dans Firebase Storage
  * Crée le document dans Firestore
- * 
- * @param formData - Métadonnées de l'ebook
- * @param pdfFile - Fichier PDF complet
- * @param coverFile - Image de couverture (optionnel)
- * @param previewFile - PDF aperçu (optionnel, premières pages)
- * @param adminId - ID de l'admin qui upload
+ *
+ * Le format est détecté à partir de `formData.format`.
+ *  - format 'pdf'  → `pdfFile` est obligatoire (comportement historique)
+ *  - format 'html' → fournir SOIT `htmlFile`, SOIT `htmlCode` ; les autres
+ *                    fichiers PDF/aperçu sont ignorés (mais la couverture
+ *                    reste possible).
+ *
+ * @param formData     - Métadonnées de l'ebook
+ * @param pdfFile      - Fichier PDF complet (requis si format 'pdf')
+ * @param coverFile    - Image de couverture (optionnel)
+ * @param previewFile  - PDF aperçu (optionnel, premières pages — PDF uniquement)
+ * @param adminId      - ID de l'admin qui upload
+ * @param htmlFile     - Fichier .html (requis si format 'html' et pas de code collé)
+ * @param htmlCode     - Code HTML collé (alternative à htmlFile en format 'html')
  */
 export async function addEbook(
   formData: EbookFormData,
-  pdfFile: File,
+  pdfFile: File | null,
   coverFile?: File | null,
   previewFile?: File | null,
-  adminId?: string
+  adminId?: string,
+  htmlFile?: File | null,
+  htmlCode?: string | null
 ): Promise<string> {
   try {
-    // --- 1. Upload du PDF complet dans Firebase Storage ---
-    const pdfRef = ref(storage, `ebooks/pdf/${Date.now()}_${pdfFile.name}`);
-    await uploadBytes(pdfRef, pdfFile);
-    const fichierURL = await getDownloadURL(pdfRef);
+    const format: FormatEbook = formData.format || 'pdf';
+
+    // --- 1. Upload du contenu principal (PDF ou HTML) ---
+    let fichierURL = '';
+    let tailleFichier = 0;
+
+    if (format === 'html') {
+      // -- Format HTML : on emballe le code/fichier dans un Blob `text/html` --
+      const built = buildHtmlBlob(htmlFile, htmlCode);
+      if (!built) {
+        throw new Error("Aucun contenu HTML fourni : sélectionnez un fichier .html ou collez le code source.");
+      }
+      // Stocké dans un sous-dossier dédié → règles Storage faciles à scoper.
+      const htmlRef = ref(storage, `ebooks/html/${Date.now()}_${built.fileName}`);
+      await uploadBytes(htmlRef, built.blob, { contentType: 'text/html; charset=utf-8' });
+      fichierURL = await getDownloadURL(htmlRef);
+      tailleFichier = built.blob.size;
+    } else {
+      // -- Format PDF : flux historique inchangé --
+      if (!pdfFile) {
+        throw new Error("Le fichier PDF est obligatoire pour un ebook au format PDF.");
+      }
+      const pdfRef = ref(storage, `ebooks/pdf/${Date.now()}_${sanitizeStorageFileName(pdfFile.name)}`);
+      await uploadBytes(pdfRef, pdfFile);
+      fichierURL = await getDownloadURL(pdfRef);
+      tailleFichier = pdfFile.size;
+    }
 
     // --- 2. Upload de la couverture (si fournie) ---
     let couvertureURL = '';
     if (coverFile) {
-      const coverRef = ref(storage, `ebooks/covers/${Date.now()}_${coverFile.name}`);
+      const coverRef = ref(storage, `ebooks/covers/${Date.now()}_${sanitizeStorageFileName(coverFile.name)}`);
       await uploadBytes(coverRef, coverFile);
       couvertureURL = await getDownloadURL(coverRef);
     }
 
-    // --- 3. Upload de l'aperçu (si fourni) ---
+    // --- 3. Upload de l'aperçu (PDF uniquement — un aperçu HTML n'a pas de sens) ---
     let aperçuURL = '';
-    if (previewFile) {
-      const previewRef = ref(storage, `ebooks/previews/${Date.now()}_${previewFile.name}`);
+    if (format === 'pdf' && previewFile) {
+      const previewRef = ref(storage, `ebooks/previews/${Date.now()}_${sanitizeStorageFileName(previewFile.name)}`);
       await uploadBytes(previewRef, previewFile);
       aperçuURL = await getDownloadURL(previewRef);
     }
 
     // --- 4. Création du document Firestore ---
+    // On stocke `format` explicitement pour distinguer côté lecteur, et on
+    // garde `aperçuURL` même vide pour homogénéiser les documents.
     const ebookData = {
       ...formData,
+      format,
       fichierURL,
       couvertureURL,
       aperçuURL,
-      tailleFichier: pdfFile.size,
+      tailleFichier,
       nombreTelechargements: 0,
       nombreVues: 0,
       uploadedBy: adminId || 'admin',
@@ -251,7 +332,7 @@ export async function addEbook(
     };
 
     const docRef = await addDoc(collection(db, EBOOKS_COLLECTION), ebookData);
-    console.log(`✅ Ebook ajouté : ${formData.titre} (ID: ${docRef.id})`);
+    console.log(`✅ Ebook ajouté (${format}) : ${formData.titre} (ID: ${docRef.id})`);
     return docRef.id;
 
   } catch (error) {
@@ -262,14 +343,24 @@ export async function addEbook(
 
 /**
  * Met à jour un ebook existant
- * Si un nouveau PDF ou couverture est fourni, remplace l'ancien dans Storage
+ * Si un nouveau PDF, HTML ou couverture est fourni, remplace l'ancien dans Storage.
+ *
+ * En cas de basculement de format (PDF → HTML ou inverse), il appartient à
+ * l'admin de fournir la nouvelle source ; le contenu précédent reste en
+ * Storage (pas supprimé) pour ne pas risquer de casser un autre document
+ * pointant vers la même URL.
+ *
+ * @param htmlFile  - Nouveau fichier .html (format 'html')
+ * @param htmlCode  - Nouveau code HTML collé (format 'html', alternative)
  */
 export async function updateEbook(
   id: string,
   formData: Partial<EbookFormData>,
   pdfFile?: File | null,
   coverFile?: File | null,
-  previewFile?: File | null
+  previewFile?: File | null,
+  htmlFile?: File | null,
+  htmlCode?: string | null
 ): Promise<void> {
   try {
     const updateData: Record<string, any> = {
@@ -277,24 +368,41 @@ export async function updateEbook(
       updatedAt: serverTimestamp()
     };
 
-    // --- Remplacement du PDF si nouveau fichier ---
-    if (pdfFile) {
-      const pdfRef = ref(storage, `ebooks/pdf/${Date.now()}_${pdfFile.name}`);
+    const targetFormat: FormatEbook | undefined = formData.format;
+
+    // --- Remplacement du contenu HTML si nouveau fichier OU code ---
+    // Important : on traite ce cas AVANT la branche PDF pour qu'un admin qui
+    // bascule un ebook vers HTML puisse simplement coller du code sans avoir
+    // à fournir un PDF factice.
+    if (targetFormat === 'html') {
+      const built = buildHtmlBlob(htmlFile, htmlCode);
+      if (built) {
+        const htmlRef = ref(storage, `ebooks/html/${Date.now()}_${built.fileName}`);
+        await uploadBytes(htmlRef, built.blob, { contentType: 'text/html; charset=utf-8' });
+        updateData.fichierURL = await getDownloadURL(htmlRef);
+        updateData.tailleFichier = built.blob.size;
+      }
+      // L'aperçuURL n'a pas de sens pour le HTML : on l'efface si présent
+      // (rétrocompat pour un ebook précédemment PDF basculé en HTML).
+      updateData.aperçuURL = '';
+    } else if (pdfFile) {
+      // --- Remplacement du PDF si nouveau fichier (format 'pdf' explicite ou conservé) ---
+      const pdfRef = ref(storage, `ebooks/pdf/${Date.now()}_${sanitizeStorageFileName(pdfFile.name)}`);
       await uploadBytes(pdfRef, pdfFile);
       updateData.fichierURL = await getDownloadURL(pdfRef);
       updateData.tailleFichier = pdfFile.size;
     }
 
-    // --- Remplacement de la couverture si nouvelle image ---
+    // --- Remplacement de la couverture si nouvelle image (commun aux deux formats) ---
     if (coverFile) {
-      const coverRef = ref(storage, `ebooks/covers/${Date.now()}_${coverFile.name}`);
+      const coverRef = ref(storage, `ebooks/covers/${Date.now()}_${sanitizeStorageFileName(coverFile.name)}`);
       await uploadBytes(coverRef, coverFile);
       updateData.couvertureURL = await getDownloadURL(coverRef);
     }
 
-    // --- Remplacement de l'aperçu si nouveau fichier ---
-    if (previewFile) {
-      const previewRef = ref(storage, `ebooks/previews/${Date.now()}_${previewFile.name}`);
+    // --- Remplacement de l'aperçu si nouveau fichier (PDF uniquement) ---
+    if (previewFile && (targetFormat === 'pdf' || !targetFormat)) {
+      const previewRef = ref(storage, `ebooks/previews/${Date.now()}_${sanitizeStorageFileName(previewFile.name)}`);
       await uploadBytes(previewRef, previewFile);
       updateData.aperçuURL = await getDownloadURL(previewRef);
     }

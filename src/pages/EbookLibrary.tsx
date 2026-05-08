@@ -300,6 +300,16 @@ interface EbookCardProps {
 }
 
 const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMode }) => {
+  // Rétrocompat : un ebook sans `format` est un PDF historique.
+  const ebookFormat = ebook.format || 'pdf';
+  const isHtml = ebookFormat === 'html';
+
+  // Pour le HTML, on suggère un nom de fichier .html lors du téléchargement
+  // (sans cela, le navigateur conserverait le nom horodaté du Storage).
+  const downloadName = isHtml
+    ? `${ebook.titre.replace(/[^\w\-]+/g, '_').slice(0, 80) || 'ebook'}.html`
+    : undefined;
+
   return (
     <div className={`ebook-card ${viewMode === 'list' ? 'ebook-card-list' : ''}`}>
       {/* <!-- Couverture --> */}
@@ -308,7 +318,9 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
           <img src={ebook.couvertureURL} alt={ebook.titre} loading="lazy" />
         ) : (
           <div className="ebook-cover-placeholder">
-            <span className="cover-icon">{CATEGORIE_ICONS[ebook.categorie]}</span>
+            {/* Pour un HTML sans couverture, on remplace l'icône de catégorie
+                par un globe afin de signaler visuellement la nature web. */}
+            <span className="cover-icon">{isHtml ? '🌐' : CATEGORIE_ICONS[ebook.categorie]}</span>
             <span className="cover-title">{ebook.titre}</span>
           </div>
         )}
@@ -316,6 +328,13 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
         {!isPremium && (
           <div className="ebook-badge-premium">
             <span>🔒 Premium</span>
+          </div>
+        )}
+        {/* <!-- Badge format HTML : visible uniquement pour les pages HTML
+              afin de ne pas alourdir le cas dominant (PDF). --> */}
+        {isHtml && (
+          <div className="ebook-badge-format" title="Page web interactive">
+            🌐 HTML
           </div>
         )}
         {/* <!-- Badge catégorie --> */}
@@ -330,7 +349,7 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
         <p className="ebook-author">{ebook.auteur}</p>
         <p className="ebook-description">{ebook.description}</p>
 
-        {/* <!-- Métadonnées --> */}
+        {/* <!-- Métadonnées : "n pages" n'est affiché que pour les PDF. --> */}
         <div className="ebook-meta">
           {ebook.classe !== 'all' && (
             <span className="meta-tag">{ebook.classe}</span>
@@ -338,26 +357,41 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
           {ebook.matiere && (
             <span className="meta-tag">{ebook.matiere}</span>
           )}
-          <span className="meta-pages">{ebook.nombrePages} pages</span>
+          {isHtml ? (
+            <span className="meta-pages">Page web</span>
+          ) : (
+            <span className="meta-pages">{ebook.nombrePages} pages</span>
+          )}
           <span className="meta-size">{formatFileSize(ebook.tailleFichier)}</span>
         </div>
 
-        {/* <!-- Boutons d'action --> */}
+        {/* <!-- Boutons d'action -->
+             Le libellé du bouton "Lire" change selon le format ; pour le HTML
+             non-Premium, on indique clairement que l'aperçu n'est pas disponible. */}
         <div className="ebook-actions">
           <button className="btn-read" onClick={onRead}>
-            {isPremium ? '📖 Lire' : `👁️ Aperçu (${ebook.pagesApercu} pages)`}
+            {isHtml
+              ? (isPremium ? '🌐 Consulter' : '🔒 Réservé Premium')
+              : (isPremium ? '📖 Lire' : `👁️ Aperçu (${ebook.pagesApercu} pages)`)
+            }
           </button>
           {isPremium && (
             // <!-- Lien de téléchargement : on déclenche d'abord l'incrément
             //      du compteur (fire-and-forget pour ne pas bloquer le
             //      téléchargement), puis le navigateur suit le href.
-            //      Le tracking n'altère pas le comportement natif du <a>. -->
+            //      Le tracking n'altère pas le comportement natif du <a>.
+            //      Pour le HTML, on force un nom de fichier .html via
+            //      l'attribut download (cf. downloadName plus haut). -->
             <a
               href={ebook.fichierURL}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-download"
-              download
+              // L'attribut React `download` accepte une string (nom forcé)
+              // ou la chaîne vide (utilise le nom serveur). Pour le HTML on
+              // force un nom basé sur le titre ; pour le PDF on laisse le
+              // navigateur décider.
+              download={downloadName || ''}
               onClick={() => {
                 // Fire-and-forget : si l'incrément échoue, le téléchargement
                 // se fait quand même. L'erreur est captée dans le service.
