@@ -319,8 +319,45 @@ export async function getEnfantsLies(parentId: string): Promise<LienParentEnfant
 }
 
 /**
+ * 🆕 (mai 2026) — Récupère la liste des PARENTS / TUTEURS liés à un
+ *   élève donné. Utilisé par le service de suivi par séance pour
+ *   notifier en temps réel toutes les familles d'un événement
+ *   (matériel non amené, observation, etc.).
+ *
+ *   ⚠ Lit la même collection que `getEnfantsLies` mais dans le sens
+ *     inverse (`enfantId == eleveId`). On ne touche pas à l'index
+ *     existant — les règles Firestore autorisent la lecture pour le
+ *     prof légitime (qui a déjà accès à l'élève via son groupe).
+ *
+ * @param eleveId UID de l'élève
+ * @returns Liste de liens actifs (peut être vide si élève sans famille liée)
+ */
+export async function getLiensForEleve(eleveId: string): Promise<LienParentEnfant[]> {
+  try {
+    const liensRef = collection(db, 'liens_parent_enfant');
+    const q = query(
+      liensRef,
+      where('enfantId', '==', eleveId),
+      where('statut', '==', 'actif'),
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map((d) => ({
+      id: d.id,
+      ...d.data(),
+      dateCreation: toDate(d.data().dateCreation),
+      dateDerniereConsultation: d.data().dateDerniereConsultation
+        ? toDate(d.data().dateDerniereConsultation)
+        : undefined,
+    })) as LienParentEnfant[];
+  } catch (error) {
+    console.error('Erreur récupération parents liés à l\'élève :', error);
+    return [];
+  }
+}
+
+/**
  * Supprime le lien entre un parent et un enfant (révocation)
- * 
+ *
  * @param lienId - ID du document de liaison
  * @param parentId - UID du parent (pour vérification de sécurité)
  */

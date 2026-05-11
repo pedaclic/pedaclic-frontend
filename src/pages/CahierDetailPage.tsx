@@ -832,6 +832,102 @@ const CahierDetailPage: React.FC = () => {
             );
           })()}
 
+          {/* ──────────────────────────────────────────────────────────
+              🆕 (mai 2026) — LIEN D'ACCÈS DIRECT AU MODULE D'APPEL
+              ─────────────────────────────────────────────────────────
+              Permet au professeur, depuis le Cahier de textes, de
+              basculer en un clic vers l'onglet « Appel » du tableau
+              de bord du groupe-classe lié.
+
+              Comportement identique à « Feuille de notes » :
+                • 0 groupe lié    → bouton désactivé + tooltip explicite.
+                • 1 groupe lié    → ouvre dashboard sur onglet 'appel'.
+                • N groupes liés  → menu déroulant pour choisir le
+                                     groupe avant de faire l'appel.
+
+              IMPORTANT : aucune route ni service supplémentaire n'est
+              créé. On réutilise `state: { openGroupeId, openTab: 'appel' }`
+              qui est DÉJÀ géré par la page Dashboard et par
+              `GroupeDetail.initialOnglet`. Aucun risque de régression
+              sur les fonctionnalités existantes.
+             ────────────────────────────────────────────────────────── */}
+          {(() => {
+            const groupeIds = cahier.groupeIds ?? [];
+            const groupeNoms = cahier.groupeNoms ?? [];
+            const nbGroupes = groupeIds.length;
+
+            // Aucun groupe lié → bouton informatif désactivé
+            if (nbGroupes === 0) {
+              return (
+                <button
+                  className="btn-secondary"
+                  disabled
+                  title="Aucun groupe classe n'est lié à ce cahier — l'appel n'est pas possible tant qu'un groupe n'est pas rattaché."
+                  style={{ opacity: 0.6, cursor: 'not-allowed' }}
+                >
+                  📋 Faire l'appel
+                </button>
+              );
+            }
+
+            // 1 groupe lié → navigation directe sur l'onglet Appel
+            if (nbGroupes === 1) {
+              return (
+                <button
+                  className="btn-secondary"
+                  title={`Ouvrir l'appel pour le groupe « ${groupeNoms[0] ?? 'lié'} » et démarrer la feuille de suivi du jour`}
+                  onClick={() =>
+                    navigate('/prof/dashboard', {
+                      state: { openGroupeId: groupeIds[0], openTab: 'appel' },
+                    })
+                  }
+                  style={{
+                    /* Mise en avant légère : bordure ambre pour
+                       différencier de « Feuille de notes » qui est
+                       neutre. L'appel est une action plus engageante. */
+                    borderColor: '#f59e0b',
+                    color: '#92400e',
+                    fontWeight: 700,
+                  }}
+                >
+                  📋 Faire l'appel
+                </button>
+              );
+            }
+
+            // N groupes liés → menu déroulant simple via <select> stylé
+            return (
+              <select
+                className="btn-secondary"
+                title="Choisir le groupe pour faire l'appel"
+                defaultValue=""
+                onChange={(e) => {
+                  const gId = e.target.value;
+                  if (!gId) return;
+                  navigate('/prof/dashboard', {
+                    state: { openGroupeId: gId, openTab: 'appel' },
+                  });
+                }}
+                style={{
+                  padding: '0.45rem 0.9rem',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  color: '#92400e',
+                  borderColor: '#f59e0b',
+                }}
+              >
+                <option value="" disabled>📋 Faire l'appel…</option>
+                {groupeIds.map((gid, i) => (
+                  <option key={gid} value={gid}>
+                    {groupeNoms[i] ?? `Groupe ${i + 1}`}
+                  </option>
+                ))}
+              </select>
+            );
+          })()}
+
           <button
             className="btn-primary"
             onClick={() => navigate(`/prof/cahiers/${cahierId}/nouvelle`)}

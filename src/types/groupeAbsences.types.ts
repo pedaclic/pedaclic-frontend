@@ -153,6 +153,88 @@ export interface ObservationEleve {
   updatedAt: Date;
 }
 
+/**
+ * 🆕 (mai 2026) — Tonalité (positive / négative / neutre) d'une
+ *   observation pédagogique consignée dans la feuille de suivi élève.
+ *
+ *     - 'positive' : encouragement, progrès, comportement exemplaire.
+ *     - 'negative' : remarque pour rappel ou alerte parents.
+ *     - 'neutre'   : simple note d'information non orientée.
+ *
+ *   Utilisée pour colorer la cellule et déterminer la TONALITÉ de la
+ *   notification temps réel envoyée au parent / tuteur.
+ */
+export type TonaliteObservation = 'positive' | 'negative' | 'neutre';
+
+export const TONALITE_OBSERVATION_LABELS: Record<TonaliteObservation, string> = {
+  positive: 'Observation positive',
+  negative: 'Observation négative',
+  neutre: 'Observation neutre',
+};
+
+export const TONALITE_OBSERVATION_COULEURS: Record<TonaliteObservation, string> = {
+  positive: '#16a34a', // Vert — encourageant
+  negative: '#dc2626', // Rouge — alerte
+  neutre: '#6b7280',   // Gris — neutre
+};
+
+/**
+ * 🆕 (mai 2026) — Entrée de la FEUILLE DE SUIVI ÉLÈVE par séance.
+ *
+ *   Un document `suivi_seance` est créé pour CHAQUE couple
+ *   (groupeId, date, profId, eleveId). Il consigne, pour la séance
+ *   du jour :
+ *     • absenceSeancePrecedente — `true` si l'élève était absent à
+ *       la séance précédente (calculé automatiquement à l'ouverture
+ *       de l'appel, modifiable manuellement par le prof).
+ *     • observation               — texte libre + tonalité.
+ *     • materielNonAmene          — booléen + précision facultative.
+ *     • travailNonFait            — booléen + précision facultative.
+ *
+ *   Toutes ces données sont LIÉES au compte parent / tuteur via le
+ *   service `notificationService.envoyerNotification` au moment de la
+ *   sauvegarde (canal in-app + email selon préférences du parent).
+ *
+ *   Stockage : collection Firestore `suivi_seance` (id stable :
+ *   `${groupeId}_${date}_${eleveId}`). Compatible avec les règles
+ *   Firestore existantes qui filtrent par `profId == auth.uid`.
+ *
+ *   IMPORTANT : ce type est ADDITIF — il ne modifie aucun document
+ *   existant (`absences_groupe`, `observations_eleve`, etc.) et
+ *   préserve toutes les fonctionnalités déjà en place.
+ */
+export interface SuiviSeanceEleve {
+  /** ID Firestore stable : `${groupeId}_${date}_${eleveId}`. */
+  id: string;
+  groupeId: string;
+  /** Date au format YYYY-MM-DD — clé de la séance/journée. */
+  date: string;
+  /** Référence aux séances liées (cf. Cahier de textes, Phase 38+). */
+  entreeIds?: string[];
+  eleveId: string;
+  eleveNom: string;
+  profId: string;
+  /**
+   * `true` si l'élève figurait dans `eleveIdsAbsents` (ou granulaire)
+   *   du jour de séance immédiatement précédent. Auto-rempli au
+   *   chargement de la feuille, surchargeable manuellement.
+   */
+  absenceSeancePrecedente?: boolean;
+  /** Texte libre de l'observation du jour (peut être vide). */
+  observation?: string;
+  /** Tonalité de l'observation (positive / négative / neutre). */
+  tonaliteObservation?: TonaliteObservation;
+  /** `true` si l'élève n'a pas amené son matériel à cette séance. */
+  materielNonAmene?: boolean;
+  /** Détail facultatif (ex. « cahier d'exercices manquant »). */
+  materielNonAmeneDetail?: string;
+  /** `true` si le travail demandé n'a pas été fait. */
+  travailNonFait?: boolean;
+  /** Détail facultatif (ex. « exercice 5 page 42 »). */
+  travailNonFaitDetail?: string;
+  updatedAt: Date;
+}
+
 /** Travail à faire — échéance visible élèves/parents */
 export interface TravailAFaire {
   id: string;

@@ -15,6 +15,11 @@ import {
   updateEvaluationsFeuille,
   updateCompetencesDefFeuille,
   updateCompetenceEleve,
+  // 🆕 (mai 2026) — Service de mise à jour des compétences par évaluation.
+  //    Permet au prof de spécifier précisément QUELLES compétences sont
+  //    évaluées sur CE devoir / CETTE composition (au lieu d'appliquer
+  //    aveuglément la liste globale de la feuille).
+  updateCompetencesEvaluation,
   updateTitreFeuille,
   buildLignesNotes,
 } from '../services/feuillesNotesService';
@@ -86,6 +91,20 @@ const FeuilleNotesEditorPage: React.FC = () => {
   const [draftTitre, setDraftTitre] = useState<string>('');
   const [showCompPanel, setShowCompPanel] = useState(false);
   const [newCompLib, setNewCompLib] = useState('');
+  // 🆕 (mai 2026) — État du SÉLECTEUR DE COMPÉTENCES PAR ÉVALUATION.
+  //
+  //   Objectif : permettre au professeur de spécifier — pour CHAQUE devoir
+  //   ou composition — la liste des compétences réellement évaluées.
+  //   Ouvre une mini-popover ancrée sur l'en-tête de la colonne ; la liste
+  //   est éditable (ajout libre + cases à cocher sur les compétences
+  //   globales déjà définies dans `feuille.competencesDef`).
+  //
+  //   Quand `compEvalId === null` → popover fermée (état par défaut).
+  //   Quand `compEvalId === '<evalId>'` → popover ouverte sur cette éval.
+  const [compEvalId, setCompEvalId] = useState<string | null>(null);
+  // Champ libre pour ajouter une compétence spécifique au devoir
+  // (sans avoir à l'inscrire dans la liste globale de la feuille).
+  const [draftCompEvalLib, setDraftCompEvalLib] = useState<string>('');
   // 🆕 Map eleveId → sexe ('M' | 'F' | 'autre') alimentée depuis les
   //    inscriptions du groupe lors du chargement de la feuille. Permet
   //    d'afficher le pictogramme ♂/♀ devant chaque nom dans la colonne
@@ -602,6 +621,106 @@ const FeuilleNotesEditorPage: React.FC = () => {
     const defs = compDefs.filter((c) => c.id !== compId);
     setFeuille((f) => (f ? { ...f, competencesDef: defs } : null));
     updateCompetencesDefFeuille(feuille.id, defs).catch(console.error);
+  };
+
+  // ════════════════════════════════════════════════════════════════
+  // 🆕 COMPÉTENCES PAR DEVOIR / COMPOSITION (mai 2026)
+  // ────────────────────────────────────────────────────────────────
+  //   Le prof peut spécifier précisément, pour chaque évaluation, la
+  //   liste des compétences évaluées. Source de vérité unique :
+  //   `feuille.evaluations[i].competences` (optionnel).
+  //
+  //   Règles de comportement :
+  //     • Si `evaluation.competences` est défini ET non vide → c'est
+  //       cette liste qui s'affiche sur les cellules de cette colonne
+  //       (pastilles cliquables).
+  //     • Sinon → on retombe sur `feuille.competencesDef` (compétences
+  //       globales de la feuille) pour préserver la rétro-compatibilité.
+  //
+  //   Toutes les autres opérations (notes, absences, drag-and-drop des
+  //   colonnes, exports) restent INCHANGÉES.
+  // ════════════════════════════════════════════════════════════════
+
+  /**
+   * Renvoie la liste effective des compétences évaluées sur `evalId`.
+   * Priorité : compétences propres à l'éval > compétences globales.
+   * Toujours retourne un tableau (jamais `undefined`) pour simplifier
+   * l'usage côté rendu.
+   */
+  const getCompetencesEvaluation = (evalId: string): CompetenceDef[] => {
+    if (!feuille) return [];
+    const e = feuille.evaluations.find((x) => x.id === evalId);
+    if (e?.competences && e.competences.length > 0) return e.competences;
+    return compDefs;
+  };
+
+  /**
+   * Bascule l'attribution d'une compétence GLOBALE à l'évaluation
+   * `evalId`. Si l'évaluation n'avait encore aucune liste propre, on
+   * démarre depuis les compétences globales pour que le prof ne soit
+   * pas obligé de tout re-saisir.
+   *
+   * Persistance : `updateCompetencesEvaluation` (Firestore) en
+   * parallèle de la mise à jour optimiste de l'état local.
+   */
+  const toggleCompetenceSurEval = (evalId: string, comp: CompetenceDef) => {
+    if (!feuille) return;
+    const eIdx = feuille.evaluations.findIndex((e) => e.id === evalId);
+    if (eIdx < 0) return;
+    const e = feuille.evaluations[eIdx];
+    // Si pas de liste propre → on part de la liste globale et on bascule
+    // ensuite la compétence cliquée.
+    const base: CompetenceDef[] =
+      e.competences && e.competences.length > 0 ? [...e.competences] : [...compDefs];
+    const exists = base.some((c) => c.id === comp.id);
+    const next = exists ? base.filter((c) => c.id !== comp.id) : [...base, comp];
+    const evals = [...feuille.evaluations];
+    evals[eIdx] = { ...e, competences: next };
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateCompetencesEvaluation(feuille.id, evalId, next).catch((err) => {
+      console.error('Erreur enregistrement compétences évaluation :', err);
+      toast.error('Impossible d\'enregistrer les compétences.');
+    });
+  };
+
+  /**
+   * Ajoute une compétence LIBRE (saisie au clavier) UNIQUEMENT à
+   * l'évaluation courante — sans toucher à la liste globale. Utile
+   * pour les compétences ponctuelles propres à un devoir / une compo.
+   */
+  const ajouterCompetenceSurEval = (evalId: string) => {
+    if (!feuille || !draftCompEvalLib.trim()) return;
+    const eIdx = feuille.evaluations.findIndex((e) => e.id === evalId);
+    if (eIdx < 0) return;
+    const e = feuille.evaluations[eIdx];
+    const base: CompetenceDef[] =
+      e.competences && e.competences.length > 0 ? [...e.competences] : [...compDefs];
+    const nouvelle: CompetenceDef = {
+      id: 'cev_' + Date.now().toString(36),
+      libelle: draftCompEvalLib.trim(),
+    };
+    const next = [...base, nouvelle];
+    const evals = [...feuille.evaluations];
+    evals[eIdx] = { ...e, competences: next };
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateCompetencesEvaluation(feuille.id, evalId, next).catch(console.error);
+    setDraftCompEvalLib('');
+  };
+
+  /**
+   * Retire complètement la spécification par-évaluation : la colonne
+   * retombe alors sur la liste globale `competencesDef`. Pratique pour
+   * réinitialiser sans devoir cliquer compétence par compétence.
+   */
+  const reinitialiserCompetencesEval = (evalId: string) => {
+    if (!feuille) return;
+    const eIdx = feuille.evaluations.findIndex((e) => e.id === evalId);
+    if (eIdx < 0) return;
+    const evals = [...feuille.evaluations];
+    const { competences: _omit, ...rest } = evals[eIdx];
+    evals[eIdx] = rest;
+    setFeuille((f) => (f ? { ...f, evaluations: evals } : null));
+    updateCompetencesEvaluation(feuille.id, evalId, []).catch(console.error);
   };
 
   /**
@@ -1272,10 +1391,164 @@ const FeuilleNotesEditorPage: React.FC = () => {
                             {isExcluse ? '⊘' : '✓'}
                           </button>
                           <button className="eval-action-btn" title="Renommer" onClick={() => { setEditEvalId(e.id); setDraftLibelle(e.libelle); }}><Pencil size={12} /></button>
+                          {/*
+                            🆕 (mai 2026) — Bouton « Compétences évaluées »
+                            ────────────────────────────────────────────────
+                            Ouvre une popover qui permet au prof de cocher
+                            précisément, parmi les compétences globales,
+                            celles évaluées sur ce devoir, et d'en ajouter
+                            de nouvelles propres à ce devoir uniquement.
+                            Icône : 🎯 (objectif/cible) — non intrusive.
+                          */}
+                          <button
+                            type="button"
+                            className="eval-action-btn"
+                            title="Spécifier les compétences évaluées sur ce devoir / cette composition"
+                            aria-label="Spécifier les compétences évaluées"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              setCompEvalId(compEvalId === e.id ? null : e.id);
+                              setDraftCompEvalLib('');
+                            }}
+                            style={{ fontSize: '0.85rem', lineHeight: 1 }}
+                          >
+                            🎯
+                          </button>
                           {evals.length > 1 && (
                             <button className="eval-action-btn eval-delete" title="Supprimer" onClick={() => supprimerEval(e.id)}><Trash2 size={12} /></button>
                           )}
                         </span>
+                      )}
+                      {/*
+                        🆕 (mai 2026) — POPOVER « Compétences évaluées »
+                        ────────────────────────────────────────────────
+                        S'ouvre sous l'en-tête de la colonne lorsque
+                        `compEvalId === e.id`. Permet :
+                          • de cocher / décocher les compétences globales
+                            de la feuille,
+                          • d'ajouter une compétence libre propre à ce devoir,
+                          • de réinitialiser à la liste globale (retombe sur
+                            `feuille.competencesDef`).
+
+                        Style inline : volontairement minimaliste pour ne
+                        pas alourdir la feuille de style globale ;
+                        la popover est rendue dans le flux et utilise
+                        `position: absolute` pour ne pas décaler le tableau.
+                      */}
+                      {compEvalId === e.id && (
+                        <div
+                          className="eval-comp-popover"
+                          /* Cliquer à l'intérieur ne doit pas refermer la popover. */
+                          onClick={(ev) => ev.stopPropagation()}
+                          style={{
+                            position: 'absolute',
+                            zIndex: 30,
+                            top: '100%',
+                            right: 4,
+                            marginTop: 4,
+                            minWidth: 240,
+                            maxWidth: 320,
+                            padding: 10,
+                            background: '#fff',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 8,
+                            boxShadow: '0 6px 18px rgba(0,0,0,0.12)',
+                            fontWeight: 400,
+                            color: '#1f2937',
+                            textAlign: 'left',
+                          }}
+                        >
+                          <div style={{ fontWeight: 700, fontSize: '0.78rem', marginBottom: 6 }}>
+                            Compétences évaluées
+                            <button
+                              type="button"
+                              onClick={() => setCompEvalId(null)}
+                              title="Fermer"
+                              aria-label="Fermer la popover"
+                              style={{
+                                float: 'right',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                color: '#6b7280',
+                                fontSize: '0.9rem',
+                                lineHeight: 1,
+                              }}
+                            >×</button>
+                          </div>
+                          {/* Liste des compétences globales — cases à cocher */}
+                          {compDefs.length > 0 ? (
+                            <ul style={{ listStyle: 'none', padding: 0, margin: 0, maxHeight: 180, overflowY: 'auto' }}>
+                              {compDefs.map((c) => {
+                                const compsEval = getCompetencesEvaluation(e.id);
+                                const checked = compsEval.some((x) => x.id === c.id);
+                                return (
+                                  <li key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 0', fontSize: '0.78rem' }}>
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={() => toggleCompetenceSurEval(e.id, c)}
+                                      aria-label={`Évaluer la compétence ${c.libelle}`}
+                                    />
+                                    <span>{c.libelle}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          ) : (
+                            <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: '4px 0' }}>
+                              Aucune compétence globale définie. Utilisez le bouton « Compétences » au-dessus du tableau pour en ajouter.
+                            </p>
+                          )}
+                          {/* Ajout d'une compétence libre — propre à ce devoir uniquement */}
+                          <div style={{ marginTop: 8, display: 'flex', gap: 4 }}>
+                            <input
+                              type="text"
+                              value={draftCompEvalLib}
+                              onChange={(ev) => setDraftCompEvalLib(ev.target.value)}
+                              onKeyDown={(ev) => { if (ev.key === 'Enter') ajouterCompetenceSurEval(e.id); }}
+                              placeholder="Compétence propre à ce devoir…"
+                              style={{
+                                flex: 1,
+                                padding: '4px 6px',
+                                fontSize: '0.74rem',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 4,
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => ajouterCompetenceSurEval(e.id)}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '0.74rem',
+                                background: '#1d4ed8',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                              }}
+                              disabled={!draftCompEvalLib.trim()}
+                            >+</button>
+                          </div>
+                          {/* Réinitialisation — efface la liste propre et retombe sur la liste globale */}
+                          <button
+                            type="button"
+                            onClick={() => { reinitialiserCompetencesEval(e.id); setCompEvalId(null); }}
+                            style={{
+                              marginTop: 8,
+                              width: '100%',
+                              padding: '4px 0',
+                              fontSize: '0.72rem',
+                              background: '#f3f4f6',
+                              color: '#374151',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 4,
+                              cursor: 'pointer',
+                            }}
+                            title="Repasser sur les compétences globales de la feuille"
+                          >Réinitialiser (utiliser la liste globale)</button>
+                        </div>
                       )}
                     </div>
                   </th>
@@ -1482,24 +1755,41 @@ const FeuilleNotesEditorPage: React.FC = () => {
                           {val != null ? val : '—'}
                         </span>
                       )}
-                      {compDefs.length > 0 && (
-                        <div className="comp-cell-list">
-                          {compDefs.map((c) => {
-                            const st = feuille.competences?.[ligne.eleveId]?.[e.id]?.[c.id] || 'non_acquis';
-                            return (
-                              <button
-                                key={c.id}
-                                className="comp-dot"
-                                title={`${c.libelle} : ${COMPETENCE_STATUS_LABELS[st]}`}
-                                style={{ background: COMPETENCE_STATUS_COLORS[st] }}
-                                onClick={() => cycleCompStatus(ligne.eleveId, e.id, c.id)}
-                              >
-                                {c.libelle.charAt(0)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                      {/*
+                        🆕 (mai 2026) — Compétences ÉVALUÉES SUR CE DEVOIR
+                        ─────────────────────────────────────────────────
+                        On utilise désormais `getCompetencesEvaluation(e.id)`
+                        qui privilégie la liste propre à l'évaluation
+                        (`e.competences`) et retombe sur la liste globale
+                        (`compDefs`) si elle n'a pas été personnalisée.
+
+                        Le `cycleCompStatus(ligne.eleveId, e.id, c.id)`
+                        d'origine est conservé intact : la persistance
+                        des statuts (acquis / en cours / non acquis) par
+                        élève reste indexée par `(eleveId, evalId, compId)`.
+                      */}
+                      {(() => {
+                        const compsCetteEval = getCompetencesEvaluation(e.id);
+                        if (compsCetteEval.length === 0) return null;
+                        return (
+                          <div className="comp-cell-list">
+                            {compsCetteEval.map((c) => {
+                              const st = feuille.competences?.[ligne.eleveId]?.[e.id]?.[c.id] || 'non_acquis';
+                              return (
+                                <button
+                                  key={c.id}
+                                  className="comp-dot"
+                                  title={`${c.libelle} : ${COMPETENCE_STATUS_LABELS[st]}`}
+                                  style={{ background: COMPETENCE_STATUS_COLORS[st] }}
+                                  onClick={() => cycleCompStatus(ligne.eleveId, e.id, c.id)}
+                                >
+                                  {c.libelle.charAt(0)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </td>
                   );
                 })}

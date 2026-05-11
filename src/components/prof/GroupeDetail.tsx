@@ -42,6 +42,20 @@ import {
 import type { DetailRetard, MotifRetard, DetailExclusion } from '../../types/groupeAbsences.types';
 // Phase 38 — Helpers de lecture multi-séances (rétro-compat legacy)
 import { getEntreeTitres } from '../../types/groupeAbsences.types';
+// 🆕 (mai 2026) — Service & types pour la FEUILLE DE SUIVI ÉLÈVE :
+//   absence séance précédente, observations qualitatives, matériel non
+//   amené, travail non fait, et notification des parents en temps réel.
+import {
+  getSuivisJour,
+  upsertSuiviSeance,
+  calculerAbsencesSeancePrecedente,
+  notifierParents,
+} from '../../services/suiviSeanceService';
+import type { SuiviSeanceEleve, TonaliteObservation } from '../../types/groupeAbsences.types';
+import {
+  TONALITE_OBSERVATION_LABELS,
+  TONALITE_OBSERVATION_COULEURS,
+} from '../../types/groupeAbsences.types';
 // ✨ Formatage "Prénoms NOM" (dernier mot en MAJUSCULES)
 //    + tri alphabétique par nom de famille
 import { formatEleveNom, compareParNomFamille } from '../../utils/formatNom';
@@ -92,6 +106,8 @@ type TriEleves = 'moyenne_desc' | 'moyenne_asc' | 'nom' | 'streak' | 'quiz_count
 interface AppelSuiviTableProps {
   groupeId: string;
   profId: string;
+  /** Nom dénormalisé du prof (pour l'émetteur des notifications parents). */
+  profNom?: string;
   statsEleves: EleveGroupeStats[];
   periode: 'jour' | 'semaine' | 'mois';
   /**
@@ -108,14 +124,40 @@ interface AppelSuiviTableProps {
  * ET le nombre de retards cumulés sur la période choisie, ainsi que
  * les séances manquées.
  * Les noms sont affichés au format « Prénoms NOM » et triés par NOM.
+ *
+ * 🆕 (mai 2026) — FEUILLE DE SUIVI ÉLÈVE enrichie :
+ *   En plus des compteurs historiques (absences / retards / exclusions),
+ *   on ajoute 4 colonnes dynamiques par ÉLÈVE pour la journée courante :
+ *     • Absence séance précédente (auto-renseignée + surchargeable)
+ *     • Observation (positive / négative / neutre)
+ *     • Matériel non amené
+ *     • Travail non fait
+ *
+ *   Chaque modification est persistée dans la collection Firestore
+ *   `suivi_seance` et notifie les parents en TEMPS RÉEL via
+ *   `notifierParents` (canal in-app).
+ *
+ *   La rétro-compat est préservée : si aucune donnée de suivi n'est
+ *   présente, les cellules affichent leur valeur neutre par défaut.
  */
-function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: AppelSuiviTableProps) {
+function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexeMap }: AppelSuiviTableProps) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [retards, setRetards] = useState<Record<string, number>>({});
   // Phase 40 — compteur d'exclusions sur la période sélectionnée
   const [exclusions, setExclusions] = useState<Record<string, number>>({});
   const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
+  // 🆕 État local des SUIVIS DU JOUR par élève — alimenté au chargement
+  //    depuis `getSuivisJour` et `calculerAbsencesSeancePrecedente`.
+  //    Clé = eleveId ; valeur = champs de la feuille de suivi (booléens,
+  //    observation libre, tonalité, …). Les modifications sont
+  //    optimistes : on met à jour ce state IMMÉDIATEMENT puis on lance
+  //    la persistance Firestore + la notification parent en parallèle.
+  const [suiviMap, setSuiviMap] = useState<Record<string, Partial<SuiviSeanceEleve>>>({});
+  // Date du jour utilisée comme clé pour le suivi (YYYY-MM-DD)
+  const dateJour = new Date().toISOString().slice(0, 10);
+  // Edition en cours d'une observation (eleveId → texte en cours de saisie)
+  const [draftObs, setDraftObs] = useState<Record<string, string>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +258,99 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
     return () => { cancelled = true; };
   }, [groupeId, profId, statsEleves, periode]);
 
+  /*
+    🆕 (mai 2026) — Chargement du SUIVI ÉLÈVE pour la journée courante.
+    ──────────────────────────────────────────────────────────────────
+      • Récupère les documents de suivi déjà saisis aujourd'hui.
+      • Pré-calcule la map « absent à la séance précédente » pour
+        l'auto-remplissage de la colonne dédiée.
+      • Fusionne les deux sources dans `suiviMap` (clé eleveId).
+
+    Le hook est isolé des compteurs historiques (effet précédent) pour
+    ne pas le ré-exécuter inutilement quand la période change.
+  */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [suivis, mapAbsPrec] = await Promise.all([
+          getSuivisJour(groupeId, dateJour, profId),
+          calculerAbsencesSeancePrecedente(groupeId, dateJour, profId),
+        ]);
+        if (cancelled) return;
+        const map: Record<string, Partial<SuiviSeanceEleve>> = {};
+        const drafts: Record<string, string> = {};
+        statsEleves.forEach((e) => {
+          // Suivi déjà existant pour cet élève aujourd'hui (peut être undefined)
+          const existant = suivis.find((s) => s.eleveId === e.eleveId);
+          map[e.eleveId] = {
+            // Le calcul auto a la priorité ; le champ stocké manuel
+            // surcharge si l'enseignant a explicitement réglé la valeur.
+            absenceSeancePrecedente:
+              existant?.absenceSeancePrecedente ?? mapAbsPrec[e.eleveId] ?? false,
+            observation: existant?.observation ?? '',
+            tonaliteObservation: existant?.tonaliteObservation ?? 'neutre',
+            materielNonAmene: existant?.materielNonAmene ?? false,
+            materielNonAmeneDetail: existant?.materielNonAmeneDetail ?? '',
+            travailNonFait: existant?.travailNonFait ?? false,
+            travailNonFaitDetail: existant?.travailNonFaitDetail ?? '',
+          };
+          drafts[e.eleveId] = existant?.observation ?? '';
+        });
+        setSuiviMap(map);
+        setDraftObs(drafts);
+      } catch (err) {
+        // Suivi indisponible (par exemple : règles Firestore non
+        // appliquées). On ne casse pas le tableau — les colonnes
+        // « suivi » resteront simplement vides / éditables.
+        console.error('[AppelSuiviTable] chargement suivi du jour :', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [groupeId, profId, dateJour, statsEleves]);
+
+  /**
+   * 🆕 Helper de PATCH OPTIMISTE :
+   *   1. Met à jour le state local immédiatement (réactivité UI).
+   *   2. Persiste en arrière-plan via `upsertSuiviSeance`.
+   *   3. Notifie les parents en temps réel selon le type de patch.
+   */
+  const patchSuivi = async (
+    eleveId: string,
+    eleveNom: string,
+    patch: Partial<SuiviSeanceEleve>,
+    notif?: {
+      type: 'observation_positive' | 'observation_negative' | 'materiel_non_amene' | 'travail_non_fait' | 'absence_seance_precedente';
+      sujet: string;
+      message: string;
+    },
+  ) => {
+    // 1) Update optimiste — l'écran reflète tout de suite la saisie.
+    setSuiviMap((prev) => ({
+      ...prev,
+      [eleveId]: { ...(prev[eleveId] || {}), ...patch },
+    }));
+
+    // 2) Persistance Firestore (ne bloque pas l'UI).
+    try {
+      await upsertSuiviSeance(groupeId, dateJour, eleveId, eleveNom, profId, patch);
+    } catch (err) {
+      console.error('[AppelSuiviTable] erreur enregistrement suivi :', err);
+    }
+
+    // 3) Notification temps réel des parents si demandée (canal in-app).
+    if (notif) {
+      notifierParents({
+        eleveId,
+        eleveNom,
+        profNom: profNom || 'Enseignant',
+        sujet: notif.sujet,
+        message: notif.message,
+        type: notif.type,
+      });
+    }
+  };
+
   if (loading) return <p className="text-muted">Chargement...</p>;
 
   // Tri : élèves avec le plus d'absences d'abord, puis retards, puis ordre alphabétique
@@ -237,6 +372,24 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
           {/* Phase 40 — colonne Exclusions (mesures disciplinaires) */}
           <th title="Nombre d'exclusions disciplinaires sur la période">Exclusions ({periode})</th>
           <th>Séances manquées</th>
+          {/*
+            🆕 (mai 2026) — Quatre nouvelles colonnes de SUIVI ÉLÈVE
+            ────────────────────────────────────────────────────────
+            Toutes saisies pour la journée courante et synchronisées
+            en temps réel avec le compte parent / tuteur.
+          */}
+          <th title="Absence à la séance immédiatement précédente — auto-renseignée, modifiable">
+            Abs. séance préc.
+          </th>
+          <th title="Observation qualitative (positive / neutre / négative)">
+            Observation
+          </th>
+          <th title="Élève venu sans son matériel scolaire à la séance du jour">
+            Matériel non amené
+          </th>
+          <th title="Travail demandé non rendu / non fait à la séance du jour">
+            Travail non fait
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -246,6 +399,11 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
           const sx = sexeMap?.[e.eleveId];
           const picto = sx ? SEXE_PICTOS[sx] : '';
           const couleurPicto = sx === 'F' ? '#ec4899' : sx === 'M' ? '#3b82f6' : '#9ca3af';
+          // 🆕 État de suivi du jour pour cet élève (jamais undefined :
+          // initialisé dans le useEffect avec des valeurs neutres).
+          const suivi = suiviMap[e.eleveId] || {};
+          const tonalite: TonaliteObservation =
+            (suivi.tonaliteObservation as TonaliteObservation) || 'neutre';
           return (
           <tr key={e.eleveId}>
             {/* Nom formaté "Prénoms NOM" + pictogramme sexe (optionnel) */}
@@ -282,6 +440,150 @@ function AppelSuiviTable({ groupeId, profId, statsEleves, periode, sexeMap }: Ap
                   ))
                 : <span className="text-muted">—</span>
               }
+            </td>
+            {/*
+              🆕 COLONNE 1 — ABSENCE SÉANCE PRÉCÉDENTE
+              ─────────────────────────────────────────
+              Case à cocher (toggle). Auto-renseignée par
+              `calculerAbsencesSeancePrecedente`, modifiable.
+              Couleur orange si cochée pour focus rapide.
+            */}
+            <td style={{ textAlign: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!!suivi.absenceSeancePrecedente}
+                onChange={(ev) => {
+                  const checked = ev.target.checked;
+                  patchSuivi(e.eleveId, e.eleveNom, { absenceSeancePrecedente: checked }, checked ? {
+                    type: 'absence_seance_precedente',
+                    sujet: 'Information : absence à la séance précédente',
+                    message: `${formatEleveNom(e.eleveNom)} était absent(e) à la séance précédente. Pensez à lui faire rattraper le cours.`,
+                  } : undefined);
+                }}
+                title="Cocher si l'élève était absent à la séance précédente"
+                aria-label="Absence à la séance précédente"
+                style={{ accentColor: suivi.absenceSeancePrecedente ? '#f59e0b' : undefined, cursor: 'pointer' }}
+              />
+            </td>
+            {/*
+              🆕 COLONNE 2 — OBSERVATION QUALITATIVE
+              ─────────────────────────────────────
+              Champ texte + sélecteur de tonalité (😊/😐/😟).
+              Sauvegarde + notification parents au blur (perte de focus)
+              et lors du changement de tonalité.
+            */}
+            <td style={{ minWidth: 200 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <select
+                  value={tonalite}
+                  onChange={(ev) => {
+                    const t = ev.target.value as TonaliteObservation;
+                    patchSuivi(e.eleveId, e.eleveNom, { tonaliteObservation: t });
+                  }}
+                  title={TONALITE_OBSERVATION_LABELS[tonalite]}
+                  aria-label="Tonalité de l'observation"
+                  style={{
+                    padding: '2px 4px',
+                    fontSize: '0.74rem',
+                    border: `1px solid ${TONALITE_OBSERVATION_COULEURS[tonalite]}`,
+                    color: TONALITE_OBSERVATION_COULEURS[tonalite],
+                    borderRadius: 4,
+                    background: '#fff',
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="positive">😊 Positive</option>
+                  <option value="neutre">😐 Neutre</option>
+                  <option value="negative">😟 Négative</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Observation du jour…"
+                  value={draftObs[e.eleveId] ?? ''}
+                  onChange={(ev) => setDraftObs((d) => ({ ...d, [e.eleveId]: ev.target.value }))}
+                  onBlur={(ev) => {
+                    const texte = ev.target.value.trim();
+                    if (texte === (suivi.observation || '').trim()) return; // pas de changement
+                    patchSuivi(
+                      e.eleveId,
+                      e.eleveNom,
+                      { observation: texte, tonaliteObservation: tonalite },
+                      texte ? {
+                        type: tonalite === 'positive' ? 'observation_positive' : 'observation_negative',
+                        sujet:
+                          tonalite === 'positive'
+                            ? 'Observation positive du professeur'
+                            : 'Observation du professeur',
+                        message: `Observation concernant ${formatEleveNom(e.eleveNom)} : ${texte}`,
+                      } : undefined,
+                    );
+                  }}
+                  style={{
+                    padding: '3px 6px',
+                    fontSize: '0.78rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                  }}
+                  title="Observation libre — sauvegarde automatique à la sortie du champ"
+                  aria-label={`Observation pour ${e.eleveNom}`}
+                />
+              </div>
+            </td>
+            {/*
+              🆕 COLONNE 3 — MATÉRIEL NON AMENÉ
+              ────────────────────────────────
+              Toggle + précision facultative. Couleur ambre si vrai.
+              Notification parents déclenchée à la coche.
+            */}
+            <td style={{ textAlign: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!!suivi.materielNonAmene}
+                onChange={(ev) => {
+                  const checked = ev.target.checked;
+                  patchSuivi(
+                    e.eleveId,
+                    e.eleveNom,
+                    { materielNonAmene: checked },
+                    checked ? {
+                      type: 'materiel_non_amene',
+                      sujet: 'Matériel scolaire non amené',
+                      message: `${formatEleveNom(e.eleveNom)} n'a pas amené son matériel à la séance d'aujourd'hui (${dateJour}).`,
+                    } : undefined,
+                  );
+                }}
+                title="Cocher si l'élève n'a pas amené son matériel scolaire"
+                aria-label="Matériel non amené"
+                style={{ accentColor: '#f59e0b', cursor: 'pointer' }}
+              />
+            </td>
+            {/*
+              🆕 COLONNE 4 — TRAVAIL NON FAIT
+              ──────────────────────────────
+              Toggle + précision facultative. Couleur rouge si vrai.
+              Notification parents déclenchée à la coche.
+            */}
+            <td style={{ textAlign: 'center' }}>
+              <input
+                type="checkbox"
+                checked={!!suivi.travailNonFait}
+                onChange={(ev) => {
+                  const checked = ev.target.checked;
+                  patchSuivi(
+                    e.eleveId,
+                    e.eleveNom,
+                    { travailNonFait: checked },
+                    checked ? {
+                      type: 'travail_non_fait',
+                      sujet: 'Travail non fait',
+                      message: `${formatEleveNom(e.eleveNom)} n'a pas rendu / fait le travail demandé pour aujourd'hui (${dateJour}).`,
+                    } : undefined,
+                  );
+                }}
+                title="Cocher si l'élève n'a pas fait / rendu son travail"
+                aria-label="Travail non fait"
+                style={{ accentColor: '#dc2626', cursor: 'pointer' }}
+              />
             </td>
           </tr>
           );
@@ -2519,6 +2821,11 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                   <AppelSuiviTable
                     groupeId={groupe.id}
                     profId={currentUser.uid}
+                    /* 🆕 (mai 2026) — `profNom` est passé pour signer les
+                       notifications temps réel envoyées aux parents lors
+                       d'une saisie dans les nouvelles colonnes de suivi
+                       (observations / matériel / travail). */
+                    profNom={currentUser.displayName || 'Enseignant'}
                     statsEleves={statsEleves}
                     periode={periodeSuivi}
                     /* Map eleveId → sexe : permet l'affichage du pictogramme

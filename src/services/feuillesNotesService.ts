@@ -552,6 +552,46 @@ export async function updateCompetencesDefFeuille(
   });
 }
 
+/**
+ * 🆕 (mai 2026) — Définit les compétences ÉVALUÉES pour une évaluation
+ *   spécifique (devoir ou composition).
+ *
+ *   - Persiste `evaluations[i].competences` directement dans Firestore.
+ *   - Si la liste est vide, on supprime le champ pour rester rétro-
+ *     compatible avec les feuilles existantes (où ce champ n'existait pas).
+ *   - N'altère AUCUN autre champ de l'évaluation (libellé, coef, type,
+ *     exclusion, etc.) afin de préserver les fonctionnalités existantes.
+ *
+ *   Pourquoi ce service séparé ?
+ *     Une mise à jour ciblée évite de surécrire l'ensemble du tableau
+ *     `evaluations[]` (qui pourrait être modifié en parallèle dans
+ *     une autre session — drag-and-drop ou renommage). On utilise
+ *     une lecture-modification-écriture courte protégée par
+ *     Firestore (taux de concurrence faible côté un seul prof).
+ */
+export async function updateCompetencesEvaluation(
+  feuilleId: string,
+  evaluationId: string,
+  competences: CompetenceDef[]
+): Promise<void> {
+  const ref = doc(db, COL, feuilleId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Feuille introuvable');
+  const data = snap.data();
+  const evals: EvaluationNote[] = (data.evaluations || []).map((e: EvaluationNote) => {
+    if (e.id !== evaluationId) return e;
+    // Liste vide → on retire complètement le champ pour rester compact
+    // côté document Firestore et pour que l'UI retombe proprement sur
+    // les compétences globales de la feuille (`competencesDef`).
+    if (competences.length === 0) {
+      const { competences: _omit, ...rest } = e;
+      return rest as EvaluationNote;
+    }
+    return { ...e, competences };
+  });
+  await updateDoc(ref, { evaluations: evals, updatedAt: Timestamp.now() });
+}
+
 /** Met à jour le statut d'une compétence pour un élève */
 export async function updateCompetenceEleve(
   feuilleId: string,

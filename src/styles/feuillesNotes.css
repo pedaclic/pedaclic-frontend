@@ -457,6 +457,22 @@
      (resize utilisateur jusqu'à 15 px) : grip + label peuvent passer
      sur des lignes séparées si nécessaire. */
   flex-wrap: wrap;
+  /* 🆕 (mai 2026) — Contexte positionné pour la POPOVER
+     « Compétences évaluées » : la popover est rendue en
+     `position: absolute` et doit pouvoir s'ancrer SOUS l'en-tête
+     de la colonne sans déborder sur d'autres éléments du DOM. */
+  position: relative;
+}
+/* 🆕 (mai 2026) — Popover « Compétences évaluées » (utilisée pour
+   spécifier précisément les compétences évaluées sur chaque devoir
+   ou composition). Styles minimaux — l'essentiel du look est inline
+   pour conserver l'autonomie du composant et éviter les régressions. */
+.eval-comp-popover {
+  font-family: inherit;
+}
+.eval-comp-popover ul li:hover {
+  background: #f9fafb;
+  border-radius: 3px;
 }
 .eval-grip {
   opacity: 0.5;
