@@ -1037,6 +1037,201 @@
 }
 
 /* ============================================================ */
+/* 🆕 (mai 2026) — SOUS-ONGLETS « FEUILLE D'APPEL / SUIVI »      */
+/* ────────────────────────────────────────────────────────────  */
+/* Barre de sous-onglets placée à l'intérieur de l'onglet ✅     */
+/* Appel pour séparer la SAISIE quotidienne (feuille d'appel)    */
+/* de la GESTION/SUIVI (tableau de synthèse + bulletin PDF).     */
+/* Reprend le style des onglets principaux (border-bottom        */
+/* animé) pour une cohérence visuelle immédiate.                 */
+/* ============================================================ */
+.groupe-appel-sous-onglets {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin: var(--spacing-md) 0 var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.groupe-appel-sous-onglet {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: none;
+  background: transparent;
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--color-text-light);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.groupe-appel-sous-onglet:hover {
+  color: var(--color-primary);
+}
+
+.groupe-appel-sous-onglet.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.groupe-appel-sous-onglet:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================ */
+/* 🆕 (mai 2026) — COLONNE « HISTORIQUE DES ABSENCES »           */
+/* ────────────────────────────────────────────────────────────  */
+/* Bouton compteur (le nombre est cliquable) + popover détaillé  */
+/* listant date + contenu de chaque séance manquée.              */
+/* Le popover est positionné en absolute relativement à la       */
+/* cellule (qui a position: relative en inline-style).           */
+/* ============================================================ */
+
+/* Cellule conteneur : la position relative est portée par       */
+/* l'inline-style côté JSX pour assurer la robustesse même si    */
+/* la CSS n'est pas encore chargée (FOUC). On y ajoute ici les   */
+/* propriétés purement esthétiques.                              */
+.groupe-histo-abs-cell {
+  white-space: nowrap;
+}
+
+/* Le bouton-compteur : visuellement proche d'un badge cliquable */
+.groupe-histo-abs-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 26px;
+  padding: 0 0.55rem;
+  border: 1px solid #dc2626;          /* rouge cohérent avec absent */
+  background: #fee2e2;                /* fond rouge très clair */
+  color: #991b1b;                     /* texte rouge profond */
+  font-weight: 700;
+  font-size: 0.85rem;
+  border-radius: var(--radius-full, 999px);
+  cursor: pointer;
+  transition: all var(--transition-base, 150ms ease);
+}
+
+.groupe-histo-abs-btn:hover {
+  background: #fecaca;
+  transform: translateY(-1px);
+}
+
+.groupe-histo-abs-btn.is-open,
+.groupe-histo-abs-btn:focus-visible {
+  outline: 2px solid var(--color-primary, #2563eb);
+  outline-offset: 2px;
+}
+
+/* Popover : carte flottante sous le bouton, alignée à droite    */
+/* pour éviter de déborder à droite du tableau.                  */
+.groupe-histo-abs-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  min-width: 260px;
+  max-width: 380px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: var(--radius-md, 8px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  padding: 0.6rem 0.75rem;
+  text-align: left;
+  font-size: 0.82rem;
+  color: #111827;
+  /* Animation d'apparition discrète */
+  animation: groupe-histo-abs-pop-in 140ms ease-out;
+}
+
+@keyframes groupe-histo-abs-pop-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* En-tête du popover : nom de l'élève + total + bouton ✕         */
+.groupe-histo-abs-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.4rem;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.groupe-histo-abs-popover-head strong {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #111827;
+}
+
+.groupe-histo-abs-popover-count {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.groupe-histo-abs-popover-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: #6b7280;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.groupe-histo-abs-popover-close:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Liste des absences (date + titre de la séance) */
+.groupe-histo-abs-popover-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.groupe-histo-abs-popover-list li {
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  background: #f9fafb;
+}
+
+.groupe-histo-abs-popover-list li:hover {
+  background: #f3f4f6;
+}
+
+.groupe-histo-abs-popover-date {
+  font-weight: 700;
+  color: #b91c1c;
+  font-size: 0.78rem;
+}
+
+.groupe-histo-abs-popover-titre {
+  color: #374151;
+  font-size: 0.82rem;
+  margin-top: 1px;
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* ============================================================ */
 /* APPEL V2 — Absences + Retards + Motifs                        */
 /* Styles additifs : les classes .groupe-appel-item existantes   */
 /* restent compatibles. Les nouveaux styles ciblent .--v2.       */

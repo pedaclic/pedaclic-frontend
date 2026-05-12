@@ -145,7 +145,19 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
   const [retards, setRetards] = useState<Record<string, number>>({});
   // Phase 40 — compteur d'exclusions sur la période sélectionnée
   const [exclusions, setExclusions] = useState<Record<string, number>>({});
-  const [seancesManquees, setSeancesManquees] = useState<Record<string, string[]>>({});
+  /*
+    🆕 (mai 2026) — La liste des séances manquées par élève stocke désormais
+    POUR CHAQUE absence : la DATE (YYYY-MM-DD) ET le TITRE/contenu de la
+    séance. Cette structure enrichie alimente la nouvelle colonne
+    « Historique des absences » : la cellule affiche le compteur (count[id])
+    et son infobulle (title) liste « date — titre » pour chaque absence,
+    avec un popover détaillé au clic pour une lecture confortable.
+  */
+  const [seancesManquees, setSeancesManquees] = useState<Record<string, Array<{ date: string; titre: string }>>>({});
+  // 🆕 (mai 2026) — ID de l'élève dont le popover « Historique des absences »
+  // est actuellement ouvert. `null` = popover fermé. Géré au niveau du
+  // tableau pour qu'un seul popover soit ouvert à la fois (clarté UX).
+  const [popoverHistoEleveId, setPopoverHistoEleveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   // 🆕 État local des SUIVIS DU JOUR par élève — alimenté au chargement
   //    depuis `getSuivisJour` et `calculerAbsencesSeancePrecedente`.
@@ -158,6 +170,41 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
   const dateJour = new Date().toISOString().slice(0, 10);
   // Edition en cours d'une observation (eleveId → texte en cours de saisie)
   const [draftObs, setDraftObs] = useState<Record<string, string>>({});
+
+  /*
+    🆕 (mai 2026) — Fermeture du popover « Historique des absences »
+    ──────────────────────────────────────────────────────────────
+    Deux raccourcis ergonomiques pour fermer le popover :
+      • Touche Échap (Esc) : ferme immédiatement.
+      • Clic en dehors du popover ET du bouton-compteur : ferme.
+    Les écouteurs ne sont posés QUE lorsqu'un popover est ouvert,
+    pour éviter tout coût lors du rendu standard du tableau.
+  */
+  useEffect(() => {
+    if (!popoverHistoEleveId) return;
+    const handleEsc = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setPopoverHistoEleveId(null);
+    };
+    const handleClickOutside = (ev: MouseEvent) => {
+      const target = ev.target as HTMLElement | null;
+      // On considère le clic comme "intérieur" s'il se produit dans
+      // un bouton-compteur OU dans le popover lui-même.
+      if (
+        target &&
+        (target.closest('.groupe-histo-abs-btn') ||
+          target.closest('.groupe-histo-abs-popover'))
+      ) {
+        return;
+      }
+      setPopoverHistoEleveId(null);
+    };
+    document.addEventListener('keydown', handleEsc);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [popoverHistoEleveId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -185,7 +232,11 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
         const r: Record<string, number> = {};
         // Phase 40 — accumulateur des exclusions par élève
         const x: Record<string, number> = {};
-        const sm: Record<string, string[]> = {};
+        // 🆕 (mai 2026) — accumulateur enrichi : pour chaque absence, on
+        // conserve la DATE et le TITRE de la séance manquée. Ces données
+        // alimentent la nouvelle colonne « Historique des absences »
+        // (infobulle + popover détaillé au clic).
+        const sm: Record<string, Array<{ date: string; titre: string }>> = {};
         statsEleves.forEach(e => { c[e.eleveId] = 0; r[e.eleveId] = 0; x[e.eleveId] = 0; sm[e.eleveId] = []; });
         absences.forEach(a => {
           // Phase 38 + 39 — Comptage granulaire par séance.
@@ -208,7 +259,9 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
                 titresSeances[idsSeances.indexOf(entreeId)] || a.entreeTitre || '';
               eleveIds.forEach((id) => {
                 if (c[id] !== undefined) c[id]++;
-                if (titreSeance && sm[id]) sm[id].push(titreSeance);
+                // On stocke l'objet { date, titre } — la date provient
+                // toujours du document parent (`a.date`, format YYYY-MM-DD).
+                if (sm[id]) sm[id].push({ date: a.date, titre: titreSeance || '(séance non précisée)' });
               });
             }
           } else {
@@ -216,9 +269,16 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
             (a.eleveIdsAbsents || []).forEach((id: string) => {
               if (c[id] !== undefined) c[id]++;
               if (sm[id]) {
-                titresSeances.forEach((t) => {
-                  if (t) sm[id].push(t);
-                });
+                if (titresSeances.length > 0) {
+                  // Une entrée par séance liée à l'appel
+                  titresSeances.forEach((t) => {
+                    sm[id].push({ date: a.date, titre: t || '(séance non précisée)' });
+                  });
+                } else {
+                  // Aucun titre disponible : on garde quand même la date
+                  // afin que l'historique reste exhaustif.
+                  sm[id].push({ date: a.date, titre: '(séance non précisée)' });
+                }
               }
             });
           }
@@ -371,16 +431,30 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
           <th>Retards ({periode})</th>
           {/* Phase 40 — colonne Exclusions (mesures disciplinaires) */}
           <th title="Nombre d'exclusions disciplinaires sur la période">Exclusions ({periode})</th>
-          <th>Séances manquées</th>
           {/*
-            🆕 (mai 2026) — Quatre nouvelles colonnes de SUIVI ÉLÈVE
-            ────────────────────────────────────────────────────────
+            🆕 (mai 2026) — Colonne « HISTORIQUE DES ABSENCES »
+            ──────────────────────────────────────────────────
+            Remplace l'ancienne colonne « Abs. séance préc. » (case à
+            cocher booléenne, peu informative). Affiche désormais le
+            nombre total d'absences sur la période sélectionnée
+            (jour / semaine / mois) avec :
+              • Une INFOBULLE NATIVE (title) listant chaque absence
+                au format « JJ/MM/AAAA — Titre de la séance ».
+              • Un POPOVER cliquable plus riche (mise en forme,
+                dates en français, contenu complet de la séance).
+            Aucune perte d'information : la donnée « séances
+            manquées » est désormais fusionnée dans cette colonne
+            unique, plus lisible et plus pédagogique.
+          */}
+          <th title="Cliquez sur le nombre pour voir le détail (dates et contenu des séances manquées)">
+            Historique des absences
+          </th>
+          {/*
+            🆕 (mai 2026) — Trois colonnes de SUIVI ÉLÈVE
+            ─────────────────────────────────────────────
             Toutes saisies pour la journée courante et synchronisées
             en temps réel avec le compte parent / tuteur.
           */}
-          <th title="Absence à la séance immédiatement précédente — auto-renseignée, modifiable">
-            Abs. séance préc.
-          </th>
           <th title="Observation qualitative (positive / neutre / négative)">
             Observation
           </th>
@@ -433,37 +507,87 @@ function AppelSuiviTable({ groupeId, profId, profNom, statsEleves, periode, sexe
             >
               {exclusions[e.eleveId] || 0}
             </td>
-            <td className="groupe-appel-seances-manquees">
-              {(seancesManquees[e.eleveId] || []).length > 0
-                ? seancesManquees[e.eleveId].map((titre, i) => (
-                    <span key={i} className="groupe-appel-seance-tag">{titre}</span>
-                  ))
-                : <span className="text-muted">—</span>
-              }
-            </td>
             {/*
-              🆕 COLONNE 1 — ABSENCE SÉANCE PRÉCÉDENTE
-              ─────────────────────────────────────────
-              Case à cocher (toggle). Auto-renseignée par
-              `calculerAbsencesSeancePrecedente`, modifiable.
-              Couleur orange si cochée pour focus rapide.
+              🆕 COLONNE « HISTORIQUE DES ABSENCES »
+              ─────────────────────────────────────
+              • Affiche le NOMBRE total d'absences (counts[id]).
+              • Tooltip natif (attribut `title`) listant chaque
+                absence au format « JJ/MM/AAAA — Titre séance ».
+              • Au CLIC, ouvre/ferme un POPOVER lisible avec mise
+                en forme : date en gras puis contenu complet.
+              • Affichage neutre « — » si zéro absence.
             */}
-            <td style={{ textAlign: 'center' }}>
-              <input
-                type="checkbox"
-                checked={!!suivi.absenceSeancePrecedente}
-                onChange={(ev) => {
-                  const checked = ev.target.checked;
-                  patchSuivi(e.eleveId, e.eleveNom, { absenceSeancePrecedente: checked }, checked ? {
-                    type: 'absence_seance_precedente',
-                    sujet: 'Information : absence à la séance précédente',
-                    message: `${formatEleveNom(e.eleveNom)} était absent(e) à la séance précédente. Pensez à lui faire rattraper le cours.`,
-                  } : undefined);
-                }}
-                title="Cocher si l'élève était absent à la séance précédente"
-                aria-label="Absence à la séance précédente"
-                style={{ accentColor: suivi.absenceSeancePrecedente ? '#f59e0b' : undefined, cursor: 'pointer' }}
-              />
+            <td className="groupe-histo-abs-cell" style={{ position: 'relative', textAlign: 'center' }}>
+              {(() => {
+                // Liste enrichie pour cet élève (date + titre par absence)
+                const histo = seancesManquees[e.eleveId] || [];
+                const total = counts[e.eleveId] || 0;
+                // Formatte une date YYYY-MM-DD vers JJ/MM/AAAA (FR)
+                const formatDateFR = (iso: string): string => {
+                  if (!iso) return '';
+                  const [y, m, d] = iso.split('-');
+                  return d && m && y ? `${d}/${m}/${y}` : iso;
+                };
+                // Construction du tooltip natif (texte brut multi-lignes)
+                const tooltipText = histo.length > 0
+                  ? histo.map(h => `${formatDateFR(h.date)} — ${h.titre}`).join('\n')
+                  : 'Aucune absence sur la période';
+                // Le popover est ouvert si l'eleveId courant matche l'état
+                const popoverOuvert = popoverHistoEleveId === e.eleveId;
+                return total > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      className={`groupe-histo-abs-btn ${popoverOuvert ? 'is-open' : ''}`}
+                      title={tooltipText}
+                      aria-label={`Historique des absences de ${formatEleveNom(e.eleveNom)} : ${total} absence${total > 1 ? 's' : ''}. Cliquez pour voir le détail.`}
+                      aria-haspopup="dialog"
+                      aria-expanded={popoverOuvert}
+                      onClick={() =>
+                        setPopoverHistoEleveId(prev => (prev === e.eleveId ? null : e.eleveId))
+                      }
+                    >
+                      {total}
+                    </button>
+                    {popoverOuvert && (
+                      <div
+                        className="groupe-histo-abs-popover"
+                        role="dialog"
+                        aria-label={`Détail des absences de ${formatEleveNom(e.eleveNom)}`}
+                      >
+                        <div className="groupe-histo-abs-popover-head">
+                          <strong>{formatEleveNom(e.eleveNom)}</strong>
+                          <span className="groupe-histo-abs-popover-count">
+                            {total} absence{total > 1 ? 's' : ''} ({periode})
+                          </span>
+                          <button
+                            type="button"
+                            className="groupe-histo-abs-popover-close"
+                            aria-label="Fermer le détail"
+                            onClick={() => setPopoverHistoEleveId(null)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <ul className="groupe-histo-abs-popover-list">
+                          {histo.map((h, i) => (
+                            <li key={`${h.date}-${i}`}>
+                              <span className="groupe-histo-abs-popover-date">
+                                {formatDateFR(h.date)}
+                              </span>
+                              <span className="groupe-histo-abs-popover-titre">
+                                {h.titre}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-muted" title="Aucune absence sur la période">—</span>
+                );
+              })()}
             </td>
             {/*
               🆕 COLONNE 2 — OBSERVATION QUALITATIVE
@@ -646,6 +770,20 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
   // Feedback de sauvegarde ("idle" | "ok" | "err") pour l'utilisateur
   const [appelSaveState, setAppelSaveState] = useState<'idle' | 'ok' | 'err'>('idle');
   const [periodeSuivi, setPeriodeSuivi] = useState<'jour' | 'semaine' | 'mois'>('semaine');
+  /*
+    🆕 (mai 2026) — SOUS-ONGLETS INTERNES DE L'ONGLET « APPEL »
+    ──────────────────────────────────────────────────────────
+    L'onglet ✅ Appel est désormais segmenté en deux feuilles
+    distinctes pour une meilleure ergonomie :
+      • 'feuille-appel'  → Saisie de l'appel du jour (marquer les
+        absents / retards / exclus, lier aux séances, enregistrer).
+      • 'feuille-suivi'  → Feuille de gestion & suivi : tableau
+        synthétique des absences, observations, matériel, travail,
+        et bouton de génération du bulletin PDF.
+    La sélection est persistée localement le temps de la session
+    (state local — pas de stockage durable nécessaire).
+  */
+  const [sousOngletAppel, setSousOngletAppel] = useState<'feuille-appel' | 'feuille-suivi'>('feuille-appel');
   // Liaison absence ↔ séance
   const [appelCahiers, setAppelCahiers] = useState<CahierTextes[]>([]);
   const [appelCahierId, setAppelCahierId] = useState('');
@@ -2413,6 +2551,44 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
             </div>
           )}
 
+          {/*
+            ════════════════════════════════════════════════════════
+            🆕 (mai 2026) — SOUS-ONGLETS « FEUILLE D'APPEL » / « SUIVI »
+            ════════════════════════════════════════════════════════
+            Séparation ergonomique en 2 feuilles distinctes :
+              • Feuille d'appel : saisie quotidienne (marquage des
+                statuts + enregistrement).
+              • Feuille de gestion & suivi : tableau de synthèse +
+                bulletin PDF + historique des absences.
+            Mêmes styles visuels que les onglets principaux pour
+            assurer une cohérence d'interaction (border-bottom
+            actif, color primary, transitions).
+            ════════════════════════════════════════════════════════ */}
+          <div
+            className="groupe-appel-sous-onglets"
+            role="tablist"
+            aria-label="Sous-onglets de l'appel"
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sousOngletAppel === 'feuille-appel'}
+              className={`groupe-appel-sous-onglet ${sousOngletAppel === 'feuille-appel' ? 'active' : ''}`}
+              onClick={() => setSousOngletAppel('feuille-appel')}
+            >
+              📝 Feuille d'appel
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={sousOngletAppel === 'feuille-suivi'}
+              className={`groupe-appel-sous-onglet ${sousOngletAppel === 'feuille-suivi' ? 'active' : ''}`}
+              onClick={() => setSousOngletAppel('feuille-suivi')}
+            >
+              📊 Feuille de gestion &amp; suivi
+            </button>
+          </div>
+
           {statsEleves.length === 0 ? (
             <div className="prof-empty-state">
               <p>Aucun élève inscrit. Partagez le code pour inviter des élèves.</p>
@@ -2420,9 +2596,13 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
           ) : (
             <>
               {/* ============================================ */}
-              {/* LISTE D'APPEL — Absences + Retards           */}
+              {/* SOUS-ONGLET 1 — FEUILLE D'APPEL              */}
+              {/* Marquage Présent/Retard/Absent/Exclu         */}
+              {/* + bouton "Enregistrer l'appel"               */}
               {/* Format "Prénoms NOM" trié par nom de famille */}
               {/* ============================================ */}
+              {sousOngletAppel === 'feuille-appel' && (
+              <>
               <div className="groupe-appel-liste">
                 <div className="groupe-appel-liste-header">
                   <h4>☑️ Marquer l'appel</h4>
@@ -2783,10 +2963,15 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                   {exclusIds.length} exclu{exclusIds.length > 1 ? 's' : ''}
                 </span>
               </div>
+              </>
+              )}
 
               {/* ============================================ */}
+              {/* SOUS-ONGLET 2 — FEUILLE DE GESTION & SUIVI   */}
+              {/* Tableau de synthèse + bulletin PDF           */}
               {/* SUIVI SUR PÉRIODE — Absences + Retards       */}
               {/* ============================================ */}
+              {sousOngletAppel === 'feuille-suivi' && (
               <div className="groupe-appel-suivi">
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'space-between' }}>
                   <h4 style={{ margin: 0 }}>📊 Suivi des absences &amp; retards</h4>
@@ -2837,6 +3022,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
                   />
                 )}
               </div>
+              )}
             </>
           )}
         </div>
