@@ -4,6 +4,44 @@
    Mobile-first responsive
    ================================================================== */
 
+/* ============================================================
+   ===== ANIMATION D'OUVERTURE (slide latéral) =====
+   ------------------------------------------------------------
+   Quand l'utilisateur clique sur "Lire" depuis la bibliothèque,
+   le composant <EbookViewer> est monté par EbooksPage (changement
+   d'état interne, pas de changement de route React-Router).
+   L'animation globale `.page-enter` de globals.css ne se rejoue
+   donc PAS ici — ce qui produisait une apparition brusque, perçue
+   comme un saut vertical par l'utilisateur.
+   ------------------------------------------------------------
+   On ajoute une animation LOCALE de glissement horizontal (depuis
+   la droite vers la gauche) afin que l'ouverture du viewer soit
+   fluide et orientée latéralement, comme demandé.
+   ------------------------------------------------------------
+   Points de prudence (non-régression) :
+    • Pas de `fill-mode: both/forwards` → après l'animation, le
+      `transform` revient à `none`. Ceci préserve le bon
+      fonctionnement du `position: sticky` de `.viewer-navbar`
+      (un `transform` non nul créerait un containing-block qui
+       pourrait altérer la sticky position).
+    • Respect de `prefers-reduced-motion` pour l'accessibilité.
+    • Aucune modification de globals.css : les autres pages
+      conservent leur transition habituelle (fade vertical).
+   ============================================================ */
+@keyframes ebook-viewer-slide-in {
+  from {
+    opacity: 0;
+    /* Décalage horizontal : on entre depuis la droite.
+       40px = course suffisante pour que le mouvement soit perçu
+       comme latéral, sans donner l'impression d'un slide brutal. */
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 /* ===== CONTENEUR PRINCIPAL =====
    Le conteneur prend désormais toute la largeur disponible afin que
    l'iframe PDF (mode lecture) puisse exploiter pleinement l'écran.
@@ -15,6 +53,18 @@
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* Animation d'entrée latérale — voir bloc commenté ci-dessus.
+     Volontairement SANS `both` pour libérer le `transform` à la fin
+     et ne pas perturber la sticky navbar. */
+  animation: ebook-viewer-slide-in 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Accessibilité : utilisateurs ayant désactivé les animations système.
+   On garde le composant fonctionnel, simplement sans mouvement. */
+@media (prefers-reduced-motion: reduce) {
+  .ebook-viewer {
+    animation: none;
+  }
 }
 
 /* ===== BARRE DE NAVIGATION ===== */
