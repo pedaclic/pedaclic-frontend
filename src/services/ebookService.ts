@@ -317,6 +317,12 @@ export async function addEbook(
     // --- 4. Création du document Firestore ---
     // On stocke `format` explicitement pour distinguer côté lecteur, et on
     // garde `aperçuURL` même vide pour homogénéiser les documents.
+    //
+    // `telechargementActif` :
+    //   - Si l'admin a coché/décoché explicitement la case, on respecte sa valeur.
+    //   - Sinon (champ absent du formulaire), on écrit `true` par défaut :
+    //     un nouvel ebook autorise le téléchargement, ce qui correspond au
+    //     comportement historique de la plateforme.
     const ebookData = {
       ...formData,
       format,
@@ -324,6 +330,7 @@ export async function addEbook(
       couvertureURL,
       aperçuURL,
       tailleFichier,
+      telechargementActif: formData.telechargementActif ?? true,
       nombreTelechargements: 0,
       nombreVues: 0,
       uploadedBy: adminId || 'admin',
@@ -464,6 +471,32 @@ export async function toggleEbookActive(id: string, isActive: boolean): Promise<
     });
   } catch (error) {
     console.error('❌ Erreur toggle ebook:', error);
+    throw error;
+  }
+}
+
+/**
+ * Active/désactive le TÉLÉCHARGEMENT d'un ebook (sans toucher à `isActive`).
+ *
+ * Pourquoi une fonction dédiée plutôt que `updateEbook` ?
+ *   - `updateEbook` est conçue pour gérer aussi les uploads de fichiers
+ *     (PDF/HTML/couverture/aperçu) avec un workflow d'upload coûteux.
+ *     Pour un simple flip de booléen depuis le tableau admin, on veut un
+ *     appel léger et atomique (un seul `updateDoc`), exactement comme
+ *     `toggleEbookActive` plus haut.
+ *   - Cela rend également l'API d'admin plus lisible et symétrique.
+ *
+ * @param id       - identifiant Firestore de l'ebook
+ * @param enabled  - `true` pour autoriser le téléchargement, `false` pour le bloquer
+ */
+export async function toggleEbookDownload(id: string, enabled: boolean): Promise<void> {
+  try {
+    await updateDoc(doc(db, EBOOKS_COLLECTION, id), {
+      telechargementActif: enabled,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('❌ Erreur toggle téléchargement ebook:', error);
     throw error;
   }
 }

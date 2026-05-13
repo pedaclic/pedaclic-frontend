@@ -85,6 +85,14 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   // Rétrocompat : un ebook sans champ `format` est un PDF historique.
   const ebookFormat = ebook.format || 'pdf';
 
+  // --- Autorisation du téléchargement ---
+  // L'admin peut désactiver le téléchargement depuis le panneau AdminEbooks.
+  // Pour les ebooks créés AVANT cette fonctionnalité, le champ
+  // `telechargementActif` n'existe pas ; on le traite comme `true` (comportement
+  // historique). La règle s'applique à TOUS les utilisateurs (Premium inclus) :
+  // c'est l'admin qui décide si un document est exportable.
+  const canDownload = ebook.telechargementActif !== false;
+
   const getViewStrategy = (): ViewStrategy => {
     // ----- Format HTML : stratégie dédiée (sandbox iframe) -----
     if (ebookFormat === 'html') {
@@ -116,9 +124,19 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   const strategy = getViewStrategy();
 
   /**
-   * Gère le téléchargement (Premium uniquement)
+   * Gère le téléchargement (Premium uniquement, et autorisé par l'admin).
+   *
+   * Garde de sécurité défensive : même si le bouton est masqué via `canDownload`,
+   * on revérifie ici pour éviter qu'un appel programmatique direct (devtools,
+   * gestionnaire JS conservé en mémoire après bascule serveur) ne déclenche
+   * un téléchargement non autorisé.
    */
   const handleDownload = async () => {
+    if (!canDownload) {
+      // Téléchargement bloqué par l'administrateur — silencieux : le bouton
+      // ne devrait normalement pas être présent dans le DOM.
+      return;
+    }
     if (!isPremium) {
       onGoPremium();
       return;
@@ -212,7 +230,19 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                   }
                 </button>
 
-                {isPremium ? (
+                {/* Bouton de téléchargement — affichage conditionnel :
+                     1. Si `canDownload === false` : l'admin a interdit le DL,
+                        on affiche un petit message "Téléchargement désactivé"
+                        à la place du bouton (pour Premium ET non-Premium).
+                     2. Sinon, comportement historique :
+                        - Premium     → bouton "Télécharger"
+                        - Non-Premium → bouton "Passer Premium". */}
+                {!canDownload ? (
+                  <div className="info-download-disabled" role="note">
+                    🚫 Téléchargement désactivé par l'administrateur.
+                    <small>Lecture en ligne uniquement.</small>
+                  </div>
+                ) : isPremium ? (
                   <button className="btn-action-download" onClick={handleDownload}>
                     ⬇️ {ebookFormat === 'html' ? 'Télécharger le HTML' : 'Télécharger le PDF'}
                   </button>

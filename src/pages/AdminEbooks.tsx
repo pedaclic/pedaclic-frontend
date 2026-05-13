@@ -19,6 +19,7 @@ import {
   updateEbook,
   deleteEbook,
   toggleEbookActive,
+  toggleEbookDownload,
   calculateEbookStats,
   formatFileSize,
   MATIERES_DISPONIBLES_FALLBACK
@@ -89,7 +90,11 @@ export const AdminEbooks: React.FC = () => {
       isbn: '',
       tags: [],
       ordre: 0,
-      isActive: true
+      isActive: true,
+      // Nouveau : par défaut le téléchargement est AUTORISÉ (comportement
+      // historique de la plateforme). L'admin peut décocher la case pour
+      // bloquer l'export du document tout en conservant la lecture en ligne.
+      telechargementActif: true
     };
   }
 
@@ -270,7 +275,10 @@ export const AdminEbooks: React.FC = () => {
       isbn: ebook.isbn || '',
       tags: ebook.tags || [],
       ordre: ebook.ordre,
-      isActive: ebook.isActive
+      isActive: ebook.isActive,
+      // Rétrocompatibilité : si le champ n'existait pas sur l'ancien
+      // document, on considère le téléchargement comme autorisé (true).
+      telechargementActif: ebook.telechargementActif ?? true
     });
     // Réinitialise les sources fichiers : l'admin doit re-uploader explicitement
     // s'il veut remplacer le contenu (sécurité contre une mise à jour
@@ -305,6 +313,26 @@ export const AdminEbooks: React.FC = () => {
     try {
       await toggleEbookActive(id, !currentState);
       // La liste est rafraîchie automatiquement par onSnapshot.
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  /**
+   * Bascule l'autorisation du téléchargement de l'ebook (Premium ET non-Premium).
+   *
+   * On passe `currentState` avec la convention :
+   *   - `undefined` (ebook historique sans le champ) → traité comme `true`,
+   *     donc le premier clic le passe à `false` (désactive le téléchargement).
+   *   - `true`/`false` → on inverse simplement la valeur.
+   *
+   * Le rafraîchissement de la liste est géré automatiquement par le listener
+   * onSnapshot (cf. useEffect plus haut) : aucun setState manuel n'est requis.
+   */
+  const handleToggleDownload = async (id: string, currentState: boolean | undefined) => {
+    try {
+      const effective = currentState ?? true;
+      await toggleEbookDownload(id, !effective);
     } catch (err: any) {
       setError(err.message);
     }
@@ -773,7 +801,14 @@ export const AdminEbooks: React.FC = () => {
               </div>
             </div>
 
-            {/* <!-- Actif/Inactif --> */}
+            {/* <!-- Disponibilité de l'ebook -->
+                 Deux interrupteurs INDÉPENDANTS :
+                   - `isActive`           → visibilité dans la bibliothèque
+                   - `telechargementActif` → autorisation de téléchargement
+                 Un ebook peut être visible et lisible en ligne, mais non
+                 téléchargeable (par exemple pour une œuvre protégée par
+                 droits d'auteur que l'on souhaite consultable mais non
+                 exportable). --> */}
             <div className="form-group checkbox-group">
               <label>
                 <input
@@ -783,6 +818,25 @@ export const AdminEbooks: React.FC = () => {
                   onChange={handleInputChange}
                 />
                 Ebook actif (visible dans la bibliothèque)
+              </label>
+            </div>
+
+            {/* <!-- Téléchargement autorisé / bloqué -->
+                 Quand la case est décochée :
+                   - le bouton "Télécharger" disparaît dans EbookViewer et
+                     dans la carte EbookLibrary, y compris pour les Premium.
+                   - la lecture en ligne (iframe PDF / HTML) reste inchangée.
+                 Aucun impact sur les compteurs `nombreTelechargements`
+                 historiques : ils restent visibles dans les statistiques. --> */}
+            <div className="form-group checkbox-group">
+              <label>
+                <input
+                  type="checkbox"
+                  name="telechargementActif"
+                  checked={formData.telechargementActif ?? true}
+                  onChange={handleInputChange}
+                />
+                Téléchargement autorisé (sinon : lecture en ligne uniquement)
               </label>
             </div>
 
@@ -830,6 +884,7 @@ export const AdminEbooks: React.FC = () => {
                   <th>Pages</th>
                   <th>Vues / DL</th>
                   <th>Statut</th>
+                  <th>Téléchargement</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -887,6 +942,26 @@ export const AdminEbooks: React.FC = () => {
                         title={ebook.isActive ? 'Désactiver' : 'Activer'}
                       >
                         {ebook.isActive ? '✅ Actif' : '⏸️ Inactif'}
+                      </button>
+                    </td>
+
+                    {/* Téléchargement autorisé / bloqué
+                        - On lit `ebook.telechargementActif ?? true` pour traiter
+                          les ebooks historiques (champ absent ⇒ téléchargement
+                          autorisé). Cela garantit qu'aucun ebook existant
+                          n'est altéré tant qu'un admin n'a pas explicitement
+                          cliqué sur ce bouton. */}
+                    <td>
+                      <button
+                        className={`btn-download-toggle ${(ebook.telechargementActif ?? true) ? 'allowed' : 'blocked'}`}
+                        onClick={() => handleToggleDownload(ebook.id, ebook.telechargementActif)}
+                        title={
+                          (ebook.telechargementActif ?? true)
+                            ? 'Cliquer pour interdire le téléchargement'
+                            : 'Cliquer pour autoriser le téléchargement'
+                        }
+                      >
+                        {(ebook.telechargementActif ?? true) ? '⬇️ Autorisé' : '🚫 Bloqué'}
                       </button>
                     </td>
 

@@ -86,6 +86,24 @@ export interface Ebook {
   nombreVues: number;               // Compteur de vues
   ordre: number;                    // Ordre d'affichage
   isActive: boolean;                // Actif ou désactivé
+  /**
+   * Autorisation du téléchargement du fichier (PDF ou HTML) par l'utilisateur final.
+   *
+   *  - `true`      → le bouton "Télécharger" est visible (Premium et non-Premium
+   *                  selon les règles d'accès existantes).
+   *  - `false`     → le bouton de téléchargement est masqué pour TOUS les
+   *                  utilisateurs (Premium inclus). La lecture en ligne reste
+   *                  possible : seule l'export/téléchargement est bloqué.
+   *  - `undefined` → équivalent à `true` (RÉTROCOMPATIBILITÉ). Les ebooks
+   *                  créés avant l'introduction de ce champ continuent donc
+   *                  d'autoriser le téléchargement par défaut, sans migration.
+   *
+   * Ce champ est volontairement INDÉPENDANT de `isActive` :
+   *  - `isActive` contrôle la visibilité de l'ebook dans la bibliothèque.
+   *  - `telechargementActif` contrôle uniquement l'action de téléchargement.
+   * Un ebook peut donc être visible et lisible en ligne, mais non téléchargeable.
+   */
+  telechargementActif?: boolean;
   createdAt: Date;                  // Date de création
   updatedAt?: Date;                 // Dernière mise à jour
   uploadedBy: string;               // ID admin qui a uploadé
@@ -116,6 +134,12 @@ export interface EbookFormData {
   tags?: string[];
   ordre: number;
   isActive: boolean;
+  /**
+   * Autorisation du téléchargement (voir doc complète sur `Ebook.telechargementActif`).
+   * Champ optionnel dans le formulaire : si absent à la création, le service
+   * écrira `true` par défaut (cf. addEbook dans ebookService.ts).
+   */
+  telechargementActif?: boolean;
 }
 
 /**

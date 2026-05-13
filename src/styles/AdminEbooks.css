@@ -425,6 +425,45 @@
   opacity: 0.8;
 }
 
+/* ============================================================
+   Bouton de bascule rapide du téléchargement (colonne Tableau)
+   ------------------------------------------------------------
+   Même gabarit visuel que .btn-status pour rester cohérent avec
+   les habitudes de l'admin (un clic = un changement d'état).
+     .allowed  → vert (téléchargement autorisé)
+     .blocked  → ambre (téléchargement explicitement bloqué)
+   On évite le rouge pour ne pas confondre avec "inactif" (suppression
+   visuelle de l'ebook côté biblio).
+   ============================================================ */
+.btn-download-toggle {
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+.btn-download-toggle.allowed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.btn-download-toggle.blocked {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.btn-download-toggle:hover {
+  opacity: 0.8;
+}
+
+.btn-download-toggle:active {
+  transform: scale(0.97);
+}
+
 /* Actions */
 .td-actions {
   white-space: nowrap;

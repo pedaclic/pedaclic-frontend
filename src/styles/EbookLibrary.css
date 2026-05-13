@@ -439,6 +439,31 @@
   background: #047857;
 }
 
+/* ============================================================
+   Mini-badge affiché à la place du bouton "Télécharger" quand
+   l'admin a explicitement bloqué l'export pour cet ebook.
+   Visible uniquement pour les utilisateurs Premium (les non-Premium
+   ne voient déjà aucun bouton de téléchargement).
+   ------------------------------------------------------------
+   Style : non cliquable, ton ambre comme dans AdminEbooks pour
+   garder la même grammaire visuelle (autorisé = vert, bloqué = ambre).
+   ============================================================ */
+.btn-download-disabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px dashed #fbbf24;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  user-select: none;
+  white-space: nowrap;
+}
+
 /* ===== ÉTAT VIDE ===== */
 .ebook-empty {
   text-align: center;

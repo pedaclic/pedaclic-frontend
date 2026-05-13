@@ -207,6 +207,33 @@
   transform: scale(1.02);
 }
 
+/* ============================================================
+   Message affiché à la place du bouton "Télécharger" quand
+   l'admin a désactivé l'export pour cet ebook (cf. EbookViewer).
+   On garde un ton informatif (gris/ambre) pour ne pas alarmer
+   l'utilisateur : la lecture en ligne reste possible.
+   ============================================================ */
+.info-download-disabled {
+  width: 100%;
+  padding: 12px 14px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px dashed #fbbf24;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.info-download-disabled small {
+  display: block;
+  margin-top: 4px;
+  font-weight: 400;
+  font-size: 0.82rem;
+  color: #78350f;
+}
+
 /* --- Colonne détails --- */
 .info-details-column {
   flex: 1;

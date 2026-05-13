@@ -304,6 +304,14 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
   const ebookFormat = ebook.format || 'pdf';
   const isHtml = ebookFormat === 'html';
 
+  // --- Autorisation du téléchargement par l'administrateur ---
+  // Rétrocompatibilité : un ebook créé avant l'introduction du champ
+  // `telechargementActif` n'a pas la propriété → on la traite comme `true`,
+  // donc le bouton de téléchargement reste visible (comportement historique).
+  // S'applique aussi bien au Premium qu'au non-Premium : c'est un verrou
+  // global piloté depuis le panneau AdminEbooks.
+  const canDownload = ebook.telechargementActif !== false;
+
   // Pour le HTML, on suggère un nom de fichier .html lors du téléchargement
   // (sans cela, le navigateur conserverait le nom horodaté du Storage).
   const downloadName = isHtml
@@ -375,7 +383,13 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
               : (isPremium ? '📖 Lire' : `👁️ Aperçu (${ebook.pagesApercu} pages)`)
             }
           </button>
-          {isPremium && (
+          {/* Lien de téléchargement — affiché uniquement si :
+                1. l'utilisateur est Premium (règle historique) ET
+                2. l'admin a autorisé le téléchargement pour cet ebook.
+              Si l'admin a bloqué le DL, on affiche un mini-badge discret
+              pour informer l'utilisateur Premium que le document est
+              uniquement consultable en ligne. */}
+          {isPremium && canDownload && (
             // <!-- Lien de téléchargement : on déclenche d'abord l'incrément
             //      du compteur (fire-and-forget pour ne pas bloquer le
             //      téléchargement), puis le navigateur suit le href.
@@ -400,6 +414,11 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
             >
               ⬇️ Télécharger
             </a>
+          )}
+          {isPremium && !canDownload && (
+            <span className="btn-download-disabled" title="Téléchargement désactivé par l'administrateur">
+              🚫 DL bloqué
+            </span>
           )}
         </div>
       </div>
