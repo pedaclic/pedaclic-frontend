@@ -5,6 +5,14 @@
 // ==================================================================
 
 import React, { useState, useEffect, useMemo } from 'react';
+// <!-- Icônes Lucide : on remplace les emojis textuels des boutons d'action
+//      par des pictogrammes vectoriels homogènes. -->
+//   • BookOpen   → bouton "Lire" (PDF, état Premium)
+//   • Globe      → bouton "Consulter" (HTML, état Premium)
+//   • Eye        → bouton "Aperçu" (utilisateur non-Premium)
+//   • Lock       → bouton "Réservé Premium" (HTML, non-Premium)
+//   • Download   → bouton "Télécharger" (actif → vert ; inactif → grisé)
+import { BookOpen, Globe, Eye, Lock, Download } from 'lucide-react';
 import {
   Ebook,
   EbookFilters,
@@ -373,52 +381,94 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
           <span className="meta-size">{formatFileSize(ebook.tailleFichier)}</span>
         </div>
 
-        {/* <!-- Boutons d'action -->
-             Le libellé du bouton "Lire" change selon le format ; pour le HTML
-             non-Premium, on indique clairement que l'aperçu n'est pas disponible. */}
+        {/* <!-- =====================================================
+                 BOUTONS D'ACTION
+                 -----------------------------------------------------
+                 Refonte UX :
+                  • Boutons contigus (flex + gap), jamais superposés.
+                  • Libellés textuels remplacés par des icônes Lucide
+                    accompagnées d'un libellé court explicite.
+                  • Côté Premium : le bouton de téléchargement est
+                    toujours rendu — désactivé/grisé quand l'admin a
+                    coupé le DL, vert et cliquable sinon.
+                    Plus aucun badge « DL bloqué » : la grammaire
+                    visuelle (gris = inactif, vert = actif) suffit.
+                 ===================================================== */}
         <div className="ebook-actions">
-          <button className="btn-read" onClick={onRead}>
-            {isHtml
-              ? (isPremium ? '🌐 Consulter' : '🔒 Réservé Premium')
-              : (isPremium ? '📖 Lire' : `👁️ Aperçu (${ebook.pagesApercu} pages)`)
+          {/* <!-- Bouton "Lire / Consulter / Aperçu / Réservé Premium" --> */}
+          <button
+            className="btn-read"
+            onClick={onRead}
+            // Le `aria-label` détaillé reste accessible aux lecteurs d'écran
+            // même quand l'utilisateur ne voit qu'une icône + un mot court.
+            aria-label={
+              isHtml
+                ? (isPremium ? 'Consulter la page web' : 'Contenu réservé aux utilisateurs Premium')
+                : (isPremium ? 'Lire le document'   : `Aperçu gratuit (${ebook.pagesApercu} pages)`)
             }
+          >
+            {/* Icône contextuelle (taille uniforme, alignée verticalement) */}
+            {isHtml
+              ? (isPremium
+                  ? <Globe size={18} aria-hidden="true" />
+                  : <Lock size={18} aria-hidden="true" />)
+              : (isPremium
+                  ? <BookOpen size={18} aria-hidden="true" />
+                  : <Eye size={18} aria-hidden="true" />)
+            }
+            {/* Libellé court — l'icône porte déjà l'essentiel du sens */}
+            <span className="btn-label">
+              {isHtml
+                ? (isPremium ? 'Consulter' : 'Premium')
+                : (isPremium ? 'Lire'      : `Aperçu (${ebook.pagesApercu})`)
+              }
+            </span>
           </button>
-          {/* Lien de téléchargement — affiché uniquement si :
-                1. l'utilisateur est Premium (règle historique) ET
-                2. l'admin a autorisé le téléchargement pour cet ebook.
-              Si l'admin a bloqué le DL, on affiche un mini-badge discret
-              pour informer l'utilisateur Premium que le document est
-              uniquement consultable en ligne. */}
+
+          {/* <!-- Bouton "Télécharger" — visible uniquement pour les Premium.
+                 Deux états mutuellement exclusifs :
+                  1. canDownload === true  → <a> vert, cliquable, déclenche
+                     l'incrément du compteur de téléchargements.
+                  2. canDownload === false → <button disabled> gris,
+                     non-cliquable. On garde la même empreinte visuelle
+                     (mêmes dimensions, même icône) pour que la carte
+                     ne « saute » pas entre deux ebooks. --> */}
           {isPremium && canDownload && (
-            // <!-- Lien de téléchargement : on déclenche d'abord l'incrément
+            // <!-- Lien actif (vert) : on déclenche d'abord l'incrément
             //      du compteur (fire-and-forget pour ne pas bloquer le
             //      téléchargement), puis le navigateur suit le href.
-            //      Le tracking n'altère pas le comportement natif du <a>.
             //      Pour le HTML, on force un nom de fichier .html via
             //      l'attribut download (cf. downloadName plus haut). -->
             <a
               href={ebook.fichierURL}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-download"
-              // L'attribut React `download` accepte une string (nom forcé)
-              // ou la chaîne vide (utilise le nom serveur). Pour le HTML on
-              // force un nom basé sur le titre ; pour le PDF on laisse le
-              // navigateur décider.
+              className="btn-download is-active"
               download={downloadName || ''}
+              aria-label="Télécharger le document"
+              title="Télécharger le document"
               onClick={() => {
-                // Fire-and-forget : si l'incrément échoue, le téléchargement
-                // se fait quand même. L'erreur est captée dans le service.
+                // Fire-and-forget : si l'incrément échoue, le DL passe.
                 incrementTelechargements(ebook.id);
               }}
             >
-              ⬇️ Télécharger
+              <Download size={18} aria-hidden="true" />
             </a>
           )}
           {isPremium && !canDownload && (
-            <span className="btn-download-disabled" title="Téléchargement désactivé par l'administrateur">
-              🚫 DL bloqué
-            </span>
+            // <!-- Bouton désactivé (gris) : on utilise un vrai <button
+            //      disabled> plutôt qu'un <span> pour bénéficier de la
+            //      sémantique native (focus, lecteurs d'écran, etc.).
+            //      Le `title` indique la raison au survol. -->
+            <button
+              type="button"
+              className="btn-download is-disabled"
+              disabled
+              aria-label="Téléchargement désactivé par l'administrateur"
+              title="Téléchargement désactivé par l'administrateur"
+            >
+              <Download size={18} aria-hidden="true" />
+            </button>
           )}
         </div>
       </div>

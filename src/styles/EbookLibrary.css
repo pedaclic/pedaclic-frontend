@@ -397,71 +397,110 @@
   align-items: center;
 }
 
-/* ===== BOUTONS D'ACTION ===== */
+/* ============================================================
+   ===== BOUTONS D'ACTION (refonte UX) =====
+   ------------------------------------------------------------
+   Objectifs :
+    • Boutons strictement contigus (jamais superposés) grâce à
+      `display: flex` + `gap` + `min-width: 0` sur le bouton
+      flexible — pour qu'un libellé long ne pousse pas le bouton
+      Télécharger hors de la carte.
+    • Hauteur uniforme (`align-items: stretch`) : le bouton carré
+      « Télécharger » a la même hauteur que le bouton « Lire ».
+    • Grammaire visuelle simple :
+        – bleu  = action principale (lire / consulter)
+        – vert  = téléchargement autorisé
+        – gris  = téléchargement bloqué (même empreinte, désactivé)
+   ============================================================ */
 .ebook-actions {
   display: flex;
+  align-items: stretch;     /* hauteurs identiques entre les boutons */
   gap: 8px;
   margin-top: auto;
+  flex-wrap: nowrap;        /* on évite tout retour à la ligne accidentel */
 }
 
+/* ----- Bouton principal "Lire / Consulter / Aperçu / Premium" ----- */
 .btn-read {
-  flex: 1;
-  padding: 10px 16px;
+  flex: 1 1 auto;           /* prend toute la place restante… */
+  min-width: 0;             /* …mais peut rétrécir sans déborder */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;                 /* espacement icône ↔ libellé */
+  padding: 10px 14px;
   background: #2563eb;
-  color: white;
+  color: #ffffff;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, transform 0.1s;
 }
 
 .btn-read:hover {
   background: #1d4ed8;
 }
 
+.btn-read:active {
+  transform: translateY(1px); /* léger feedback tactile */
+}
+
+/* Libellé court à côté de l'icône — tronqué proprement si manque de place */
+.btn-read .btn-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----- Bouton "Télécharger" (carré, icône seule) -----
+   Deux variantes pilotées par les classes utilitaires :
+     .is-active   → vert, cliquable
+     .is-disabled → gris,  non-cliquable
+   On factorise la base commune ici. */
 .btn-download {
-  padding: 10px 14px;
-  background: #059669;
-  color: white;
+  flex: 0 0 auto;           /* taille fixe, ne s'étire pas */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;              /* zone de clic confortable (mobile-friendly) */
+  padding: 0 10px;
   border: none;
   border-radius: 8px;
   font-size: 0.9rem;
   font-weight: 600;
   text-decoration: none;
   cursor: pointer;
-  transition: background 0.2s;
-  text-align: center;
+  transition: background 0.2s, color 0.2s, transform 0.1s;
 }
 
-.btn-download:hover {
+/* État actif : téléchargement autorisé */
+.btn-download.is-active {
+  background: #059669;      /* vert émeraude */
+  color: #ffffff;
+}
+
+.btn-download.is-active:hover {
   background: #047857;
 }
 
-/* ============================================================
-   Mini-badge affiché à la place du bouton "Télécharger" quand
-   l'admin a explicitement bloqué l'export pour cet ebook.
-   Visible uniquement pour les utilisateurs Premium (les non-Premium
-   ne voient déjà aucun bouton de téléchargement).
-   ------------------------------------------------------------
-   Style : non cliquable, ton ambre comme dans AdminEbooks pour
-   garder la même grammaire visuelle (autorisé = vert, bloqué = ambre).
-   ============================================================ */
-.btn-download-disabled {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 10px 14px;
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px dashed #fbbf24;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
+.btn-download.is-active:active {
+  transform: translateY(1px);
+}
+
+/* État désactivé : téléchargement bloqué par l'admin
+   ----------------------------------------------------
+   On remplace l'ancien badge "DL bloqué" par ce bouton grisé.
+   La sémantique HTML (`disabled`) suffit aux lecteurs d'écran ;
+   l'attribut `title` (cf. JSX) précise la raison au survol. */
+.btn-download.is-disabled,
+.btn-download:disabled {
+  background: #e5e7eb;      /* gris clair */
+  color: #9ca3af;           /* icône estompée */
   cursor: not-allowed;
-  user-select: none;
-  white-space: nowrap;
+  pointer-events: none;     /* aucun hover, aucun clic */
+  opacity: 1;               /* on garde 100% pour conserver le contraste */
 }
 
 /* ===== ÉTAT VIDE ===== */
@@ -620,9 +659,17 @@
     font-size: 0.8rem;
   }
 
+  /* Sur mobile, les boutons étaient empilés à la verticale car
+     « Télécharger » avait un long libellé textuel. Maintenant
+     qu'il s'agit d'un bouton-icône carré et compact, on conserve
+     l'orientation horizontale : c'est plus dense et plus lisible. */
   .ebook-actions {
-    flex-direction: column;
+    flex-direction: row;
     gap: 6px;
+  }
+
+  .btn-download {
+    width: 40px;            /* légèrement plus compact en mobile */
   }
 
   .category-tab {
