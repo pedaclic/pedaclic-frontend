@@ -58,24 +58,35 @@ export const EbookPdfPreview: React.FC<EbookPdfPreviewProps> = ({
         if (!container) return;
         container.innerHTML = '';
 
+        // ------------------------------------------------------------
+        // Phase 20ter : passage au défilement HORIZONTAL.
+        // L'échelle de rendu est désormais basée sur la HAUTEUR disponible
+        // (et non plus la largeur), pour que chaque page tienne dans la
+        // hauteur du viewer et que plusieurs pages se succèdent latéralement.
+        // ------------------------------------------------------------
+        const previewRoot = container.parentElement; // .ebook-pdf-preview
+        const availableHeight = Math.max(
+          400,
+          (previewRoot?.clientHeight || window.innerHeight) - 96
+        );
+
         for (let pageNum = 1; pageNum <= pagesToRender; pageNum++) {
           if (cancelled) return;
 
           const page = await pdfDoc.getPage(pageNum);
-          // Échelle adaptée à la largeur réelle du conteneur (comportement aligné
-          // sur l'iframe Premium : pleine largeur, plafond 1400 px pour lisibilité
-          // sur très grand écran). Prise en compte du devicePixelRatio pour un rendu
-          // net sur écrans Retina / HiDPI.
-          const availableWidth = Math.min(container.clientWidth || 1000, 1400);
+          // Prise en compte du devicePixelRatio pour un rendu net en HiDPI.
           const dpr = Math.min(window.devicePixelRatio || 1, 2);
           const baseViewport = page.getViewport({ scale: 1 });
-          const cssScale = availableWidth / baseViewport.width;
+          const cssScale = availableHeight / baseViewport.height;
           const viewport = page.getViewport({ scale: cssScale * dpr });
 
           const canvas = document.createElement('canvas');
           canvas.className = 'ebook-pdf-preview__page';
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
+          // Taille CSS = taille canvas / dpr → rendu net + dimensions correctes
+          canvas.style.width = `${Math.floor(viewport.width / dpr)}px`;
+          canvas.style.height = `${Math.floor(viewport.height / dpr)}px`;
           canvas.setAttribute('aria-label', `Page ${pageNum} sur ${pagesToRender}`);
 
           const wrapper = document.createElement('div');

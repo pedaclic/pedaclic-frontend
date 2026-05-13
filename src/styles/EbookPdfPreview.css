@@ -1,6 +1,12 @@
-/* ==================== EBOOK PDF PREVIEW (Phase 20bis) ==================== */
-/* Rendu canvas des N premières pages d'un ebook PDF (non-Premium).         */
-/* ========================================================================= */
+/* ==================== EBOOK PDF PREVIEW (Phase 20bis) ====================
+   Rendu canvas des N premières pages d'un ebook PDF (non-Premium).
+   ─────────────────────────────────────────────────────────────────────────
+   Mise à jour Phase 20ter :
+   Le défilement passe du VERTICAL au HORIZONTAL pour s'aligner sur le
+   nouveau lecteur PDF dédié (EbookPdfReader). Logique JS du composant
+   inchangée — seul le layout CSS est revu (les wrappers de page restent
+   identiques, ils sont juste alignés en ligne plutôt qu'en colonne).
+   ========================================================================= */
 
 .ebook-pdf-preview {
   position: relative;
@@ -8,29 +14,38 @@
   flex: 1;
   min-height: calc(100vh - 60px);
   background: #f3f4f6;
-  overflow-y: auto;
-  /* Padding bas généreux pour ne pas masquer la dernière page sous l'overlay Premium fixé au bas */
-  padding: 24px 0 220px;
+  /* Défilement horizontal côté preview. overflow-y: hidden pour éviter une
+     scrollbar verticale parasite quand le canvas dépasse de quelques px. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  /* Padding bas ramené à 24px : l'overlay Premium occupe maintenant le bas
+     du conteneur parent (.viewer-read-panel), pas du composant preview. */
+  padding: 24px 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
 }
 
-/* Conteneur des pages : pleine largeur du viewer (aligné sur le comportement
-   de l'iframe Premium → pas de bandes blanches latérales côté élève). */
+/* Conteneur des pages : flex ROW pour défilement latéral.
+   Le padding latéral 50vw permet à la 1ʳᵉ page d'être centrée même
+   sans page précédente (scroll-snap-align: center). */
 .ebook-pdf-preview__pages {
-  width: 100%;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;       /* ← bascule vertical → horizontal */
   align-items: center;
   gap: 24px;
-  padding: 0 12px;
+  padding: 0 50vw;            /* permet le snap-center sur 1ʳᵉ et dernière page */
+  min-height: 100%;
   box-sizing: border-box;
 }
 
+/* Chaque page se snappe au centre du viewport horizontal. */
 .ebook-pdf-preview__pages > * {
-  width: 100%;
-  max-width: 1400px; /* lisibilité sur très grand écran (≥ UHD), tout en restant large */
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  max-width: 1400px;
 }
 
 .ebook-pdf-preview__page-wrapper {

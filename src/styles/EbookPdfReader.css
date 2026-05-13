@@ -1,0 +1,336 @@
+/* ============================================================
+   ===== EBOOK PDF READER — Phase 20ter =====
+   ------------------------------------------------------------
+   Visualiseur PDF dédié, rendu canvas, défilement HORIZONTAL.
+   Remplace l'iframe PDF natif pour empêcher le bouton de
+   téléchargement intégré au navigateur de contourner la règle
+   d'administration (canDownload === false).
+   ============================================================ */
+
+/* ------------------------------------------------------------
+   Conteneur racine
+   - flex column : scroller au-dessus, toolbar en-dessous.
+   - position relative : ancre l'overlay de chargement.
+   - tabIndex côté JSX → la racine peut recevoir le focus pour
+     capter les flèches clavier sans piéger les raccourcis hors
+     du viewer.
+   ------------------------------------------------------------ */
+.ebook-pdf-reader {
+  position: relative;
+  width: 100%;
+  flex: 1;
+  min-height: calc(100vh - 60px);
+  background: #1f2937;     /* gris foncé style liseuse */
+  display: flex;
+  flex-direction: column;
+  outline: none;           /* on n'affiche pas le focus ring par défaut */
+}
+
+/* Focus visible (uniquement clavier) — accessibilité */
+.ebook-pdf-reader:focus-visible {
+  box-shadow: inset 0 0 0 3px #2563eb;
+}
+
+/* ------------------------------------------------------------
+   Zone scrollable horizontale
+   - overflow-x: auto, overflow-y: hidden → défilement uniquement
+     latéral, pas de scroll vertical parasite.
+   - scroll-snap-type x mandatory → chaque page « clique » au
+     centre quand l'utilisateur scrolle ou utilise les flèches.
+   - scroll-behavior: smooth → transitions fluides pour le scroll
+     programmatique déclenché par les boutons précédent/suivant.
+   ------------------------------------------------------------ */
+.ebook-pdf-reader__scroller {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  padding: 24px 0;
+  /* Scrollbar discrète sur WebKit (la barre par défaut casse le look) */
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.ebook-pdf-reader__scroller::-webkit-scrollbar {
+  height: 10px;
+}
+.ebook-pdf-reader__scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.ebook-pdf-reader__scroller::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 6px;
+}
+.ebook-pdf-reader__scroller::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* ------------------------------------------------------------
+   Conteneur des pages
+   - display: flex (orientation par défaut row) → pages alignées
+     horizontalement les unes à côté des autres.
+   - gap entre les pages pour un effet « pile de feuilles ».
+   - padding latéral important : permet à la première et à la
+     dernière page d'être centrées par scroll-snap.
+   ------------------------------------------------------------ */
+.ebook-pdf-reader__pages {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  /* Padding latéral = 50% de la largeur du scroller — ainsi
+     même la 1ʳᵉ et la dernière page peuvent être centrées.
+     50vw est plus simple ici (le viewer occupe la largeur du
+     viewport en mode lecture). */
+  padding: 0 50vw;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------
+   Wrapper de page (injecté dynamiquement par pdf.js)
+   - scroll-snap-align: center → la page se cale au milieu.
+   - flex: 0 0 auto             → taille intrinsèque, pas de
+                                  shrink.
+   - transition pour le zoom    → effet doux quand l'utilisateur
+                                  clique sur +/-.
+   ------------------------------------------------------------ */
+.ebook-pdf-reader__page-wrapper {
+  position: relative;
+  flex: 0 0 auto;
+  scroll-snap-align: center;
+  background: white;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+  /* Lissage du zoom */
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+}
+
+/* Canvas de rendu PDF
+   - display: block (supprime le baseline gap)
+   - les dimensions CSS sont définies en JS pour gérer le HiDPI. */
+.ebook-pdf-reader__page-canvas {
+  display: block;
+}
+
+/* Étiquette de pagination (coin haut-droit de chaque page)
+   - pointer-events: none → n'intercepte ni clic ni sélection
+   - user-select: none    → empêche la sélection accidentelle. */
+.ebook-pdf-reader__page-label {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ------------------------------------------------------------
+   Overlay de chargement
+   - Centre verticalement / horizontalement.
+   - background semi-opaque sur fond foncé.
+   ------------------------------------------------------------ */
+.ebook-pdf-reader__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(31, 41, 55, 0.92);
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  z-index: 5;
+  /* Le spinner est défini globalement dans EbookViewer.css —
+     on réutilise la même classe pour garder l'identité visuelle. */
+}
+
+/* ------------------------------------------------------------
+   Affichage d'erreur (chargement raté)
+   ------------------------------------------------------------ */
+.ebook-pdf-reader__error {
+  position: absolute;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 14px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  z-index: 6;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================================
+   ===== BARRE D'OUTILS BASSE =====
+   - Toujours visible (position: sticky aurait collé en haut, on
+     préfère un placement statique en flex column du parent).
+   - Fond sombre pour cohérence avec le scroller.
+   ============================================================ */
+.ebook-pdf-reader__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #111827;
+  border-top: 1px solid #374151;
+  color: #e5e7eb;
+  /* On garde la toolbar fixée visuellement en bas — flex-shrink: 0
+     pour qu'elle ne soit jamais rognée par le scroller. */
+  flex-shrink: 0;
+}
+
+/* Bouton de la toolbar — variante neutre */
+.ebook-pdf-reader__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  padding: 0 10px;
+  background: transparent;
+  color: #e5e7eb;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.ebook-pdf-reader__btn:hover:not(:disabled) {
+  background: #1f2937;
+  border-color: #4b5563;
+}
+
+.ebook-pdf-reader__btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ebook-pdf-reader__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Variante "téléchargement autorisé" → vert, comme dans la carte ebook */
+.ebook-pdf-reader__btn--download {
+  background: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+.ebook-pdf-reader__btn--download:hover:not(:disabled) {
+  background: #047857;
+  border-color: #047857;
+}
+
+/* Indicateur "page X / Y" */
+.ebook-pdf-reader__indicator {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  font-variant-numeric: tabular-nums;   /* chiffres de même largeur */
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0 12px;
+  min-width: 90px;
+  justify-content: center;
+}
+
+.ebook-pdf-reader__indicator-current {
+  color: #ffffff;
+}
+.ebook-pdf-reader__indicator-sep,
+.ebook-pdf-reader__indicator-total {
+  color: #9ca3af;
+}
+
+/* Niveau de zoom */
+.ebook-pdf-reader__zoom-level {
+  display: inline-block;
+  min-width: 52px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.9rem;
+  color: #d1d5db;
+}
+
+/* Séparateur vertical entre groupes de contrôles */
+.ebook-pdf-reader__toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 24px;
+  background: #374151;
+  margin: 0 6px;
+}
+
+/* ============================================================
+   ===== RESPONSIVE =====
+   Sur mobile, on resserre la toolbar et on supprime certains
+   séparateurs pour gagner de la place.
+   ============================================================ */
+@media (max-width: 768px) {
+  .ebook-pdf-reader__toolbar {
+    gap: 4px;
+    padding: 8px;
+  }
+
+  .ebook-pdf-reader__btn {
+    width: 36px;
+    height: 34px;
+    padding: 0 6px;
+  }
+
+  .ebook-pdf-reader__indicator {
+    font-size: 0.85rem;
+    min-width: 70px;
+    padding: 0 6px;
+  }
+
+  .ebook-pdf-reader__zoom-level {
+    font-size: 0.8rem;
+    min-width: 44px;
+  }
+
+  /* Padding latéral du scroller : sur mobile, la page occupe presque
+     toute la largeur — on réduit à 20vw pour conserver le centrage. */
+  .ebook-pdf-reader__pages {
+    padding: 0 20vw;
+    gap: 16px;
+  }
+}
+
+/* ============================================================
+   ===== MODE SOMBRE GLOBAL (data-theme="dark") =====
+   Le composant est déjà sombre par défaut. On harmonise quand
+   l'app entière est en dark theme (cohérence du contraste).
+   ============================================================ */
+[data-theme="dark"] .ebook-pdf-reader {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .ebook-pdf-reader__toolbar {
+  background: #020617;
+  border-top-color: #1e293b;
+}
+
+/* ============================================================
+   ===== ACCESSIBILITÉ — mouvements réduits =====
+   Désactive les transitions/animations pour les utilisateurs
+   ayant configuré prefers-reduced-motion: reduce.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .ebook-pdf-reader__scroller {
+    scroll-behavior: auto;
+  }
+  .ebook-pdf-reader__page-wrapper {
+    transition: none;
+  }
+}

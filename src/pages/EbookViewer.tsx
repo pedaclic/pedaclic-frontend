@@ -8,6 +8,10 @@ import React, { useState, useEffect } from 'react';
 import { Ebook, CATEGORIE_LABELS, CATEGORIE_ICONS } from '../types/ebook.types';
 import { incrementVues, incrementTelechargements, formatFileSize } from '../services/ebookService';
 import { EbookPdfPreview } from '../components/eleve/EbookPdfPreview';
+// Visualiseur PDF dédié (rendu canvas, défilement horizontal).
+// Remplace l'iframe PDF natif pour empêcher le bouton de téléchargement
+// intégré au navigateur de contourner la règle d'admin (canDownload === false).
+import { EbookPdfReader } from '../components/eleve/EbookPdfReader';
 import '../styles/EbookViewer.css';
 
 // --- Interface des props ---
@@ -350,7 +354,18 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                 permettre aux fiches interactives (intersection observer,
                 accordions, polices Google) de fonctionner. On EXCLUT
                 délibérément `allow-top-navigation` : un script malveillant
-                ne peut pas rediriger PedaClic. */}
+                ne peut pas rediriger PedaClic.
+                ────────────────────────────────────────────────────────
+                NB sur le téléchargement HTML :
+                Quand l'admin a interdit l'export (canDownload === false),
+                on resserre le sandbox en SUPPRIMANT `allow-popups` afin
+                qu'un script du document ne puisse pas ouvrir une fenêtre
+                pointant directement vers l'URL du fichier (et donc la
+                proposer au téléchargement). On supprime également
+                `allow-forms` (jamais utile pour une fiche pédagogique
+                consultative — réduit la surface d'attaque).
+                Pour un HTML libre au téléchargement, on conserve la
+                permissivité historique. */}
           {strategy.kind === 'html-iframe' && (
             <>
               {loading && (
@@ -365,36 +380,43 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                 title={ebook.titre}
                 onLoad={handleIframeLoad}
                 style={{ display: loading ? 'none' : 'block' }}
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                sandbox={
+                  canDownload
+                    ? 'allow-scripts allow-same-origin allow-popups allow-forms'
+                    /* DL bloqué → on retire allow-popups + allow-forms pour
+                       empêcher la « fuite » via window.open / form submit */
+                    : 'allow-scripts allow-same-origin'
+                }
                 referrerPolicy="no-referrer"
               />
             </>
           )}
 
-          {/* --- Stratégie 1 : iframe (Premium ou aperçu PDF dédié) --- */}
+          {/* --- Stratégie 1 : Visualiseur PDF dédié (Premium OU aperçu PDF admin) ---
+                 ─────────────────────────────────────────────────────────────
+                 IMPORTANT : on n'utilise PLUS l'<iframe> PDF natif ici, car la
+                 barre d'outils du navigateur (Chrome/Edge/Firefox) exposait un
+                 bouton « Télécharger » qui contournait la règle d'admin
+                 (canDownload === false). Le nouveau composant <EbookPdfReader>
+                 rend le PDF dans un <canvas> via pdf.js — pas de toolbar
+                 navigateur, donc plus de fuite de téléchargement.
+                 Le défilement entre les pages est maintenant HORIZONTAL.
+                 ───────────────────────────────────────────────────────────── */}
           {strategy.kind === 'iframe' && (
             <>
-              {loading && (
-                <div className="viewer-loading">
-                  <div className="loading-spinner"></div>
-                  <p>Chargement du document...</p>
-                </div>
-              )}
-              {/* <!-- Paramètres d'URL du PDF :
-                   - toolbar=1     : barre d'outils PDF native visible
-                   - navpanes=0    : panneau latéral (vignettes) masqué par défaut
-                   - zoom=page-width (PDF.js) + view=FitH (Adobe) : la page
-                     est ajustée à la LARGEUR du viewer → plus de bandes grises
-                     latérales sur grand écran. Les deux paramètres sont
-                     utilisés en parallèle pour maximiser la compatibilité
-                     navigateur (Firefox/Chrome/Edge). --> */}
-              <iframe
-                src={`${strategy.url}#toolbar=1&navpanes=0&zoom=page-width&view=FitH&pagemode=none`}
-                className="pdf-iframe"
+              <EbookPdfReader
+                pdfUrl={strategy.url}
                 title={ebook.titre}
-                onLoad={handleIframeLoad}
-                style={{ display: loading ? 'none' : 'block' }}
+                // Le bouton de téléchargement maison n'est rendu QUE si
+                // l'admin a explicitement autorisé l'export pour cet ebook
+                // ET que l'utilisateur est Premium. Toute autre situation
+                // ne rendra simplement aucun bouton (cf. composant).
+                canDownload={canDownload && isPremium}
+                onDownload={handleDownload}
               />
+              {/* Overlay « Premium » pour les non-Premium qui consultent
+                  un aperçu (cas où l'admin a fourni un aperçuURL dédié).
+                  Conservé tel quel — comportement identique à avant. */}
               {!isPremium && (
                 <div className="viewer-premium-overlay">
                   <div className="overlay-content">
