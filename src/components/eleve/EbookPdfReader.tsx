@@ -1,27 +1,32 @@
-// ==================== EBOOK PDF READER (Phase 20ter) ====================
+// ==================== EBOOK PDF READER (Phase 20ter — itération 3) ====================
 // PedaClic : visualiseur PDF DÉDIÉ pour la lecture intégrale d'un ebook.
 //
-//   Évolutions phase 20ter — itération 2 :
-//   --------------------------------------
-//   • Mode d'affichage utilisateur : 1 page ou 2 pages côte à côte
-//     (mode « livre ouvert »). Le choix est persistant via localStorage.
-//   • Correction du zoom : on n'utilise plus `transform: scale()` (qui
-//     n'allouait pas d'espace de mise en page et causait le chevauchement
-//     visible dans la capture utilisateur). À la place, on redimensionne
-//     directement la TAILLE CSS du <canvas> — le flex container réalloue
-//     alors correctement l'espace, plus aucun chevauchement.
-//   • Le rendu pdf.js se fait UNE FOIS à haute résolution (supporte jusqu'à
-//     2× de zoom sans pixellisation). Les changements de mode/zoom ne
-//     déclenchent plus de re-rendu, seulement une ré-application CSS.
-//   • En mode spread : scroll-snap aligné sur les paires, navigation
-//     prev/next par incréments de 2, indicateur « X-Y / total ».
+//   Évolutions itération 3 :
+//   ------------------------
+//   • Pages voisines NON VISIBLES sur les côtés. La précédente architecture
+//     en flex-row + scroll-snap laissait apparaître des bouts des pages
+//     adjacentes — supprimées. Désormais, seule la page active (ou la paire
+//     active en mode spread) est affichée à l'écran.
+//   • Animation de FEUILLETAGE entre les pages, à la manière du tournage
+//     d'une page de livre physique (rotation 3D + translation, perspective
+//     parente). L'animation est différente selon le sens (next/prev) et
+//     respecte `prefers-reduced-motion: reduce`.
 //
-//   Motivation (rappel) :
-//   ---------------------
-//   L'iframe PDF natif (Chrome/Edge/Firefox) exposait une toolbar avec un
-//   bouton « Télécharger » qui contournait la consigne d'admin canDownload.
-//   En rendant via canvas, plus aucune toolbar navigateur n'est exposée.
-// ==========================================================================
+//   Conséquences architecturales :
+//   ------------------------------
+//   • La barre de défilement horizontale disparaît : la navigation se fait
+//     exclusivement via les boutons prev/next, le clavier (← →) ou les
+//     touches Home/End.
+//   • Les pages restent rendues dans le DOM par pdf.js (canvas), mais elles
+//     sont positionnées en `position: absolute` et masquées par défaut.
+//     Une classe utilitaire (`.is-current`, `.is-leaving-*`, `.is-entering-*`)
+//     gère leur visibilité et déclenche les animations CSS.
+//   • Les pages voisines hors animation ne consomment ni espace visuel ni
+//     opacité — elles sont strictement invisibles (visibility: hidden).
+//
+//   Sécurité (rappel) : pas d'iframe → pas de toolbar navigateur →
+//   aucun bouton « Télécharger » natif n'est exposé.
+// ======================================================================================
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
@@ -33,14 +38,15 @@ import '../../styles/EbookPdfReader.css';
 // --- Mode d'affichage ---
 type DisplayMode = 'single' | 'spread';
 
+// Direction du feuilletage en cours, null = aucune animation.
+type FlipDirection = 'next' | 'prev' | null;
+
 // Clé localStorage pour la persistance de la préférence utilisateur.
-// Préfixe « pedaclic_ » pour éviter tout conflit avec d'autres clés.
 const LS_KEY_DISPLAY_MODE = 'pedaclic_ebook_reader_display_mode';
 
 /**
- * Lit la préférence utilisateur dans localStorage avec fallback robuste :
- *   - 'spread' par défaut (rend l'expérience plus proche d'un livre)
- *   - retourne 'spread' aussi en cas d'erreur (navigation privée stricte, etc.)
+ * Lit la préférence utilisateur avec fallback robuste.
+ * Défaut : 'spread' (rend l'expérience plus proche d'un livre).
  */
 const readPreferredMode = (): DisplayMode => {
   try {
@@ -51,42 +57,33 @@ const readPreferredMode = (): DisplayMode => {
   }
 };
 
+// Détecte si l'utilisateur a réclamé "reduce motion" (a11y).
+// Si oui, on saute l'animation et on permute instantanément.
+const prefersReducedMotion = (): boolean => {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+};
+
+// Durée totale de l'animation de feuilletage en ms. DOIT correspondre au
+// `animation-duration` défini dans EbookPdfReader.css (cf. les @keyframes
+// `page-flip-leave-*` et `page-flip-enter-*`).
+const FLIP_DURATION_MS = 620;
+
 // --- Props ---
 interface EbookPdfReaderProps {
-  /** URL absolue du PDF à afficher (Firebase Storage, etc.). */
+  /** URL absolue du PDF à afficher. */
   pdfUrl: string;
-  /** Titre de l'ebook (utilisé pour les aria-labels et le nom de téléchargement). */
+  /** Titre de l'ebook (pour aria-labels). */
   title: string;
-  /** L'administrateur autorise-t-il le téléchargement ? Si false, on n'affiche
-   *  AUCUN bouton de téléchargement et on s'appuie sur le rendu canvas pour
-   *  ne pas exposer le fichier original via une barre d'outils navigateur. */
+  /** Téléchargement autorisé par l'admin ? Si false, aucun bouton DL. */
   canDownload: boolean;
-  /** Callback déclenché par le bouton de téléchargement maison (uniquement
-   *  rendu si canDownload === true). À l'intérieur, l'appelant doit gérer
-   *  l'incrément du compteur + l'ouverture du fichier. */
+  /** Callback déclenché par le bouton de téléchargement maison. */
   onDownload?: () => void;
 }
 
-/**
- * Visualiseur PDF horizontal — rendu canvas via pdf.js.
- *
- * Architecture interne :
- *   1. Chargement dynamique de pdfjs-dist au montage.
- *   2. Rendu de chaque page dans un <canvas> à une résolution « max »
- *      (suffisante pour un zoom 2×). Les dimensions PIXEL du canvas sont
- *      figées après ce rendu ; seules ses dimensions CSS varient ensuite.
- *   3. Une fonction `applyLayout` calcule la taille CSS de chaque canvas
- *      selon le mode (single/spread) et le zoom, puis l'applique.
- *      Elle s'exécute quand mode/zoom/nb de pages rendues changent.
- *
- * Sécurité (effective) : pas d'iframe → pas de toolbar navigateur → pas
- * de bouton de téléchargement natif. La règle admin `canDownload` est
- * réellement respectée.
- *
- * Sécurité (limite) : un utilisateur tech-savvy peut toujours intercepter
- * l'URL via les devtools (onglet Network). Une vraie protection nécessite
- * un URL signé côté serveur — hors-scope de cette modification frontend.
- */
 export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
   pdfUrl,
   title,
@@ -94,10 +91,9 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
   onDownload
 }) => {
   // --- Références DOM ---
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const pagesRef = useRef<HTMLDivElement>(null);
-  // Aspect ratios (width/height) de chaque page — utilisés par applyLayout
-  // pour recalculer les dimensions CSS sans relire pdf.js.
+  // Aspect ratios (width/height) de chaque page — utilisés par applyLayout.
   const pageAspectsRef = useRef<number[]>([]);
 
   // --- États UI ---
@@ -109,17 +105,21 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
   const [zoom, setZoom] = useState(1);
   const [displayMode, setDisplayMode] = useState<DisplayMode>(readPreferredMode());
 
-  // Bornes de zoom — exposées en haut pour relecture rapide
+  // --- Machine à états du feuilletage ---
+  // `flipDir`     : sens de l'animation en cours (null = idle)
+  // `pendingPage` : page cible une fois l'animation terminée
+  const [flipDir, setFlipDir] = useState<FlipDirection>(null);
+  const [pendingPage, setPendingPage] = useState<number | null>(null);
+
+  // Bornes de zoom
   const ZOOM_MIN = 0.5;
   const ZOOM_MAX = 2;
   const ZOOM_STEP = 0.1;
 
-  // ==================== PERSISTENCE DE LA PRÉFÉRENCE ====================
-  // À chaque changement de mode, on enregistre. Try/catch pour navigation
-  // privée stricte où localStorage peut lancer.
+  // ==================== PERSISTENCE PRÉFÉRENCE ====================
   useEffect(() => {
     try { localStorage.setItem(LS_KEY_DISPLAY_MODE, displayMode); }
-    catch { /* navigation privée — pas grave, la préf restera RAM-only */ }
+    catch { /* navigation privée : la préf restera RAM-only */ }
   }, [displayMode]);
 
   // ==================== CHARGEMENT ET RENDU DU PDF ====================
@@ -134,9 +134,10 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
         setError(null);
         setRenderedPages(0);
         setCurrentPage(1);
+        setFlipDir(null);
+        setPendingPage(null);
         pageAspectsRef.current = [];
 
-        // Chargement dynamique de pdfjs (chunk séparé, pareil à EbookPdfPreview)
         const pdfjs = await import('pdfjs-dist');
         const workerMod = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
         pdfjs.GlobalWorkerOptions.workerSrc = workerMod.default;
@@ -149,25 +150,15 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
         setTotalPages(total);
 
         const container = pagesRef.current;
-        const scroller = scrollerRef.current;
-        if (!container || !scroller) return;
+        const stage = stageRef.current;
+        if (!container || !stage) return;
         container.innerHTML = '';
 
-        // Résolution de rendu (canvas pixels) — équilibre qualité/mémoire :
-        //   • dpr plafonné à 1.5 (au-delà, gain visuel marginal mais coût en
-        //     RAM quadratique → risque d'OOM sur PDF de 30+ pages).
-        //   • RENDER_BUFFER = 1.5 : le zoom utilisateur reste net jusqu'à
-        //     ~1.5× ; au-delà (jusqu'à 2× max) l'image est très légèrement
-        //     adoucie mais reste tout à fait lisible.
-        //   • Plafond dur sur la hauteur de canvas pour éviter les pics
-        //     mémoire sur très grand écran (4K, écrans verticaux).
+        // Résolution de rendu (équilibre qualité/RAM, cf. itération 2)
         const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
         const RENDER_BUFFER = 1.5;
-        const RENDER_HEIGHT_CAP = 1800; // pixels
-        const baseAvailableHeight = Math.max(
-          400,
-          scroller.clientHeight - 96
-        );
+        const RENDER_HEIGHT_CAP = 1800;
+        const baseAvailableHeight = Math.max(400, stage.clientHeight - 32);
         const targetRenderHeight = Math.min(
           baseAvailableHeight * RENDER_BUFFER * dpr,
           RENDER_HEIGHT_CAP
@@ -178,11 +169,9 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
 
           const page = await pdfDoc.getPage(pageNum);
           const baseViewport = page.getViewport({ scale: 1 });
-          // Stockage du ratio aspect pour applyLayout
           pageAspectsRef.current[pageNum - 1] =
             baseViewport.width / baseViewport.height;
 
-          // Échelle de rendu suffisante pour 2× zoom
           const renderScale = targetRenderHeight / baseViewport.height;
           const viewport = page.getViewport({ scale: renderScale });
 
@@ -190,16 +179,11 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
           canvas.className = 'ebook-pdf-reader__page-canvas';
           canvas.width = Math.floor(viewport.width);
           canvas.height = Math.floor(viewport.height);
-          // Note : on N'AFFECTE PLUS style.width/height ici. C'est applyLayout
-          // qui pilotera la taille CSS selon le mode et le zoom.
           canvas.setAttribute('aria-label', `Page ${pageNum} sur ${total}`);
 
           const wrapper = document.createElement('div');
           wrapper.className = 'ebook-pdf-reader__page-wrapper';
-          // data-page sert au scroll programmatique et à la détection visuelle.
           wrapper.dataset.page = String(pageNum);
-          // parity : impair (odd) ou pair (even) — utilisé par le CSS en mode
-          // spread pour mettre une ombre « reliure » du bon côté.
           wrapper.dataset.parity = pageNum % 2 === 1 ? 'odd' : 'even';
 
           const label = document.createElement('span');
@@ -230,7 +214,6 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
       }
     })();
 
-    // --- Cleanup : annule les tâches et libère le document pdf.js ---
     return () => {
       cancelled = true;
       renderTasks.forEach(t => {
@@ -240,43 +223,29 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
     };
   }, [pdfUrl]);
 
-  // ==================== APPLY LAYOUT (mode + zoom → CSS) ====================
+  // ==================== APPLY LAYOUT (mode + zoom → CSS canvas) ====================
   /**
-   * Calcule et applique la TAILLE CSS de chaque canvas selon :
-   *  - le mode d'affichage (1 ou 2 pages visibles à la fois)
-   *  - le facteur de zoom utilisateur
-   *  - la taille réelle du viewer (clientWidth / clientHeight)
-   *
-   * Cette approche remplace l'ancien `transform: scale(zoom)` sur le wrapper
-   * — qui ne réservait pas d'espace dans le flex container et provoquait le
-   * chevauchement visible des pages au zoom. En passant par width/height CSS,
-   * le flex layout réalloue l'espace correctement et les pages restent
-   * strictement disjointes quel que soit le zoom.
+   * Calcule et applique la TAILLE CSS de chaque canvas selon mode + zoom.
+   * Inchangé en principe par rapport à l'itération 2 : ce sont toujours
+   * les dimensions CSS du <canvas> qui pilotent la taille visible des
+   * pages (et donc résolvent le bug de chevauchement au zoom).
    */
   const applyLayout = useCallback(() => {
-    const scroller = scrollerRef.current;
+    const stage = stageRef.current;
     const container = pagesRef.current;
-    if (!scroller || !container) return;
+    if (!stage || !container) return;
     const aspects = pageAspectsRef.current;
     if (aspects.length === 0) return;
 
-    const availH = Math.max(300, scroller.clientHeight - 48);
-    const availW = Math.max(300, scroller.clientWidth);
-
-    // On se base sur l'aspect de la 1ʳᵉ page (PDF homogènes en pratique).
-    // Pour les rares documents à pages mixtes, chaque canvas est redimensionné
-    // avec son propre aspect (voir boucle finale).
+    const availH = Math.max(300, stage.clientHeight - 32);
+    const availW = Math.max(300, stage.clientWidth);
     const primaryAspect = aspects[0];
 
-    // Hauteur CSS de base à zoom = 1, selon le mode :
-    //   - single : 1 page tient en largeur (≤ 90% de availW) ET en hauteur.
-    //   - spread : 2 pages tiennent côte à côte (≤ availW/2 - pli chacune).
-    //     Le « pli » effectif entre les deux pages d'un diptyque est de
-    //     4 px (gap CSS 24 px corrigé par margin-left: -20 px sur la page
-    //     paire) → on en tient compte ici pour dimensionner correctement.
-    const SINGLE_WIDTH_RATIO = 0.9;
-    const SPREAD_WIDTH_RATIO = 0.95;
-    const SPREAD_SPINE_GAP = 4; // = 24 (gap CSS) - 20 (margin-left négative)
+    // Cadrage : la page (ou la paire) doit tenir DANS le stage en largeur
+    // ET en hauteur. On laisse un petit chrome (≈5%) pour respirer.
+    const SINGLE_WIDTH_RATIO = 0.92;
+    const SPREAD_WIDTH_RATIO = 0.96;
+    const SPREAD_SPINE_GAP = 4;
     let baseHeight: number;
     if (displayMode === 'single') {
       const maxW = availW * SINGLE_WIDTH_RATIO;
@@ -288,8 +257,6 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
 
     const finalHeight = baseHeight * zoom;
 
-    // Application aux canvases déjà rendus.
-    // Pour chaque page, on respecte son propre aspect (pas seulement primary).
     container
       .querySelectorAll<HTMLDivElement>('.ebook-pdf-reader__page-wrapper')
       .forEach(wrapper => {
@@ -305,130 +272,143 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
       });
   }, [displayMode, zoom]);
 
-  // Recalcul du layout quand mode/zoom changent OU qu'une nouvelle page
-  // est rendue (renderedPages). Aussi sur resize de la fenêtre.
-  useEffect(() => {
-    applyLayout();
-  }, [applyLayout, renderedPages]);
-
+  useEffect(() => { applyLayout(); }, [applyLayout, renderedPages]);
   useEffect(() => {
     const onResize = () => applyLayout();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, [applyLayout]);
 
-  // ==================== NAVIGATION ENTRE PAGES ====================
+  // ==================== GESTION DES CLASSES DE PAGE ====================
   /**
-   * Fait défiler le conteneur horizontalement jusqu'à la page demandée.
-   * Deux logiques distinctes selon le mode :
-   *   • single : on centre la page demandée dans le viewer.
-   *   • spread : on aligne le BORD DROIT de la page impaire (= le pli
-   *     central du livre) sur le centre du viewer. Le diptyque entier
-   *     se retrouve ainsi parfaitement centré dans le scroller.
+   * Pour chaque wrapper de page dans le DOM, applique l'une des classes :
+   *   - `is-current`        : page (ou page de la paire) actuellement
+   *                           affichée, hors animation.
+   *   - `is-leaving-next`   : page qui sort vers la GAUCHE (animation
+   *                           de tournage avant).
+   *   - `is-leaving-prev`   : page qui sort vers la DROITE (avant).
+   *   - `is-entering-next`  : page qui arrive depuis la droite (next).
+   *   - `is-entering-prev`  : page qui arrive depuis la gauche (prev).
+   *   - aucune              : page invisible (visibility: hidden via CSS).
+   *
+   * Les pages qui composent une PAIRE en mode spread reçoivent toutes
+   * la même classe d'état (les deux sortent ensemble, les deux arrivent
+   * ensemble) — l'effet visuel rappelle le tournage d'un diptyque.
+   */
+  useEffect(() => {
+    const container = pagesRef.current;
+    if (!container) return;
+
+    // Pages actives (avant ou pendant animation, peu importe → c'est la base).
+    const activePages =
+      displayMode === 'spread'
+        ? [currentPage, currentPage + 1]
+        : [currentPage];
+    const filteredActive = activePages.filter(p => p >= 1 && p <= totalPages);
+
+    // Pages entrantes (cible du flip), uniquement quand on anime.
+    let enteringPages: number[] = [];
+    if (flipDir && pendingPage !== null) {
+      enteringPages =
+        displayMode === 'spread'
+          ? [pendingPage, pendingPage + 1]
+          : [pendingPage];
+      enteringPages = enteringPages.filter(p => p >= 1 && p <= totalPages);
+    }
+
+    const allClasses = [
+      'is-current',
+      'is-leaving-next', 'is-leaving-prev',
+      'is-entering-next', 'is-entering-prev'
+    ];
+
+    container
+      .querySelectorAll<HTMLDivElement>('.ebook-pdf-reader__page-wrapper')
+      .forEach(w => {
+        const pageNum = Number(w.dataset.page || '0');
+        // Reset toutes les classes d'état d'abord.
+        w.classList.remove(...allClasses);
+
+        if (flipDir === null) {
+          // Repos : seules les pages actives sont visibles.
+          if (filteredActive.includes(pageNum)) w.classList.add('is-current');
+          return;
+        }
+        // Animation en cours.
+        if (filteredActive.includes(pageNum)) {
+          w.classList.add(flipDir === 'next' ? 'is-leaving-next' : 'is-leaving-prev');
+        } else if (enteringPages.includes(pageNum)) {
+          w.classList.add(flipDir === 'next' ? 'is-entering-next' : 'is-entering-prev');
+        }
+      });
+  }, [currentPage, displayMode, totalPages, flipDir, pendingPage, renderedPages]);
+
+  // ==================== COMMIT FIN D'ANIMATION ====================
+  // Après FLIP_DURATION_MS, on bascule officiellement sur la page cible
+  // et on remet le système en idle.
+  useEffect(() => {
+    if (flipDir === null) return;
+    const t = window.setTimeout(() => {
+      if (pendingPage !== null) setCurrentPage(pendingPage);
+      setFlipDir(null);
+      setPendingPage(null);
+    }, FLIP_DURATION_MS);
+    return () => window.clearTimeout(t);
+  }, [flipDir, pendingPage]);
+
+  // ==================== NAVIGATION ====================
+  /**
+   * Déclenche le feuilletage vers `pageNum`. Normalise la cible :
+   *  - bornée dans [1, totalPages]
+   *  - en mode spread, ramène à l'impair (début de la paire).
+   * Si une animation est déjà en cours, l'appel est ignoré (anti-spam clic).
+   * Si l'utilisateur a `prefers-reduced-motion: reduce`, on bascule
+   * immédiatement (pas d'animation).
    */
   const goToPage = useCallback((pageNum: number) => {
-    const total = totalPages;
-    if (total <= 0) return;
-    let target = Math.max(1, Math.min(total, pageNum));
+    if (flipDir !== null) return;
+    if (totalPages <= 0) return;
+
+    let target = Math.max(1, Math.min(totalPages, pageNum));
     if (displayMode === 'spread' && target % 2 === 0) target -= 1;
+    if (target === currentPage) return;
 
-    const scroller = scrollerRef.current;
-    const container = pagesRef.current;
-    if (!scroller || !container) return;
-    const wrapper = container.querySelector<HTMLDivElement>(
-      `[data-page="${target}"]`
-    );
-    if (!wrapper) return;
+    const direction: FlipDirection = target > currentPage ? 'next' : 'prev';
 
-    if (displayMode === 'spread') {
-      // Le pli (bord droit de la page impaire) doit atterrir au centre.
-      // offsetLeft + offsetWidth donne la position absolue du bord droit
-      // dans le repère du conteneur de pages.
-      const wrapperRight = wrapper.offsetLeft + wrapper.offsetWidth;
-      const targetScrollLeft = wrapperRight - scroller.clientWidth / 2;
-      scroller.scrollTo({ left: targetScrollLeft, behavior: 'smooth' });
-    } else {
-      // Mode single : centrage classique.
-      wrapper.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'center'
-      });
+    if (prefersReducedMotion()) {
+      // Pas d'animation : bascule directe.
+      setCurrentPage(target);
+      return;
     }
-    setCurrentPage(target);
-  }, [totalPages, displayMode]);
 
-  // --- Suivi du scroll → met à jour le numéro de page courant ---
-  useEffect(() => {
-    const scroller = scrollerRef.current;
-    const container = pagesRef.current;
-    if (!scroller || !container) return;
+    setPendingPage(target);
+    setFlipDir(direction);
+  }, [currentPage, displayMode, totalPages, flipDir]);
 
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const scrollerRect = scroller.getBoundingClientRect();
-        const centerX = scrollerRect.left + scrollerRect.width / 2;
-        let closestPage = 1;
-        let closestDist = Infinity;
-        container
-          .querySelectorAll<HTMLDivElement>('.ebook-pdf-reader__page-wrapper')
-          .forEach(w => {
-            const r = w.getBoundingClientRect();
-            // En spread, on mesure la proximité du BORD DROIT (= pli)
-            // de la page impaire au centre du viewport. En single, on
-            // mesure le centre de la page (comportement classique).
-            const parity = w.dataset.parity;
-            const probeX =
-              displayMode === 'spread' && parity === 'odd'
-                ? r.right
-                : r.left + r.width / 2;
-            const d = Math.abs(probeX - centerX);
-            if (d < closestDist) {
-              closestDist = d;
-              closestPage = Number(w.dataset.page || '1');
-            }
-          });
-        // En spread, l'état courant doit pointer sur l'impaire de la paire.
-        if (displayMode === 'spread' && closestPage % 2 === 0) closestPage -= 1;
-        setCurrentPage(closestPage);
-        ticking = false;
-      });
-    };
-    scroller.addEventListener('scroll', onScroll, { passive: true });
-    return () => scroller.removeEventListener('scroll', onScroll);
-  }, [renderedPages, displayMode]);
-
-  // --- Navigation clavier : ←/→ Home/End, pas adapté au mode ---
-  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    const step = displayMode === 'spread' ? 2 : 1;
-    if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      goToPage(currentPage + step);
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault();
-      goToPage(currentPage - step);
-    } else if (e.key === 'Home') {
-      e.preventDefault();
-      goToPage(1);
-    } else if (e.key === 'End') {
-      e.preventDefault();
-      goToPage(totalPages);
-    }
-  };
-
-  // ==================== ACTIONS TOOLBAR ====================
+  // Pas/step de navigation selon le mode (single = 1 page, spread = 2)
   const navStep = displayMode === 'spread' ? 2 : 1;
   const goPrev = () => goToPage(currentPage - navStep);
   const goNext = () => goToPage(currentPage + navStep);
   const zoomIn  = () => setZoom(z => Math.min(ZOOM_MAX, +(z + ZOOM_STEP).toFixed(2)));
   const zoomOut = () => setZoom(z => Math.max(ZOOM_MIN, +(z - ZOOM_STEP).toFixed(2)));
 
+  // --- Navigation clavier (← → Home End) ---
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Pendant une animation, on ignore les touches pour éviter les conflits.
+    if (flipDir !== null) {
+      if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+        e.preventDefault();
+      }
+      return;
+    }
+    const step = navStep;
+    if (e.key === 'ArrowRight') { e.preventDefault(); goToPage(currentPage + step); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); goToPage(currentPage - step); }
+    else if (e.key === 'Home') { e.preventDefault(); goToPage(1); }
+    else if (e.key === 'End')  { e.preventDefault(); goToPage(totalPages); }
+  };
+
   // --- Indicateur de page ---
-  // En spread, on affiche « 1-2 / 6 » (ou « 5 / 6 » pour la dernière page
-  // impaire orpheline). En single, simplement « 3 / 6 ».
   const renderIndicator = (): React.ReactNode => {
     if (totalPages <= 0) return <>—</>;
     if (displayMode === 'single') {
@@ -454,14 +434,20 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
   };
 
   // ==================== RENDER ====================
+  // Les boutons sont désactivés pendant l'animation (anti-spam) et quand on
+  // est en bordure du document.
+  const isAnimating = flipDir !== null;
+  const cannotGoPrev = isAnimating || loading || currentPage <= 1;
+  const cannotGoNext = isAnimating || loading || currentPage + navStep > totalPages;
+
   return (
     <div
-      className={`ebook-pdf-reader mode-${displayMode}`}
+      className={`ebook-pdf-reader mode-${displayMode}${isAnimating ? ' is-flipping' : ''}`}
       tabIndex={0}
       onKeyDown={onKeyDown}
       aria-label={`Lecteur PDF : ${title}`}
     >
-      {/* <!-- Overlay de chargement (par-dessus le conteneur scroll) --> */}
+      {/* <!-- Overlay de chargement --> */}
       {loading && (
         <div className="ebook-pdf-reader__loading" role="status">
           <div className="loading-spinner"></div>
@@ -474,40 +460,36 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
         </div>
       )}
 
-      {/* <!-- Affichage d'erreur (chargement pdf.js / fichier introuvable) --> */}
+      {/* <!-- Affichage d'erreur --> */}
       {error && (
         <div className="ebook-pdf-reader__error" role="alert">
           ⚠️ {error}
         </div>
       )}
 
-      {/* <!-- =============== ZONE SCROLLABLE HORIZONTALE ===============
-             - overflow-x: auto      (défilement horizontal côté souris/trackpad)
-             - scroll-snap-type      (chaque page « clique » au centre)
-             - tabindex sur le parent → flèches clavier captées globalement.
-            ============================================================= */}
-      <div className="ebook-pdf-reader__scroller" ref={scrollerRef}>
+      {/* <!-- =============== STAGE D'ANIMATION ===============
+             - position: relative, overflow: hidden, perspective.
+             - Les wrappers de page sont positionnés en absolu, centrés.
+             - Seuls les wrappers porteurs d'une classe `.is-*` sont
+               visibles ; les autres restent en visibility: hidden.
+             ===================================================== */}
+      <div className="ebook-pdf-reader__scroller" ref={stageRef}>
         <div className="ebook-pdf-reader__pages" ref={pagesRef}>
           {/* pdf.js injecte ici les wrappers <div data-page="N" data-parity="odd|even">
               contenant un <canvas> + un label de pagination. */}
         </div>
       </div>
 
-      {/* <!-- =============== BARRE D'OUTILS BASSE ===============
-             Toggle mode 1/2 pages + navigation page précédente/suivante +
-             indicateur + zoom +/- + bouton de téléchargement OPTIONNEL.
-            ===================================================== */}
+      {/* <!-- =============== TOOLBAR (inchangée) =============== --> */}
       <div className="ebook-pdf-reader__toolbar" role="toolbar" aria-label="Contrôles du lecteur">
 
-        {/* --- Toggle MODE : 1 page / 2 pages ---
-              Pattern segmented : le bouton actif est mis en évidence.
-              L'utilisateur clique sur celui qu'il SOUHAITE (pas sur l'opposé)
-              — c'est plus prévisible que le pattern « bouton montre l'autre mode ». */}
+        {/* Toggle 1 page / 2 pages */}
         <div className="ebook-pdf-reader__mode-group" role="group" aria-label="Mode d'affichage">
           <button
             type="button"
             className={`ebook-pdf-reader__btn ebook-pdf-reader__btn--mode ${displayMode === 'single' ? 'is-active' : ''}`}
             onClick={() => setDisplayMode('single')}
+            disabled={isAnimating}
             aria-pressed={displayMode === 'single'}
             aria-label="Affichage 1 page"
             title="Affichage 1 page"
@@ -518,6 +500,7 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
             type="button"
             className={`ebook-pdf-reader__btn ebook-pdf-reader__btn--mode ${displayMode === 'spread' ? 'is-active' : ''}`}
             onClick={() => setDisplayMode('spread')}
+            disabled={isAnimating}
             aria-pressed={displayMode === 'spread'}
             aria-label="Affichage 2 pages (livre)"
             title="Affichage 2 pages (livre ouvert)"
@@ -528,12 +511,12 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
 
         <span className="ebook-pdf-reader__toolbar-sep" aria-hidden="true" />
 
-        {/* --- Navigation entre pages --- */}
+        {/* Navigation page précédente / suivante */}
         <button
           type="button"
           className="ebook-pdf-reader__btn"
           onClick={goPrev}
-          disabled={currentPage <= 1 || loading}
+          disabled={cannotGoPrev}
           aria-label={displayMode === 'spread' ? 'Paire précédente' : 'Page précédente'}
           title={displayMode === 'spread' ? 'Paire précédente (←)' : 'Page précédente (←)'}
         >
@@ -548,7 +531,7 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
           type="button"
           className="ebook-pdf-reader__btn"
           onClick={goNext}
-          disabled={currentPage + navStep > totalPages || loading}
+          disabled={cannotGoNext}
           aria-label={displayMode === 'spread' ? 'Paire suivante' : 'Page suivante'}
           title={displayMode === 'spread' ? 'Paire suivante (→)' : 'Page suivante (→)'}
         >
@@ -557,12 +540,12 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
 
         <span className="ebook-pdf-reader__toolbar-sep" aria-hidden="true" />
 
-        {/* --- Zoom +/- --- */}
+        {/* Zoom +/- */}
         <button
           type="button"
           className="ebook-pdf-reader__btn"
           onClick={zoomOut}
-          disabled={zoom <= ZOOM_MIN || loading}
+          disabled={zoom <= ZOOM_MIN || loading || isAnimating}
           aria-label="Zoom arrière"
           title="Zoom arrière"
         >
@@ -575,17 +558,14 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
           type="button"
           className="ebook-pdf-reader__btn"
           onClick={zoomIn}
-          disabled={zoom >= ZOOM_MAX || loading}
+          disabled={zoom >= ZOOM_MAX || loading || isAnimating}
           aria-label="Zoom avant"
           title="Zoom avant"
         >
           <ZoomIn size={18} aria-hidden="true" />
         </button>
 
-        {/* <!-- Bouton de téléchargement : visible UNIQUEMENT si l'admin a
-              autorisé l'export. Quand canDownload est false, ce bouton
-              n'est tout simplement pas rendu — couplé à l'absence de
-              toolbar navigateur, le téléchargement n'est plus exposé. --> */}
+        {/* Téléchargement conditionnel (canDownload + onDownload fournis) */}
         {canDownload && onDownload && (
           <>
             <span className="ebook-pdf-reader__toolbar-sep" aria-hidden="true" />
@@ -593,6 +573,7 @@ export const EbookPdfReader: React.FC<EbookPdfReaderProps> = ({
               type="button"
               className="ebook-pdf-reader__btn ebook-pdf-reader__btn--download"
               onClick={onDownload}
+              disabled={isAnimating}
               aria-label="Télécharger le document"
               title="Télécharger le document"
             >

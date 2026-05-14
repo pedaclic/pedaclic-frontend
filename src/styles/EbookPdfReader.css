@@ -32,83 +32,68 @@
 }
 
 /* ------------------------------------------------------------
-   Zone scrollable horizontale
-   - overflow-x: auto, overflow-y: hidden → défilement uniquement
-     latéral, pas de scroll vertical parasite.
-   - scroll-snap-type x mandatory → chaque page « clique » au
-     centre quand l'utilisateur scrolle ou utilise les flèches.
-   - scroll-behavior: smooth → transitions fluides pour le scroll
-     programmatique déclenché par les boutons précédent/suivant.
+   Stage d'animation (anciennement « scroller »)
+   ------------------------------------------------------------
+   Cette zone n'est PLUS scrollable. Elle agit comme une scène où
+   seule la page active (ou la paire active en spread) est visible
+   à un instant donné. Les autres pages restent dans le DOM mais
+   en `visibility: hidden` (cf. .ebook-pdf-reader__page-wrapper).
+   - position: relative → ancre des wrappers en position absolue.
+   - overflow: hidden   → les pages qui « sortent » lors d'un
+                          feuilletage ne débordent pas du stage.
+   - perspective        → contexte 3D pour l'effet de rotation
+                          d'une page qui se tourne (rotateY).
    ------------------------------------------------------------ */
 .ebook-pdf-reader__scroller {
   flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  position: relative;
+  overflow: hidden;
   padding: 24px 0;
-  /* Scrollbar discrète sur WebKit (la barre par défaut casse le look) */
-  scrollbar-width: thin;
-  scrollbar-color: #4b5563 transparent;
-}
-
-.ebook-pdf-reader__scroller::-webkit-scrollbar {
-  height: 10px;
-}
-.ebook-pdf-reader__scroller::-webkit-scrollbar-track {
-  background: transparent;
-}
-.ebook-pdf-reader__scroller::-webkit-scrollbar-thumb {
-  background: #4b5563;
-  border-radius: 6px;
-}
-.ebook-pdf-reader__scroller::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  perspective: 2200px;
+  perspective-origin: 50% 50%;
 }
 
 /* ------------------------------------------------------------
-   Conteneur des pages
-   - display: flex (orientation par défaut row) → pages alignées
-     horizontalement les unes à côté des autres.
-   - gap entre les pages pour un effet « pile de feuilles ».
-   - padding latéral important : permet à la première et à la
-     dernière page d'être centrées par scroll-snap.
+   Conteneur des wrappers de page
+   ------------------------------------------------------------
+   Sert juste de référence positionnelle. Les wrappers à
+   l'intérieur sont tous positionnés en absolu (centrés).
    ------------------------------------------------------------ */
 .ebook-pdf-reader__pages {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  /* Padding latéral = 50% de la largeur du scroller — ainsi
-     même la 1ʳᵉ et la dernière page peuvent être centrées.
-     50vw est plus simple ici (le viewer occupe la largeur du
-     viewport en mode lecture). */
-  padding: 0 50vw;
-  min-height: 100%;
-  box-sizing: border-box;
+  position: absolute;
+  inset: 0;
+  /* Pas de display: flex ici — chaque wrapper se place lui-même
+     via `position: absolute` et son `transform`. */
 }
 
 /* ------------------------------------------------------------
    Wrapper de page (injecté dynamiquement par pdf.js)
-   - flex: 0 0 auto       → taille intrinsèque (basée sur le canvas).
-   - scroll-snap-align    → varie selon le mode (cf. blocs .mode-*).
-   - IMPORTANT — fix du chevauchement au zoom :
-     On n'utilise plus `transform: scale()` ici (l'ancienne approche
-     ne réservait pas d'espace de mise en page et provoquait la
-     superposition visible des pages). Le redimensionnement passe
-     désormais par width/height CSS du <canvas> à l'intérieur — le
-     flex container réalloue ainsi correctement l'espace.
-   - Transition douce sur la taille pour lisser le zoom.
+   ------------------------------------------------------------
+   Toutes les pages sont positionnées AU MÊME ENDROIT (centre du
+   stage) en absolu. Elles sont masquées par défaut ; la classe
+   utilitaire `.is-current` (gérée par le composant React) ne la
+   rend visible que pour la (ou les) page(s) active(s).
    ------------------------------------------------------------ */
 .ebook-pdf-reader__page-wrapper {
-  position: relative;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* `--tx-base` est la translation X de base (à zoom = 1, hors
+     animation). Sa valeur dépend du mode et de la parité — cf.
+     les overrides plus bas. */
+  --tx-base: -50%;
+  transform: translate(var(--tx-base), -50%);
   background: white;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
   border-radius: 4px;
   overflow: hidden;
-  /* Lissage du zoom — la transition s'applique aux nouvelles dimensions
-     CSS du wrapper (qui suit le canvas). */
-  transition: box-shadow 0.18s ease-out;
+  /* Masqué par défaut : invisible pour le rendu ET les lecteurs d'écran. */
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  /* Contexte 3D : les transformations rotateY restent dans le plan. */
+  backface-visibility: hidden;
+  will-change: transform, opacity;
 }
 
 /* Canvas de rendu PDF
@@ -142,42 +127,32 @@
 }
 
 /* ============================================================
-   ===== MODES D'AFFICHAGE — 1 page vs 2 pages (livre) =====
+   ===== POSITIONNEMENT DES PAGES SELON LE MODE =====
    ------------------------------------------------------------
-   .mode-single  : chaque page snap au centre individuellement.
-   .mode-spread  : seules les pages IMPAIRES (1, 3, 5…) ont
-                   scroll-snap-align — la paire « page impaire +
-                   page paire » se présente comme un livre ouvert,
-                   centré dans le viewer.
-   On ajoute aussi une ombre intérieure subtile sur le bord
-   « reliure » de chaque page en mode spread, pour rappeler
-   visuellement la pliure centrale d'un livre.
+   Mode single  : la page active est CENTRÉE dans le stage.
+                  translate(-50%, -50%) classique.
+   Mode spread  : deux pages composent un diptyque.
+                  • page impaire (gauche)  → bord DROIT au centre
+                    du stage, soit translate(calc(-100% - 2px), -50%).
+                  • page paire   (droite)  → bord GAUCHE au centre
+                    du stage, soit translate(2px, -50%).
+                  L'écart de 2 px de chaque côté forme le « pli »
+                  central de 4 px qui rappelle la reliure du livre.
+   Les autres pages restent en `visibility: hidden` (cf. règle de
+   base) — elles ne sont jamais visibles sur les côtés.
    ============================================================ */
 
-/* --- Mode 1 page : snap classique sur chaque page --- */
+/* --- Mode 1 page : page active centrée --- */
 .ebook-pdf-reader.mode-single .ebook-pdf-reader__page-wrapper {
-  scroll-snap-align: center;
+  --tx-base: -50%;
 }
 
-/* --- Mode 2 pages (livre ouvert) ---
-   Trick de centrage du diptyque :
-    • scroll-padding-inline-end: 50% sur le scroller → la « zone de fin »
-      du snap container est ramenée au centre du viewport.
-    • scroll-snap-align: end sur la page IMPAIRE → son bord DROIT (qui
-      correspond au pli central du livre) se cale donc sur le centre du
-      viewer. La page paire (suivante) s'étale à droite du pli.
-    • Résultat : le diptyque entier est CENTRÉ horizontalement, pas
-      seulement la page impaire. */
-.ebook-pdf-reader.mode-spread .ebook-pdf-reader__scroller {
-  scroll-padding-inline-end: 50%;
-}
-/* Par défaut, on désactive le snap sur toutes les pages… */
-.ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper {
-  scroll-snap-align: none;
-}
-/* … puis on l'active uniquement sur la page IMPAIRE, snap par la droite. */
+/* --- Mode 2 pages : positions selon parité --- */
 .ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper[data-parity="odd"] {
-  scroll-snap-align: end;
+  --tx-base: calc(-100% - 2px);
+}
+.ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper[data-parity="even"] {
+  --tx-base: 2px;
 }
 
 /* Reliure de livre : ombre intérieure sur le bord central de chaque
@@ -186,24 +161,153 @@
    vient du côté gauche. Effet subtil — n'altère pas la lisibilité. */
 .ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper[data-parity="odd"] {
   box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 12px 36px rgba(0, 0, 0, 0.45),
     inset -10px 0 14px -10px rgba(0, 0, 0, 0.35);
 }
 .ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper[data-parity="even"] {
   box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 12px 36px rgba(0, 0, 0, 0.45),
     inset 10px 0 14px -10px rgba(0, 0, 0, 0.35);
 }
 
-/* En mode spread, on resserre le gap entre les deux pages d'un même
-   diptyque pour que la « pliure » soit crédible. Le gap entre deux
-   diptyques (page paire → page impaire suivante) reste celui du
-   conteneur. Trick : on cible la marge gauche de chaque page paire. */
-.ebook-pdf-reader.mode-spread .ebook-pdf-reader__page-wrapper[data-parity="even"] {
-  /* gap container = 24px ; on neutralise une partie pour que la paire
-     soit collée serré, mais pas totalement (un fin trait sombre se forme
-     entre les deux pages — c'est la pliure). */
-  margin-left: -20px;
+/* ============================================================
+   ===== AFFICHAGE DE LA PAGE ACTIVE =====
+   ------------------------------------------------------------
+   Une page reçoit la classe `.is-current` quand elle est la page
+   (ou l'une des deux pages d'une paire) actuellement affichée.
+   On la rend visible et on l'amène à sa position de base.
+   ============================================================ */
+.ebook-pdf-reader__page-wrapper.is-current {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 2;
+  transform: translate(var(--tx-base), -50%);
+}
+
+/* ============================================================
+   ===== ANIMATION DE FEUILLETAGE =====
+   ------------------------------------------------------------
+   Le tournage d'une page combine :
+    1. Une translation horizontale (la page glisse).
+    2. Une rotation 3D (rotateY) autour d'un axe vertical, pour
+       imiter le pivot d'une feuille de papier.
+    3. Un léger fondu (opacity) en fin de course pour adoucir
+       la disparition.
+   Le contexte 3D (perspective: 2200px) est posé sur le stage.
+   Direction « next » :
+      - la page sortante part vers la GAUCHE (rotation -Y)
+      - la page entrante arrive de la DROITE (rotation +Y).
+   Direction « prev » : effet mirroir.
+   ------------------------------------------------------------
+   Astuce technique : on conserve `--tx-base` dans chaque
+   keyframe pour respecter le décalage selon le mode/parité.
+   Ainsi l'animation reste cohérente en single comme en spread.
+   ============================================================ */
+
+/* ---- NEXT : tournage de page « vers l'avant » ---- */
+.ebook-pdf-reader__page-wrapper.is-leaving-next {
+  visibility: visible;
+  opacity: 1;
+  z-index: 4; /* au-dessus de la page entrante pendant la sortie */
+  animation: page-flip-leave-next 0.62s cubic-bezier(.55, .05, .35, 1) forwards;
+  transform-origin: left center;
+}
+.ebook-pdf-reader__page-wrapper.is-entering-next {
+  visibility: visible;
+  opacity: 0;
+  z-index: 3;
+  animation: page-flip-enter-next 0.62s cubic-bezier(.45, 0, .25, 1) forwards;
+  animation-delay: 0.18s; /* léger décalage : la sortante s'éloigne en premier */
+  transform-origin: left center;
+}
+
+/* NB unités : on utilise `vw` (et non `%`) pour la distance de
+   feuilletage. Sinon le `+90%` se calcule sur la largeur du WRAPPER,
+   ce qui donne une course très courte en mode spread où les wrappers
+   sont déjà décalés du centre. `vw` est constant quelle que soit la
+   parité, garantissant que la page entrante part effectivement
+   hors-écran et que la sortante y arrive. */
+
+@keyframes page-flip-leave-next {
+  0% {
+    transform: translate(var(--tx-base), -50%) rotateY(0deg);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  }
+  60% {
+    box-shadow: -16px 14px 38px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform:
+      translate(calc(var(--tx-base) - 60vw), -50%)
+      rotateY(-55deg);
+    opacity: 0;
+  }
+}
+
+@keyframes page-flip-enter-next {
+  0% {
+    transform:
+      translate(calc(var(--tx-base) + 55vw), -50%)
+      rotateY(35deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(var(--tx-base), -50%) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* ---- PREV : tournage de page « vers l'arrière » (miroir) ---- */
+.ebook-pdf-reader__page-wrapper.is-leaving-prev {
+  visibility: visible;
+  opacity: 1;
+  z-index: 4;
+  animation: page-flip-leave-prev 0.62s cubic-bezier(.55, .05, .35, 1) forwards;
+  transform-origin: right center;
+}
+.ebook-pdf-reader__page-wrapper.is-entering-prev {
+  visibility: visible;
+  opacity: 0;
+  z-index: 3;
+  animation: page-flip-enter-prev 0.62s cubic-bezier(.45, 0, .25, 1) forwards;
+  animation-delay: 0.18s;
+  transform-origin: right center;
+}
+
+@keyframes page-flip-leave-prev {
+  0% {
+    transform: translate(var(--tx-base), -50%) rotateY(0deg);
+  }
+  60% {
+    box-shadow: 16px 14px 38px rgba(0, 0, 0, 0.5);
+  }
+  100% {
+    transform:
+      translate(calc(var(--tx-base) + 60vw), -50%)
+      rotateY(55deg);
+    opacity: 0;
+  }
+}
+
+@keyframes page-flip-enter-prev {
+  0% {
+    transform:
+      translate(calc(var(--tx-base) - 55vw), -50%)
+      rotateY(-35deg);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(var(--tx-base), -50%) rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+/* Pendant un feuilletage, on neutralise les transitions douces du zoom
+   sur le canvas : sinon elles se composent avec l'animation et créent
+   un effet « élastique » indésirable. */
+.ebook-pdf-reader.is-flipping .ebook-pdf-reader__page-canvas {
+  transition: none;
 }
 
 /* ------------------------------------------------------------
@@ -402,12 +506,9 @@
     min-width: 44px;
   }
 
-  /* Padding latéral du scroller : sur mobile, la page occupe presque
-     toute la largeur — on réduit à 20vw pour conserver le centrage. */
-  .ebook-pdf-reader__pages {
-    padding: 0 20vw;
-    gap: 16px;
-  }
+  /* Plus de padding sur .__pages — les wrappers sont positionnés
+     en absolu et centrés via transform. Rien à ajuster ici en mobile.
+     (Bloc volontairement laissé vide pour future surcharge éventuelle.) */
 }
 
 /* ============================================================
@@ -426,14 +527,25 @@
 
 /* ============================================================
    ===== ACCESSIBILITÉ — mouvements réduits =====
-   Désactive les transitions/animations pour les utilisateurs
-   ayant configuré prefers-reduced-motion: reduce.
+   ------------------------------------------------------------
+   Désactive les keyframes de feuilletage et les transitions
+   pour les utilisateurs ayant `prefers-reduced-motion: reduce`.
+   Côté JS, le composant teste également ce media query et
+   permute INSTANTANÉMENT entre pages sans déclencher l'anim.
+   Cette règle CSS sert de filet de sécurité visuel : même si
+   pour une raison quelconque une classe d'animation reste
+   appliquée, elle ne produit aucun mouvement.
    ============================================================ */
 @media (prefers-reduced-motion: reduce) {
-  .ebook-pdf-reader__scroller {
-    scroll-behavior: auto;
+  .ebook-pdf-reader__page-wrapper,
+  .ebook-pdf-reader__page-wrapper.is-leaving-next,
+  .ebook-pdf-reader__page-wrapper.is-leaving-prev,
+  .ebook-pdf-reader__page-wrapper.is-entering-next,
+  .ebook-pdf-reader__page-wrapper.is-entering-prev {
+    animation: none !important;
+    transition: none !important;
   }
-  .ebook-pdf-reader__page-wrapper {
-    transition: none;
+  .ebook-pdf-reader__page-canvas {
+    transition: none !important;
   }
 }
