@@ -373,6 +373,22 @@
         { "fieldPath": "role", "order": "ASCENDING" },
         { "fieldPath": "displayName", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "ebooks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "isActive", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ebooks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isActive", "order": "ASCENDING" },
+        { "fieldPath": "ordre", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

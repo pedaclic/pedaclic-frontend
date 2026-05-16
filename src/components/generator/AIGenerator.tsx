@@ -51,6 +51,10 @@ import {
   deleteCompiledEbook,
   CompiledEbook,
 } from '../../services/compiledEbookService';
+// Réutilisation directe : permet de re-publier un ancien ebook compilé
+// (créé avant l'activation de la publication automatique) dans la
+// bibliothèque publique pour qu'il apparaisse dans le panneau admin.
+import { publishCompiledEbookToLibrary } from '../../services/ebookService';
 import { CLASSES } from '../../types/cahierTextes.types';
 import { extractTextFromFile } from '../../utils/extractTextFromFile';
 import { useToast } from '../../contexts/ToastContext';
@@ -658,6 +662,52 @@ const AIGenerator: React.FC = () => {
       setMyEbooks(prev => prev.filter(e => e.id !== id));
     } catch (err) {
       console.error('[AIGenerator] Erreur suppression ebook:', err);
+    }
+  };
+
+  /**
+   * Republie un ancien ebook compilé dans la bibliothèque publique.
+   *
+   * À quoi ça sert ?
+   *   Les compilations créées AVANT le déploiement de la publication
+   *   automatique vivent uniquement dans `compiled_ebooks` — donc
+   *   invisibles côté biblio et admin. Ce bouton les remet à niveau :
+   *   il crée un doc `ebooks` (isActive=false, attente modération) à
+   *   partir des sections déjà sauvegardées.
+   *
+   *   Idempotent en pratique : si vous cliquez deux fois, un second
+   *   doc apparaîtra côté admin → c'est volontairement de la
+   *   responsabilité de l'admin de fusionner les doublons. On préfère
+   *   ça à un index secondaire coûteux pour détecter les duplications.
+   */
+  const handleRepublishCompiledEbook = async (ebook: CompiledEbook) => {
+    if (!currentUser) return;
+    try {
+      await publishCompiledEbookToLibrary({
+        userId:      currentUser.uid,
+        titre:       ebook.titre,
+        description: ebook.description || '',
+        auteur:      currentUser.displayName || 'Prof Premium',
+        // Le shape CompiledSection / EbookCompiledSection est identique.
+        sections:    ebook.sections as any,
+      });
+      toast.success(
+        'Ebook republié — il apparaît maintenant dans votre bibliothèque ' +
+        '(badge "En attente") et dans le panneau admin pour modération.'
+      );
+    } catch (err: any) {
+      const code = err?.code || '';
+      const msg  = err?.message || String(err);
+      console.error('[AIGenerator] Échec republication ebook compilé :', { code, msg, err });
+      if (code === 'permission-denied' || /permission/i.test(msg)) {
+        toast.error(
+          'Publication refusée par les règles Firestore. ' +
+          'Demandez à l\'admin de déployer les dernières règles : ' +
+          'firebase deploy --only firestore:rules'
+        );
+      } else {
+        toast.error(`Republication impossible : ${msg}`);
+      }
     }
   };
 
@@ -1907,6 +1957,18 @@ const AIGenerator: React.FC = () => {
                           title="Lire l'ebook"
                         >
                           📖 Lire
+                        </button>
+                        {/* Bouton "Republier" : utile pour les compilations
+                            créées AVANT que la publication automatique soit
+                            active. Crée un doc dans `ebooks` (isActive=false)
+                            qui apparaîtra dans le panneau admin pour modération
+                            et dans la biblio du prof avec le badge "En attente". */}
+                        <button
+                          className="btn btn--outline btn--sm"
+                          onClick={() => handleRepublishCompiledEbook(ebook)}
+                          title="Republier dans la bibliothèque (sera en attente d'activation par l'admin)"
+                        >
+                          📤 Republier
                         </button>
                         <button
                           className="btn btn--danger btn--sm"

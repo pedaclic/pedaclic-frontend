@@ -10,8 +10,8 @@
     "deploy:gh": "npm run build && gh-pages -d dist",
     "deploy:firebase": "npm run build && firebase deploy --only hosting",
     "deploy:full": "firebase deploy",
-    "deploy:rules": "firebase deploy --only firestore:rules",
-    "deploy:prod": "echo '🚀 Déploiement production PedaClic (GitHub Pages + Firebase + Firestore rules)...' && git add -A && (git diff --cached --quiet && echo '✓ Aucune modification à committer — redéploiement du dernier état' || git commit) && git push && npm run build && gh-pages -d dist && firebase deploy --only hosting,firestore:rules && echo '✅ Déploiement terminé — https://pedaclic.sn (GH Pages) & https://www.pedaclic.sn (Firebase) & règles Firestore à jour'"
+    "deploy:rules": "firebase deploy --only firestore:rules,firestore:indexes,storage",
+    "deploy:prod": "echo '🚀 Déploiement production PedaClic — Hosting + Firestore (rules + indexes) + Storage rules...' && git add -A && (git diff --cached --quiet && echo '✓ Aucune modification à committer — redéploiement du dernier état' || git commit) && git push && npm run build && gh-pages -d dist && firebase deploy --only hosting,firestore:rules,firestore:indexes,storage && echo '✅ Déploiement terminé — https://pedaclic.sn (GH Pages) & https://www.pedaclic.sn (Firebase). Règles Firestore + index + règles Storage à jour. NB : les index Firestore peuvent prendre 1-5 min à être construits côté Google avant d''être actifs.'"
   },
   "dependencies": {
     "firebase": "^12.8.0",

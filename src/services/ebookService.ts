@@ -80,31 +80,48 @@ export async function getAllEbooks(currentUserId?: string): Promise<Ebook[]> {
     // --- 2. Ebooks compilés du prof courant, encore inactifs ---
     // Pourquoi une seconde requête ? Firestore n'autorise pas de
     // `OR` natif léger ; passer par `getDocs` séparé évite de créer
-    // un index composite complexe.
+    // un OR-clause complexe.
+    //
+    // Robustesse : si cette sous-requête échoue (index composite manquant,
+    // règles Firestore, etc.), on ne CASSE PAS la bibliothèque principale.
+    // On log l'erreur, on retourne juste la liste des actifs. Le prof verra
+    // alors la biblio sans ses compilations en attente — dégradation gracieuse
+    // au lieu d'une page d'erreur complète.
     if (!currentUserId) return actifs;
 
-    const qOwnPending = query(
-      collection(db, EBOOKS_COLLECTION),
-      where('userId', '==', currentUserId),
-      where('isActive', '==', false)
-    );
-    const snapOwn = await getDocs(qOwnPending);
-    const ownPending = snapOwn.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || null
-      }) as Ebook)
-      // Sécurité : on ne réinjecte que les ebooks compilés du prof
-      // (jamais un ebook PDF/HTML désactivé par l'admin pour une raison
-      // particulière — modération éditoriale, droits d'auteur, etc.)
-      .filter(e => (e.format || 'pdf') === 'compiled');
+    try {
+      const qOwnPending = query(
+        collection(db, EBOOKS_COLLECTION),
+        where('userId', '==', currentUserId),
+        where('isActive', '==', false)
+      );
+      const snapOwn = await getDocs(qOwnPending);
+      const ownPending = snapOwn.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate() || new Date(),
+          updatedAt: doc.data().updatedAt?.toDate() || null
+        }) as Ebook)
+        // Sécurité : on ne réinjecte que les ebooks compilés du prof
+        // (jamais un ebook PDF/HTML désactivé par l'admin pour une raison
+        // particulière — modération éditoriale, droits d'auteur, etc.)
+        .filter(e => (e.format || 'pdf') === 'compiled');
 
-    // Déduplication par id au cas où la requête actifs+propre se chevauche
-    const byId = new Map<string, Ebook>();
-    [...actifs, ...ownPending].forEach(e => byId.set(e.id, e));
-    return Array.from(byId.values());
+      // Déduplication par id au cas où la requête actifs+propre se chevauche
+      const byId = new Map<string, Ebook>();
+      [...actifs, ...ownPending].forEach(e => byId.set(e.id, e));
+      return Array.from(byId.values());
+    } catch (subErr: any) {
+      // Index probablement manquant (FirebaseError code: 'failed-precondition')
+      // → on dégrade proprement à la liste des actifs.
+      console.warn(
+        '[ebookService] Récupération des compilations en attente du prof ' +
+        'a échoué (index manquant ou rules ?). Liste publique uniquement.',
+        subErr
+      );
+      return actifs;
+    }
   } catch (error) {
     console.error('❌ Erreur récupération ebooks:', error);
     throw error;
