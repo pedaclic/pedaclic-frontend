@@ -503,11 +503,85 @@ service cloud.firestore {
       // --- Lecture : tous les utilisateurs connectés ---
       allow read: if isSignedIn();
 
-      // --- Création / suppression : admin uniquement ---
-      allow create, delete: if isAdmin();
+      // ──────────────────────────────────────────────────────────
+      // CRÉATION
+      // ──────────────────────────────────────────────────────────
+      //
+      // (a) Admin → création libre (PDF, HTML, ou n'importe quel champ).
+      //
+      // (b) Prof OU Premium → création STRICTEMENT encadrée d'un ebook
+      //     compilé via le générateur IA. Le client appelle
+      //     publishCompiledEbookToLibrary() qui pose toujours :
+      //       - format         === 'compiled'
+      //       - source         === 'compiled_prof'
+      //       - isActive       === false   (modération obligatoire)
+      //       - userId         === auth.uid (auteur)
+      //       - uploadedBy     === auth.uid
+      //       - fichierURL     === ''      (pas d'upload Storage)
+      //       - couvertureURL  === ''
+      //       - aperçuURL      === ''
+      //       - nombreVues     === 0
+      //       - nombreTelechargements === 0
+      //       - sections       est un tableau non vide
+      //     On verrouille EXACTEMENT ces invariants pour que :
+      //       - aucun prof ne puisse créer un ebook "actif" (bypass modération),
+      //       - aucun prof ne puisse usurper un autre auteur,
+      //       - aucun prof ne puisse créer un ebook PDF/HTML
+      //         (réservé à l'admin pour des raisons éditoriales / droits).
+      // ──────────────────────────────────────────────────────────
+      allow create: if isAdmin();
 
-      // --- Update complet (tous champs) : admin uniquement ---
+      allow create: if isSignedIn()
+        && (isProf() || isPremium())
+        && request.resource.data.format == 'compiled'
+        && request.resource.data.source == 'compiled_prof'
+        && request.resource.data.isActive == false
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.fichierURL == ''
+        && request.resource.data.couvertureURL == ''
+        // Notation par crochets pour le champ `aperçuURL` (caractère
+        // non-ASCII « ç »). Évite une éventuelle erreur d'analyse CEL.
+        && request.resource.data['aperçuURL'] == ''
+        && request.resource.data.nombreVues == 0
+        && request.resource.data.nombreTelechargements == 0
+        && request.resource.data.sections is list
+        && request.resource.data.sections.size() > 0;
+
+      // ──────────────────────────────────────────────────────────
+      // SUPPRESSION
+      // ──────────────────────────────────────────────────────────
+      // Admin : libre (modération éditoriale)
+      // Prof/Premium auteur : peut supprimer son propre ebook compilé
+      //   TANT qu'il est en attente (isActive=false). Une fois activé
+      //   par l'admin, seul l'admin peut supprimer (évite les disparitions
+      //   surprise côté élèves).
+      allow delete: if isAdmin();
+      allow delete: if isSignedIn()
+        && resource.data.format == 'compiled'
+        && resource.data.userId == request.auth.uid
+        && resource.data.isActive == false;
+
+      // ──────────────────────────────────────────────────────────
+      // UPDATE complet (tous champs) : admin uniquement
+      // ──────────────────────────────────────────────────────────
       allow update: if isAdmin();
+
+      // ──────────────────────────────────────────────────────────
+      // UPDATE : auteur d'un ebook compilé en attente peut éditer ses
+      // sections (utile pour corriger après publication automatique).
+      // Restrictions strictes : aucun changement de format, d'auteur,
+      // d'état actif, de compteurs.
+      // ──────────────────────────────────────────────────────────
+      allow update: if isSignedIn()
+        && resource.data.format == 'compiled'
+        && resource.data.userId == request.auth.uid
+        && resource.data.isActive == false
+        && request.resource.data.format == 'compiled'
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.isActive == false
+        && request.resource.data.nombreVues == resource.data.nombreVues
+        && request.resource.data.nombreTelechargements == resource.data.nombreTelechargements;
 
       // --- Update partiel : incrément du compteur de vues (+1) ---
       // Autorisé pour tout utilisateur connecté (élève, prof, parent…)

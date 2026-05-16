@@ -44,6 +44,15 @@ export const AdminEbooks: React.FC = () => {
   // (vues/téléchargements/actifs reste donc toujours synchrone avec Firestore)
   const stats = useMemo(() => calculateEbookStats(ebooks), [ebooks]);
 
+  // --- File de modération : ebooks compilés en attente d'activation ---
+  // Calculé séparément des stats pour rester rétro-compatible avec le type
+  // EbookStats existant (utilisé ailleurs). Un compteur dédié met en avant
+  // les compilations que l'admin doit traiter.
+  const compiledPendingCount = useMemo(
+    () => ebooks.filter(e => e.format === 'compiled' && !e.isActive).length,
+    [ebooks]
+  );
+
   // --- État du formulaire ---
   const [showForm, setShowForm] = useState(false);
   const [editingEbook, setEditingEbook] = useState<Ebook | null>(null);
@@ -443,7 +452,10 @@ export const AdminEbooks: React.FC = () => {
       {error && <div className="admin-alert error">❌ {error}</div>}
       {successMessage && <div className="admin-alert success">{successMessage}</div>}
 
-      {/* <!-- Statistiques rapides --> */}
+      {/* <!-- Statistiques rapides -->
+           5e carte conditionnelle « À modérer » : visible uniquement quand
+           au moins un ebook compilé est en attente d'activation. Évite
+           d'alourdir l'UI quand aucune modération n'est requise. */}
       {stats && (
         <div className="admin-stats-grid">
           <div className="stat-card">
@@ -462,6 +474,15 @@ export const AdminEbooks: React.FC = () => {
             <span className="stat-number">{stats.totalTelechargements}</span>
             <span className="stat-label">Téléchargements</span>
           </div>
+          {compiledPendingCount > 0 && (
+            <div
+              className="stat-card stat-card--moderation"
+              title="Ebooks compilés par les profs Premium en attente d'activation"
+            >
+              <span className="stat-number">🧠 {compiledPendingCount}</span>
+              <span className="stat-label">À modérer</span>
+            </div>
+          )}
         </div>
       )}
 

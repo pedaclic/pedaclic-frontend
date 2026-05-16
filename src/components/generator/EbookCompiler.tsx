@@ -62,6 +62,10 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
   const [saving, setSaving]     = useState(false);
   const [saved, setSaved]       = useState(false);
   const [error, setError]       = useState('');
+  // Information non-bloquante : publication dans la bibliothèque
+  // échouée (les règles Firestore ont rejeté, par exemple). On affiche
+  // ce message en plus du succès d'archivage pour ne pas mentir à l'utilisateur.
+  const [publishWarning, setPublishWarning] = useState('');
 
   // ── Filtrage de l'historique (quiz exclus car non textuels) ──
   const items = history.filter(it => it.type !== 'quiz_auto' && it.content);
@@ -320,6 +324,7 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
 
     setSaving(true);
     setError('');
+    setPublishWarning('');
     try {
       const sections: CompiledSection[] = selection.map(item => ({
         contenuId:  item.id!,
@@ -333,7 +338,13 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
       //  1. Sauvegarde dans `compiled_ebooks` (archive personnelle)
       //  2. Publication dans `ebooks` avec isActive=false (modération admin)
       // Voir compiledEbookService.ts pour le détail.
-      await saveCompiledEbook(userId, titre, description, sections, authorDisplayName);
+      const result = await saveCompiledEbook(userId, titre, description, sections, authorDisplayName);
+      // Si la publication a échoué (publishedId=null), on conserve le succès
+      // d'archivage mais on AVERTIT explicitement l'utilisateur que sa
+      // compilation n'a pas atteint le panneau admin pour modération.
+      if (!result.publishedId && result.publishError) {
+        setPublishWarning(result.publishError);
+      }
       await incrementerUsage(userId);
       setSaved(true);
       onSaved();
@@ -543,16 +554,31 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
           </div>
 
           {/* Sauvegarde */}
-          {/* Message de succès actualisé : on précise que l'ebook est désormais
-              automatiquement publié dans la bibliothèque ET soumis à modération
-              admin pour activation publique. */}
+          {/* Message de succès — contenu dynamique selon l'issue réelle :
+                - publication OK   → 3 emplacements confirmés (archive + biblio + admin)
+                - publication KO   → seulement l'archive est garantie, on affiche
+                                     le motif précis sous forme d'avertissement
+              Ne JAMAIS mentir à l'utilisateur en lui annonçant que son ebook
+              est dans la biblio si la publication a été rejetée. */}
           {saved ? (
-            <div className="ebook-compiler__success">
-              ✅ Ebook sauvegardé&nbsp;! Il est&nbsp;:
-              <br />• Disponible dans <strong>Mes Ebooks compilés</strong> (archive personnelle).
-              <br />• Ajouté à votre <strong>Bibliothèque PedaClic</strong>&nbsp;— badge «&nbsp;En attente d'activation&nbsp;».
-              <br />• Soumis à la <strong>modération de l'administrateur</strong> pour diffusion publique.
-            </div>
+            <>
+              {publishWarning ? (
+                <div className="ebook-compiler__success">
+                  ✅ Ebook archivé dans <strong>Mes Ebooks compilés</strong>.
+                  <br /><br />
+                  ⚠️ <strong>Publication dans la bibliothèque indisponible</strong>&nbsp;:
+                  <br />
+                  <small>{publishWarning}</small>
+                </div>
+              ) : (
+                <div className="ebook-compiler__success">
+                  ✅ Ebook sauvegardé&nbsp;! Il est&nbsp;:
+                  <br />• Disponible dans <strong>Mes Ebooks compilés</strong> (archive personnelle).
+                  <br />• Ajouté à votre <strong>Bibliothèque PedaClic</strong>&nbsp;— badge «&nbsp;En attente d'activation&nbsp;».
+                  <br />• Soumis à la <strong>modération de l'administrateur</strong> pour diffusion publique.
+                </div>
+              )}
+            </>
           ) : (
             <div className="ebook-compiler__save-row">
               <button

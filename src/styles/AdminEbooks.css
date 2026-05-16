@@ -92,10 +92,12 @@
   border: 1px solid #bbf7d0;
 }
 
-/* ===== STATISTIQUES RAPIDES ===== */
+/* ===== STATISTIQUES RAPIDES =====
+   auto-fit + minmax pour absorber proprement une 5e carte conditionnelle
+   "À modérer" sans casser la grille à 4 colonnes du cas dominant. */
 .admin-stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -107,6 +109,21 @@
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   border: 1px solid #e5e7eb;
+}
+
+/* Variante "À modérer" : fond ambré pour attirer l'œil de l'admin
+   sur les ebooks compilés en attente d'activation. */
+.stat-card--moderation {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border-color: #fcd34d;
+  cursor: help;
+}
+.stat-card--moderation .stat-number {
+  color: #b45309;
+}
+.stat-card--moderation .stat-label {
+  color: #92400e;
+  font-weight: 600;
 }
 
 .stat-number {

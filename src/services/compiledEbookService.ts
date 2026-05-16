@@ -47,6 +47,28 @@ const COL = 'compiled_ebooks';
 // ==================== SERVICE ====================
 
 /**
+ * Résultat retourné par saveCompiledEbook.
+ *
+ * On expose volontairement le détail des deux écritures pour que l'UI
+ * puisse afficher un message précis :
+ *   - succès complet : "Archivé + publié pour modération"
+ *   - publication échouée : "Archivé, mais publication impossible"
+ *
+ * Sans ce contrat, le composant appelant ne pouvait pas distinguer
+ * les deux cas et affichait le même message de succès trompeur même
+ * quand la publication dans la bibliothèque avait été rejetée par
+ * les règles Firestore (ce qui était le bug observé en prod).
+ */
+export interface SaveCompiledEbookResult {
+  /** ID du document créé dans `compiled_ebooks` (archive personnelle). */
+  archiveId: string;
+  /** ID du document créé dans `ebooks` (publication), ou null si échec. */
+  publishedId: string | null;
+  /** Erreur de publication éventuelle (ex. PERMISSION_DENIED). */
+  publishError?: string;
+}
+
+/**
  * Sauvegarde un ebook compilé dans Firestore.
  *
  * Cette fonction enchaîne DEUX écritures :
@@ -62,15 +84,21 @@ const COL = 'compiled_ebooks';
  *   - On surface immédiatement la compilation dans le panneau Admin
  *     pour modération, sans modifier la sémantique de `compiled_ebooks`.
  *   - L'échec de la publication publique n'empêche pas la sauvegarde
- *     privée (le prof ne perd jamais son travail) — on log la tentative
- *     ratée mais on retourne quand même l'ID privé.
+ *     privée (le prof ne perd jamais son travail) — mais on REMONTE
+ *     l'erreur au composant UI au lieu de l'avaler silencieusement.
+ *
+ * Politique d'erreur :
+ *   - Échec étape 1 (archive) → exception propagée (l'utilisateur doit
+ *     savoir que rien n'a été sauvegardé).
+ *   - Échec étape 2 (publication) → résultat avec `publishedId=null`
+ *     et `publishError` renseigné. L'archive est intacte, l'UI peut
+ *     proposer un message dégradé sans bloquer l'utilisateur.
  *
  * @param userId       uid Firebase du prof Premium
  * @param titre        titre choisi par le prof
  * @param description  description (optionnelle)
  * @param sections     sections compilées (Markdown)
  * @param auteur       nom affiché du prof (utilisé pour la publication)
- * @returns l'ID du document créé dans `compiled_ebooks` (jamais celui d'`ebooks`)
  */
 export async function saveCompiledEbook(
   userId: string,
@@ -78,8 +106,10 @@ export async function saveCompiledEbook(
   description: string,
   sections: CompiledSection[],
   auteur?: string
-): Promise<string> {
+): Promise<SaveCompiledEbookResult> {
   // --- 1. Archive personnelle (comportement historique) ---
+  // Si cette étape échoue, on propage l'exception car rien n'a pu
+  // être enregistré et l'utilisateur doit le savoir.
   const ref = await addDoc(collection(db, COL), {
     userId,
     titre,
@@ -89,12 +119,10 @@ export async function saveCompiledEbook(
   });
 
   // --- 2. Publication dans la bibliothèque (modération admin) ---
-  // Fire-and-forget contrôlé : on `await` pour pouvoir logger l'erreur
-  // mais on n'interrompt PAS le flux : la sauvegarde privée est déjà
-  // réussie, le prof verrait sinon une erreur trompeuse "Échec de la
-  // sauvegarde" alors que son archive est intacte.
+  let publishedId: string | null = null;
+  let publishError: string | undefined;
   try {
-    await publishCompiledEbookToLibrary({
+    publishedId = await publishCompiledEbookToLibrary({
       userId,
       titre,
       description,
@@ -104,17 +132,32 @@ export async function saveCompiledEbook(
       // types divergent un jour, le compilateur TS le signalera.
       sections: sections as any,
     });
-  } catch (err) {
-    // Non-bloquant : on signale en console mais l'archive privée
-    // est intacte → le prof peut retenter via "Republier" plus tard.
-    console.warn(
+  } catch (err: any) {
+    // Non-bloquant : on signale en console ET on remonte un message
+    // exploitable pour l'UI. Causes les plus fréquentes :
+    //   - Règles Firestore (permission-denied) → mise à jour du déploiement
+    //     `firebase deploy --only firestore:rules` requise.
+    //   - Connexion réseau perdue avant la 2e écriture.
+    const code = err?.code || '';
+    const msg  = err?.message || String(err);
+    console.error(
       '[compiledEbookService] Échec de la publication dans la bibliothèque ' +
       '(l\'archive privée a néanmoins été sauvegardée) :',
-      err
+      { code, msg, err }
     );
+    if (code === 'permission-denied' || /permission/i.test(msg)) {
+      publishError = "Publication refusée par les règles de sécurité Firestore. "
+        + "Demandez à l'admin de déployer les dernières règles "
+        + "(firebase deploy --only firestore:rules).";
+    } else if (/network|offline|unavailable/i.test(msg)) {
+      publishError = "Réseau indisponible : l'ebook est archivé localement, "
+        + "mais sa publication a échoué. Réessayez plus tard depuis 'Mes ebooks compilés'.";
+    } else {
+      publishError = `Publication dans la bibliothèque échouée : ${msg}`;
+    }
   }
 
-  return ref.id;
+  return { archiveId: ref.id, publishedId, publishError };
 }
 
 /**
