@@ -1842,6 +1842,10 @@ const AIGenerator: React.FC = () => {
           subscriptionPlan={currentUser?.subscriptionPlan}
           history={history}
           markdownToHtml={markdownToHtml}
+          // Le displayName est utilisé comme auteur affiché de l'ebook
+          // dans la bibliothèque publique après publication. Fallback :
+          // "Prof Premium" (géré côté service).
+          authorDisplayName={currentUser?.displayName || ''}
           onClose={() => setShowEbookCompiler(false)}
           onSaved={async () => {
             const books = await getCompiledEbooks(currentUser!.uid);

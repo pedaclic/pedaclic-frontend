@@ -121,18 +121,61 @@ export const AdminEbooks: React.FC = () => {
 
   /**
    * Force une lecture serveur (bypass du cache IndexedDB).
-   * Utile si l'admin doute de la fraîcheur des compteurs après un long
-   * fonctionnement hors-ligne. Ne casse pas l'abonnement onSnapshot.
+   *
+   * Pourquoi cette action ?
+   * Le listener onSnapshot rafraîchit déjà la liste en temps réel, MAIS il
+   * peut servir des données issues du cache local Firestore (IndexedDB) — par
+   * exemple après un long fonctionnement hors-ligne, ou en cas de désaccord
+   * apparent avec ce qu'un autre admin vient d'écrire. `getDocsFromServer`
+   * impose une lecture serveur, garantissant la fraîcheur des données.
+   *
+   * Améliorations sur cette version :
+   *   1. Délai minimum visible (350 ms) pour que l'utilisateur perçoive
+   *      réellement l'action — sans cela, un réseau rapide rendait l'état
+   *      "⏳ Actualisation…" invisible et donnait l'illusion d'un bouton mort.
+   *   2. Message de confirmation explicite (combien d'ebooks rechargés) —
+   *      pour qu'on sache que l'action a effectivement abouti même si la
+   *      liste est identique à l'écran.
+   *   3. Trace console détaillée pour le debug en cas d'erreur silencieuse.
    */
   const handleRefresh = async () => {
+    // Garde-fou : éviter les double-clics rapides
+    if (refreshing) return;
+
+    const startedAt = Date.now();
+    const MIN_VISIBLE_MS = 350;
+
     try {
       setRefreshing(true);
       setError(null);
+      setSuccessMessage(null);
+      console.log('[AdminEbooks] handleRefresh → lecture forcée serveur…');
+
       const data = await getAllEbooksAdmin(true);
       setEbooks(data);
+
+      // Garantir que le spinner reste visible un instant pour donner le
+      // feedback "l'action s'est bien déroulée".
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_VISIBLE_MS) {
+        await new Promise(r => setTimeout(r, MIN_VISIBLE_MS - elapsed));
+      }
+
+      setSuccessMessage(`🔄 Liste actualisée — ${data.length} ebook${data.length > 1 ? 's' : ''} chargé${data.length > 1 ? 's' : ''}`);
+      // Auto-masquage du message après 3 secondes
+      setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
-      setError('Erreur lors de l\'actualisation');
-      console.error(err);
+      // Diagnostic enrichi : on essaie de surfacer un message utile à l'admin
+      const code = err?.code || '';
+      const msg  = err?.message || String(err);
+      console.error('[AdminEbooks] handleRefresh ÉCHEC :', { code, msg, err });
+      if (code === 'permission-denied') {
+        setError("Accès refusé : votre session admin a peut-être expiré. Reconnectez-vous.");
+      } else if (/network|offline|unavailable/i.test(msg)) {
+        setError("Réseau indisponible. Réessayez une fois la connexion rétablie.");
+      } else {
+        setError(`Erreur lors de l'actualisation : ${msg}`);
+      }
     } finally {
       setRefreshing(false);
     }
@@ -637,37 +680,61 @@ export const AdminEbooks: React.FC = () => {
                 Le choix est rétrocompatible : un ebook existant sans champ
                 `format` est traité comme un PDF (cf. handleEdit).
                 ============================================================== */}
-            <div className="form-group">
-              <label>Format de l'ebook *</label>
-              <div className="format-radio-group" role="radiogroup" aria-label="Format de l'ebook">
-                <label className={`format-radio ${(formData.format || 'pdf') === 'pdf' ? 'is-checked' : ''}`}>
-                  <input
-                    type="radio"
-                    name="format"
-                    value="pdf"
-                    checked={(formData.format || 'pdf') === 'pdf'}
-                    onChange={() => setFormData(prev => ({ ...prev, format: 'pdf' }))}
-                  />
-                  <span className="format-radio__icon">📄</span>
-                  <span className="format-radio__title">PDF</span>
-                  <span className="format-radio__desc">Manuel, annale ou document scanné</span>
-                </label>
-                <label className={`format-radio ${formData.format === 'html' ? 'is-checked' : ''}`}>
-                  <input
-                    type="radio"
-                    name="format"
-                    value="html"
-                    checked={formData.format === 'html'}
-                    onChange={() => setFormData(prev => ({ ...prev, format: 'html' }))}
-                  />
-                  <span className="format-radio__icon">🌐</span>
-                  <span className="format-radio__title">HTML</span>
-                  <span className="format-radio__desc">Page web interactive (fiche, infographie)</span>
-                </label>
+            {/* ==============================================================
+                Cas particulier : ebook au format 'compiled' (produit par le
+                compilateur IA d'un prof Premium). Le format n'est PAS modifiable
+                par l'admin — celui-ci ne fait que modérer (activer / désactiver),
+                ajuster les métadonnées, ou supprimer. On affiche donc un
+                bandeau informatif à la place du sélecteur de format.
+                ============================================================== */}
+            {formData.format === 'compiled' ? (
+              <div className="form-group">
+                <div className="admin-alert info">
+                  🧠 <strong>Ebook compilé par un Prof Premium</strong> via le générateur IA.
+                  Le format et le contenu (sections Markdown) ne sont pas modifiables
+                  depuis ce panneau. Vous pouvez modifier les métadonnées (titre, classe,
+                  matière, etc.), l'<strong>activer</strong> pour le rendre public, ou le
+                  <strong> supprimer</strong>.
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="form-group">
+                <label>Format de l'ebook *</label>
+                <div className="format-radio-group" role="radiogroup" aria-label="Format de l'ebook">
+                  <label className={`format-radio ${(formData.format || 'pdf') === 'pdf' ? 'is-checked' : ''}`}>
+                    <input
+                      type="radio"
+                      name="format"
+                      value="pdf"
+                      checked={(formData.format || 'pdf') === 'pdf'}
+                      onChange={() => setFormData(prev => ({ ...prev, format: 'pdf' }))}
+                    />
+                    <span className="format-radio__icon">📄</span>
+                    <span className="format-radio__title">PDF</span>
+                    <span className="format-radio__desc">Manuel, annale ou document scanné</span>
+                  </label>
+                  <label className={`format-radio ${formData.format === 'html' ? 'is-checked' : ''}`}>
+                    <input
+                      type="radio"
+                      name="format"
+                      value="html"
+                      checked={formData.format === 'html'}
+                      onChange={() => setFormData(prev => ({ ...prev, format: 'html' }))}
+                    />
+                    <span className="format-radio__icon">🌐</span>
+                    <span className="format-radio__title">HTML</span>
+                    <span className="format-radio__desc">Page web interactive (fiche, infographie)</span>
+                  </label>
+                </div>
+              </div>
+            )}
 
-            {/* <!-- Upload fichiers — varie selon le format --> */}
+            {/* <!-- Upload fichiers — varie selon le format
+                 Pour le format 'compiled', il n'y a aucun fichier à uploader :
+                 le contenu vit dans `ebook.sections` (Firestore). On masque
+                 donc toute cette section pour les ebooks compilés.
+                 --> */}
+            {formData.format !== 'compiled' && (
             <div className="form-files-section">
               <h3>📁 Fichiers</h3>
 
@@ -800,6 +867,33 @@ export const AdminEbooks: React.FC = () => {
                 )}
               </div>
             </div>
+            )}
+            {/* Pour un ebook compilé, on permet quand même d'ajouter une
+                couverture (optionnelle) : c'est utile pour égayer la fiche
+                dans la bibliothèque. Section dédiée minimale. */}
+            {formData.format === 'compiled' && (
+              <div className="form-files-section">
+                <h3>🖼️ Couverture (optionnelle)</h3>
+                <div className="form-group file-group">
+                  <label>
+                    Image de couverture
+                    <small>(JPG, PNG — recommandé : 400×560px)</small>
+                  </label>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
+                    className="file-input"
+                  />
+                  {coverFile && (
+                    <span className="file-info">
+                      🖼️ {coverFile.name} ({formatFileSize(coverFile.size)})
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* <!-- Disponibilité de l'ebook -->
                  Deux interrupteurs INDÉPENDANTS :
@@ -906,10 +1000,28 @@ export const AdminEbooks: React.FC = () => {
                     <td className="td-title">
                       <strong>{ebook.titre}</strong>
                       <span className="td-author">{ebook.auteur}</span>
-                      {/* Badge format : visible uniquement pour HTML afin de ne
-                          pas alourdir visuellement le cas dominant (PDF). */}
+                      {/* Badge format : visible uniquement pour HTML ou COMPILED
+                          afin de ne pas alourdir visuellement le cas dominant (PDF).
+                          Pour les ebooks compilés par les profs Premium, on ajoute
+                          aussi un badge "À modérer" tant qu'ils ne sont pas activés. */}
                       {ebook.format === 'html' && (
                         <span className="td-format-badge" title="Ebook HTML interactif">🌐 HTML</span>
+                      )}
+                      {ebook.format === 'compiled' && (
+                        <span
+                          className="td-format-badge td-format-badge--compiled"
+                          title={`Ebook compilé via l'IA${ebook.source === 'compiled_prof' ? ' par un prof Premium' : ''}`}
+                        >
+                          🧠 Compilé
+                        </span>
+                      )}
+                      {ebook.format === 'compiled' && !ebook.isActive && (
+                        <span
+                          className="td-format-badge td-format-badge--moderation"
+                          title="En attente d'activation par l'administrateur"
+                        >
+                          ⏳ À modérer
+                        </span>
                       )}
                     </td>
 

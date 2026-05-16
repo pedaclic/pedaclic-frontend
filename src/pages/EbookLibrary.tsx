@@ -36,10 +36,17 @@ const MSG_PREMIUM_RESTRICTED = 'Ce contenu est réservé aux utilisateurs Premiu
 // --- Interface des props ---
 interface EbookLibraryProps {
   isPremium: boolean;
+  /**
+   * uid de l'utilisateur courant (Prof Premium). Quand il est fourni,
+   * le service inclut ses ebooks compilés "en attente d'activation"
+   * dans la liste affichée — utile pour qu'un prof voit ses propres
+   * compilations en cours de modération.
+   */
+  currentUserId?: string;
   onReadEbook: (ebook: Ebook) => void; // Navigation vers le viewer
 }
 
-export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbook }) => {
+export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, currentUserId, onReadEbook }) => {
   const { matieres: matieresDisciplines } = useDisciplinesOptions();
   // ==================== STATES ====================
   const [ebooks, setEbooks] = useState<Ebook[]>([]);
@@ -55,15 +62,20 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, onReadEbo
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   // ==================== CHARGEMENT ====================
+  // Recharge quand l'utilisateur change pour inclure/exclure ses ebooks
+  // compilés en attente d'activation.
   useEffect(() => {
     loadEbooks();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId]);
 
   const loadEbooks = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getAllEbooks();
+      // Si on a un uid, le service ajoutera automatiquement les ebooks
+      // `format='compiled'` & `userId === currentUserId` même inactifs.
+      const data = await getAllEbooks(currentUserId);
       setEbooks(data);
     } catch (err: any) {
       setError(isPremium ? 'Erreur lors du chargement de la bibliothèque' : MSG_PREMIUM_RESTRICTED);
@@ -310,7 +322,12 @@ interface EbookCardProps {
 const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMode }) => {
   // Rétrocompat : un ebook sans `format` est un PDF historique.
   const ebookFormat = ebook.format || 'pdf';
-  const isHtml = ebookFormat === 'html';
+  const isHtml      = ebookFormat === 'html';
+  const isCompiled  = ebookFormat === 'compiled';
+
+  // Un ebook compilé en attente d'activation (visible uniquement par son
+  // auteur tant qu'il est inactif) → on signale l'état clairement.
+  const isPending = isCompiled && ebook.isActive === false;
 
   // --- Autorisation du téléchargement par l'administrateur ---
   // Rétrocompatibilité : un ebook créé avant l'introduction du champ
@@ -334,9 +351,13 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
           <img src={ebook.couvertureURL} alt={ebook.titre} loading="lazy" />
         ) : (
           <div className="ebook-cover-placeholder">
-            {/* Pour un HTML sans couverture, on remplace l'icône de catégorie
-                par un globe afin de signaler visuellement la nature web. */}
-            <span className="cover-icon">{isHtml ? '🌐' : CATEGORIE_ICONS[ebook.categorie]}</span>
+            {/* Icône de couverture par défaut, contextualisée selon le format :
+                  - compiled : 🧠 (compilation IA)
+                  - html     : 🌐 (page web interactive)
+                  - pdf      : icône de la catégorie (📘, 📝…) */}
+            <span className="cover-icon">
+              {isCompiled ? '🧠' : isHtml ? '🌐' : CATEGORIE_ICONS[ebook.categorie]}
+            </span>
             <span className="cover-title">{ebook.titre}</span>
           </div>
         )}
@@ -351,6 +372,20 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
         {isHtml && (
           <div className="ebook-badge-format" title="Page web interactive">
             🌐 HTML
+          </div>
+        )}
+        {/* <!-- Badge "Compilé IA" : ebook produit par un Prof Premium via
+              le générateur. Aide à distinguer en un coup d'œil. --> */}
+        {isCompiled && (
+          <div className="ebook-badge-format" title="Ebook compilé par un professeur Premium">
+            🧠 Compilé
+          </div>
+        )}
+        {/* <!-- Badge "En attente" : ebook compilé en cours de modération
+              admin (visible uniquement par son auteur). --> */}
+        {isPending && (
+          <div className="ebook-badge-pending" title="En attente d'activation par l'administrateur">
+            ⏳ En attente
           </div>
         )}
         {/* <!-- Badge catégorie --> */}
@@ -373,12 +408,21 @@ const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPremium, onRead, viewMod
           {ebook.matiere && (
             <span className="meta-tag">{ebook.matiere}</span>
           )}
-          {isHtml ? (
+          {isCompiled ? (
+            <span className="meta-pages">
+              {ebook.sections?.length || ebook.nombrePages || 0} section
+              {(ebook.sections?.length || ebook.nombrePages || 0) > 1 ? 's' : ''}
+            </span>
+          ) : isHtml ? (
             <span className="meta-pages">Page web</span>
           ) : (
             <span className="meta-pages">{ebook.nombrePages} pages</span>
           )}
-          <span className="meta-size">{formatFileSize(ebook.tailleFichier)}</span>
+          {/* Pour un ebook compilé, la taille fichier est 0 (stocké en
+              Firestore) → on évite d'afficher "0 o" qui n'apporte rien. */}
+          {!isCompiled && (
+            <span className="meta-size">{formatFileSize(ebook.tailleFichier)}</span>
+          )}
         </div>
 
         {/* <!-- =====================================================

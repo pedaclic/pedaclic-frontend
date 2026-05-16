@@ -612,3 +612,126 @@
     padding: 14px 24px;
   }
 }
+
+/* ============================================================
+   ===== EBOOKS COMPILÉS (format = 'compiled') =====
+   ------------------------------------------------------------
+   Rendu typographique des ebooks compilés par les Profs Premium
+   via le générateur IA. Le contenu est lu directement depuis
+   Firestore (sections au format Markdown converties en HTML par
+   utils/markdownToHtml.ts).
+   On reproduit l'esprit de la couverture / sommaire générés par
+   buildEbookHtml() dans EbookCompiler.tsx pour garder une
+   cohérence visuelle entre l'aperçu compilateur et la lecture
+   bibliothèque.
+   ============================================================ */
+
+/* Conteneur principal du rendu compilé (scrollable, centré) */
+.compiled-ebook-wrapper {
+  width: 100%;
+  height: calc(100vh - 140px);
+  overflow-y: auto;
+  background: #f9fafb;
+  padding: 20px;
+}
+
+/* Boîte interne — largeur lisible (~720px), fond blanc imprimable */
+.compiled-ebook-content {
+  max-width: 820px;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 32px 40px;
+  box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: #1a1a2e;
+}
+
+/* Chaque section a un en-tête type "carte" */
+.compiled-ebook-content .compiled-section {
+  margin-bottom: 2.5rem;
+}
+
+.compiled-ebook-content .compiled-section__title {
+  color: #1e3a8a;
+  font-size: 1.3rem;
+  font-weight: 700;
+  background: #eff6ff;
+  border-left: 4px solid #1a56db;
+  padding: 0.75rem 1rem;
+  margin: 0 0 0.5rem;
+  border-radius: 0 6px 6px 0;
+}
+
+.compiled-ebook-content .compiled-section__meta {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+}
+
+.compiled-ebook-content .compiled-section__body {
+  padding: 0 0.25rem;
+}
+
+/* Typographie générée par markdownToHtml (h1/h2/h3, listes, code…) */
+.compiled-ebook-content h1,
+.compiled-ebook-content h2 {
+  color: #1a56db;
+  margin: 1.2rem 0 0.5rem;
+}
+.compiled-ebook-content h3 {
+  color: #4f46e5;
+  margin: 0.8rem 0 0.4rem;
+}
+.compiled-ebook-content p {
+  margin: 0 0 0.7rem;
+}
+.compiled-ebook-content ul,
+.compiled-ebook-content ol {
+  margin: 0.4rem 0 0.9rem 1.5rem;
+}
+.compiled-ebook-content li {
+  margin-bottom: 0.3rem;
+}
+.compiled-ebook-content strong {
+  color: #111827;
+  font-weight: 700;
+}
+.compiled-ebook-content em {
+  font-style: italic;
+  color: #374151;
+}
+.compiled-ebook-content code {
+  font-family: 'Courier New', monospace;
+  background: #f3f4f6;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.compiled-ebook-content pre {
+  background: #f3f4f6;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0.8rem 0;
+}
+.compiled-ebook-content hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 1.2rem 0;
+}
+
+/* Adaptations mobile */
+@media (max-width: 640px) {
+  .compiled-ebook-wrapper {
+    padding: 10px;
+  }
+  .compiled-ebook-content {
+    padding: 20px;
+    font-size: 0.95rem;
+  }
+}

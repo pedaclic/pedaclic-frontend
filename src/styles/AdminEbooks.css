@@ -704,6 +704,7 @@
 .td-format-badge {
   display: inline-block;
   margin-top: 4px;
+  margin-right: 4px;
   padding: 2px 8px;
   background: #ecfeff;
   color: #155e75;
@@ -712,6 +713,22 @@
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.02em;
+}
+
+/* Variante "Compilé" — palette violet/indigo pour distinguer immédiatement
+   les ebooks générés via le compilateur IA des ebooks HTML « éditoriaux ». */
+.td-format-badge--compiled {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+/* Variante "À modérer" — palette ambre pour attirer l'œil de l'admin :
+   c'est l'élément qui signale qu'une action de modération est attendue. */
+.td-format-badge--moderation {
+  background: #fffbeb;
+  color: #b45309;
+  border-color: #fcd34d;
 }
 
 /* Mobile : empile les deux cartes de format */

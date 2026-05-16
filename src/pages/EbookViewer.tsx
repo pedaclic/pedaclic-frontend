@@ -4,7 +4,7 @@
 // Les non-Premium voient uniquement l'aperçu (premières pages)
 // ========================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Ebook, CATEGORIE_LABELS, CATEGORIE_ICONS } from '../types/ebook.types';
 import { incrementVues, incrementTelechargements, formatFileSize } from '../services/ebookService';
 import { EbookPdfPreview } from '../components/eleve/EbookPdfPreview';
@@ -12,6 +12,10 @@ import { EbookPdfPreview } from '../components/eleve/EbookPdfPreview';
 // Remplace l'iframe PDF natif pour empêcher le bouton de téléchargement
 // intégré au navigateur de contourner la règle d'admin (canDownload === false).
 import { EbookPdfReader } from '../components/eleve/EbookPdfReader';
+// Convertisseur Markdown → HTML partagé entre AIGenerator et EbookViewer.
+// Garantit que le rendu côté compilation (preview) et côté lecture en
+// bibliothèque est strictement identique.
+import { markdownToHtml } from '../utils/markdownToHtml';
 import '../styles/EbookViewer.css';
 
 // --- Interface des props ---
@@ -84,6 +88,7 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
     | { kind: 'iframe'; url: string }
     | { kind: 'html-iframe'; url: string }
     | { kind: 'limited-render'; url: string; maxPages: number }
+    | { kind: 'compiled-render' }        // Nouvel ebook compilé (rendu Markdown→HTML)
     | { kind: 'blocked' };
 
   // Rétrocompat : un ebook sans champ `format` est un PDF historique.
@@ -98,6 +103,18 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   const canDownload = ebook.telechargementActif !== false;
 
   const getViewStrategy = (): ViewStrategy => {
+    // ----- Format COMPILED : rendu Markdown direct depuis Firestore -----
+    // Pour les ebooks compilés par les profs Premium, le contenu se trouve
+    // dans `ebook.sections` (pas dans Storage). On exige Premium pour la
+    // lecture complète ; sinon → écran de blocage Premium (pas de notion
+    // d'aperçu partiel pour les compilations IA, on garde une UX simple).
+    if (ebookFormat === 'compiled') {
+      if (isPremium && ebook.sections && ebook.sections.length > 0) {
+        return { kind: 'compiled-render' };
+      }
+      return { kind: 'blocked' };
+    }
+
     // ----- Format HTML : stratégie dédiée (sandbox iframe) -----
     if (ebookFormat === 'html') {
       // On exige Premium pour servir un HTML potentiellement long ; sinon
@@ -126,6 +143,23 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
   };
 
   const strategy = getViewStrategy();
+
+  // ==================== RENDU MARKDOWN (format compiled) ====================
+  // Mémoïsé pour éviter de re-parser le Markdown à chaque rendu (les ebooks
+  // compilés peuvent contenir des dizaines de sections de plusieurs Ko chacune).
+  const compiledHtml = useMemo(() => {
+    if (ebookFormat !== 'compiled' || !ebook.sections) return '';
+    return ebook.sections
+      .map((s, i) => `
+<section class="compiled-section">
+  <h2 class="compiled-section__title">${i + 1}. ${s.chapitre}</h2>
+  <div class="compiled-section__meta">
+    <span>${s.type}</span> · <span>${s.discipline}</span> · <span>${s.classe}</span>
+  </div>
+  <div class="compiled-section__body">${markdownToHtml(s.content || '')}</div>
+</section>`)
+      .join('\n');
+  }, [ebookFormat, ebook.sections]);
 
   /**
    * Gère le téléchargement (Premium uniquement, et autorisé par l'admin).
@@ -211,26 +245,28 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
 
               {/* <!-- Boutons principaux --> */}
               {/* Les libellés s'adaptent au format de l'ebook :
-                   - PDF  : "Lire le document" / "Aperçu (n pages)" / "Télécharger le PDF"
-                   - HTML : "Consulter la page" (Premium) / "Accès Premium" (sinon)
-                            / "Télécharger le HTML" */}
+                   - PDF      : "Lire le document" / "Aperçu (n pages)" / "Télécharger le PDF"
+                   - HTML     : "Consulter la page" (Premium) / "Accès Premium" (sinon)
+                                / "Télécharger le HTML"
+                   - COMPILED : "Lire l'ebook" (Premium) / "Réservé Premium" (sinon) */}
               <div className="info-actions">
                 <button
                   className="btn-action-read"
                   onClick={() => setViewMode('read')}
-                  // En HTML non-Premium, on bloque l'entrée en mode lecture :
-                  // le viewer affichera l'écran "blocked", mais l'expérience
-                  // est plus claire si l'on incite directement au passage Premium.
-                  disabled={ebookFormat === 'html' && !isPremium}
+                  // Format réservé Premium (HTML, COMPILED) → bouton inactif
+                  // pour les non-Premium, avec tooltip explicatif.
+                  disabled={(ebookFormat === 'html' || ebookFormat === 'compiled') && !isPremium}
                   title={
-                    ebookFormat === 'html' && !isPremium
+                    (ebookFormat === 'html' || ebookFormat === 'compiled') && !isPremium
                       ? 'Réservé aux abonnés Premium'
                       : undefined
                   }
                 >
-                  {ebookFormat === 'html'
-                    ? (isPremium ? '📖 Consulter la page' : '🔒 Réservé Premium')
-                    : `📖 ${isPremium ? 'Lire le document' : `Aperçu (${ebook.pagesApercu} pages)`}`
+                  {ebookFormat === 'compiled'
+                    ? (isPremium ? '📖 Lire l\'ebook compilé' : '🔒 Réservé Premium')
+                    : ebookFormat === 'html'
+                      ? (isPremium ? '📖 Consulter la page' : '🔒 Réservé Premium')
+                      : `📖 ${isPremium ? 'Lire le document' : `Aperçu (${ebook.pagesApercu} pages)`}`
                   }
                 </button>
 
@@ -245,6 +281,15 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                   <div className="info-download-disabled" role="note">
                     🚫 Téléchargement désactivé par l'administrateur.
                     <small>Lecture en ligne uniquement.</small>
+                  </div>
+                ) : ebookFormat === 'compiled' ? (
+                  // Les ebooks compilés n'ont pas de fichier Storage à
+                  // télécharger : le contenu est en Firestore. On n'affiche
+                  // donc pas de bouton de DL — le prof peut toujours
+                  // re-télécharger depuis la modale du compilateur (PDF/Word).
+                  <div className="info-download-disabled" role="note">
+                    💡 Ebook compilé&nbsp;: téléchargez le PDF/Word depuis le
+                    générateur IA (« Mes Ebooks compilés »).
                   </div>
                 ) : isPremium ? (
                   <button className="btn-action-download" onClick={handleDownload}>
@@ -295,11 +340,19 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                   </div>
                 )}
                 {/* "Pages" n'a de sens que pour un PDF. Pour un HTML on
-                     remplace par un libellé "Format" plus pertinent. */}
+                     remplace par un libellé "Format" plus pertinent.
+                     Pour un ebook compilé, on affiche le nombre de sections. */}
                 {ebookFormat === 'pdf' ? (
                   <div className="metadata-item">
                     <span className="metadata-label">Pages</span>
                     <span className="metadata-value">{ebook.nombrePages}</span>
+                  </div>
+                ) : ebookFormat === 'compiled' ? (
+                  <div className="metadata-item">
+                    <span className="metadata-label">Sections</span>
+                    <span className="metadata-value">
+                      🧠 {ebook.sections?.length || ebook.nombrePages || 0}
+                    </span>
                   </div>
                 ) : (
                   <div className="metadata-item">
@@ -307,10 +360,14 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
                     <span className="metadata-value">🌐 Page web interactive</span>
                   </div>
                 )}
-                <div className="metadata-item">
-                  <span className="metadata-label">Taille</span>
-                  <span className="metadata-value">{formatFileSize(ebook.tailleFichier)}</span>
-                </div>
+                {/* Taille fichier : non-pertinente pour un ebook compilé
+                    (contenu en Firestore, pas de fichier Storage). */}
+                {ebookFormat !== 'compiled' && (
+                  <div className="metadata-item">
+                    <span className="metadata-label">Taille</span>
+                    <span className="metadata-value">{formatFileSize(ebook.tailleFichier)}</span>
+                  </div>
+                )}
                 {ebook.annee && (
                   <div className="metadata-item">
                     <span className="metadata-label">Année</span>
@@ -347,6 +404,22 @@ export const EbookViewer: React.FC<EbookViewerProps> = ({
       {/* ==================== MODE LECTURE ==================== */}
       {viewMode === 'read' && (
         <div className="viewer-read-panel">
+
+          {/* --- Stratégie COMPILED : rendu Markdown→HTML inline ---
+                Le contenu vient directement de Firestore (champ
+                `ebook.sections`). Pas d'iframe : on est sur du contenu
+                produit en interne par le prof Premium via le générateur
+                IA, contrôlé par la modération admin. Pas de risque XSS
+                tiers, mais on conserve une classe CSS dédiée pour
+                permettre une mise en page typographique propre. */}
+          {strategy.kind === 'compiled-render' && (
+            <div className="compiled-ebook-wrapper">
+              <div
+                className="compiled-ebook-content"
+                dangerouslySetInnerHTML={{ __html: compiledHtml }}
+              />
+            </div>
+          )}
 
           {/* --- Stratégie 0 : iframe HTML sandboxée (format HTML, Premium) ---
                 Sécurité : le sandbox isole le document de l'application

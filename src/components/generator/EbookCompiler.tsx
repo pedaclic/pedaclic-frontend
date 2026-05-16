@@ -28,6 +28,13 @@ interface EbookCompilerProps {
   onClose: () => void;
   onSaved: () => void;            // Callback après sauvegarde réussie
   markdownToHtml: (md: string) => string;
+  /**
+   * Nom affiché du prof Premium (utilisé comme « auteur » de l'ebook
+   * lorsque celui-ci est publié dans la bibliothèque publique).
+   * Si vide / non fourni, le service utilisera le label de repli
+   * « Prof Premium ».
+   */
+  authorDisplayName?: string;
 }
 
 // ==================== COMPOSANT ====================
@@ -39,6 +46,7 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
   onClose,
   onSaved,
   markdownToHtml,
+  authorDisplayName,
 }) => {
   // ── Étapes : 'select' → 'configure' → 'preview' ──────────
   const [etape, setEtape] = useState<'select' | 'configure' | 'preview'>('select');
@@ -321,7 +329,11 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
         chapitre:   item.chapitre,
         content:    item.content,
       }));
-      await saveCompiledEbook(userId, titre, description, sections);
+      // saveCompiledEbook fait DEUX choses :
+      //  1. Sauvegarde dans `compiled_ebooks` (archive personnelle)
+      //  2. Publication dans `ebooks` avec isActive=false (modération admin)
+      // Voir compiledEbookService.ts pour le détail.
+      await saveCompiledEbook(userId, titre, description, sections, authorDisplayName);
       await incrementerUsage(userId);
       setSaved(true);
       onSaved();
@@ -531,9 +543,15 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
           </div>
 
           {/* Sauvegarde */}
+          {/* Message de succès actualisé : on précise que l'ebook est désormais
+              automatiquement publié dans la bibliothèque ET soumis à modération
+              admin pour activation publique. */}
           {saved ? (
             <div className="ebook-compiler__success">
-              ✅ Ebook sauvegardé avec succès dans votre bibliothèque IA !
+              ✅ Ebook sauvegardé&nbsp;! Il est&nbsp;:
+              <br />• Disponible dans <strong>Mes Ebooks compilés</strong> (archive personnelle).
+              <br />• Ajouté à votre <strong>Bibliothèque PedaClic</strong>&nbsp;— badge «&nbsp;En attente d'activation&nbsp;».
+              <br />• Soumis à la <strong>modération de l'administrateur</strong> pour diffusion publique.
             </div>
           ) : (
             <div className="ebook-compiler__save-row">
@@ -549,7 +567,8 @@ const EbookCompiler: React.FC<EbookCompilerProps> = ({
                 )}
               </button>
               <p className="ebook-compiler__save-hint">
-                L'ebook sera accessible depuis votre Bibliothèque.
+                L'ebook apparaîtra dans votre bibliothèque (mention&nbsp;«&nbsp;en attente&nbsp;»)
+                puis sera visible par tous une fois activé par l'administrateur.
               </p>
             </div>
           )}

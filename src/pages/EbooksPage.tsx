@@ -49,9 +49,12 @@ const EbooksPage: React.FC = () => {
   }
 
   // --- Mode bibliothèque ---
+  // On transmet l'uid pour que le service puisse inclure les ebooks
+  // compilés "en attente d'activation" propres au prof connecté.
   return (
     <EbookLibrary
       isPremium={currentUser?.isPremium || false}
+      currentUserId={currentUser?.uid}
       onReadEbook={handleReadEbook}
     />
   );

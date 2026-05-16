@@ -38,6 +38,7 @@ import {
   EbookStats,
   CategorieEbook,
   FormatEbook,
+  EbookCompiledSection,
   CATEGORIE_LABELS
 } from '../types/ebook.types';
 import { normaliserClassePourComparaison } from '../types/cahierTextes.types';
@@ -50,21 +51,60 @@ const EBOOKS_COLLECTION = 'ebooks';
 /**
  * Récupère tous les ebooks actifs
  * Triés par ordre puis par date de création (récent en premier)
+ *
+ * Si `currentUserId` est fourni, on ajoute également les ebooks `compiled`
+ * créés par cet utilisateur (Prof Premium) MÊME s'ils sont inactifs
+ * (`isActive=false`). Cela permet au prof de voir ses propres compilations
+ * en attente de modération admin dans sa bibliothèque, signalées via un
+ * badge "En attente d'activation" côté UI.
+ *
+ * @param currentUserId  uid de l'utilisateur courant (optionnel — pour
+ *                       l'inclusion conditionnelle de ses ebooks privés)
  */
-export async function getAllEbooks(): Promise<Ebook[]> {
+export async function getAllEbooks(currentUserId?: string): Promise<Ebook[]> {
   try {
-    const q = query(
+    // --- 1. Ebooks actifs (visibles par tous) ---
+    const qActive = query(
       collection(db, EBOOKS_COLLECTION),
       where('isActive', '==', true),
       orderBy('ordre', 'asc')
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
+    const snapActive = await getDocs(qActive);
+    const actifs = snapActive.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
       createdAt: doc.data().createdAt?.toDate() || new Date(),
       updatedAt: doc.data().updatedAt?.toDate() || null
     })) as Ebook[];
+
+    // --- 2. Ebooks compilés du prof courant, encore inactifs ---
+    // Pourquoi une seconde requête ? Firestore n'autorise pas de
+    // `OR` natif léger ; passer par `getDocs` séparé évite de créer
+    // un index composite complexe.
+    if (!currentUserId) return actifs;
+
+    const qOwnPending = query(
+      collection(db, EBOOKS_COLLECTION),
+      where('userId', '==', currentUserId),
+      where('isActive', '==', false)
+    );
+    const snapOwn = await getDocs(qOwnPending);
+    const ownPending = snapOwn.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || null
+      }) as Ebook)
+      // Sécurité : on ne réinjecte que les ebooks compilés du prof
+      // (jamais un ebook PDF/HTML désactivé par l'admin pour une raison
+      // particulière — modération éditoriale, droits d'auteur, etc.)
+      .filter(e => (e.format || 'pdf') === 'compiled');
+
+    // Déduplication par id au cas où la requête actifs+propre se chevauche
+    const byId = new Map<string, Ebook>();
+    [...actifs, ...ownPending].forEach(e => byId.set(e.id, e));
+    return Array.from(byId.values());
   } catch (error) {
     console.error('❌ Erreur récupération ebooks:', error);
     throw error;
@@ -419,6 +459,138 @@ export async function updateEbook(
 
   } catch (error) {
     console.error('❌ Erreur mise à jour ebook:', error);
+    throw error;
+  }
+}
+
+// ==================== PUBLICATION EBOOKS COMPILÉS ====================
+
+/**
+ * Métadonnées minimales fournies par EbookCompiler pour la publication
+ * d'un ebook compilé dans la bibliothèque.
+ */
+export interface PublishCompiledEbookPayload {
+  userId:      string;                     // uid du prof Premium (obligatoire)
+  titre:       string;                     // Titre choisi par le prof
+  description: string;                     // Description (optionnelle côté UI)
+  auteur:      string;                     // Nom affiché du prof
+  sections:    EbookCompiledSection[];     // Sections compilées (Markdown)
+
+  // Métadonnées optionnelles — si non fournies, dérivées des sections
+  categorie?:  CategorieEbook;             // Défaut : 'guide'
+  niveau?:     'college' | 'lycee';        // Dérivé de la classe si absent
+  classe?:     string;                     // Si absent : prend la classe la
+                                           // plus représentée dans les sections
+  matiere?:    string;                     // Si absent : 1ère discipline des sections
+  tags?:       string[];                   // Tags libres
+}
+
+/**
+ * Liste des classes "collège" — utilisée pour inférer le niveau.
+ * (Inline ici pour ne pas dépendre de cahierTextes.types et limiter
+ * le couplage entre modules.)
+ */
+const CLASSES_COLLEGE_HINTS = ['6', '5', '4', '3'];
+
+/**
+ * Détermine la classe et la matière dominantes d'une liste de sections.
+ * Utilisé quand le prof n'a pas fourni explicitement ces métadonnées
+ * dans l'écran de compilation (ce sera le cas par défaut pour conserver
+ * l'UX minimaliste actuelle d'EbookCompiler).
+ */
+function inferMetaFromSections(
+  sections: EbookCompiledSection[]
+): { classe: string; matiere: string; niveau: 'college' | 'lycee' } {
+  // --- Classe la plus représentée ---
+  const classeCount: Record<string, number> = {};
+  sections.forEach(s => {
+    if (s.classe) classeCount[s.classe] = (classeCount[s.classe] || 0) + 1;
+  });
+  const classe = Object.entries(classeCount)
+    .sort(([, a], [, b]) => b - a)[0]?.[0] || 'all';
+
+  // --- Première discipline rencontrée (la plus pertinente) ---
+  const matiere = sections.find(s => s.discipline)?.discipline || '';
+
+  // --- Niveau dérivé de la classe (6e/5e/4e/3e → collège, sinon lycée) ---
+  const niveau: 'college' | 'lycee' =
+    CLASSES_COLLEGE_HINTS.some(h => classe.startsWith(h)) ? 'college' : 'lycee';
+
+  return { classe, matiere, niveau };
+}
+
+/**
+ * Publie un ebook compilé par un Prof Premium dans la collection `ebooks`.
+ *
+ * Particularités par rapport à `addEbook` :
+ *   - Aucun upload Storage (sections stockées en clair dans Firestore)
+ *   - `isActive = false` par défaut → l'admin doit l'activer pour le
+ *     rendre public dans la bibliothèque (workflow de modération)
+ *   - `format = 'compiled'` → le viewer rendra les sections via markdown
+ *   - `userId` + `source = 'compiled_prof'` pour traçabilité
+ *
+ * Retourne l'ID Firestore du document créé.
+ */
+export async function publishCompiledEbookToLibrary(
+  payload: PublishCompiledEbookPayload
+): Promise<string> {
+  try {
+    if (!payload.userId)  throw new Error('userId obligatoire pour publier un ebook compilé.');
+    if (!payload.titre)   throw new Error('Titre obligatoire pour publier un ebook compilé.');
+    if (!payload.sections?.length) {
+      throw new Error('Au moins une section est requise pour publier un ebook compilé.');
+    }
+
+    // --- Inférence des métadonnées manquantes ---
+    const inferred = inferMetaFromSections(payload.sections);
+
+    const ebookData = {
+      // Métadonnées
+      titre:        payload.titre,
+      auteur:       payload.auteur || 'Prof Premium',
+      description:  payload.description || '',
+      categorie:    payload.categorie || 'guide',
+      niveau:       payload.niveau    || inferred.niveau,
+      classe:       payload.classe    || inferred.classe,
+      matiere:      payload.matiere   || inferred.matiere,
+      tags:         payload.tags      || [],
+
+      // Format compilé : pas de fichier Storage
+      format:       'compiled' as FormatEbook,
+      fichierURL:   '',
+      couvertureURL:'',
+      aperçuURL:    '',
+      tailleFichier: 0,
+      nombrePages:  payload.sections.length,
+      pagesApercu:  0,
+
+      // Contenu réel
+      sections:     payload.sections,
+
+      // Compteurs
+      nombreVues: 0,
+      nombreTelechargements: 0,
+
+      // Modération
+      isActive:             false,   // En attente d'activation par l'admin
+      telechargementActif:  true,    // L'admin pourra ré-ajuster
+
+      // Affichage
+      ordre: 9999,                   // Mis en queue de liste — l'admin peut le remonter
+
+      // Traçabilité
+      uploadedBy: payload.userId,
+      userId:     payload.userId,
+      source:     'compiled_prof' as const,
+      createdAt:  serverTimestamp(),
+      updatedAt:  serverTimestamp(),
+    };
+
+    const docRef = await addDoc(collection(db, EBOOKS_COLLECTION), ebookData);
+    console.log(`✅ Ebook compilé publié dans la bibliothèque (en attente) — ID : ${docRef.id}`);
+    return docRef.id;
+  } catch (error) {
+    console.error('❌ Erreur publication ebook compilé:', error);
     throw error;
   }
 }
