@@ -4734,6 +4734,76 @@
   border: 1px solid #bbf7d0;
 }
 
+/* ============================================================
+   BANDEAU D'AUDIT QUALITÉ (étape 5 - Résultat IA)
+   ------------------------------------------------------------
+   Affiché quand auditGeneratedContent() détecte des défauts
+   probables : contenu tronqué, math sans LaTeX, exercice sans
+   corrigé, citations multiples à vérifier, etc.
+   Couleur ambrée pour signaler une vigilance attendue sans
+   bloquer la sauvegarde (à la différence d'une vraie erreur).
+   ============================================================ */
+.ai-generator__quality-audit {
+  background: linear-gradient(135deg, #fffbeb, #fef3c7);
+  border: 1px solid #fcd34d;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  font-size: 0.92rem;
+  color: #78350f;
+}
+
+.ai-generator__quality-audit-header {
+  font-size: 1rem;
+  color: #92400e;
+  margin-bottom: 0.5rem;
+}
+
+.ai-generator__quality-audit-header strong {
+  margin-left: 0.25rem;
+  margin-right: 0.5rem;
+}
+
+.ai-generator__quality-audit-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem 0;
+}
+
+.ai-generator__quality-audit-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.45rem 0;
+  border-top: 1px dashed rgba(245, 158, 11, 0.4);
+  line-height: 1.5;
+}
+
+.ai-generator__quality-audit-item:first-child {
+  border-top: 0;
+}
+
+/* Variante "error" plus marquée (rouge soutenu) */
+.ai-generator__quality-audit-item--error {
+  color: #991b1b;
+  font-weight: 600;
+}
+
+.ai-generator__quality-audit-icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+}
+
+.ai-generator__quality-audit-hint {
+  font-size: 0.85rem;
+  color: #92400e;
+  background: rgba(255, 255, 255, 0.55);
+  padding: 0.45rem 0.7rem;
+  border-radius: 6px;
+  font-style: italic;
+}
+
 .ai-generator__recap-label {
   font-weight: var(--font-semibold);
   color: var(--color-text-light);

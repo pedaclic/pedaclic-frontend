@@ -28,6 +28,11 @@ import {
   getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+// Enrichisseur de prompt — injecte automatiquement des garde-fous
+// qualité par discipline et par type de génération dans le champ
+// consignesSpeciales envoyé au backend Railway. Voir aiPromptEnhancer.ts
+// pour la stratégie en 3 couches (globale / discipline / type).
+import { buildEnhancedConsignes } from './aiPromptEnhancer';
 
 // ==================== INTERFACES ====================
 
@@ -196,12 +201,31 @@ function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
     };
   }
 
-  const o = req.options;
-  if (!o) return req;
+  const o = req.options || {};
+
+  // ──────────────────────────────────────────────────────────
+  // ENRICHISSEMENT AUTOMATIQUE QUALITÉ (Phase qualité IA)
+  // ──────────────────────────────────────────────────────────
+  // On reconstruit `consignesSpeciales` en injectant :
+  //   1. Les consignes du prof (priorité maximale)
+  //   2. Une couche TYPE (structure attendue selon exercice/fiche/etc.)
+  //   3. Une couche DISCIPLINE (rigueur scientifique, LaTeX pour maths…)
+  //   4. Une couche GLOBALE (programme sénégalais, anti-invention)
+  //
+  // Le backend Railway fusionne ce bloc dans le prompt système du LLM,
+  // ce qui agit comme un garde-fou anti-hallucination sans modification
+  // backend nécessaire.
+  // ──────────────────────────────────────────────────────────
+  const consignesEnrichies = buildEnhancedConsignes({
+    type: req.type,
+    discipline: req.discipline,
+    classe: req.classe,
+    existing: o.consignesSpeciales,
+  });
 
   const parts: string[] = [];
-  if (o.consignesSpeciales?.trim()) {
-    parts.push(o.consignesSpeciales.trim());
+  if (consignesEnrichies.trim()) {
+    parts.push(consignesEnrichies.trim());
   }
 
   const st = o.sourceText?.trim();

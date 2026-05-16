@@ -55,6 +55,10 @@ import {
 // (créé avant l'activation de la publication automatique) dans la
 // bibliothèque publique pour qu'il apparaisse dans le panneau admin.
 import { publishCompiledEbookToLibrary } from '../../services/ebookService';
+// Audit qualité automatique : détecte les patterns d'erreur évidents
+// (contenu tronqué, math sans LaTeX, exercice sans corrigé, etc.) et
+// alerte le prof AVANT qu'il ne sauvegarde un résultat erroné.
+import { auditGeneratedContent, type GenerationQualityIssue } from '../../services/aiPromptEnhancer';
 import { CLASSES } from '../../types/cahierTextes.types';
 import { extractTextFromFile } from '../../utils/extractTextFromFile';
 import { useToast } from '../../contexts/ToastContext';
@@ -136,6 +140,10 @@ const AIGenerator: React.FC = () => {
   // ---- États de génération ----
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationResult, setGenerationResult] = useState<GenerationResponse | null>(null);
+  // Issues détectées par l'audit qualité post-génération (LaTeX manquant,
+  // contenu tronqué, exercice sans corrigé, etc.). Affichées en bandeau
+  // au-dessus du résultat à l'étape 5 pour alerter le prof avant sauvegarde.
+  const [qualityIssues, setQualityIssues] = useState<GenerationQualityIssue[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -275,6 +283,7 @@ const AIGenerator: React.FC = () => {
       // Reset le résultat si on revient avant l'étape 5
       if (step === 5) {
         setGenerationResult(null);
+        setQualityIssues([]);   // ← purge l'audit qualité pour ne pas le réafficher sur une autre génération
         setSaveSuccess(false);
         setSavedId(null);
       }
@@ -298,6 +307,7 @@ const AIGenerator: React.FC = () => {
     setSelectedType(null);
     setOptions({});
     setGenerationResult(null);
+    setQualityIssues([]);    // ← purge l'audit qualité au reset complet
     setError(null);
     setSaveSuccess(false);
     setSavedId(null);
@@ -321,6 +331,9 @@ const AIGenerator: React.FC = () => {
 
     setIsGenerating(true);
     setError(null);
+    // Purge l'audit précédent pour éviter d'afficher des anciennes alertes
+    // pendant que la nouvelle génération est en cours.
+    setQualityIssues([]);
 
     try {
       // Construire les options avec la durée du cours
@@ -343,6 +356,26 @@ const AIGenerator: React.FC = () => {
 
       const result = await generateContent(request);
       setGenerationResult(result);
+
+      // ─── Audit qualité post-génération ────────────────────────
+      // On audite uniquement les contenus textuels (les quiz QCM ont
+      // leur propre structure, audit ad-hoc géré par le backend).
+      // Le but n'est pas de bloquer la sauvegarde mais d'alerter le
+      // prof sur des défauts probables avant qu'il ne valide.
+      if (result.type !== 'quiz' && result.data.content) {
+        const issues = auditGeneratedContent(
+          result.data.content,
+          selectedType,
+          selectedDiscipline.nom
+        );
+        setQualityIssues(issues);
+        if (issues.length > 0) {
+          console.warn('[AIGenerator] Audit qualité — issues détectées :', issues);
+        }
+      } else {
+        setQualityIssues([]);
+      }
+
       setStep(5);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur inconnue';
@@ -1602,6 +1635,38 @@ const AIGenerator: React.FC = () => {
             <h2 className="ai-generator__step-title">
               ✅ Contenu généré
             </h2>
+
+            {/* ─── Bandeau d'audit qualité ──────────────────────────
+                Affiché UNIQUEMENT si l'audit a relevé des points
+                d'attention (LaTeX manquant, troncature, exercice sans
+                corrigé, etc.). Non bloquant — le prof peut sauvegarder
+                quand même. Le but est de l'inciter à relire ou régénérer
+                avant publication. */}
+            {qualityIssues.length > 0 && (
+              <div className="ai-generator__quality-audit">
+                <div className="ai-generator__quality-audit-header">
+                  ⚠️ <strong>Audit qualité&nbsp;:</strong>
+                  {qualityIssues.length} point{qualityIssues.length > 1 ? 's' : ''} d'attention
+                </div>
+                <ul className="ai-generator__quality-audit-list">
+                  {qualityIssues.map((iss, i) => (
+                    <li
+                      key={`${iss.code}_${i}`}
+                      className={`ai-generator__quality-audit-item ai-generator__quality-audit-item--${iss.severity}`}
+                    >
+                      <span className="ai-generator__quality-audit-icon">
+                        {iss.severity === 'error' ? '❌' : '⚠️'}
+                      </span>
+                      <span>{iss.message}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="ai-generator__quality-audit-hint">
+                  💡 Relisez attentivement le résultat ci-dessous ou cliquez sur
+                  «&nbsp;Régénérer&nbsp;» pour produire une nouvelle version.
+                </div>
+              </div>
+            )}
 
             {/* Récapitulatif final */}
             <div className="ai-generator__recap ai-generator__recap--success">
