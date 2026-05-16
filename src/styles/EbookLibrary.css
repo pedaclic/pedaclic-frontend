@@ -339,21 +339,71 @@
    --------------------------------------------------------------------
    Visible uniquement par le prof Premium qui a compilé l'ebook : il
    l'aide à repérer ses propres compilations encore non-publiques.
-   Placé en bas-gauche, sous le badge format (qui occupe le haut-gauche),
-   couleur ambre pour signaler clairement le statut "en cours".
+
+   Positionnement (corrigé) : haut-droite avec z-index élevé.
+   Pourquoi pas bas-gauche ? Le badge .ebook-badge-category occupe déjà
+   cette zone avec un fond noir opaque (rgba(0,0,0,.7)) et le couvrait
+   entièrement. Le haut-droite est libre côté Premium (le badge Premium
+   y est uniquement rendu pour les NON-Premium, ce qui n'est jamais le
+   cas pour le prof auteur).
+
+   Affordances visuelles renforcées :
+     - Animation `pulse-pending` lente (douce attention, ne dérange pas)
+     - Bordure blanche pour détacher de toute image de couverture
+     - Pastille ronde clignotante (::before) pour évoquer un état actif
+     - Box-shadow ambré marqué pour ressortir sur fond sombre comme clair
    ==================================================================== */
 .ebook-badge-pending {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
+  top: 10px;
+  right: 10px;
+  z-index: 3;                       /* au-dessus de l'image et des autres badges */
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: linear-gradient(135deg, #f59e0b, #b45309);
-  color: white;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.35);
+  color: #fff;
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;             /* pilule, distincte des badges rectangulaires */
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  box-shadow: 0 3px 10px rgba(180, 83, 9, 0.55);
+  animation: pulse-pending 2.4s ease-in-out infinite;
+}
+
+/* Pastille pulsante à gauche du libellé — renforce le statut "en cours" */
+.ebook-badge-pending::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.85);
+  animation: pulse-dot 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-pending {
+  0%, 100% { box-shadow: 0 3px 10px rgba(180, 83, 9, 0.55); }
+  50%      { box-shadow: 0 3px 16px rgba(245, 158, 11, 0.85); }
+}
+
+@keyframes pulse-dot {
+  0%   { box-shadow: 0 0 0 0   rgba(255, 255, 255, 0.85); opacity: 1; }
+  70%  { box-shadow: 0 0 0 8px rgba(255, 255, 255, 0);    opacity: 0.6; }
+  100% { box-shadow: 0 0 0 0   rgba(255, 255, 255, 0);    opacity: 1; }
+}
+
+/* Accessibilité : on désactive l'animation pour les utilisateurs qui
+   ont activé "Réduire les animations" dans leur OS. Le badge reste
+   parfaitement visible et lisible sans animation. */
+@media (prefers-reduced-motion: reduce) {
+  .ebook-badge-pending,
+  .ebook-badge-pending::before {
+    animation: none;
+  }
 }
 
 /* ===== INFORMATIONS ===== */
