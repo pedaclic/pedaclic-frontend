@@ -1916,6 +1916,9 @@ const FeuilleNotesEditorPage: React.FC = () => {
         onFermer={() => setShowStatsModal(false)}
         lignes={lignes}
         sexeMap={sexeMap}
+        /* 🆕 La feuille complète est transmise pour calculer les statistiques
+           par compétence et la vue par élève (taux d'acquisition, remédiation). */
+        feuille={feuille}
         contexteLibelle={`${feuille.groupeNom} • ${feuille.matiereNom} • ${feuille.periodeLabel}`}
       />
     </div>

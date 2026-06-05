@@ -70,6 +70,7 @@ const emptyForm = (): EntreeFormData => ({
   statut: 'realise',
   motifAnnulation: '',
   dateReport: '',
+  heureReport: '',
   notesPrivees: '',
   isMarqueEvaluation: false,
   typeEvaluation: '',
@@ -267,6 +268,7 @@ const EntreeEditorPage: React.FC = () => {
               dateReport: entreeData.dateReport
                 ? entreeData.dateReport.toDate().toISOString().slice(0, 10)
                 : '',
+              heureReport: entreeData.heureReport || '',
               notesPrivees: entreeData.notesPrivees || '',
               isMarqueEvaluation: entreeData.isMarqueEvaluation,
               typeEvaluation: entreeData.typeEvaluation || '',
@@ -652,11 +654,21 @@ const EntreeEditorPage: React.FC = () => {
             </div>
           )}
 
+          {/* Report de séance : on associe désormais une indication horaire
+              précise (heure) à la nouvelle date, pour que la séance reportée
+              soit reprogrammée sans ambiguïté côté prof comme côté élève. */}
           {form.statut === 'reporte' && (
-            <div className="form-group">
-              <label className="form-label">Nouvelle date (report)</label>
-              <input type="date" className="form-input" value={form.dateReport}
-                onChange={e => setForm(f => ({ ...f, dateReport: e.target.value }))} />
+            <div className="form-row" style={{ gridTemplateColumns: '1.5fr 1fr' }}>
+              <div className="form-group">
+                <label className="form-label">Nouvelle date (report)</label>
+                <input type="date" className="form-input" value={form.dateReport}
+                  onChange={e => setForm(f => ({ ...f, dateReport: e.target.value }))} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Nouvelle heure (report)</label>
+                <input type="time" className="form-input" value={form.heureReport}
+                  onChange={e => setForm(f => ({ ...f, heureReport: e.target.value }))} />
+              </div>
             </div>
           )}
         </div>

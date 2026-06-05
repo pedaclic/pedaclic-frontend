@@ -233,6 +233,24 @@ const PlanificationWidget: React.FC<PlanificationWidgetProps> = ({
                   {entree?.chapitre || 'Séance sans chapitre'}
                 </div>
 
+                {/* Ligne report (optionnelle) : nouvelle date + heure de report */}
+                {entree?.statut === 'reporte' && entree?.dateReport?.toDate && (
+                  <div
+                    style={{
+                      marginTop: '2px',
+                      fontSize: '0.78rem',
+                      color: '#2563eb',
+                      fontWeight: 600,
+                    }}
+                  >
+                    🔁 Reporté au{' '}
+                    {entree.dateReport.toDate().toLocaleDateString('fr-FR', {
+                      weekday: 'short', day: 'numeric', month: 'short',
+                    })}
+                    {entree?.heureReport ? ` à ${entree.heureReport}` : ''}
+                  </div>
+                )}
+
                 {/* Ligne 3 (optionnelle) : objectifs résumés */}
                 {entree?.objectifs && (
                   <div

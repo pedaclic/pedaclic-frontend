@@ -41,7 +41,23 @@ import {
   EbookCompiledSection,
   CATEGORIE_LABELS
 } from '../types/ebook.types';
-import { normaliserClassePourComparaison } from '../types/cahierTextes.types';
+import {
+  normaliserClassePourComparaison,
+  CLASSES_PAR_NIVEAU,
+  type NiveauScolaire,
+} from '../types/cahierTextes.types';
+
+/**
+ * Renvoie l'ensemble (normalisé) des classes appartenant à un cycle/niveau.
+ * Sert à rendre le filtre « niveau » cohérent avec la sélection en cascade
+ * cycle → classes côté bibliothèque. Les niveaux sans classes structurées
+ * (ex. 'formation_libre') renvoient un ensemble vide.
+ */
+function classesNormaliseesPourNiveau(niveau: string): Set<string> {
+  const liste = CLASSES_PAR_NIVEAU[niveau as NiveauScolaire];
+  if (!liste) return new Set<string>();
+  return new Set(liste.map((c) => normaliserClassePourComparaison(c.valeur)));
+}
 
 // --- Référence à la collection Firestore ---
 const EBOOKS_COLLECTION = 'ebooks';
@@ -217,9 +233,21 @@ export function filterEbooks(ebooks: Ebook[], filters: EbookFilters): Ebook[] {
     result = result.filter(e => e.categorie === filters.categorie);
   }
 
-  // --- Filtre par niveau ---
+  // --- Filtre par niveau / cycle (cascade) ---
+  //   Un ebook est retenu si :
+  //     • son champ `niveau` correspond au cycle sélectionné, OU
+  //     • sa `classe` (si spécifique) appartient aux classes de ce cycle.
+  //   Cette double règle rend le filtre robuste aux ebooks dont le champ
+  //   `niveau` n'aurait pas été renseigné de façon cohérente avec la classe.
   if (filters.niveau && filters.niveau !== 'all') {
-    result = result.filter(e => e.niveau === filters.niveau);
+    const classesDuNiveau = classesNormaliseesPourNiveau(filters.niveau);
+    result = result.filter((e) => {
+      if (e.niveau === filters.niveau) return true;
+      if (e.classe && e.classe !== 'all') {
+        return classesDuNiveau.has(normaliserClassePourComparaison(e.classe as string));
+      }
+      return false;
+    });
   }
 
   // --- Filtre par classe (normalisation pour rétrocompat 6eme/6ème) ---

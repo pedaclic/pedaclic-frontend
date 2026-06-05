@@ -25,7 +25,12 @@ import {
   MATIERES_DISPONIBLES_FALLBACK
 } from '../services/ebookService';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
-import { CLASSES } from '../types/cahierTextes.types';
+import {
+  CLASSES,
+  CLASSES_PAR_NIVEAU,
+  NIVEAUX_SCOLAIRES,
+  type NiveauScolaire,
+} from '../types/cahierTextes.types';
 import '../styles/AdminEbooks.css';
 
 export const AdminEbooks: React.FC = () => {
@@ -207,6 +212,28 @@ export const AdminEbooks: React.FC = () => {
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
+  };
+
+  /**
+   * Sélection en cascade côté admin : choisir un cycle restreint les classes
+   * proposées et réinitialise la classe si elle n'appartient plus au cycle.
+   */
+  const classesAdminDisponibles = useMemo(() => {
+    const niveau = formData.niveau;
+    const liste = CLASSES_PAR_NIVEAU[niveau as NiveauScolaire];
+    return liste ? liste.map((c) => c.valeur) : CLASSES;
+  }, [formData.niveau]);
+
+  const handleNiveauChangeAdmin = (value: string) => {
+    setFormData((prev) => {
+      const liste = CLASSES_PAR_NIVEAU[value as NiveauScolaire];
+      const valeursCycle = liste ? liste.map((c) => c.valeur as string) : null;
+      let classe = prev.classe;
+      if (valeursCycle && prev.classe !== 'all' && !valeursCycle.includes(prev.classe)) {
+        classe = 'all';
+      }
+      return { ...prev, niveau: value as EbookFormData['niveau'], classe };
+    });
   };
 
   /**
@@ -553,27 +580,32 @@ export const AdminEbooks: React.FC = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label htmlFor="niveau">Niveau *</label>
+                <label htmlFor="niveau">Cycle *</label>
+                {/* Cascade : le cycle choisi conditionne les classes proposées */}
                 <select
                   id="niveau"
                   name="niveau"
                   value={formData.niveau}
-                  onChange={handleInputChange}
+                  onChange={(e) => handleNiveauChangeAdmin(e.target.value)}
                 >
-                  <option value="college">Collège</option>
-                  <option value="lycee">Lycée</option>
+                  {NIVEAUX_SCOLAIRES.map((n) => (
+                    <option key={n.valeur} value={n.valeur}>
+                      {n.emoji} {n.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">
                 <label htmlFor="classe">Classe</label>
+                {/* N'affiche que les classes du cycle sélectionné */}
                 <select
                   id="classe"
                   name="classe"
                   value={formData.classe}
                   onChange={handleInputChange}
                 >
-                  <option value="all">Toutes les classes</option>
-                  {CLASSES.map((cls) => (
+                  <option value="all">Toutes les classes du cycle</option>
+                  {classesAdminDisponibles.map((cls) => (
                     <option key={cls} value={cls}>{cls}</option>
                   ))}
                 </select>

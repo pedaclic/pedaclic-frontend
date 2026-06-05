@@ -35,6 +35,7 @@ import {
   Radio,
   Moon,
   Sun,
+  Dices,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
@@ -188,6 +189,13 @@ const Header: React.FC = () => {
           icon: <Sparkles size={18} />,
           requireAuth: true,
           requirePremium: true
+        },
+        // Jeu de plateau pédagogique — outil ludique pour réviser en jouant.
+        {
+          path: '/eleve/jeu',
+          label: 'Jeu éducatif',
+          icon: <Dices size={18} />,
+          requireAuth: true,
         },
       ],
     },

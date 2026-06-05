@@ -28,7 +28,12 @@ import {
   MATIERES_DISPONIBLES_FALLBACK
 } from '../services/ebookService';
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
-import { CLASSES } from '../types/cahierTextes.types';
+import {
+  CLASSES,
+  CLASSES_PAR_NIVEAU,
+  NIVEAUX_SCOLAIRES,
+  type NiveauScolaire,
+} from '../types/cahierTextes.types';
 import '../styles/EbookLibrary.css';
 
 const MSG_PREMIUM_RESTRICTED = 'Ce contenu est réservé aux utilisateurs Premium.';
@@ -107,9 +112,41 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, currentUs
     return merged.length ? merged : MATIERES_DISPONIBLES_FALLBACK;
   }, [matieresDisciplines, ebooks]);
 
+  // ==================== SÉLECTION EN CASCADE (cycle → classes) ====================
+  //   Le choix d'un cycle (Maternelle / Élémentaire / Collège / Lycée) limite
+  //   la liste des classes proposées aux seules classes de cette section.
+  //   Quand aucun cycle n'est choisi ('all'), toutes les classes restent visibles.
+  const classesDisponibles = useMemo(() => {
+    const niveau = filters.niveau;
+    if (!niveau || niveau === 'all') return CLASSES;
+    const liste = CLASSES_PAR_NIVEAU[niveau as NiveauScolaire];
+    // Niveau sans classes structurées (ex. formation_libre) → repli sur tout.
+    return liste ? liste.map((c) => c.valeur) : CLASSES;
+  }, [filters.niveau]);
+
   // ==================== HANDLERS ====================
   const handleFilterChange = (key: keyof EbookFilters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
+  };
+
+  /**
+   * Changement de cycle : on met à jour le niveau ET on réinitialise la classe
+   * si la classe sélectionnée n'appartient pas (plus) au cycle choisi. Évite
+   * d'aboutir à un couple incohérent (ex. cycle « Lycée » + classe « 6ème »).
+   */
+  const handleNiveauChange = (value: string) => {
+    setFilters((prev) => {
+      let classeValide = prev.classe;
+      if (value !== 'all') {
+        const liste = CLASSES_PAR_NIVEAU[value as NiveauScolaire];
+        const valeursCycle = liste ? liste.map((c) => c.valeur as string) : null;
+        if (valeursCycle && prev.classe && prev.classe !== 'all'
+            && !valeursCycle.includes(prev.classe)) {
+          classeValide = 'all';
+        }
+      }
+      return { ...prev, niveau: value as EbookFilters['niveau'], classe: classeValide };
+    });
   };
 
   const resetFilters = () => {
@@ -206,25 +243,37 @@ export const EbookLibrary: React.FC<EbookLibraryProps> = ({ isPremium, currentUs
 
       {/* <!-- Filtres avancés --> */}
       <div className="ebook-filters">
-        {/* <!-- Filtre par niveau --> */}
+        {/* <!-- Filtre par cycle (1er niveau de la cascade) -->
+             Le choix d'un cycle restreint dynamiquement la liste des classes
+             proposées dans le sélecteur suivant (cascade cycle → classes). */}
         <select
           value={filters.niveau || 'all'}
-          onChange={(e) => handleFilterChange('niveau', e.target.value)}
+          onChange={(e) => handleNiveauChange(e.target.value)}
           className="filter-select"
+          aria-label="Filtrer par cycle"
         >
-          <option value="all">Tous les niveaux</option>
-          <option value="college">Collège</option>
-          <option value="lycee">Lycée</option>
+          <option value="all">Tous les cycles</option>
+          {NIVEAUX_SCOLAIRES.map((n) => (
+            <option key={n.valeur} value={n.valeur}>
+              {n.emoji} {n.label}
+            </option>
+          ))}
         </select>
 
-        {/* <!-- Filtre par classe (source cahierTextes) --> */}
+        {/* <!-- Filtre par classe (2e niveau de la cascade) -->
+             N'affiche que les classes du cycle sélectionné (classesDisponibles). */}
         <select
           value={filters.classe || 'all'}
           onChange={(e) => handleFilterChange('classe', e.target.value)}
           className="filter-select"
+          aria-label="Filtrer par classe"
         >
-          <option value="all">Toutes les classes</option>
-          {CLASSES.map((cls) => (
+          <option value="all">
+            {filters.niveau && filters.niveau !== 'all'
+              ? 'Toutes les classes du cycle'
+              : 'Toutes les classes'}
+          </option>
+          {classesDisponibles.map((cls) => (
             <option key={cls} value={cls}>{cls}</option>
           ))}
         </select>

@@ -79,6 +79,9 @@ import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 import ElveCahiersListePage from './pages/ElveCahiersListePage';
 import ElveCahierPage from './pages/ElveCahierPage';
 
+/* ==================== JEU DE PLATEAU PÉDAGOGIQUE (élève) ==================== */
+import JeuPlateauPage from './pages/JeuPlateauPage';
+
 /* ==================== QUIZ PROF (Premium) ==================== */
 import ProfQuizPage             from './pages/ProfQuizPage';
 import ProfQuizClassicCreatePage from './pages/ProfQuizClassicCreatePage';
@@ -239,6 +242,10 @@ const App: React.FC = () => {
         {/* ========== ESPACE ÉLÈVE ========== */}
         <Route path="/eleve/dashboard" element={<Layout><StudentDashboard /></Layout>} />
         <Route path="/eleve/suivi"     element={<Layout><StudentSuivi /></Layout>} />
+
+        {/* Jeu de plateau pédagogique (outil ludique, accessible à tous les
+            utilisateurs connectés ; conçu pour les élèves). */}
+        <Route path="/eleve/jeu" element={<Layout><JeuPlateauPage /></Layout>} />
 
         {/* ========== CAHIER ÉLÈVE (lecture seule) ========== */}
         <Route path="/eleve/cahiers" element={

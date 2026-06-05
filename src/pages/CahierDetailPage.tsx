@@ -1689,6 +1689,16 @@ const CahierDetailPage: React.FC = () => {
                               <span className="badge-pj">📎 {entree.piecesJointes.length}</span>
                             )}
                           </div>
+                          {/* Séance reportée : on affiche la nouvelle date ET
+                              l'heure précise de report (si renseignées). */}
+                          {entree.statut === 'reporte' && entree.dateReport && (
+                            <div className="entree-report-info" style={{ fontSize: '0.8rem', color: '#2563eb', marginTop: '0.25rem', fontWeight: 600 }}>
+                              🔁 Reporté au {entree.dateReport.toDate().toLocaleDateString('fr-FR', {
+                                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                              })}
+                              {entree.heureReport && ` à ${entree.heureReport}`}
+                            </div>
+                          )}
                           {/* Phase 34 — pastilles "Exercices liés" (jour / domicile) */}
                           {(entree.exerciceJour || entree.exerciceDomicile) && (
                             <div className="entree-exos-inline" aria-label="Exercices liés à la leçon">

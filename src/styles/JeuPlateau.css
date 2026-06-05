@@ -1,0 +1,292 @@
+/* ============================================================
+   PedaClic — Jeu de plateau pédagogique « Le Sentier du Savoir »
+   Feuille de styles dédiée (commentée).
+   Charte : bleu PedaClic (#2563eb), coins arrondis, ombres douces.
+   Le composant React reste responsable de la logique ;
+   ce fichier ne gère que la présentation.
+   ============================================================ */
+
+/* Conteneur principal : centre le jeu et limite la largeur de lecture */
+.jeu-plateau-page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+/* ---- En-tête du jeu ---- */
+.jeu-entete {
+  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  color: #fff;
+  border-radius: 16px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.25);
+}
+.jeu-entete h1 { margin: 0 0 6px; font-size: 1.5rem; font-weight: 800; }
+.jeu-entete p  { margin: 0; opacity: 0.92; font-size: 0.92rem; }
+
+/* ---- Écran de configuration (avant la partie) ---- */
+.jeu-config {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+}
+.jeu-config h2 { margin: 0 0 14px; font-size: 1.1rem; color: #1f2937; }
+
+/* Grille de sélection des thèmes (cartes cliquables) */
+.jeu-themes-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.jeu-theme-carte {
+  border: 2px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 14px;
+  cursor: pointer;
+  background: #f9fafb;
+  text-align: left;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.jeu-theme-carte:hover { transform: translateY(-3px); box-shadow: 0 8px 18px rgba(0,0,0,0.08); }
+/* Carte sélectionnée : bordure bleue + léger fond teinté */
+.jeu-theme-carte.actif {
+  border-color: #2563eb;
+  background: #eff6ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+.jeu-theme-carte .emoji { font-size: 2rem; display: block; margin-bottom: 6px; }
+.jeu-theme-carte .nom   { font-weight: 700; color: #1f2937; font-size: 0.95rem; }
+.jeu-theme-carte .desc  { font-size: 0.78rem; color: #6b7280; margin-top: 4px; }
+
+/* ---- Disposition principale du jeu (plateau + panneau latéral) ---- */
+.jeu-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+/* En dessous de 860px : on empile plateau puis panneau */
+@media (max-width: 860px) {
+  .jeu-layout { grid-template-columns: 1fr; }
+}
+
+/* ---- Le plateau : grille de cases ---- */
+.jeu-plateau {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+}
+.jeu-plateau-grille {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr); /* 6 colonnes (parcours en serpentin) */
+  gap: 8px;
+}
+
+/* Une case du plateau */
+.jeu-case {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  user-select: none;
+}
+/* Numéro discret de la case en haut à gauche */
+.jeu-case .num {
+  position: absolute;
+  top: 3px;
+  left: 5px;
+  font-size: 0.6rem;
+  color: #9ca3af;
+  font-weight: 700;
+}
+/* Variantes de cases selon leur type (couleurs explicites) */
+.jeu-case.depart   { background: #dcfce7; border-color: #86efac; }
+.jeu-case.arrivee  { background: #fef9c3; border-color: #fde047; }
+.jeu-case.question { background: #eff6ff; border-color: #bfdbfe; }
+.jeu-case.bonus    { background: #ecfdf5; border-color: #6ee7b7; }
+.jeu-case.malus    { background: #fef2f2; border-color: #fecaca; }
+.jeu-case.rejouer  { background: #f5f3ff; border-color: #ddd6fe; }
+
+/* Case actuellement ciblée (mise en avant) */
+.jeu-case.active {
+  outline: 3px solid #2563eb;
+  outline-offset: 1px;
+  z-index: 2;
+}
+
+/* Pions des joueurs posés sur une case */
+.jeu-pions {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  display: flex;
+  gap: 1px;
+  flex-wrap: wrap;
+  max-width: 80%;
+  justify-content: flex-end;
+}
+.jeu-pion {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  font-size: 0.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+}
+
+/* ---- Panneau latéral (joueurs, dé, contrôles) ---- */
+.jeu-panneau {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.jeu-carte {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
+}
+.jeu-carte h3 { margin: 0 0 10px; font-size: 0.95rem; color: #1f2937; }
+
+/* Liste des joueurs avec leur progression */
+.jeu-joueur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+.jeu-joueur.tour { background: #eff6ff; font-weight: 700; }
+.jeu-joueur .puce {
+  width: 18px; height: 18px; border-radius: 50%;
+  flex-shrink: 0; border: 2px solid #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+}
+
+/* Le dé : gros chiffre cliquable animé */
+.jeu-de {
+  width: 84px; height: 84px;
+  margin: 0 auto 10px;
+  border-radius: 16px;
+  background: #2563eb;
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2.6rem; font-weight: 900;
+  box-shadow: 0 6px 16px rgba(37,99,235,0.35);
+}
+/* Petite animation au lancer */
+@keyframes jeu-de-roule {
+  0%   { transform: rotate(0) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.12); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.jeu-de.roule { animation: jeu-de-roule 0.5s ease; }
+
+/* Boutons d'action */
+.jeu-btn {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  padding: 11px 14px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+}
+.jeu-btn:active { transform: translateY(1px); }
+.jeu-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.jeu-btn-primaire   { background: #2563eb; color: #fff; }
+.jeu-btn-primaire:hover:not(:disabled) { filter: brightness(1.07); }
+.jeu-btn-secondaire { background: #f3f4f6; color: #374151; }
+
+/* ---- Modale de question ---- */
+.jeu-modale-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 16px;
+}
+.jeu-modale {
+  background: #fff;
+  border-radius: 18px;
+  max-width: 520px; width: 100%;
+  padding: 22px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  animation: jeu-modale-apparait 0.2s ease;
+}
+@keyframes jeu-modale-apparait {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+/* Grande illustration (emoji) de la question */
+.jeu-question-illu {
+  font-size: 3.4rem;
+  text-align: center;
+  margin-bottom: 8px;
+}
+.jeu-question-enonce {
+  font-size: 1.05rem; font-weight: 700; color: #1f2937;
+  text-align: center; margin-bottom: 16px;
+}
+/* Options de réponse (boutons empilés) */
+.jeu-options { display: flex; flex-direction: column; gap: 10px; }
+.jeu-option {
+  border: 2px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.95rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.jeu-option:hover:not(:disabled) { border-color: #93c5fd; background: #eff6ff; }
+/* États après réponse */
+.jeu-option.correcte { border-color: #16a34a; background: #dcfce7; color: #166534; font-weight: 700; }
+.jeu-option.fausse   { border-color: #dc2626; background: #fee2e2; color: #991b1b; }
+.jeu-option:disabled { cursor: default; }
+
+/* Bloc explication après réponse */
+.jeu-explication {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+.jeu-explication.ok  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.jeu-explication.nok { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; }
+
+/* Journal des événements de la partie */
+.jeu-journal {
+  list-style: none; margin: 0; padding: 0;
+  max-height: 160px; overflow-y: auto;
+  font-size: 0.8rem; color: #4b5563;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.jeu-journal li { padding: 4px 6px; border-radius: 6px; background: #f9fafb; }
+
+/* Bandeau de victoire */
+.jeu-victoire {
+  text-align: center;
+  padding: 22px;
+}
+.jeu-victoire .trophee { font-size: 3.5rem; }
+.jeu-victoire h2 { margin: 8px 0; color: #2563eb; }

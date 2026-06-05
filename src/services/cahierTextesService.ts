@@ -948,6 +948,36 @@ export async function getEntreesRealisees(cahierId: string): Promise<EntreeCahie
   return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
 }
 
+/**
+ * Leçons marquées « signet d'évaluation » d'un cahier — VUE ÉLÈVE.
+ *
+ * Renvoie toutes les entrées du cahier dont `isMarqueEvaluation === true`,
+ * indépendamment du statut (une évaluation peut porter sur une séance déjà
+ * réalisée comme sur une séance planifiée). Permet d'afficher aux élèves
+ * la liste des leçons à réviser avec la date d'évaluation prévue.
+ *
+ * Robustesse :
+ *  - Deux filtres d'égalité sans `orderBy` → pas d'index composite requis.
+ *  - En cas d'échec (règles Firestore restreignant la lecture aux séances
+ *    réalisées, ou autre), on retombe proprement sur les séances réalisées
+ *    déjà lisibles par l'élève et on filtre les signets côté client.
+ */
+export async function getEntreesEvaluationCahier(cahierId: string): Promise<EntreeCahier[]> {
+  try {
+    const q = query(
+      collection(db, COL_ENTREES),
+      where('cahierId', '==', cahierId),
+      where('isMarqueEvaluation', '==', true),
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+  } catch (err) {
+    console.warn('getEntreesEvaluationCahier — repli sur séances réalisées :', err);
+    const realisees = await getEntreesRealisees(cahierId);
+    return realisees.filter((e) => e.isMarqueEvaluation);
+  }
+}
+
 export async function createEntree(
   cahierId: string,
   profId: string,
@@ -982,6 +1012,8 @@ export async function createEntree(
       statut:               f.statut,
       motifAnnulation:      f.motifAnnulation || '',
       dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
+      // Heure de report (string "HH:mm") — persistée comme heureDebut/heureFin
+      heureReport:          f.heureReport || '',
       notesPrivees:         f.notesPrivees || '',
       isMarqueEvaluation:   Boolean(f.isMarqueEvaluation),
       typeEvaluation:       f.typeEvaluation || null,
@@ -1042,6 +1074,8 @@ export async function updateEntree(
       statut:               f.statut,
       motifAnnulation:      f.motifAnnulation || '',
       dateReport:           f.dateReport ? Timestamp.fromDate(new Date(f.dateReport)) : null,
+      // Heure de report (string "HH:mm") — persistée même vide pour permettre la suppression
+      heureReport:          f.heureReport || '',
       notesPrivees:         f.notesPrivees || '',
       isMarqueEvaluation:   Boolean(f.isMarqueEvaluation),
       typeEvaluation:       f.typeEvaluation || null,
@@ -1103,6 +1137,7 @@ export async function duplicateEntree(
     statut:               nouveauStatut,
     motifAnnulation:      '',
     dateReport:           null,
+    heureReport:          '',
     notesPrivees:         entreeSource.notesPrivees ?? '',
     isMarqueEvaluation:   Boolean(entreeSource.isMarqueEvaluation),
     typeEvaluation:       entreeSource.typeEvaluation ?? null,

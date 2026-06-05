@@ -30,9 +30,18 @@
  * ============================================================
  */
 
-import React, { useMemo } from 'react';
-import { X, BarChart2, Users, TrendingUp, Award } from 'lucide-react';
-import type { LigneNotes } from '../../types/feuillesNotes.types';
+import React, { useMemo, useState } from 'react';
+import { X, BarChart2, Users, TrendingUp, Award, BookOpen, User } from 'lucide-react';
+import type {
+  LigneNotes,
+  FeuilleDeNotes,
+  CompetenceDef,
+  CompetenceStatus,
+} from '../../types/feuillesNotes.types';
+import {
+  COMPETENCE_STATUS_LABELS,
+  COMPETENCE_STATUS_COLORS,
+} from '../../types/feuillesNotes.types';
 
 // ──────────────────────────────────────────────────────────────
 // PROPS
@@ -47,8 +56,49 @@ interface StatsNotesModalProps {
   lignes: LigneNotes[];
   /** Map eleveId → sexe — alimentée par l'éditeur depuis les inscriptions. */
   sexeMap: Record<string, 'M' | 'F' | 'autre' | undefined>;
+  /**
+   * Feuille complète (optionnelle). Quand elle est fournie, la modale active
+   * les vues « Par compétence » (taux d'acquisition / remédiation) et
+   * « Par élève » (encadrement individuel). Optionnelle pour rester
+   * rétro-compatible avec les appels existants.
+   */
+  feuille?: FeuilleDeNotes | null;
   /** Libellé optionnel à afficher en sous-titre (ex. nom de la classe). */
   contexteLibelle?: string;
+}
+
+// ──────────────────────────────────────────────────────────────
+// TYPES INTERNES — COMPÉTENCES & ÉLÈVES
+// ──────────────────────────────────────────────────────────────
+
+/** Statistiques agrégées pour une compétence donnée. */
+interface StatsCompetence {
+  id: string;
+  libelle: string;
+  acquis: number;        // Nombre de statuts « acquis »
+  enCours: number;       // Nombre de statuts « en cours »
+  nonAcquis: number;     // Nombre de statuts « non acquis »
+  total: number;         // Total des statuts saisis pour cette compétence
+  tauxAcquis: number;    // % acquis (acquis / total * 100)
+  tauxMaitrise: number;  // % (acquis + en cours) / total * 100
+}
+
+/** Synthèse par élève pour cibler l'encadrement individuel. */
+interface SyntheseEleve {
+  eleveId: string;
+  eleveNom: string;
+  moyenneGenerale: number;
+  moyenneDevoirs: number;
+  noteComposition: number;
+  rang: number;
+  ecartMoyenneClasse: number;   // moyenneGenerale - moyenne de la classe
+  nbCompetences: number;        // Compétences évaluées pour cet élève
+  nbAcquis: number;
+  nbEnCours: number;
+  nbNonAcquis: number;
+  tauxAcquis: number | null;    // null si aucune compétence évaluée
+  nbAbsJ: number;
+  nbAbsNJ: number;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -79,6 +129,15 @@ interface StatsBloc {
 
 /** Arrondi à 2 décimales. */
 const r2 = (v: number): number => Math.round(v * 100) / 100;
+
+/** Couleur d'une moyenne /20 (charte PedaClic : du rouge au vert). */
+function couleurMoyenne(m: number): string {
+  if (m >= 16) return '#0d9488';
+  if (m >= 12) return '#16a34a';
+  if (m >= 10) return '#2563eb';
+  if (m >= 8) return '#f59e0b';
+  return '#dc2626';
+}
 
 /**
  * Calcule un bloc complet de statistiques pour un ensemble de lignes.
@@ -280,6 +339,139 @@ const Histogramme: React.FC<{
   );
 };
 
+/**
+ * Barre de répartition d'une compétence : segments Acquis / En cours /
+ * Non acquis (couleurs charte) + taux d'acquisition mis en avant.
+ */
+const CompetenceBar: React.FC<{ stats: StatsCompetence }> = ({ stats }) => {
+  const seg = (n: number) => (stats.total > 0 ? (n / stats.total) * 100 : 0);
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#1f2937', flex: 1, minWidth: 0 }}>
+          {stats.libelle}
+        </span>
+        <span
+          style={{
+            fontSize: '0.85rem',
+            fontWeight: 800,
+            color: stats.tauxAcquis >= 50 ? '#16a34a' : '#dc2626',
+          }}
+          title="Taux d'acquisition (Acquis / total des statuts saisis)"
+        >
+          {stats.tauxAcquis}%
+        </span>
+        <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>
+          ({stats.total} éval.)
+        </span>
+      </div>
+      {/* Barre empilée */}
+      <div
+        style={{ display: 'flex', height: 14, borderRadius: 999, overflow: 'hidden', background: '#f3f4f6' }}
+        role="img"
+        aria-label={`Acquis ${stats.acquis}, en cours ${stats.enCours}, non acquis ${stats.nonAcquis}`}
+      >
+        <div style={{ width: `${seg(stats.acquis)}%`, background: COMPETENCE_STATUS_COLORS.acquis }} />
+        <div style={{ width: `${seg(stats.enCours)}%`, background: COMPETENCE_STATUS_COLORS.en_cours }} />
+        <div style={{ width: `${seg(stats.nonAcquis)}%`, background: COMPETENCE_STATUS_COLORS.non_acquis }} />
+      </div>
+      {/* Légende chiffrée */}
+      <div style={{ display: 'flex', gap: 12, marginTop: 4, fontSize: '0.72rem', color: '#6b7280' }}>
+        <span style={{ color: COMPETENCE_STATUS_COLORS.acquis, fontWeight: 600 }}>
+          ● {COMPETENCE_STATUS_LABELS.acquis} : {stats.acquis}
+        </span>
+        <span style={{ color: COMPETENCE_STATUS_COLORS.en_cours, fontWeight: 600 }}>
+          ● {COMPETENCE_STATUS_LABELS.en_cours} : {stats.enCours}
+        </span>
+        <span style={{ color: COMPETENCE_STATUS_COLORS.non_acquis, fontWeight: 600 }}>
+          ● {COMPETENCE_STATUS_LABELS.non_acquis} : {stats.nonAcquis}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Carte de synthèse d'un élève : moyennes, rang, écart à la classe,
+ * taux d'acquisition des compétences et absences. Sert à repérer en un
+ * coup d'œil le niveau d'encadrement individuel nécessaire.
+ */
+const EleveSynthese: React.FC<{
+  synthese: SyntheseEleve;
+  getClasseColor: (m: number) => string;
+}> = ({ synthese: s, getClasseColor }) => {
+  const couleurMoy = getClasseColor(s.moyenneGenerale);
+  const ecartPositif = s.ecartMoyenneClasse >= 0;
+  return (
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #e5e7eb',
+        borderLeft: `4px solid ${couleurMoy}`,
+        borderRadius: 10,
+        padding: '0.7rem 0.9rem',
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 12,
+      }}
+    >
+      {/* Identité + rang */}
+      <div style={{ flex: 1, minWidth: 160 }}>
+        <div style={{ fontWeight: 700, color: '#111827', fontSize: '0.9rem' }}>{s.eleveNom}</div>
+        <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>
+          {s.rang > 0 ? `Rang ${s.rang}` : 'Rang —'} ·{' '}
+          <span style={{ color: ecartPositif ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
+            {ecartPositif ? '+' : ''}{s.ecartMoyenneClasse} vs classe
+          </span>
+        </div>
+      </div>
+
+      {/* Moyennes */}
+      <div style={{ textAlign: 'center', minWidth: 70 }}>
+        <div style={{ fontSize: '1.15rem', fontWeight: 800, color: couleurMoy, lineHeight: 1 }}>
+          {s.moyenneGenerale > 0 ? s.moyenneGenerale.toFixed(2) : '—'}
+        </div>
+        <div style={{ fontSize: '0.66rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+          Moy. gén.
+        </div>
+      </div>
+      <div style={{ textAlign: 'center', minWidth: 60, fontSize: '0.75rem', color: '#6b7280' }}>
+        <div>D : <strong>{s.moyenneDevoirs > 0 ? s.moyenneDevoirs.toFixed(1) : '—'}</strong></div>
+        <div>C : <strong>{s.noteComposition > 0 ? s.noteComposition.toFixed(1) : '—'}</strong></div>
+      </div>
+
+      {/* Compétences */}
+      <div style={{ minWidth: 120 }}>
+        {s.nbCompetences > 0 ? (
+          <>
+            <div style={{ fontSize: '0.72rem', color: '#6b7280', marginBottom: 3 }}>
+              Compétences : <strong style={{ color: s.tauxAcquis! >= 50 ? '#16a34a' : '#dc2626' }}>{s.tauxAcquis}% acquis</strong>
+            </div>
+            <div style={{ display: 'flex', height: 8, borderRadius: 999, overflow: 'hidden', background: '#f3f4f6' }}>
+              <div style={{ width: `${(s.nbAcquis / s.nbCompetences) * 100}%`, background: COMPETENCE_STATUS_COLORS.acquis }} />
+              <div style={{ width: `${(s.nbEnCours / s.nbCompetences) * 100}%`, background: COMPETENCE_STATUS_COLORS.en_cours }} />
+              <div style={{ width: `${(s.nbNonAcquis / s.nbCompetences) * 100}%`, background: COMPETENCE_STATUS_COLORS.non_acquis }} />
+            </div>
+          </>
+        ) : (
+          <span style={{ fontSize: '0.72rem', color: '#9ca3af', fontStyle: 'italic' }}>
+            Pas de compétence évaluée
+          </span>
+        )}
+      </div>
+
+      {/* Absences */}
+      {(s.nbAbsJ > 0 || s.nbAbsNJ > 0) && (
+        <div style={{ fontSize: '0.7rem', color: '#6b7280', textAlign: 'right', minWidth: 60 }}>
+          {s.nbAbsJ > 0 && <div style={{ color: '#f59e0b', fontWeight: 600 }}>{s.nbAbsJ} AJ</div>}
+          {s.nbAbsNJ > 0 && <div style={{ color: '#ef4444', fontWeight: 600 }}>{s.nbAbsNJ} ANJ</div>}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // ──────────────────────────────────────────────────────────────
 // COMPOSANT PRINCIPAL
 // ──────────────────────────────────────────────────────────────
@@ -289,6 +481,7 @@ const StatsNotesModal: React.FC<StatsNotesModalProps> = ({
   onFermer,
   lignes,
   sexeMap,
+  feuille,
   contexteLibelle,
 }) => {
   // Fermeture clavier (Échap) — accessible et conforme à l'UX existante
@@ -326,6 +519,107 @@ const StatsNotesModal: React.FC<StatsNotesModalProps> = ({
   const statsFilles = useMemo(() => calculerStats(lignesFilles), [lignesFilles]);
   const statsGarcons = useMemo(() => calculerStats(lignesGarcons), [lignesGarcons]);
   const statsAutres = useMemo(() => calculerStats(lignesAutres), [lignesAutres]);
+
+  // ── Onglet actif (Vue d'ensemble / Par compétence / Par élève) ──
+  const [ongletActif, setOngletActif] = useState<'ensemble' | 'competences' | 'eleves'>('ensemble');
+
+  // Disponibilité des vues avancées : nécessitent la feuille complète.
+  const aDonneesCompetences = !!feuille?.competences && Object.keys(feuille.competences).length > 0;
+  const aFeuille = !!feuille;
+
+  // ── Libellés des compétences (id → libellé) ──
+  //   On agrège la liste globale (competencesDef) ET les compétences propres
+  //   à chaque évaluation, pour libeller toutes les compétences saisies.
+  const competenceLibelles = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>();
+    if (!feuille) return map;
+    (feuille.competencesDef ?? []).forEach((c) => map.set(c.id, c.libelle));
+    (feuille.evaluations ?? []).forEach((ev) =>
+      (ev.competences ?? []).forEach((c: CompetenceDef) => {
+        if (!map.has(c.id)) map.set(c.id, c.libelle);
+      }),
+    );
+    return map;
+  }, [feuille]);
+
+  // ── Statistiques par compétence (taux d'acquisition / remédiation) ──
+  const statsCompetences = useMemo<StatsCompetence[]>(() => {
+    if (!feuille?.competences) return [];
+    const acc = new Map<string, { acquis: number; enCours: number; nonAcquis: number }>();
+    // competences : eleveId → evalId → compId → statut
+    Object.values(feuille.competences).forEach((parEval) => {
+      Object.values(parEval).forEach((parComp) => {
+        Object.entries(parComp).forEach(([compId, statut]) => {
+          if (!acc.has(compId)) acc.set(compId, { acquis: 0, enCours: 0, nonAcquis: 0 });
+          const e = acc.get(compId)!;
+          if (statut === 'acquis') e.acquis += 1;
+          else if (statut === 'en_cours') e.enCours += 1;
+          else e.nonAcquis += 1;
+        });
+      });
+    });
+    const result: StatsCompetence[] = [];
+    acc.forEach((v, id) => {
+      const total = v.acquis + v.enCours + v.nonAcquis;
+      result.push({
+        id,
+        libelle: competenceLibelles.get(id) ?? id,
+        acquis: v.acquis,
+        enCours: v.enCours,
+        nonAcquis: v.nonAcquis,
+        total,
+        tauxAcquis: total ? Math.round((v.acquis / total) * 100) : 0,
+        tauxMaitrise: total ? Math.round(((v.acquis + v.enCours) / total) * 100) : 0,
+      });
+    });
+    // Tri par taux d'acquisition croissant : les compétences les plus
+    // fragiles (à remédier en priorité) apparaissent en haut.
+    return result.sort((a, b) => a.tauxAcquis - b.tauxAcquis);
+  }, [feuille, competenceLibelles]);
+
+  // ── Synthèse par élève (encadrement individuel) ──
+  const synthesesEleves = useMemo<SyntheseEleve[]>(() => {
+    if (!feuille) return [];
+    // Moyenne de classe de référence (mêmes règles que la vue d'ensemble).
+    const valsClasse = lignes
+      .filter((l) => Object.keys(l.notes).length > 0 || l.moyenneGenerale > 0)
+      .map((l) => l.moyenneGenerale)
+      .filter((v) => Number.isFinite(v));
+    const moyenneClasse = valsClasse.length
+      ? valsClasse.reduce((s, v) => s + v, 0) / valsClasse.length
+      : 0;
+
+    return lignes
+      .map((l) => {
+        const comp = feuille.competences?.[l.eleveId] ?? {};
+        let acquis = 0, enCours = 0, nonAcquis = 0;
+        Object.values(comp).forEach((parComp) =>
+          Object.values(parComp).forEach((st: CompetenceStatus) => {
+            if (st === 'acquis') acquis += 1;
+            else if (st === 'en_cours') enCours += 1;
+            else nonAcquis += 1;
+          }),
+        );
+        const nbComp = acquis + enCours + nonAcquis;
+        return {
+          eleveId: l.eleveId,
+          eleveNom: l.eleveNom,
+          moyenneGenerale: l.moyenneGenerale,
+          moyenneDevoirs: l.moyenneDevoirs,
+          noteComposition: l.noteComposition,
+          rang: l.rang,
+          ecartMoyenneClasse: r2(l.moyenneGenerale - moyenneClasse),
+          nbCompetences: nbComp,
+          nbAcquis: acquis,
+          nbEnCours: enCours,
+          nbNonAcquis: nonAcquis,
+          tauxAcquis: nbComp ? Math.round((acquis / nbComp) * 100) : null,
+          nbAbsJ: l.nbAbsencesJustifiees,
+          nbAbsNJ: l.nbAbsencesNonJustifiees,
+        };
+      })
+      .sort((a, b) => (a.rang || 9999) - (b.rang || 9999));
+  }, [feuille, lignes]);
 
   if (!ouvert) return null;
 
@@ -450,11 +744,66 @@ const StatsNotesModal: React.FC<StatsNotesModalProps> = ({
           </button>
         </div>
 
+        {/* ── Barre d'onglets ──
+             Vue d'ensemble (existant) · Par compétence · Par élève.
+             Les deux derniers onglets ne sont proposés que si la feuille
+             complète est disponible (compétences / synthèse individuelle). */}
+        {aFeuille && (
+          <div
+            role="tablist"
+            aria-label="Vues statistiques"
+            style={{
+              display: 'flex',
+              gap: 4,
+              padding: '0 1rem',
+              borderBottom: '1px solid #e5e7eb',
+              flexWrap: 'wrap',
+            }}
+          >
+            {([
+              { cle: 'ensemble' as const, label: "Vue d'ensemble", Icone: BarChart2 },
+              { cle: 'competences' as const, label: 'Par compétence', Icone: BookOpen },
+              { cle: 'eleves' as const, label: 'Par élève', Icone: User },
+            ]).map(({ cle, label, Icone }) => {
+              const actif = ongletActif === cle;
+              return (
+                <button
+                  key={cle}
+                  type="button"
+                  role="tab"
+                  aria-selected={actif}
+                  onClick={() => setOngletActif(cle)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    padding: '0.6rem 0.8rem',
+                    fontSize: '0.85rem',
+                    fontWeight: actif ? 700 : 500,
+                    color: actif ? '#2563eb' : '#6b7280',
+                    borderBottom: `2px solid ${actif ? '#2563eb' : 'transparent'}`,
+                    marginBottom: -1,
+                  }}
+                >
+                  <Icone size={15} aria-hidden="true" />
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* ── Corps ── */}
         <div
           className="rte-modale__body"
           style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', maxHeight: '75vh', overflowY: 'auto' }}
         >
+          {/* ════════════ ONGLET « VUE D'ENSEMBLE » ════════════ */}
+          {ongletActif === 'ensemble' && (
+          <>
           {/* ── Section 1 : Statistiques générales ── */}
           <section aria-labelledby="stats-notes-section-generale">
             <header
@@ -589,6 +938,100 @@ const StatsNotesModal: React.FC<StatsNotesModalProps> = ({
                 renderSousBloc('Autre / non renseigné', '#6b7280', '✱', statsAutres)}
             </div>
           </section>
+          </>
+          )}
+
+          {/* ════════════ ONGLET « PAR COMPÉTENCE » ════════════ */}
+          {ongletActif === 'competences' && (
+            <section aria-label="Taux de réussite par compétence">
+              {!aDonneesCompetences ? (
+                <p style={{ margin: 0, color: '#6b7280', fontStyle: 'italic' }}>
+                  Aucune compétence évaluée pour le moment. Renseignez les
+                  compétences des élèves dans le tableau de notes (pastilles
+                  Acquis / En cours / Non acquis) pour visualiser ici le taux
+                  de réussite par compétence.
+                </p>
+              ) : (
+                <>
+                  <header
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      marginBottom: 10, paddingBottom: 6, borderBottom: '2px solid #e5e7eb',
+                    }}
+                  >
+                    <BookOpen size={16} style={{ color: '#2563eb' }} />
+                    <h4 style={{ margin: 0, fontSize: '1rem', color: '#111827', fontWeight: 700 }}>
+                      Taux de réussite par compétence
+                    </h4>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                      Trié du plus fragile au mieux acquis
+                    </span>
+                  </header>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {statsCompetences.map((c) => (
+                      <CompetenceBar key={c.id} stats={c} />
+                    ))}
+                  </div>
+
+                  {/* Encart remédiation : compétences sous 50 % d'acquisition */}
+                  {(() => {
+                    const aRemedier = statsCompetences.filter((c) => c.tauxAcquis < 50);
+                    if (aRemedier.length === 0) {
+                      return (
+                        <p style={{ marginTop: 14, fontSize: '0.8rem', color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: 10 }}>
+                          ✅ Toutes les compétences évaluées dépassent 50 % d'acquisition.
+                        </p>
+                      );
+                    }
+                    return (
+                      <div style={{ marginTop: 14, fontSize: '0.82rem', color: '#9a3412', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 8, padding: 10 }}>
+                        <strong>🎯 Remédiation prioritaire :</strong>{' '}
+                        {aRemedier.map((c) => `${c.libelle} (${c.tauxAcquis}%)`).join(' · ')}.
+                        <div style={{ marginTop: 4, color: '#b45309' }}>
+                          Prévoyez des activités de soutien ciblées sur ces compétences.
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </section>
+          )}
+
+          {/* ════════════ ONGLET « PAR ÉLÈVE » ════════════ */}
+          {ongletActif === 'eleves' && (
+            <section aria-label="Statistiques par élève">
+              {synthesesEleves.length === 0 ? (
+                <p style={{ margin: 0, color: '#6b7280', fontStyle: 'italic' }}>
+                  Aucun élève à afficher.
+                </p>
+              ) : (
+                <>
+                  <header
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      marginBottom: 10, paddingBottom: 6, borderBottom: '2px solid #e5e7eb',
+                    }}
+                  >
+                    <User size={16} style={{ color: '#2563eb' }} />
+                    <h4 style={{ margin: 0, fontSize: '1rem', color: '#111827', fontWeight: 700 }}>
+                      Synthèse individuelle
+                    </h4>
+                    <span style={{ marginLeft: 'auto', fontSize: '0.72rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                      Cibler l'encadrement de chaque élève
+                    </span>
+                  </header>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {synthesesEleves.map((s) => (
+                      <EleveSynthese key={s.eleveId} synthese={s} getClasseColor={couleurMoyenne} />
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
 
           {/* ── Note méthodologique ── */}
           <p
@@ -605,6 +1048,7 @@ const StatsNotesModal: React.FC<StatsNotesModalProps> = ({
             (moyenne PedaClic = (Moy. devoirs + Composition) / 2). Les évaluations
             marquées « Hors moyenne » et les absences justifiées (AJ) sont exclues
             du calcul ; les absences non justifiées (ANJ) comptent 0 / 20.
+            {aDonneesCompetences && ' Les taux de compétence sont calculés sur l\'ensemble des statuts saisis (Acquis / En cours / Non acquis).'}
           </p>
         </div>
 

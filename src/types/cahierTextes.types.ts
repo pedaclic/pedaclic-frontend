@@ -323,6 +323,13 @@ export interface EntreeCahier {
   statut: StatutSeance;
   motifAnnulation?: string;
   dateReport?: Timestamp;
+  /**
+   * Heure de report (format "HH:mm", 24h). Associée à `dateReport` pour
+   * indiquer précisément quand la séance reportée est reprogrammée.
+   * Optionnelle et rétrocompatible : les séances reportées plus anciennes
+   * (sans heure) restent valides.
+   */
+  heureReport?: string;
   piecesJointes?: PieceJointe[];
   notesPrivees?: string;
   // Signets évaluation (Phase 21)
@@ -380,6 +387,8 @@ export interface EntreeFormData {
   statut: StatutSeance;
   motifAnnulation: string;
   dateReport: string;
+  /** Heure de report "HH:mm" (24h) — saisie quand la séance est reportée */
+  heureReport: string;
   notesPrivees: string;
   isMarqueEvaluation: boolean;
   typeEvaluation: TypeEvaluation | '';

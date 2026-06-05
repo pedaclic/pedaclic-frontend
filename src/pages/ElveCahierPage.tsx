@@ -9,10 +9,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { CahierTextes, EntreeCahier, RubriqueCahier } from '../types/cahierTextes.types';
+import { TYPE_EVAL_LABELS } from '../types/cahierTextes.types';
 import {
   COULEURS_RUBRIQUES,
   getCahierPartageById,
   getEntreesRealisees,
+  getEntreesEvaluationCahier,
 } from '../services/cahierTextesService';
 import LienExterneEditor from '../components/prof/LienExterneEditor';
 import EbookSelector from '../components/prof/EbookSelector';
@@ -177,6 +179,8 @@ const ElveCahierPage: React.FC = () => {
 
   const [cahier, setCahier] = useState<CahierTextes | null>(null);
   const [entrees, setEntrees] = useState<EntreeCahier[]>([]);
+  // Leçons marquées « signet d'évaluation » (révisions à préparer).
+  const [signets, setSignets] = useState<EntreeCahier[]>([]);
   const [chargement, setChargement] = useState(true);
   const [erreur, setErreur] = useState('');
   const [entreeOuverte, setEntreeOuverte] = useState<string | null>(null);
@@ -200,6 +204,15 @@ const ElveCahierPage: React.FC = () => {
 
         const e = await getEntreesRealisees(cahierId);
         setEntrees(e);
+
+        // Signets d'évaluation (non bloquant : un échec n'empêche pas
+        // l'affichage des séances réalisées).
+        try {
+          const sig = await getEntreesEvaluationCahier(cahierId);
+          setSignets(sig);
+        } catch {
+          setSignets([]);
+        }
       } catch {
         setErreur('Une erreur est survenue lors du chargement.');
       } finally {
@@ -222,6 +235,17 @@ const ElveCahierPage: React.FC = () => {
   );
 
   const groupes = useMemo(() => grouperParMois(entreesFiltrees), [entreesFiltrees]);
+
+  // ─── Signets d'évaluation triés (date d'évaluation prévue croissante) ───
+  //   Les leçons à venir (date >= aujourd'hui) sont placées en premier ;
+  //   celles sans date passent en fin de liste.
+  const signetsOrdonnes = useMemo(() => {
+    const valeurDate = (e: EntreeCahier): number => {
+      const d = e.dateEvaluationPrevue?.toDate?.();
+      return d ? d.getTime() : Number.POSITIVE_INFINITY;
+    };
+    return [...signets].sort((a, b) => valeurDate(a) - valeurDate(b));
+  }, [signets]);
 
   const rubriquesAvecCouleur = useMemo(
     () =>
@@ -556,6 +580,108 @@ const ElveCahierPage: React.FC = () => {
         >
           {cahier.description}
         </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────
+           SIGNETS D'ÉVALUATION — leçons à réviser pour les évaluations
+           Affiche les leçons marquées par le professeur, avec la date
+           d'évaluation prévue. Aide l'élève à anticiper ses révisions.
+           ───────────────────────────────────────────────────────────── */}
+      {signetsOrdonnes.length > 0 && (
+        <section
+          aria-label="Leçons à réviser pour les évaluations"
+          style={{
+            background: '#fffbeb',
+            border: '1px solid #fde68a',
+            borderRadius: 12,
+            padding: 14,
+            marginBottom: 20,
+          }}
+        >
+          <h2
+            style={{
+              margin: '0 0 10px',
+              fontSize: '1rem',
+              color: '#92400e',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            📌 À réviser pour les évaluations
+            <span style={{ fontSize: '0.78rem', fontWeight: 500, color: '#b45309' }}>
+              ({signetsOrdonnes.length} leçon{signetsOrdonnes.length > 1 ? 's' : ''})
+            </span>
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {signetsOrdonnes.map((s) => {
+              // Date d'évaluation prévue (peut être absente).
+              const dEval = s.dateEvaluationPrevue?.toDate?.() ?? null;
+              const aujourdhui = new Date();
+              aujourdhui.setHours(0, 0, 0, 0);
+              const estPassee = dEval ? dEval < aujourdhui : false;
+              const typeLabel = s.typeEvaluation
+                ? TYPE_EVAL_LABELS[s.typeEvaluation]
+                : null;
+              return (
+                <div
+                  key={s.id}
+                  style={{
+                    background: '#fff',
+                    border: '1px solid #fde68a',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: '#1f2937', flex: 1, minWidth: 0 }}>
+                    {s.chapitre}
+                  </span>
+
+                  {/* Type d'évaluation (interro, DS, examen…) */}
+                  {typeLabel && (
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        background: '#ede9fe',
+                        color: '#6d28d9',
+                        padding: '2px 8px',
+                        borderRadius: 9999,
+                        fontWeight: 600,
+                      }}
+                    >
+                      {typeLabel}
+                    </span>
+                  )}
+
+                  {/* Date d'évaluation prévue (badge coloré selon échéance) */}
+                  <span
+                    style={{
+                      fontSize: '0.72rem',
+                      padding: '2px 8px',
+                      borderRadius: 9999,
+                      fontWeight: 600,
+                      background: dEval ? (estPassee ? '#f3f4f6' : '#dcfce7') : '#f3f4f6',
+                      color: dEval ? (estPassee ? '#6b7280' : '#15803d') : '#6b7280',
+                      border: dEval && !estPassee ? '1px solid #86efac' : '1px solid #e5e7eb',
+                    }}
+                    title="Date d'évaluation prévue"
+                  >
+                    📅 {dEval
+                      ? dEval.toLocaleDateString('fr-FR', {
+                          weekday: 'short', day: 'numeric', month: 'long', year: 'numeric',
+                        })
+                      : 'Date à préciser'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {entrees.length > 0 && (
