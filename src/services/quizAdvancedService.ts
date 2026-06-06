@@ -44,6 +44,30 @@ import type {
 const QUIZZES_COLLECTION = 'quizzes_v2';       // Nouvelle collection pour quiz avancés
 const RESULTS_COLLECTION = 'quiz_results_v2';   // Résultats quiz avancés
 
+// ==================== UTILITAIRE ANTI-UNDEFINED ====================
+
+/**
+ * Supprime récursivement toutes les clés dont la valeur est `undefined`.
+ * Firestore (sans `ignoreUndefinedProperties`) rejette toute valeur
+ * `undefined` : un champ optionnel laissé vide (description, groupeId,
+ * nombreMotsMin d'un essai, etc.) faisait échouer addDoc()/updateDoc().
+ * On préserve les valeurs `null`, les `Date` et les autres types tels quels.
+ */
+function nettoyerUndefined<T>(valeur: T): T {
+  if (Array.isArray(valeur)) {
+    return valeur.map((v) => nettoyerUndefined(v)) as unknown as T;
+  }
+  if (valeur && typeof valeur === 'object' && !(valeur instanceof Date)) {
+    const sortie: Record<string, any> = {};
+    for (const [cle, v] of Object.entries(valeur as Record<string, any>)) {
+      if (v === undefined) continue;            // on retire la clé undefined
+      sortie[cle] = nettoyerUndefined(v);       // récursion (objets/arrays imbriqués)
+    }
+    return sortie as T;
+  }
+  return valeur;
+}
+
 // ==================== CRUD QUIZ ====================
 
 /**
@@ -60,7 +84,7 @@ export async function createQuizAvance(
   try {
     const status = asDraft ? 'draft' : (data.status || 'published');
     const docRef = await addDoc(collection(db, QUIZZES_COLLECTION), {
-      ...data,
+      ...nettoyerUndefined(data),
       status,
       auteurId,
       createdAt: serverTimestamp(),
@@ -85,7 +109,7 @@ export async function updateQuizAvance(
 ): Promise<void> {
   try {
     const docRef = doc(db, QUIZZES_COLLECTION, quizId);
-    const updates: Record<string, any> = { ...data, updatedAt: serverTimestamp() };
+    const updates: Record<string, any> = { ...nettoyerUndefined(data), updatedAt: serverTimestamp() };
     if (options?.asDraft !== undefined) {
       updates.status = options.asDraft ? 'draft' : 'published';
     }
@@ -592,9 +616,10 @@ export async function soumettreQuiz(
       detailsParQuestion: details,
     };
 
-    // Enregistrer dans Firestore
+    // Enregistrer dans Firestore (nettoyage anti-undefined inclus :
+    // les réponses élève comportent de nombreux champs optionnels)
     const docRef = await addDoc(collection(db, RESULTS_COLLECTION), {
-      ...result,
+      ...nettoyerUndefined(result),
       datePassage: serverTimestamp(),
     });
 
