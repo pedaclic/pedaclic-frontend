@@ -282,6 +282,13 @@ export interface QuizAvanceFormData {
   /** Brouillon ou publié — défaut: published */
   status?: QuizStatus;
   disciplineId: string;
+  /**
+   * Nom de la discipline dénormalisé, résolu depuis la collection `disciplines`
+   * via `disciplineId` (même source de référence que le Quiz classique).
+   * Renseigné automatiquement à la sauvegarde pour garantir la cohérence
+   * des affichages (listes, résultats, tableaux de bord).
+   */
+  disciplineNom?: string;
   titre: string;
   description?: string;
   questions: QuestionAvancee[];
@@ -341,6 +348,12 @@ export interface QuizAvanceResult {
   id: string;                         // ID Firestore
   quizId: string;                     // ID du quiz
   userId: string;                     // ID de l'élève
+  /**
+   * Nom de la discipline, résolu depuis la collection `disciplines`
+   * via `disciplineId` lors de la soumission (même logique que le Quiz
+   * classique). Permet aux tableaux de bord / stats d'afficher la matière.
+   */
+  disciplineNom?: string;
   reponses: ReponseEleve[];           // Toutes les réponses
   score: number;                      // Score total obtenu
   scoreMax: number;                   // Score maximum possible

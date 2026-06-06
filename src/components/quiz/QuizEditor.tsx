@@ -183,8 +183,14 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
     setSaving(true);
 
     try {
+      // Résolution du nom de discipline depuis la source de référence
+      // (collection `disciplines`, déjà chargée via DisciplineService.getAll()),
+      // pour stocker un libellé cohérent avec le Quiz classique.
+      const discNomDraft = disciplines.find((d) => d.id === discId)?.nom;
+
       const formData: QuizAvanceFormData = {
         disciplineId: discId,
+        ...(discNomDraft ? { disciplineNom: discNomDraft } : {}),
         titre: titreVal,
         description: description.trim() || undefined,
         questions,
@@ -235,8 +241,13 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
     setSaving(true);
 
     try {
+      // Résolution du nom de discipline depuis la source de référence
+      // (collection `disciplines`), identique au Quiz classique.
+      const discNom = disciplines.find((d) => d.id === disciplineId)?.nom;
+
       const formData: QuizAvanceFormData = {
         disciplineId,
+        ...(discNom ? { disciplineNom: discNom } : {}),
         titre: titre.trim(),
         description: description.trim() || undefined,
         questions,

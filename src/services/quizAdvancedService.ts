@@ -20,6 +20,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import DisciplineService from './disciplineService';
 import type {
   QuizAvance,
   QuizAvanceFormData,
@@ -562,9 +563,24 @@ export async function soumettreQuiz(
     const note20 = scoreMax > 0 ? Math.round((score / scoreMax) * 20 * 100) / 100 : 0;
     const correctionManuelle = details.some((d) => d.correctionManuelleRequise);
 
+    // Résolution du nom de discipline depuis la SOURCE DE RÉFÉRENCE
+    // (collection `disciplines` via disciplineId) — exactement comme le
+    // Quiz classique. On privilégie le champ dénormalisé déjà présent sur
+    // le quiz, sinon on interroge la collection (compatibilité anciens quiz).
+    let disciplineNom = quiz.disciplineNom || '';
+    if (!disciplineNom && quiz.disciplineId) {
+      try {
+        const disc = await DisciplineService.getById(quiz.disciplineId);
+        disciplineNom = disc?.nom || '';
+      } catch {
+        disciplineNom = '';
+      }
+    }
+
     const result: Omit<QuizAvanceResult, 'id'> = {
       quizId: quiz.id,
       userId,
+      disciplineNom,
       reponses,
       score,
       scoreMax,
