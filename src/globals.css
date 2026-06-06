@@ -143,7 +143,13 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: var(--font-semibold);
   line-height: 1.2;
   margin-bottom: var(--spacing-md);
-  color: var(--color-text);
+  /* NB : pas de `color` ici. Le `body` fournit déjà `--color-text`, dont les
+     titres HÉRITENT sur les pages normales (rendu identique). En revanche,
+     poser la couleur directement sur h1..h6 écraserait la couleur héritée
+     d'un bandeau coloré (ex. en-tête bleu avec color:#fff), rendant le titre
+     sombre et illisible. On laisse donc les titres hériter pour harmoniser
+     le contraste dans tous les bandeaux (cahier, médiathèque, premium, etc.). */
+  color: inherit;
 }
 
 h1 { font-size: var(--text-4xl); }

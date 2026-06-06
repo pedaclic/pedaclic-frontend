@@ -401,7 +401,11 @@
   background: #f3f4f6;
 }
 
-.quiz-editor__type-badge {
+/* Badges de type : fond coloré (inline) + texte blanc garanti.
+   .question-editor__type-badge (en-tête de question) partage le même style
+   pour éviter un texte sombre peu lisible sur le fond coloré. */
+.quiz-editor__type-badge,
+.question-editor__type-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
