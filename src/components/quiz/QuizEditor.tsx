@@ -332,9 +332,11 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
               className="quiz-editor__select"
             >
               <option value="">— Sélectionner —</option>
+              {/* Libellé aligné sur le Quiz classique : nom seul,
+                  sans suffixe « (classe) » (évite les « ( ) » vides). */}
               {disciplines.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.nom} ({d.classe})
+                  {d.nom}
                 </option>
               ))}
             </select>
