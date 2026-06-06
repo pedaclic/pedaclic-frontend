@@ -13,7 +13,7 @@
 /**
  * Enumération des types de questions disponibles
  */
-export type TypeQuestion = 
+export type TypeQuestion =
   | 'qcm_unique'      // QCM à choix unique (radio buttons)
   | 'qcm_multiple'    // QCM à choix multiple (checkboxes)
   | 'drag_drop'       // Glisser-déposer (réordonner)
@@ -23,12 +23,52 @@ export type TypeQuestion =
   | 'reponse_courte'  // Réponse courte (un mot ou phrase)
   | 'ordre_chronologique' // Classer par ordre chronologique
   | 'texte_trous_menu'    // Texte à trous avec menu déroulant
+  | 'enregistrement_vocal' // Réponse orale enregistrée par l'élève (compréhension/expression orale)
   | 'essai';           // Réponse libre (texte long)
 
 /**
  * Niveaux de difficulté
  */
 export type DifficulteQuestion = 'facile' | 'moyen' | 'difficile';
+
+// ==================== SUPPORT MULTIMÉDIA (COMPRÉHENSION ORALE) ====================
+
+/**
+ * Nature du support multimédia attaché à une question.
+ * 'audio' → écoute (compréhension orale audio)
+ * 'video' → visionnage (compréhension orale vidéo)
+ */
+export type TypeMediaSupport = 'audio' | 'video';
+
+/**
+ * Origine de l'URL du support :
+ * 'upload'   → fichier hébergé sur Firebase Storage (uploadé depuis l'éditeur)
+ * 'externe'  → lien direct (mp3/mp4) ou plateforme (YouTube / Vimeo) à embarquer
+ */
+export type SourceMediaSupport = 'upload' | 'externe';
+
+/**
+ * Support multimédia OPTIONNEL attaché à une question.
+ * Permet à l'élève d'écouter un audio ou de visionner une vidéo
+ * AVANT de répondre aux questions (QCM, glisser-déposer, association,
+ * enregistrement vocal, etc.). Cœur des évaluations de compréhension orale.
+ *
+ * NB : champ entièrement optionnel — les questions sans support restent
+ *      strictement identiques au comportement existant.
+ */
+export interface MediaSupport {
+  type: TypeMediaSupport;       // audio | video
+  source: SourceMediaSupport;   // upload (Storage) | externe (lien)
+  url: string;                  // URL du média (Storage download URL ou lien externe)
+  titre?: string;               // Légende affichée au-dessus du lecteur
+  transcription?: string;       // Transcription/texte (accessibilité, optionnel — HTML)
+  /**
+   * Nombre maximal d'écoutes/visionnages autorisés (0 ou absent = illimité).
+   * Appliqué uniquement aux lecteurs natifs (fichiers audio/vidéo directs),
+   * comme en conditions d'examen de compréhension orale.
+   */
+  lecturesMax?: number;
+}
 
 // ==================== INTERFACES PAR TYPE ====================
 
@@ -133,6 +173,18 @@ export interface TexteTrousMenuData {
 }
 
 /**
+ * Données spécifiques : Enregistrement vocal (réponse orale de l'élève)
+ * L'élève enregistre sa voix via le micro ; l'audio est uploadé puis
+ * corrigé manuellement par le professeur (comme un essai oral).
+ * Idéal pour l'expression/compréhension orale.
+ */
+export interface EnregistrementVocalData {
+  consigne: string;            // Consigne d'enregistrement (HTML autorisé)
+  dureeMaxSecondes: number;    // Durée maximale autorisée de l'enregistrement
+  reponseModele?: string;      // Indications/réponse attendue (pour le prof, HTML)
+}
+
+/**
  * Mot-clé attendu dans une réponse essai (correction automatique)
  */
 export interface MotCleEssai {
@@ -167,6 +219,12 @@ export interface QuestionAvancee {
   difficulte: DifficulteQuestion;     // Niveau de difficulté
   points: number;                     // Points pour cette question
   imageURL?: string;                  // Image jointe à la question (optionnel)
+  /**
+   * Support multimédia OPTIONNEL (audio/vidéo) à écouter/visionner
+   * avant de répondre — base des évaluations de compréhension orale.
+   * Compatible avec TOUS les types de questions (QCM, glisser-déposer, etc.).
+   */
+  media?: MediaSupport;
   ordre: number;                      // Ordre dans le quiz
 
   // Données spécifiques selon le type
@@ -179,7 +237,8 @@ export interface QuestionAvancee {
           | VraiFauxData
           | ReponseCourteData
           | OrdreChronologiqueData
-          | TexteTrousMenuData;
+          | TexteTrousMenuData
+          | EnregistrementVocalData;
 }
 
 // ==================== QUIZ AVANCÉ ====================
@@ -269,6 +328,10 @@ export interface ReponseEleve {
 
   // Essai : Texte de la réponse (HTML)
   texteReponse?: string;
+
+  // Enregistrement vocal : URL de l'audio uploadé + durée enregistrée (s)
+  audioReponseURL?: string;
+  audioReponseDuree?: number;
 }
 
 /**
@@ -318,6 +381,7 @@ export const TYPE_QUESTION_LABELS: Record<TypeQuestion, string> = {
   reponse_courte: 'Réponse courte',
   ordre_chronologique: 'Ordre chronologique',
   texte_trous_menu: 'Texte à trous (menu)',
+  enregistrement_vocal: 'Enregistrement vocal',
   essai: 'Essai / Rédaction',
 };
 
@@ -335,6 +399,7 @@ export const TYPE_QUESTION_ICONS: Record<TypeQuestion, string> = {
   reponse_courte: '✍️',
   ordre_chronologique: '🔢',
   texte_trous_menu: '📝',
+  enregistrement_vocal: '🎙️',
 };
 
 /**
@@ -350,6 +415,7 @@ export const TYPE_QUESTION_COLORS: Record<TypeQuestion, string> = {
   reponse_courte: '#ca8a04',
   ordre_chronologique: '#c026d3',
   texte_trous_menu: '#0284c7',
+  enregistrement_vocal: '#9333ea',
   essai: '#dc2626',
 };
 
@@ -476,6 +542,16 @@ export function creerQuestionVide(type: TypeQuestion, ordre: number): QuestionAv
             { reponsesAcceptees: ['Dakar'], distracteurs: ['Saint-Louis', 'Thiès'] },
           ],
         } as TexteTrousMenuData,
+      };
+
+    case 'enregistrement_vocal':
+      return {
+        ...base,
+        points: 5,
+        typeData: {
+          consigne: 'Écoutez le support puis enregistrez votre réponse orale.',
+          dureeMaxSecondes: 120,
+        } as EnregistrementVocalData,
       };
 
     case 'essai':

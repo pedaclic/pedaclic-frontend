@@ -1802,3 +1802,313 @@
     text-align: center;
   }
 }
+
+/* ============================================================
+   SUPPORT MULTIMÉDIA — COMPRÉHENSION ORALE (Phase 12+)
+   Éditeur (prof) + Lecteur (élève) + Enregistreur vocal
+   Palette alignée : bleu #2563eb, bordures #e5e7eb, texte #374151
+   ============================================================ */
+
+/* ---------- Éditeur de support (côté professeur) ---------- */
+
+.media-support-editor {
+  /* Encadré violet doux pour distinguer la zone "compréhension orale" */
+  border: 1px dashed #c4b5fd;
+  background: #faf5ff;
+  border-radius: 10px;
+  padding: 0.75rem 0.9rem;
+  margin-top: 0.25rem;
+}
+
+.media-support-editor--empty {
+  border-style: dashed;
+  background: transparent;
+  padding: 0;
+}
+
+/* Bouton "Ajouter un support" */
+.media-support-editor__add {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  border: 1px dashed #a78bfa;
+  background: #f5f3ff;
+  color: #6d28d9;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.media-support-editor__add:hover {
+  background: #ede9fe;
+  border-color: #7c3aed;
+}
+
+/* En-tête de la zone support (titre + retrait) */
+.media-support-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.media-support-editor__title {
+  font-weight: 700;
+  color: #6d28d9;
+  font-size: 0.95rem;
+}
+.media-support-editor__remove {
+  border: none;
+  background: #fef2f2;
+  color: #dc2626;
+  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.media-support-editor__remove:hover { background: #fee2e2; }
+
+/* Lignes de réglages (type / source / quotas) */
+.media-support-editor__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.media-support-editor__row label {
+  font-size: 0.85rem;
+  color: #374151;
+  font-weight: 600;
+}
+.media-support-editor__row select,
+.media-support-editor__num {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+.media-support-editor__num { width: 70px; }
+
+/* Champs (URL, titre, transcription) */
+.media-support-editor__field {
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.media-support-editor__field > label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+}
+.media-support-editor__input,
+.media-support-editor__textarea {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  color: #1f2937;
+}
+.media-support-editor__input:focus,
+.media-support-editor__textarea:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+.media-support-editor__textarea { resize: vertical; }
+
+.media-support-editor__provider {
+  font-size: 0.78rem;
+  color: #6d28d9;
+  font-weight: 600;
+}
+.media-support-editor__hint {
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Bouton d'upload de fichier */
+.media-support-editor__upload-btn {
+  align-self: flex-start;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.media-support-editor__upload-btn:hover { background: #dbeafe; }
+.media-support-editor__upload-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.media-support-editor__error {
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 600;
+  margin: 0.25rem 0 0;
+}
+
+/* Aperçu élève à l'intérieur de l'éditeur */
+.media-support-editor__preview {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #ddd6fe;
+}
+.media-support-editor__preview-label {
+  display: block;
+  font-size: 0.78rem;
+  color: #6b7280;
+  margin-bottom: 0.35rem;
+}
+
+/* ---------- Lecteur de support (côté élève) ---------- */
+
+.media-support-player {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 0.9rem;
+  margin: 0.75rem 0;
+}
+.media-support-player__title {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+/* Lecteurs natifs en pleine largeur */
+.media-support-player__audio { width: 100%; }
+.media-support-player__video {
+  width: 100%;
+  max-height: 420px;
+  border-radius: 8px;
+  background: #000;
+}
+
+/* Intégration responsive 16:9 (YouTube / Vimeo) */
+.media-support-player__embed {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* ratio 16:9 */
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+}
+.media-support-player__embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+/* Indicateur d'écoutes restantes */
+.media-support-player__quota {
+  margin-top: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #d97706;
+}
+.media-support-player__quota--done { color: #dc2626; }
+
+/* Transcription repliable */
+.media-support-player__transcription { margin-top: 0.5rem; }
+.media-support-player__transcription-toggle {
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+.media-support-player__transcription-text {
+  margin-top: 0.4rem;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+/* ---------- Enregistreur vocal (côté élève) ---------- */
+
+.player-enregistrement__consigne {
+  background: #f5f3ff;
+  border-left: 3px solid #9333ea;
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  color: #374151;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+}
+
+.audio-recorder {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fff;
+}
+.audio-recorder__info {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.6rem;
+}
+.audio-recorder__limit { color: #6b7280; font-weight: 400; }
+
+.audio-recorder__controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.audio-recorder__btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.audio-recorder__btn:hover { filter: brightness(0.95); }
+.audio-recorder__btn--record { background: #9333ea; color: #fff; }
+.audio-recorder__btn--stop   { background: #dc2626; color: #fff; }
+.audio-recorder__btn--redo   { background: #f3f4f6; color: #374151; }
+
+/* Pastille rouge clignotante pendant l'enregistrement */
+.audio-recorder__pulse {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #dc2626;
+  display: inline-block;
+  animation: audio-rec-pulse 1s ease-in-out infinite;
+}
+@keyframes audio-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.35; transform: scale(0.8); }
+}
+
+.audio-recorder__timer {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: #dc2626;
+  font-size: 1.05rem;
+}
+.audio-recorder__status { color: #6b7280; font-weight: 600; }
+.audio-recorder__playback { height: 38px; }
+.audio-recorder__saved { color: #059669; font-weight: 600; margin: 0.5rem 0 0; }
+.audio-recorder__error { color: #dc2626; font-weight: 600; margin: 0.5rem 0 0; }
+
+/* Conteneur du support dans le player */
+.quiz-player__media { margin: 0.5rem 0 0.25rem; }

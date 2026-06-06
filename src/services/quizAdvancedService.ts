@@ -492,6 +492,13 @@ export function corrigerQuiz(
         break;
       }
 
+      // ---- Enregistrement vocal ----
+      // Réponse orale : correction toujours manuelle par le professeur.
+      case 'enregistrement_vocal': {
+        correctionManuelleRequise = true;
+        break;
+      }
+
       // ---- Essai ----
       case 'essai': {
         const data = question.typeData as EssaiData;

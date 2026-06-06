@@ -10,6 +10,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { RichTextEditor } from './RichTextEditor';
+import { MediaSupportEditor } from './MediaSupport';
 import {
   QuestionAvancee,
   QuizAvanceFormData,
@@ -25,6 +26,8 @@ import {
   OrdreChronologiqueData,
   TexteTrousMenuData,
   EssaiData,
+  EnregistrementVocalData,
+  MediaSupport,
   QCMOption,
   DragDropItem,
   RelationPair,
@@ -144,6 +147,23 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   const updateQuestion = useCallback((index: number, updates: Partial<QuestionAvancee>) => {
     setQuestions((prev) =>
       prev.map((q, i) => (i === index ? { ...q, ...updates } : q))
+    );
+  }, []);
+
+  /**
+   * Définir / retirer le support multimédia d'une question.
+   * Si media === null, on SUPPRIME la clé (Firestore refuse les valeurs `undefined`).
+   */
+  const updateQuestionMedia = useCallback((index: number, media: MediaSupport | null) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => {
+        if (i !== index) return q;
+        if (!media) {
+          const { media: _retire, ...reste } = q;
+          return reste as QuestionAvancee;
+        }
+        return { ...q, media };
+      })
     );
   }, []);
 
@@ -433,6 +453,8 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
                 setActiveQuestionIndex(activeQuestionIndex === index ? null : index)
               }
               onUpdate={(updates) => updateQuestion(index, updates)}
+              onSetMedia={(media) => updateQuestionMedia(index, media)}
+              auteurId={auteurId}
               onDelete={() => supprimerQuestion(index)}
               onDuplicate={() => dupliquerQuestion(index)}
               onMoveUp={() => deplacerQuestion(index, 'up')}
@@ -517,6 +539,10 @@ interface QuestionEditorItemProps {
   isActive: boolean;
   onToggle: () => void;
   onUpdate: (updates: Partial<QuestionAvancee>) => void;
+  /** Définit/retire le support multimédia (null = retrait). */
+  onSetMedia: (media: MediaSupport | null) => void;
+  /** ID de l'auteur (pour l'upload des supports dans Storage). */
+  auteurId: string;
   onDelete: () => void;
   onDuplicate: () => void;
   onMoveUp: () => void;
@@ -531,6 +557,8 @@ const QuestionEditorItem: React.FC<QuestionEditorItemProps> = ({
   isActive,
   onToggle,
   onUpdate,
+  onSetMedia,
+  auteurId,
   onDelete,
   onDuplicate,
   onMoveUp,
@@ -594,6 +622,15 @@ const QuestionEditorItem: React.FC<QuestionEditorItemProps> = ({
               onChange={(html) => onUpdate({ enonce: html })}
               placeholder="Saisissez l'énoncé de la question..."
               minHeight={100}
+            />
+          </div>
+
+          {/* Support multimédia (compréhension orale) — optionnel, tous types */}
+          <div className="question-editor__field">
+            <MediaSupportEditor
+              value={question.media}
+              onChange={onSetMedia}
+              auteurId={auteurId}
             />
           </div>
 
@@ -677,6 +714,12 @@ const QuestionEditorItem: React.FC<QuestionEditorItemProps> = ({
             {question.type === 'texte_trous_menu' && (
               <TexteTrousMenuEditor
                 data={question.typeData as TexteTrousMenuData}
+                onChange={(typeData) => onUpdate({ typeData })}
+              />
+            )}
+            {question.type === 'enregistrement_vocal' && (
+              <EnregistrementVocalEditor
+                data={question.typeData as EnregistrementVocalData}
                 onChange={(typeData) => onUpdate({ typeData })}
               />
             )}
@@ -1520,5 +1563,58 @@ const EssaiEditor: React.FC<EssaiEditorProps> = ({ data, onChange }) => {
     </div>
   );
 };
+
+// ---- 11. ENREGISTREMENT VOCAL ----
+
+interface EnregistrementVocalEditorProps {
+  data: EnregistrementVocalData;
+  onChange: (data: EnregistrementVocalData) => void;
+}
+
+const EnregistrementVocalEditor: React.FC<EnregistrementVocalEditorProps> = ({ data, onChange }) => (
+  <div className="type-editor">
+    <label className="type-editor__label">🎙️ Réponse orale enregistrée</label>
+    <p className="type-editor__hint">
+      L&apos;élève enregistre sa réponse au micro. L&apos;audio est corrigé manuellement
+      par le professeur (idéal pour l&apos;expression / compréhension orale).
+    </p>
+
+    {/* Consigne d'enregistrement affichée à l'élève */}
+    <div className="type-editor__field-block">
+      <label>Consigne d&apos;enregistrement</label>
+      <RichTextEditor
+        value={data.consigne}
+        onChange={(html) => onChange({ ...data, consigne: html })}
+        placeholder="Ex : Après l'écoute, résumez oralement le document en 1 minute."
+        minHeight={60}
+        toolbar={['bold', 'italic', 'color']}
+      />
+    </div>
+
+    {/* Durée maximale de l'enregistrement */}
+    <div className="type-editor__field-inline">
+      <label>Durée maximale (secondes) :</label>
+      <input
+        type="number"
+        min={10}
+        max={600}
+        value={data.dureeMaxSecondes}
+        onChange={(e) => onChange({ ...data, dureeMaxSecondes: Number(e.target.value) || 0 })}
+      />
+    </div>
+
+    {/* Indications / réponse attendue (pour le prof) */}
+    <div className="type-editor__field-block">
+      <label>Réponse attendue / critères (optionnel — pour le prof)</label>
+      <RichTextEditor
+        value={data.reponseModele || ''}
+        onChange={(html) => onChange({ ...data, reponseModele: html })}
+        placeholder="Éléments attendus, barème oral…"
+        minHeight={60}
+        toolbar={['bold', 'italic', 'color']}
+      />
+    </div>
+  </div>
+);
 
 export default QuizEditor;

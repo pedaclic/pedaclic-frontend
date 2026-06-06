@@ -25,11 +25,14 @@ import {
   OrdreChronologiqueData,
   TexteTrousMenuData,
   EssaiData,
+  EnregistrementVocalData,
   TYPE_QUESTION_ICONS,
   TYPE_QUESTION_LABELS,
   TYPE_QUESTION_COLORS,
 } from '../../types/quiz-advanced';
 import { soumettreQuiz } from '../../services/quizAdvancedService';
+import { MediaSupportPlayer } from './MediaSupport';
+import { AudioRecorder } from './AudioRecorder';
 import '../../styles/quiz-advanced.css';
 
 // ==================== INTERFACES ====================
@@ -286,6 +289,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           dangerouslySetInnerHTML={{ __html: currentQuestion.enonce }}
         />
 
+        {/* Support multimédia (compréhension orale) — affiché avant la réponse */}
+        {currentQuestion.media && currentQuestion.media.url && (
+          <div className="quiz-player__media">
+            <MediaSupportPlayer media={currentQuestion.media} />
+          </div>
+        )}
+
         {/* ---- Composant de réponse selon le type ---- */}
         <div className="quiz-player__answer-area">
           {currentQuestion.type === 'qcm_unique' && (
@@ -351,6 +361,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               question={currentQuestion}
               reponse={reponses.get(currentQuestion.id)}
               onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+            />
+          )}
+          {currentQuestion.type === 'enregistrement_vocal' && (
+            <EnregistrementVocalPlayer
+              question={currentQuestion}
+              reponse={reponses.get(currentQuestion.id)}
+              onUpdate={(data) => updateReponse(currentQuestion.id, data)}
+              userId={userId}
             />
           )}
           {currentQuestion.type === 'essai' && (
@@ -981,6 +999,40 @@ const EssaiPlayer: React.FC<{
         onChange={(e) => setTexte(e.target.value)}
         placeholder="Rédigez votre réponse ici..."
         rows={10}
+      />
+    </div>
+  );
+};
+
+// ---- 11. ENREGISTREMENT VOCAL ----
+
+const EnregistrementVocalPlayer: React.FC<{
+  question: QuestionAvancee;
+  reponse?: ReponseEleve;
+  onUpdate: (data: Partial<ReponseEleve>) => void;
+  userId: string;
+}> = ({ question, reponse, onUpdate, userId }) => {
+  const data = question.typeData as EnregistrementVocalData;
+
+  return (
+    <div className="player-enregistrement">
+      {/* Consigne d'enregistrement */}
+      {data.consigne && (
+        <div
+          className="player-enregistrement__consigne"
+          dangerouslySetInnerHTML={{ __html: data.consigne }}
+        />
+      )}
+
+      {/* Enregistreur micro + upload Storage */}
+      <AudioRecorder
+        userId={userId}
+        questionId={question.id}
+        dureeMaxSecondes={data.dureeMaxSecondes}
+        existingUrl={reponse?.audioReponseURL}
+        onRecorded={(url, duree) =>
+          onUpdate({ audioReponseURL: url, audioReponseDuree: duree })
+        }
       />
     </div>
   );
