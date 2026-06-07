@@ -291,6 +291,57 @@ export interface BuildEnhancedConsignesArgs {
   classe: string;
   /** Consignes spéciales déjà saisies par le prof (priorité maximale) */
   existing?: string;
+  /**
+   * Niveau d'allègement de la charge de génération (anti-504).
+   *   0 = qualité pleine (comportement historique, AUCUN changement).
+   *   1 = mode rapide : borne le volume produit (nombre d'exercices/questions),
+   *       corrigés concis, vérification ciblée (pas de reprise intégrale).
+   *   2 = mode minimal : volume encore réduit, l'essentiel uniquement.
+   *
+   * Utilisé UNIQUEMENT par le service lors des nouvelles tentatives après un
+   * 504/502/503 du serveur d'hébergement : la 1ʳᵉ tentative reste en qualité
+   * pleine, les suivantes réduisent le scope pour tenir dans le délai du proxy.
+   * Voir generateContent() dans aiGeneratorService.ts.
+   */
+  liteLevel?: 0 | 1 | 2;
+}
+
+/**
+ * Directive « mode rapide » injectée lors d'un retry après timeout serveur.
+ * Elle ne s'applique qu'aux types de génération les plus lourds (ceux qui
+ * produisent de longs corrigés et déclenchent le 504). L'objectif est de
+ * réduire le nombre de tokens générés côté backend pour passer sous le délai
+ * du proxy, SANS sacrifier la justesse pédagogique (les corrigés restent
+ * complets, seul le volume global est borné).
+ */
+function buildFastModeDirective(
+  type: GenerationType,
+  liteLevel: 1 | 2
+): string {
+  // Types « lourds » concernés par la dégradation gracieuse.
+  const heavyTypes: GenerationType[] = [
+    'exercices_corriges',
+    'sujet_examen',
+    'evaluation_personnalisee',
+    'correction_sujet',
+    'sujet_avec_corrige',
+  ];
+  if (!heavyTypes.includes(type)) {
+    // Pour les types légers (fiche, quiz…), on ne touche à rien :
+    // ils ne provoquent pas le timeout.
+    return '';
+  }
+
+  // Bornes de volume selon le niveau d'allègement.
+  const maxExos = liteLevel === 1 ? 4 : 2;
+
+  return [
+    '[MODE RAPIDE — LE SERVEUR A DÉPASSÉ LE DÉLAI À LA TENTATIVE PRÉCÉDENTE]',
+    `Génère AU PLUS ${maxExos} exercice${maxExos > 1 ? 's' : ''} (les plus représentatifs du chapitre), du plus simple au plus complexe.`,
+    'Corrigés COMPLETS mais CONCIS : va droit aux étapes essentielles, sans digression ni reformulation superflue.',
+    "Vérification CIBLÉE : si une étape est douteuse, corrige uniquement cette étape — ne reprends PAS l'exercice entier (cela alourdit inutilement la réponse).",
+    'Priorité : produire une réponse complète et correcte rapidement, dans le délai imparti.',
+  ].join('\n');
 }
 
 /**
@@ -313,6 +364,16 @@ export function buildEnhancedConsignes(args: BuildEnhancedConsignesArgs): string
   const consigneType = CONSIGNES_TYPE[args.type] || '';
 
   const blocs: string[] = [];
+
+  // 0. Mode rapide (anti-504) — uniquement lors d'un retry après timeout serveur.
+  //    Placé tout en haut pour que le LLM le traite comme contrainte dominante
+  //    et borne réellement le volume produit. Vide en fonctionnement normal
+  //    (liteLevel 0 ou absent) → aucun impact sur le happy path.
+  const liteLevel = args.liteLevel ?? 0;
+  if (liteLevel > 0) {
+    const fastDirective = buildFastModeDirective(args.type, liteLevel as 1 | 2);
+    if (fastDirective) blocs.push(fastDirective);
+  }
 
   // 1. Prof en premier — sa voix prime sur les automatismes
   if (args.existing?.trim()) {

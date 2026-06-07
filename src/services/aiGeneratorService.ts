@@ -168,8 +168,17 @@ const MAX_CONSIGNES_TOTAL_CHARS = 40_000;
 /**
  * Fusionne le texte source et les options de structure dans `consignesSpeciales`
  * pour compatibilité avec l'API existante, et retire `sourceText` du corps envoyé.
+ *
+ * @param req       - Requête de génération
+ * @param liteLevel - Niveau d'allègement anti-504 (0 = qualité pleine par défaut).
+ *                    Augmenté par generateContent() lors des retries après un
+ *                    504/502/503 pour réduire le volume généré et tenir dans le
+ *                    délai du proxy d'hébergement.
  */
-function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
+function finalizeGenerationRequest(
+  req: GenerationRequest,
+  liteLevel: 0 | 1 | 2 = 0
+): GenerationRequest {
   // ── Mapping des types frontend non supportés par le backend Railway ────────
   // 'correction_sujet' et 'sujet_avec_corrige' sont des types frontend uniquement.
   // On les convertit vers les types backend acceptés et on enrichit les consignes.
@@ -221,6 +230,7 @@ function finalizeGenerationRequest(req: GenerationRequest): GenerationRequest {
     discipline: req.discipline,
     classe: req.classe,
     existing: o.consignesSpeciales,
+    liteLevel,
   });
 
   const parts: string[] = [];
@@ -407,17 +417,20 @@ export async function pingServeurIA(): Promise<void> {
 export async function generateContent(
   request: GenerationRequest
 ): Promise<GenerationResponse> {
-  const payload = finalizeGenerationRequest(request);
-  const body = JSON.stringify(payload);
-
-  const fetchOptions: RequestInit = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body,
-  };
-
   const url = `${API_BASE_URL}/api/generate`;
   const MAX_TENTATIVES = 3;
+
+  // ── Dégradation gracieuse anti-504 ─────────────────────────────────────────
+  // Le corps est (re)construit à CHAQUE tentative avec un niveau d'allègement
+  // croissant : tentative 1 = qualité pleine (liteLevel 0), tentatives suivantes
+  // = scope réduit (liteLevel 1 puis 2) pour les types lourds (exercices_corrigés,
+  // sujets…). Objectif : si le serveur a dépassé le délai en pleine qualité, la
+  // tentative suivante génère moins de tokens et passe sous le timeout du proxy.
+  // Le happy path (réponse rapide à la 1ʳᵉ tentative) reste strictement inchangé.
+  const buildBodyForAttempt = (attempt: number): string => {
+    const liteLevel = Math.min(attempt, 2) as 0 | 1 | 2;
+    return JSON.stringify(finalizeGenerationRequest(request, liteLevel));
+  };
 
   // Ping de réveil — s'assurer que Railway est chaud avant la requête lourde
   try {
@@ -430,6 +443,16 @@ export async function generateContent(
 
   for (let t = 0; t < MAX_TENTATIVES; t++) {
     try {
+      const fetchOptions: RequestInit = {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: buildBodyForAttempt(t),
+      };
+      if (t > 0) {
+        console.warn(
+          `[aiGeneratorService] Tentative ${t + 1}/${MAX_TENTATIVES} en mode rapide (allègement niveau ${Math.min(t, 2)}) pour tenir dans le délai serveur.`
+        );
+      }
       const response = await fetchAvecTimeout(url, fetchOptions);
       const status = response.status;
 
