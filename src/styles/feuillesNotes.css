@@ -1061,3 +1061,68 @@ th.col-note:hover .eval-actions { opacity: 1; }
      POIGNÉE DE RESIZE sur la colonne Élève, qui peut être réduite
      jusqu'à 90 px (la moitié de sa largeur d'origine de 180 px).
    ══════════════════════════════════════════════════════════════════ */
+
+/* ════════════════════════════════════════════════════════════════════
+   🆕 RELÉGATION AUTOMATIQUE DES LIGNES SAISIES (juin 2026)
+   ────────────────────────────────────────────────────────────────────
+   Quand une note (ou une absence) est saisie pour un élève, sa ligne est
+   « reléguée » : retirée de la zone de saisie et masquée par défaut. Un
+   bouton bascule permet de réafficher ces lignes complétées. Les règles
+   ci-dessous stylent : (1) la barre/bouton de bascule, (2) les lignes
+   reléguées lorsqu'elles sont affichées, (3) l'indication « zone vide ».
+   ════════════════════════════════════════════════════════════════════ */
+
+/* (1) Ligne contenant le bouton bascule — discrète, légèrement teintée
+       pour la séparer visuellement des lignes d'élèves. La cellule occupe
+       toute la largeur (colSpan piloté côté React). */
+.feuille-editor-table tbody tr.feuille-toggle-completees td {
+  padding: 8px 12px;
+  background: var(--color-bg-secondary, #f3f4f6);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+/* Bouton de bascule : aspect « lien-bouton » sobre, icône + libellé. */
+.feuille-toggle-completees-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary, #2563eb);
+  background: transparent;
+  border: 1px solid var(--color-primary, #2563eb);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.feuille-toggle-completees-btn:hover {
+  background: color-mix(in srgb, var(--color-primary, #2563eb) 10%, white);
+}
+
+/* Mention « zone de saisie vide » affichée à côté du bouton quand il ne
+   reste plus aucune ligne à compléter. */
+.feuille-zone-vide-hint {
+  margin-left: 12px;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-success, #16a34a);
+}
+
+/* (2) Lignes reléguées (complétées) lorsqu'elles sont affichées :
+       grisées et en italique pour signaler qu'elles sortent du flux de
+       saisie courant, tout en restant parfaitement lisibles et éditables. */
+.feuille-editor-table tbody tr.feuille-ligne-releguee td {
+  opacity: 0.62;
+  font-style: italic;
+  background: color-mix(in srgb, var(--color-bg-secondary, #f3f4f6) 60%, white);
+}
+/* La cellule Élève figée doit conserver un fond opaque cohérent. */
+.feuille-editor-table tbody tr.feuille-ligne-releguee td.col-eleve {
+  background: var(--color-bg-secondary, #f3f4f6);
+}
+/* Au survol, on rétablit une pleine opacité : édition confortable d'une
+   ligne reléguée que le prof aurait rouverte. */
+.feuille-editor-table tbody tr.feuille-ligne-releguee:hover td {
+  opacity: 1;
+}
