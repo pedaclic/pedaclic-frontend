@@ -19,10 +19,13 @@
  * ============================================================
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Lock, Star } from 'lucide-react';
+// 🆕 Icônes des passerelles directes posées sur chaque carte de groupe :
+//    Appel (registre d'appel), Suivi pédagogique (Notes / Cahier) et
+//    Statistiques détaillées des notes.
+import { Lock, Star, ClipboardCheck, BookOpen, BarChart2, ChevronDown, FileSpreadsheet, NotebookPen } from 'lucide-react';
 import GroupeManager from './GroupeManager';
 import GroupeDetail from './GroupeDetail';
 import {
@@ -30,6 +33,9 @@ import {
   getGroupeById,
   getStatsGroupe
 } from '../../services/profGroupeService';
+// 🆕 Récupération des feuilles de notes d'un groupe (passerelle « Statistiques »).
+import { getFeuillesByGroupe } from '../../services/feuillesNotesService';
+import { useToast } from '../../contexts/ToastContext';
 import type { GroupeProf, StatsGroupe } from '../../types/prof';
 import { estFormuleALaCarte } from '../../types/premiumPlans';
 import '../../styles/prof.css';
@@ -89,6 +95,7 @@ const ProfDashboard: React.FC = () => {
   // ===== Hooks =====
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   // useLocation : pour réagir à un retour explicite vers un groupe précis
   // (ex. depuis l'éditeur de feuille de notes → onglet « Notes »).
   const location = useLocation();
@@ -277,6 +284,87 @@ const ProfDashboard: React.FC = () => {
     setGroupeSelectionne(groupe);
     setVueActive('detail');
   };
+
+  // ════════════════════════════════════════════════════════════════
+  // 🆕 PASSERELLES DIRECTES SUR LES CARTES DE GROUPE (Vue d'ensemble)
+  // ────────────────────────────────────────────────────────────────
+  //   Chaque carte propose trois accès rapides :
+  //     • Appel        → onglet « appel » du détail du groupe ;
+  //     • Suivi péda.  → menu : Notes (onglet « notes ») ou
+  //                      Cahier de textes (onglet « cahier ») ;
+  //     • Statistiques → fenêtre stats détaillées de la feuille de
+  //                      notes la plus récente du groupe.
+  //   On réutilise le mécanisme existant (sélection locale + onglet
+  //   initial) pour appel/suivi, et la navigation route pour les stats.
+  // ════════════════════════════════════════════════════════════════
+
+  /** ID du groupe dont le mini-menu « Suivi » est ouvert (null = aucun). */
+  const [menuSuiviGroupeId, setMenuSuiviGroupeId] = useState<string | null>(null);
+  /** ID du groupe pour lequel on charge les feuilles (passerelle Stats). */
+  const [statsLoadingGroupeId, setStatsLoadingGroupeId] = useState<string | null>(null);
+  /** Conteneur des cartes — sert à fermer le menu « Suivi » au clic extérieur. */
+  const groupesGridRef = useRef<HTMLDivElement | null>(null);
+
+  /** Ouvre le détail d'un groupe directement sur l'onglet demandé. */
+  const ouvrirGroupeOnglet = (groupe: GroupeProf, onglet: string) => {
+    setMenuSuiviGroupeId(null);
+    setGroupeSelectionne(groupe);
+    setInitialOnglet(onglet);
+    setVueActive('detail');
+  };
+
+  /**
+   * Passerelle « Statistiques détaillées » : on récupère les feuilles de
+   * notes du groupe, on ouvre l'éditeur de la PLUS RÉCENTE avec la fenêtre
+   * de statistiques pré-ouverte (`location.state.openStats`). Si le groupe
+   * n'a encore aucune feuille, on guide le prof vers l'onglet « Notes ».
+   */
+  const ouvrirStatsDetaillees = async (groupe: GroupeProf) => {
+    setMenuSuiviGroupeId(null);
+    if (statsLoadingGroupeId) return; // anti double-clic
+    setStatsLoadingGroupeId(groupe.id);
+    try {
+      const feuilles = await getFeuillesByGroupe(groupe.id);
+      if (!feuilles || feuilles.length === 0) {
+        toast.info(
+          `Aucune feuille de notes pour « ${groupe.nom} ». Créez-en une depuis l'onglet Notes pour voir les statistiques.`,
+        );
+        // On ouvre tout de même l'onglet Notes pour faciliter la création.
+        ouvrirGroupeOnglet(groupe, 'notes');
+        return;
+      }
+      // Feuille la plus récente : on trie par date de mise à jour puis création.
+      const toMs = (d: any): number => {
+        if (!d) return 0;
+        if (typeof d?.toMillis === 'function') return d.toMillis(); // Firestore Timestamp
+        const t = new Date(d).getTime();
+        return Number.isFinite(t) ? t : 0;
+      };
+      const recente = [...feuilles].sort(
+        (a, b) => (toMs(b.updatedAt) || toMs(b.createdAt)) - (toMs(a.updatedAt) || toMs(a.createdAt)),
+      )[0];
+      navigate(`/prof/feuilles/${recente.id}`, {
+        state: { openStats: true, groupeId: groupe.id, fromTab: 'notes' },
+      });
+    } catch (err: any) {
+      console.error('Erreur ouverture statistiques détaillées :', err);
+      toast.error('Impossible d\'ouvrir les statistiques pour ce groupe.');
+    } finally {
+      setStatsLoadingGroupeId(null);
+    }
+  };
+
+  // Fermeture du mini-menu « Suivi » au clic en dehors des cartes.
+  useEffect(() => {
+    if (!menuSuiviGroupeId) return;
+    const onDocMouseDown = (ev: MouseEvent) => {
+      if (groupesGridRef.current && !groupesGridRef.current.contains(ev.target as Node)) {
+        setMenuSuiviGroupeId(null);
+      }
+    };
+    document.addEventListener('mousedown', onDocMouseDown);
+    return () => document.removeEventListener('mousedown', onDocMouseDown);
+  }, [menuSuiviGroupeId]);
 
   /**
    * Retour à la vue d'ensemble depuis le détail
@@ -576,7 +664,7 @@ const ProfDashboard: React.FC = () => {
           ) : (
             <div className="prof-overview-groupes">
               <h2>Mes groupes</h2>
-              <div className="prof-overview-groupes-grid">
+              <div className="prof-overview-groupes-grid" ref={groupesGridRef}>
                 {groupesRecap.map(groupe => (
                   <div
                     key={groupe.id}
@@ -609,6 +697,77 @@ const ProfDashboard: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {/* ──────────────────────────────────────────────────
+                        🆕 PASSERELLES DIRECTES
+                        ──────────────────────────────────────────────────
+                        Trois accès rapides posés en pied de carte. Chaque
+                        bouton fait `stopPropagation()` pour NE PAS déclencher
+                        le `onClick` de la carte (qui ouvre l'aperçu).
+                        ────────────────────────────────────────────────── */}
+                    <div
+                      className="prof-groupe-passerelles"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* Appel → onglet « appel » */}
+                      <button
+                        type="button"
+                        className="prof-passerelle-btn"
+                        title={`Faire l'appel — ${groupe.nom}`}
+                        onClick={(e) => { e.stopPropagation(); ouvrirGroupeOnglet(groupe, 'appel'); }}
+                      >
+                        <ClipboardCheck size={15} /> Appel
+                      </button>
+
+                      {/* Suivi pédagogique → menu Notes / Cahier */}
+                      <div className="prof-passerelle-menu-wrap">
+                        <button
+                          type="button"
+                          className="prof-passerelle-btn"
+                          aria-haspopup="menu"
+                          aria-expanded={menuSuiviGroupeId === groupe.id}
+                          title="Suivi pédagogique — choisir Notes ou Cahier de textes"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMenuSuiviGroupeId((cur) => (cur === groupe.id ? null : groupe.id));
+                          }}
+                        >
+                          <BookOpen size={15} /> Suivi <ChevronDown size={13} />
+                        </button>
+                        {menuSuiviGroupeId === groupe.id && (
+                          <div className="prof-passerelle-menu" role="menu">
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="prof-passerelle-menu-item"
+                              onClick={(e) => { e.stopPropagation(); ouvrirGroupeOnglet(groupe, 'notes'); }}
+                            >
+                              <FileSpreadsheet size={14} /> Feuilles de notes
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              className="prof-passerelle-menu-item"
+                              onClick={(e) => { e.stopPropagation(); ouvrirGroupeOnglet(groupe, 'cahier'); }}
+                            >
+                              <NotebookPen size={14} /> Cahier de textes
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Statistiques → fenêtre stats détaillées (feuille récente) */}
+                      <button
+                        type="button"
+                        className="prof-passerelle-btn"
+                        title={`Statistiques détaillées des notes — ${groupe.nom}`}
+                        disabled={statsLoadingGroupeId === groupe.id}
+                        onClick={(e) => { e.stopPropagation(); ouvrirStatsDetaillees(groupe); }}
+                      >
+                        <BarChart2 size={15} /> {statsLoadingGroupeId === groupe.id ? '…' : 'Stats'}
+                      </button>
+                    </div>
+
                     <span className="prof-overview-groupe-arrow">→</span>
                   </div>
                 ))}

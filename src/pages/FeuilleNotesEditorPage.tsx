@@ -187,6 +187,23 @@ const FeuilleNotesEditorPage: React.FC = () => {
   }, [load]);
 
   /**
+   * 🆕 Ouverture automatique de la fenêtre « Statistiques » lorsqu'on arrive
+   *    sur l'éditeur via la passerelle « Statistiques » d'une carte de groupe
+   *    (Vue d'ensemble) : l'appelant pose `location.state.openStats = true`.
+   *    On garde un drapeau (`statsAutoOpenRef`) pour n'ouvrir qu'UNE fois et
+   *    on NE touche PAS à `location.state` (le bouton « Retour » continue de
+   *    lire `groupeId` / `fromTab`).
+   */
+  const statsAutoOpenRef = useRef(false);
+  useEffect(() => {
+    const st = (location.state ?? {}) as { openStats?: boolean };
+    if (st.openStats && !statsAutoOpenRef.current) {
+      statsAutoOpenRef.current = true;
+      setShowStatsModal(true);
+    }
+  }, [location.state]);
+
+  /**
    * 🆕 Récupère les cahiers de textes du prof rattachés au groupe de la
    *    feuille courante. Sert à proposer le bouton « Cahier de textes »
    *    dans l'en-tête (1 seul cahier → navigation directe ; plusieurs →
@@ -273,8 +290,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
     eleveId: string,
     evalId: string,
     direction: 'right' | 'left' | 'down' | 'up',
-  ) => {
-    if (!feuille) return;
+  ): boolean => {
+    // 🆕 Retourne `true` si le focus a effectivement bougé vers une autre
+    //    cellule, `false` sinon (bord de grille atteint). L'appelant s'en
+    //    sert pour, en fin de colonne, refermer l'édition (et donc replier
+    //    la ligne validée) plutôt que de laisser la cellule ouverte.
+    if (!feuille) return false;
     const evaluationsList = feuille.evaluations || [];
     // 🆕 La navigation se fait sur les lignes RÉELLEMENT AFFICHÉES
     //    (`lignesAffichees`), dans leur ordre d'origine : on ne se déplace
@@ -284,7 +305,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
     const rowsNav = lignesAffichees;
     const colIdx = evaluationsList.findIndex((e) => e.id === evalId);
     const rowIdx = rowsNav.findIndex((l) => l.eleveId === eleveId);
-    if (colIdx < 0 || rowIdx < 0) return;
+    if (colIdx < 0 || rowIdx < 0) return false;
 
     let nextRow = rowIdx;
     let nextCol = colIdx;
@@ -302,8 +323,8 @@ const FeuilleNotesEditorPage: React.FC = () => {
     }
 
     // Limites : ne sort pas de la grille visible
-    if (nextRow < 0 || nextRow >= rowsNav.length) return;
-    if (nextCol < 0 || nextCol >= evaluationsList.length) return;
+    if (nextRow < 0 || nextRow >= rowsNav.length) return false;
+    if (nextCol < 0 || nextCol >= evaluationsList.length) return false;
 
     const nextLigne = rowsNav[nextRow];
     const nextEval = evaluationsList[nextCol];
@@ -313,6 +334,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
     // l'effet ci-dessous dès que l'input sera monté par React.
     setEditCell({ eleveId: nextLigne.eleveId, evalId: nextEval.id });
     setDraftNote(val != null ? String(val) : '');
+    return true;
   };
 
   /**
@@ -1866,11 +1888,27 @@ const FeuilleNotesEditorPage: React.FC = () => {
                           onKeyDown={(ev) => {
                             // ── Navigation clavier ──
                             //   Enter / Tab       → cellule suivante (à droite, wrap en bas)
-                            //   Shift+Tab         → cellule précédente
+                            //   Entrée            → VALIDE et descend à l'élève
+                            //                        suivant (Maj+Entrée = remonte).
+                            //                        ✨ La ligne validée se replie
+                            //                        immédiatement hors de la zone
+                            //                        de saisie (repli post-validation).
+                            //   Tab / Maj+Tab     → évaluation suivante / précédente
+                            //                        du MÊME élève (saisie ligne par
+                            //                        ligne préservée).
                             //   Flèche ↓ / ↑      → ligne suivante / précédente (même évaluation)
                             //   Flèche → / ←      → cellule droite / gauche (même ligne)
                             //   Escape            → annule l'édition en cours
-                            if (ev.key === 'Enter' || ev.key === 'Tab') {
+                            if (ev.key === 'Enter') {
+                              // Validation : on enregistre puis on descend vers
+                              // l'élève suivant. Si on est déjà sur le dernier
+                              // élève visible, `moveFocus` renvoie false : on
+                              // referme alors la cellule pour replier la ligne.
+                              ev.preventDefault();
+                              handleNoteChange(ligne.eleveId, e.id, draftNote, true);
+                              const aBouge = moveFocus(ligne.eleveId, e.id, ev.shiftKey ? 'up' : 'down');
+                              if (!aBouge) setEditCell(null);
+                            } else if (ev.key === 'Tab') {
                               ev.preventDefault();
                               handleNoteChange(ligne.eleveId, e.id, draftNote, true);
                               moveFocus(ligne.eleveId, e.id, ev.shiftKey ? 'left' : 'right');
