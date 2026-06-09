@@ -276,11 +276,12 @@ const FeuilleNotesEditorPage: React.FC = () => {
   ) => {
     if (!feuille) return;
     const evaluationsList = feuille.evaluations || [];
-    // 🆕 La navigation se fait sur les lignes VISIBLES de la zone de saisie
-    //    (`lignesActives`), pas sur l'ensemble `lignes` : les lignes déjà
-    //    reléguées (masquées) sont sautées. La ligne courante reste toujours
-    //    présente dans `lignesActives` (cf. partition), donc `rowIdx` est valide.
-    const rowsNav = lignesActives;
+    // 🆕 La navigation se fait sur les lignes RÉELLEMENT AFFICHÉES
+    //    (`lignesAffichees`), dans leur ordre d'origine : on ne se déplace
+    //    qu'entre cellules visibles. La ligne en cours d'édition y figure
+    //    toujours (cf. filtre `l.eleveId === eleveActifId`), donc `rowIdx`
+    //    est valide ; les lignes masquées sont simplement ignorées.
+    const rowsNav = lignesAffichees;
     const colIdx = evaluationsList.findIndex((e) => e.id === evalId);
     const rowIdx = rowsNav.findIndex((l) => l.eleveId === eleveId);
     if (colIdx < 0 || rowIdx < 0) return;
@@ -577,26 +578,43 @@ const FeuilleNotesEditorPage: React.FC = () => {
   );
 
   /**
-   * 🆕 Partition des lignes en deux groupes :
-   *   • `lignesActives`    → zone de saisie (élèves sans aucune donnée).
-   *   • `lignesReleguees`  → lignes déjà traitées (masquées par défaut).
+   * 🆕 RELÉGATION — calculs dérivés (l'ORDRE NATUREL des élèves est préservé).
    *
-   *   ⚠️ La ligne EN COURS D'ÉDITION (`editCell.eleveId`) reste TOUJOURS dans
-   *      la zone active, même si on vient d'y saisir une note : sinon elle
-   *      disparaîtrait sous les doigts du professeur pendant la frappe. Elle
-   *      ne bascule en zone reléguée qu'une fois le focus parti vers une
-   *      autre ligne (re-render avec un `editCell` différent).
+   *   • `eleveActifId`     : élève dont une cellule est en cours d'édition.
+   *   • `estReleguee(id)`  : la ligne est « traitée » (≥1 note ou absence)
+   *                          ET n'est pas la ligne en cours d'édition (donc
+   *                          à griser / masquer).
+   *   • `lignesCompletees` : toutes les lignes traitées (compteur du bouton).
+   *   • `lignesAffichees`  : lignes RÉELLEMENT rendues, dans l'ordre d'origine.
+   *                          Une ligne est affichée si :
+   *                            – le prof a choisi d'afficher les complétées, OU
+   *                            – c'est la ligne en cours d'édition (jamais
+   *                              masquée sous les doigts du professeur), OU
+   *                            – elle n'a encore aucune donnée (zone de saisie).
+   *
+   *   ⚠️ La NAVIGATION CLAVIER s'appuie sur `lignesAffichees` : on ne se
+   *      déplace qu'entre cellules RÉELLEMENT VISIBLES, dans leur ordre
+   *      d'affichage. C'est la clé pour que Tab / Entrée / flèches
+   *      fonctionnent dans tous les cas — y compris quand les lignes
+   *      complétées sont affichées (sinon elles étaient sautées, ce qui
+   *      donnait l'impression d'une navigation « morte »).
    */
   const eleveActifId = editCell?.eleveId ?? null;
-  const { lignesActives, lignesReleguees } = React.useMemo(() => {
-    const actives: LigneNotes[] = [];
-    const releguees: LigneNotes[] = [];
-    for (const l of lignes) {
-      if (l.eleveId !== eleveActifId && aDesDonnees(l.eleveId)) releguees.push(l);
-      else actives.push(l);
-    }
-    return { lignesActives: actives, lignesReleguees: releguees };
-  }, [lignes, eleveActifId, aDesDonnees]);
+  const estReleguee = useCallback(
+    (eleveId: string): boolean => eleveId !== eleveActifId && aDesDonnees(eleveId),
+    [eleveActifId, aDesDonnees],
+  );
+  const lignesCompletees = React.useMemo(
+    () => lignes.filter((l) => aDesDonnees(l.eleveId)),
+    [lignes, aDesDonnees],
+  );
+  const lignesAffichees = React.useMemo(
+    () =>
+      lignes.filter(
+        (l) => showCompletees || l.eleveId === eleveActifId || !aDesDonnees(l.eleveId),
+      ),
+    [lignes, showCompletees, eleveActifId, aDesDonnees],
+  );
 
   /**
    * Démarre le redimensionnement d'une colonne.
@@ -921,17 +939,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
     (l) => l.nbAbsencesJustifiees > 0 || l.nbAbsencesNonJustifiees > 0,
   ).length;
 
-  // 🆕 RELÉGATION — données de rendu de la zone de saisie.
-  //   • `relegueeIds`     : repérage rapide (Set) des lignes traitées,
-  //                         pour leur appliquer le style « grisé » au rendu.
-  //   • `lignesAffichees` : lignes effectivement rendues = lignes actives
-  //                         (toujours) + lignes reléguées si le prof a choisi
-  //                         de les afficher via le bouton bascule.
-  //   `colSpanTotal` = 1 (colonne Élève) + N évaluations + 4 colonnes synthèse.
-  const relegueeIds = new Set(lignesReleguees.map((l) => l.eleveId));
-  const lignesAffichees = showCompletees
-    ? [...lignesActives, ...lignesReleguees]
-    : lignesActives;
+  // 🆕 RELÉGATION — `lignesAffichees`, `lignesCompletees` et `estReleguee`
+  //    sont calculés plus haut (avant le retour anticipé, car la navigation
+  //    clavier les utilise aussi). Ici on ne calcule que la portée des
+  //    cellules pleine largeur : 1 (colonne Élève) + N évaluations + 4
+  //    colonnes de synthèse.
   const colSpanTotal = evals.length + 5;
 
   return (
@@ -1711,7 +1723,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
                 nombre de lignes déjà saisies (donc masquées de la zone de
                 saisie) et permet de les afficher / masquer à la demande.
                ─────────────────────────────────────────────────────────── */}
-            {lignesReleguees.length > 0 && (
+            {lignesCompletees.length > 0 && (
               <tr className="feuille-toggle-completees">
                 <td colSpan={colSpanTotal}>
                   <button
@@ -1727,11 +1739,11 @@ const FeuilleNotesEditorPage: React.FC = () => {
                   >
                     {showCompletees ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     {showCompletees
-                      ? `Masquer les ${lignesReleguees.length} ligne${lignesReleguees.length > 1 ? 's' : ''} complétée${lignesReleguees.length > 1 ? 's' : ''}`
-                      : `Afficher les ${lignesReleguees.length} ligne${lignesReleguees.length > 1 ? 's' : ''} complétée${lignesReleguees.length > 1 ? 's' : ''}`}
+                      ? `Masquer les ${lignesCompletees.length} ligne${lignesCompletees.length > 1 ? 's' : ''} complétée${lignesCompletees.length > 1 ? 's' : ''}`
+                      : `Afficher les ${lignesCompletees.length} ligne${lignesCompletees.length > 1 ? 's' : ''} complétée${lignesCompletees.length > 1 ? 's' : ''}`}
                   </button>
-                  {/* Indication discrète quand la zone de saisie est vide. */}
-                  {lignesActives.length === 0 && (
+                  {/* Indication discrète quand plus aucune ligne n'est à compléter. */}
+                  {lignesCompletees.length === lignes.length && (
                     <span className="feuille-zone-vide-hint">
                       ✓ Toutes les lignes sont saisies — zone de saisie vide.
                     </span>
@@ -1747,7 +1759,7 @@ const FeuilleNotesEditorPage: React.FC = () => {
             {lignesAffichees.map((ligne) => (
               <tr
                 key={ligne.eleveId}
-                className={relegueeIds.has(ligne.eleveId) ? 'feuille-ligne-releguee' : undefined}
+                className={estReleguee(ligne.eleveId) ? 'feuille-ligne-releguee' : undefined}
               >
                 <td className="col-eleve">
                   {/* 🆕 Pictogramme ♂ / ♀ / ✱ AVANT le nom — invisible
