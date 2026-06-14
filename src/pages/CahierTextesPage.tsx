@@ -60,7 +60,7 @@ import {
   getGroupesProf,
 } from '../services/cahierTextesService';
 import { emploiExistePourClasse } from '../services/emploiDuTempsService';
-import EmploiDuTempsDrawer from '../components/prof/EmploiDuTempsDrawer';
+import EmploiDuTempsDrawer, { type OuvrirCahierInfo } from '../components/prof/EmploiDuTempsDrawer';
 
 import {
   ANNEES_SCOLAIRES,
@@ -248,17 +248,29 @@ const CahierTextesPage: React.FC = () => {
   };
 
   // ── Clic sur un créneau de l'emploi du temps → saisie du cahier (point 4) ──
-  const handleOuvrirCahierDepuisCreneau = (classeCible: Classe, matiereCible?: Matiere) => {
-    const found = cahiers.find(
-      c => c.classe === classeCible && (!matiereCible || c.matiere === matiereCible)
-    );
+  const handleOuvrirCahierDepuisCreneau = (info: OuvrirCahierInfo) => {
+    // Liaison rigoureuse (bug 2) : on cible d'abord le cahier du GROUPE exact
+    // (ex. 4PFA via groupeIds), puis à défaut on retombe sur (classe + matière).
+    let found = info.groupeId
+      ? cahiers.find(c => (c.groupeIds ?? []).includes(info.groupeId as string))
+      : undefined;
+    if (!found && info.matiere) {
+      found = cahiers.find(c => c.classe === info.classe && c.matiere === info.matiere);
+    }
     setEdtOpen(false);
     if (found) {
       navigate(`/prof/cahiers/${found.id}/nouvelle`);
     } else {
-      // Pas encore de cahier pour ce créneau : pré-remplit la modale de création
+      // Pas encore de cahier : pré-remplit la modale de création (classe + groupe + matière)
       setEditCahier(null);
-      setForm(f => ({ ...f, classe: classeCible, ...(matiereCible ? { matiere: matiereCible } : {}) }));
+      setForm(f => ({
+        ...f,
+        classe: info.classe,
+        ...(info.matiere ? { matiere: info.matiere as Matiere } : {}),
+        ...(info.groupeId
+          ? { groupeIds: [info.groupeId], groupeNoms: info.groupeNom ? [info.groupeNom] : [] }
+          : {}),
+      }));
       setBesoinEmploi(false);
       setError('');
       setShowModal(true);
@@ -831,6 +843,7 @@ const CahierTextesPage: React.FC = () => {
         onClose={() => setEdtOpen(false)}
         profId={currentUser?.uid || ''}
         profNom={currentUser?.displayName || ''}
+        groupes={groupesDispos}
         initialClasse={edtClasse}
         initialAnnee={form.anneeScolaire}
         onOuvrirCahier={handleOuvrirCahierDepuisCreneau}

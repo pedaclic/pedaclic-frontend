@@ -40,7 +40,9 @@ export interface Creneau {
   heureFin: string;     // "HH:mm" (24h)
   activite: string;     // libellé libre (ex: "Cours", "TP", nom de matière…)
   salle: string;        // salle / local
-  matiere?: Matiere;    // optionnel — active le lien vers le cahier
+  matiere?: string;     // optionnel — matière issue de la source `disciplines` (admin)
+  groupeId?: string;    // optionnel — groupe/section EXACT (ex. 4PFA) → lien rigoureux au cahier
+  groupeNom?: string;   // optionnel — libellé du groupe (ex. "4PFA - LCB")
   profId?: string;      // optionnel — prof responsable du créneau
   profNom?: string;     // optionnel — nom affiché
 }

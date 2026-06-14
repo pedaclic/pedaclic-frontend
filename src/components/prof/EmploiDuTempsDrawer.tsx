@@ -1,37 +1,54 @@
 // ============================================================
 // PedaClic — Emploi du Temps (fenêtre flottante / drawer)
-// Affiche la grille hebdomadaire d'une classe (un emploi du temps
+// Affiche la grille hebdomadaire d'une classe (emploi du temps
 // partagé par classe + année), permet d'ajouter/supprimer des
-// créneaux, et — quand un créneau porte une matière — ouvre
-// directement la saisie du Cahier de textes correspondant.
+// créneaux, et ouvre directement la saisie du Cahier de textes
+// du GROUPE/section correspondant.
+//
+// Sources de référence (corrige les anomalies signalées) :
+//   - Matières : useDisciplinesOptions() (collection `disciplines`,
+//     EXACTEMENT la même source que le Cahier de textes).
+//   - Classe réelle : le GROUPE du prof (4PIB, 4PFA…), qui assure
+//     une liaison rigoureuse au bon cahier (résolution par groupeId).
 // ============================================================
 
 import React, { useEffect, useState } from 'react';
 import {
   CLASSES,
   ANNEES_SCOLAIRES,
-  MATIERES,
+  normaliserClassePourComparaison,
 } from '../../types/cahierTextes.types';
-import type { Classe, Matiere, AnneeScolaire } from '../../types/cahierTextes.types';
+import type { Classe, AnneeScolaire, GroupeProf } from '../../types/cahierTextes.types';
 import {
   JOURS_SEMAINE,
   genererCreneauId,
 } from '../../types/emploiDuTemps.types';
 import type { Creneau, JourSemaine, EmploiDuTemps } from '../../types/emploiDuTemps.types';
 import { subscribeEmploi, creerOuMajEmploi } from '../../services/emploiDuTempsService';
+import { useDisciplinesOptions } from '../../hooks/useDisciplinesOptions';
 import '../../styles/EmploiDuTemps.css';
+
+/** Données transmises au parent quand on clique un créneau (point 4). */
+export interface OuvrirCahierInfo {
+  classe: Classe;
+  matiere?: string;
+  groupeId?: string;
+  groupeNom?: string;
+}
 
 interface Props {
   open: boolean;
   onClose: () => void;
   profId: string;
   profNom: string;
+  /** Groupes/sections du prof (source de la liaison rigoureuse au cahier) */
+  groupes: GroupeProf[];
   /** Classe pré-sélectionnée (ex. depuis le conditionnement de création) */
   initialClasse?: Classe;
   /** Année pré-sélectionnée */
   initialAnnee?: AnneeScolaire;
-  /** Clic sur un créneau (avec matière) → ouvrir la saisie du cahier */
-  onOuvrirCahier?: (classe: Classe, matiere?: Matiere) => void;
+  /** Clic sur un créneau lié → ouvrir la saisie du cahier correspondant */
+  onOuvrirCahier?: (info: OuvrirCahierInfo) => void;
 }
 
 interface NouveauCreneau {
@@ -40,7 +57,8 @@ interface NouveauCreneau {
   heureFin: string;
   activite: string;
   salle: string;
-  matiere: Matiere | '';
+  matiere: string;     // valeur issue de `disciplines` ('' = aucune)
+  groupeId: string;    // id du groupe sélectionné ('' = aucun)
 }
 
 const creneauVide: NouveauCreneau = {
@@ -50,6 +68,7 @@ const creneauVide: NouveauCreneau = {
   activite: '',
   salle: '',
   matiere: '',
+  groupeId: '',
 };
 
 const EmploiDuTempsDrawer: React.FC<Props> = ({
@@ -57,6 +76,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   onClose,
   profId,
   profNom,
+  groupes,
   initialClasse,
   initialAnnee,
   onOuvrirCahier,
@@ -67,6 +87,9 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   const [nouveau, setNouveau] = useState<NouveauCreneau>(creneauVide);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState('');
+
+  // BUG 1 — matières issues de la MÊME source que le Cahier de textes
+  const { matieres: matieresDispos, loading: loadingMatieres } = useDisciplinesOptions();
 
   // Resynchronise la classe/année quand on (ré)ouvre le panneau
   useEffect(() => {
@@ -92,6 +115,12 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
 
   const creneaux: Creneau[] = emploi?.creneaux ?? [];
 
+  // BUG 2 — groupes du prof correspondant à la classe affichée (4PIB, 4PFA…)
+  const groupesClasse = groupes.filter(
+    (g) => normaliserClassePourComparaison(g.classe) === normaliserClassePourComparaison(classe)
+  );
+  const groupesProposes = groupesClasse.length > 0 ? groupesClasse : groupes;
+
   // ── Ajouter un créneau ────────────────────────────────────
   const handleAjouter = async () => {
     setErreur('');
@@ -103,6 +132,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
       setErreur('L\'heure de fin doit suivre l\'heure de début.');
       return;
     }
+    const groupeSel = groupes.find((g) => g.id === nouveau.groupeId);
     const creneau: Creneau = {
       id: genererCreneauId(),
       jour: nouveau.jour,
@@ -110,15 +140,16 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
       heureFin: nouveau.heureFin,
       activite: nouveau.activite.trim(),
       salle: nouveau.salle.trim(),
-      ...(nouveau.matiere
-        ? { matiere: nouveau.matiere as Matiere, profId, profNom }
-        : {}),
+      ...(nouveau.matiere ? { matiere: nouveau.matiere } : {}),
+      ...(groupeSel ? { groupeId: groupeSel.id, groupeNom: groupeSel.nom } : {}),
+      profId,
+      profNom,
     };
     setBusy(true);
     try {
       await creerOuMajEmploi(classe, annee, [...creneaux, creneau], profId, profNom);
-      // Conserve jour + horaires pour enchaîner les saisies, vide le reste
-      setNouveau((n) => ({ ...n, activite: '', salle: '', matiere: '' }));
+      // Conserve jour + horaires pour enchaîner, vide le reste
+      setNouveau((n) => ({ ...n, activite: '', salle: '', matiere: '', groupeId: '' }));
     } catch {
       setErreur('Enregistrement impossible.');
     } finally {
@@ -145,9 +176,16 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     }
   };
 
-  // ── Clic créneau → saisie du cahier (si matière renseignée) ─
+  // ── Clic créneau → saisie du cahier (lien rigoureux par groupe) ─
+  const estLie = (c: Creneau) => !!(c.groupeId || c.matiere) && !!onOuvrirCahier;
   const handleClickCreneau = (c: Creneau) => {
-    if (c.matiere && onOuvrirCahier) onOuvrirCahier(classe, c.matiere);
+    if (!estLie(c)) return;
+    onOuvrirCahier!({
+      classe,
+      matiere: c.matiere,
+      groupeId: c.groupeId,
+      groupeNom: c.groupeNom,
+    });
   };
 
   return (
@@ -188,9 +226,9 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                   {duJour.map((c) => (
                     <div
                       key={c.id}
-                      className={`edt-creneau${c.matiere && onOuvrirCahier ? ' edt-creneau--link' : ''}`}
+                      className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}`}
                       onClick={() => handleClickCreneau(c)}
-                      title={c.matiere ? `Ouvrir le Cahier de textes (${classe} · ${c.matiere})` : undefined}
+                      title={estLie(c) ? `Ouvrir le Cahier de textes (${c.groupeNom ?? classe}${c.matiere ? ' · ' + c.matiere : ''})` : undefined}
                     >
                       <div className="edt-creneau-head">
                         <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
@@ -202,8 +240,10 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                         >🗑</button>
                       </div>
                       <div className="edt-creneau-act">
-                        {c.activite}{c.matiere && onOuvrirCahier ? ' →' : ''}
+                        {c.activite}{estLie(c) ? ' →' : ''}
                       </div>
+                      {c.groupeNom && <div className="edt-creneau-salle">👥 {c.groupeNom}</div>}
+                      {c.matiere && <div className="edt-creneau-salle">📘 {c.matiere}</div>}
                       <div className="edt-creneau-salle">🏫 {c.salle}</div>
                     </div>
                   ))}
@@ -216,7 +256,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
             <div className="edt-empty">Aucun créneau pour cette classe. Ajoutez-en ci-dessous.</div>
           )}
 
-          {/* Ajout d'un créneau : jour / horaire / activité / salle (+ matière) */}
+          {/* Ajout d'un créneau : jour / horaire / activité / salle (+ matière, + groupe) */}
           <div className="edt-add">
             <div className="edt-add-title">Ajouter un créneau</div>
             <div className="edt-add-grid">
@@ -267,10 +307,22 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                 Matière (optionnel)
                 <select
                   value={nouveau.matiere}
-                  onChange={(e) => setNouveau((n) => ({ ...n, matiere: e.target.value as Matiere | '' }))}
+                  disabled={loadingMatieres}
+                  onChange={(e) => setNouveau((n) => ({ ...n, matiere: e.target.value }))}
                 >
                   <option value="">— Aucune —</option>
-                  {MATIERES.map((m) => <option key={m} value={m}>{m}</option>)}
+                  {matieresDispos.map((m) => <option key={m.valeur} value={m.valeur}>{m.label}</option>)}
+                </select>
+              </label>
+              {/* BUG 2 — liaison rigoureuse : groupe/section exact du prof */}
+              <label style={{ gridColumn: '1 / -1' }}>
+                Classe / groupe (recommandé pour le lien au cahier)
+                <select
+                  value={nouveau.groupeId}
+                  onChange={(e) => setNouveau((n) => ({ ...n, groupeId: e.target.value }))}
+                >
+                  <option value="">— Aucun —</option>
+                  {groupesProposes.map((g) => <option key={g.id} value={g.id}>{g.nom}</option>)}
                 </select>
               </label>
             </div>
@@ -285,7 +337,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               </button>
             </div>
             <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.6rem' }}>
-              Renseigner la matière rend le créneau cliquable : il ouvre directement la saisie du Cahier de textes de la classe.
+              Renseigner le groupe (ex. 4PFA) rend le créneau cliquable et ouvre exactement le Cahier de textes de cette section.
             </p>
           </div>
         </div>
