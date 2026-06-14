@@ -1,9 +1,52 @@
-backend/
-.DS_Store
-**/.DS_Store
+# ===== PedaClic — .gitignore =====
+
+# --- Dépendances ---
 node_modules/
+.pnp
+.pnp.js
+
+# --- Variables d'environnement (NE JAMAIS committer) ---
 .env
 .env.local
+.env.*.local
+.env.development
 .env.production
+.env.test
+
+# --- Build / sortie Vite ---
 dist/
+dist-ssr/
+*.local
+
+# --- Firebase ---
 .firebase/
+.firebaserc.local
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+# Clés de service / comptes d'admin — JAMAIS dans le dépôt
+*serviceAccount*.json
+*firebase-adminsdk*.json
+*-credentials.json
+
+# --- Backend (le cas échéant) ---
+backend/
+
+# --- Système / éditeurs ---
+.DS_Store
+**/.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# --- Logs ---
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# --- Cache ---
+.cache/
+.vite/
+coverage/
