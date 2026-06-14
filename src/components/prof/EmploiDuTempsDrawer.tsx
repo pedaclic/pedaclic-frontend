@@ -1,0 +1,297 @@
+// ============================================================
+// PedaClic — Emploi du Temps (fenêtre flottante / drawer)
+// Affiche la grille hebdomadaire d'une classe (un emploi du temps
+// partagé par classe + année), permet d'ajouter/supprimer des
+// créneaux, et — quand un créneau porte une matière — ouvre
+// directement la saisie du Cahier de textes correspondant.
+// ============================================================
+
+import React, { useEffect, useState } from 'react';
+import {
+  CLASSES,
+  ANNEES_SCOLAIRES,
+  MATIERES,
+} from '../../types/cahierTextes.types';
+import type { Classe, Matiere, AnneeScolaire } from '../../types/cahierTextes.types';
+import {
+  JOURS_SEMAINE,
+  genererCreneauId,
+} from '../../types/emploiDuTemps.types';
+import type { Creneau, JourSemaine, EmploiDuTemps } from '../../types/emploiDuTemps.types';
+import { subscribeEmploi, creerOuMajEmploi } from '../../services/emploiDuTempsService';
+import '../../styles/EmploiDuTemps.css';
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  profId: string;
+  profNom: string;
+  /** Classe pré-sélectionnée (ex. depuis le conditionnement de création) */
+  initialClasse?: Classe;
+  /** Année pré-sélectionnée */
+  initialAnnee?: AnneeScolaire;
+  /** Clic sur un créneau (avec matière) → ouvrir la saisie du cahier */
+  onOuvrirCahier?: (classe: Classe, matiere?: Matiere) => void;
+}
+
+interface NouveauCreneau {
+  jour: JourSemaine;
+  heureDebut: string;
+  heureFin: string;
+  activite: string;
+  salle: string;
+  matiere: Matiere | '';
+}
+
+const creneauVide: NouveauCreneau = {
+  jour: 'lundi',
+  heureDebut: '08:00',
+  heureFin: '09:00',
+  activite: '',
+  salle: '',
+  matiere: '',
+};
+
+const EmploiDuTempsDrawer: React.FC<Props> = ({
+  open,
+  onClose,
+  profId,
+  profNom,
+  initialClasse,
+  initialAnnee,
+  onOuvrirCahier,
+}) => {
+  const [classe, setClasse] = useState<Classe>(initialClasse ?? '6ème');
+  const [annee, setAnnee] = useState<AnneeScolaire>(initialAnnee ?? '2025-2026');
+  const [emploi, setEmploi] = useState<EmploiDuTemps | null>(null);
+  const [nouveau, setNouveau] = useState<NouveauCreneau>(creneauVide);
+  const [busy, setBusy] = useState(false);
+  const [erreur, setErreur] = useState('');
+
+  // Resynchronise la classe/année quand on (ré)ouvre le panneau
+  useEffect(() => {
+    if (open) {
+      if (initialClasse) setClasse(initialClasse);
+      if (initialAnnee) setAnnee(initialAnnee);
+    }
+  }, [open, initialClasse, initialAnnee]);
+
+  // Écoute temps réel de l'emploi du temps de la classe sélectionnée
+  useEffect(() => {
+    if (!open) return;
+    const unsub = subscribeEmploi(
+      classe,
+      annee,
+      (e) => setEmploi(e),
+      () => setErreur('Lecture de l\'emploi du temps impossible.')
+    );
+    return () => unsub();
+  }, [open, classe, annee]);
+
+  if (!open) return null;
+
+  const creneaux: Creneau[] = emploi?.creneaux ?? [];
+
+  // ── Ajouter un créneau ────────────────────────────────────
+  const handleAjouter = async () => {
+    setErreur('');
+    if (!nouveau.activite.trim() || !nouveau.salle.trim()) {
+      setErreur('Activité et salle sont requises.');
+      return;
+    }
+    if (nouveau.heureFin <= nouveau.heureDebut) {
+      setErreur('L\'heure de fin doit suivre l\'heure de début.');
+      return;
+    }
+    const creneau: Creneau = {
+      id: genererCreneauId(),
+      jour: nouveau.jour,
+      heureDebut: nouveau.heureDebut,
+      heureFin: nouveau.heureFin,
+      activite: nouveau.activite.trim(),
+      salle: nouveau.salle.trim(),
+      ...(nouveau.matiere
+        ? { matiere: nouveau.matiere as Matiere, profId, profNom }
+        : {}),
+    };
+    setBusy(true);
+    try {
+      await creerOuMajEmploi(classe, annee, [...creneaux, creneau], profId, profNom);
+      // Conserve jour + horaires pour enchaîner les saisies, vide le reste
+      setNouveau((n) => ({ ...n, activite: '', salle: '', matiere: '' }));
+    } catch {
+      setErreur('Enregistrement impossible.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Supprimer un créneau ──────────────────────────────────
+  const handleSupprimer = async (id: string) => {
+    setBusy(true);
+    setErreur('');
+    try {
+      await creerOuMajEmploi(
+        classe,
+        annee,
+        creneaux.filter((c) => c.id !== id),
+        profId,
+        profNom
+      );
+    } catch {
+      setErreur('Suppression impossible.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Clic créneau → saisie du cahier (si matière renseignée) ─
+  const handleClickCreneau = (c: Creneau) => {
+    if (c.matiere && onOuvrirCahier) onOuvrirCahier(classe, c.matiere);
+  };
+
+  return (
+    <div className="edt-overlay" onClick={onClose}>
+      <div className="edt-drawer" onClick={(e) => e.stopPropagation()}>
+        {/* En-tête */}
+        <div className="edt-drawer-header">
+          <span className="edt-drawer-title">📅 Emploi du temps</span>
+          <button className="edt-close-btn" onClick={onClose} aria-label="Fermer">✕</button>
+        </div>
+
+        <div className="edt-drawer-body">
+          {/* Sélecteurs classe / année */}
+          <div className="edt-selectors">
+            <label>
+              Classe
+              <select value={classe} onChange={(e) => setClasse(e.target.value as Classe)}>
+                {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label>
+              Année scolaire
+              <select value={annee} onChange={(e) => setAnnee(e.target.value as AnneeScolaire)}>
+                {ANNEES_SCOLAIRES.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </label>
+          </div>
+
+          {/* Grille hebdomadaire : une colonne par jour */}
+          <div className="edt-grid">
+            {JOURS_SEMAINE.map((j) => {
+              const duJour = creneaux
+                .filter((c) => c.jour === j.valeur)
+                .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+              return (
+                <div className="edt-day-col" key={j.valeur}>
+                  <div className="edt-day-head">{j.court}</div>
+                  {duJour.map((c) => (
+                    <div
+                      key={c.id}
+                      className={`edt-creneau${c.matiere && onOuvrirCahier ? ' edt-creneau--link' : ''}`}
+                      onClick={() => handleClickCreneau(c)}
+                      title={c.matiere ? `Ouvrir le Cahier de textes (${classe} · ${c.matiere})` : undefined}
+                    >
+                      <div className="edt-creneau-head">
+                        <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
+                        <button
+                          className="edt-creneau-del"
+                          onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
+                          disabled={busy}
+                          aria-label="Supprimer le créneau"
+                        >🗑</button>
+                      </div>
+                      <div className="edt-creneau-act">
+                        {c.activite}{c.matiere && onOuvrirCahier ? ' →' : ''}
+                      </div>
+                      <div className="edt-creneau-salle">🏫 {c.salle}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+
+          {creneaux.length === 0 && (
+            <div className="edt-empty">Aucun créneau pour cette classe. Ajoutez-en ci-dessous.</div>
+          )}
+
+          {/* Ajout d'un créneau : jour / horaire / activité / salle (+ matière) */}
+          <div className="edt-add">
+            <div className="edt-add-title">Ajouter un créneau</div>
+            <div className="edt-add-grid">
+              <label>
+                Jour
+                <select
+                  value={nouveau.jour}
+                  onChange={(e) => setNouveau((n) => ({ ...n, jour: e.target.value as JourSemaine }))}
+                >
+                  {JOURS_SEMAINE.map((j) => <option key={j.valeur} value={j.valeur}>{j.label}</option>)}
+                </select>
+              </label>
+              <label>
+                Salle
+                <input
+                  type="text"
+                  value={nouveau.salle}
+                  placeholder="Ex : Salle 12"
+                  onChange={(e) => setNouveau((n) => ({ ...n, salle: e.target.value }))}
+                />
+              </label>
+              <label>
+                Heure de début
+                <input
+                  type="time"
+                  value={nouveau.heureDebut}
+                  onChange={(e) => setNouveau((n) => ({ ...n, heureDebut: e.target.value }))}
+                />
+              </label>
+              <label>
+                Heure de fin
+                <input
+                  type="time"
+                  value={nouveau.heureFin}
+                  onChange={(e) => setNouveau((n) => ({ ...n, heureFin: e.target.value }))}
+                />
+              </label>
+              <label>
+                Activité
+                <input
+                  type="text"
+                  value={nouveau.activite}
+                  placeholder="Ex : Cours, TP…"
+                  onChange={(e) => setNouveau((n) => ({ ...n, activite: e.target.value }))}
+                />
+              </label>
+              <label>
+                Matière (optionnel)
+                <select
+                  value={nouveau.matiere}
+                  onChange={(e) => setNouveau((n) => ({ ...n, matiere: e.target.value as Matiere | '' }))}
+                >
+                  <option value="">— Aucune —</option>
+                  {MATIERES.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </label>
+            </div>
+
+            {erreur && (
+              <div style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.6rem' }}>{erreur}</div>
+            )}
+
+            <div className="edt-add-actions">
+              <button className="btn-primary" onClick={handleAjouter} disabled={busy}>
+                {busy ? 'Enregistrement…' : '+ Ajouter le créneau'}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.6rem' }}>
+              Renseigner la matière rend le créneau cliquable : il ouvre directement la saisie du Cahier de textes de la classe.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default EmploiDuTempsDrawer;

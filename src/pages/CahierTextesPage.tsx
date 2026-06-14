@@ -59,6 +59,8 @@ import {
   toggleArchiveCahier,
   getGroupesProf,
 } from '../services/cahierTextesService';
+import { emploiExistePourClasse } from '../services/emploiDuTempsService';
+import EmploiDuTempsDrawer from '../components/prof/EmploiDuTempsDrawer';
 
 import {
   ANNEES_SCOLAIRES,
@@ -107,6 +109,10 @@ const CahierTextesPage: React.FC = () => {
   const [filtreArchive, setFiltreArchive] = useState<'actif' | 'archive' | 'tous'>('actif');
   const [vueMode, setVueMode]       = useState<'grille' | 'liste'>('grille');
   const [showModal, setShowModal]   = useState(false);
+  // Emploi du temps (fenêtre flottante) + conditionnement de la création
+  const [edtOpen, setEdtOpen]       = useState(false);
+  const [edtClasse, setEdtClasse]   = useState<Classe | undefined>(undefined);
+  const [besoinEmploi, setBesoinEmploi] = useState(false);
   const [editCahier, setEditCahier] = useState<CahierTextes | null>(null);
   const [form, setForm]             = useState<CahierFormData>(emptyForm());
   const [saving, setSaving]         = useState(false);
@@ -237,13 +243,33 @@ const CahierTextesPage: React.FC = () => {
     setForm(emptyForm());
     setGroupesSelectionnes([]);
     setError('');
+    setBesoinEmploi(false);
     setShowModal(true);
+  };
+
+  // ── Clic sur un créneau de l'emploi du temps → saisie du cahier (point 4) ──
+  const handleOuvrirCahierDepuisCreneau = (classeCible: Classe, matiereCible?: Matiere) => {
+    const found = cahiers.find(
+      c => c.classe === classeCible && (!matiereCible || c.matiere === matiereCible)
+    );
+    setEdtOpen(false);
+    if (found) {
+      navigate(`/prof/cahiers/${found.id}/nouvelle`);
+    } else {
+      // Pas encore de cahier pour ce créneau : pré-remplit la modale de création
+      setEditCahier(null);
+      setForm(f => ({ ...f, classe: classeCible, ...(matiereCible ? { matiere: matiereCible } : {}) }));
+      setBesoinEmploi(false);
+      setError('');
+      setShowModal(true);
+    }
   };
 
   // ── Ouvrir modal édition ──────────────────────────────────
   const handleEditCahier = (cahier: CahierTextes, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditCahier(cahier);
+    setBesoinEmploi(false);
     setGroupesSelectionnes(cahier.groupeIds ?? []);
     setForm({
       classe:               cahier.classe as Classe,
@@ -285,10 +311,19 @@ const CahierTextesPage: React.FC = () => {
     if (!currentUser?.uid) return;
     setSaving(true);
     setError('');
+    setBesoinEmploi(false);
     try {
       if (editCahier) {
         await updateCahier(editCahier.id, form);
       } else {
+        // Conditionnement (point 1) : un emploi du temps de la classe est requis.
+        // Les cahiers déjà existants ne sont pas affectés (grandfathering).
+        const emploiOk = await emploiExistePourClasse(form.classe, form.anneeScolaire);
+        if (!emploiOk) {
+          setBesoinEmploi(true);
+          setSaving(false);
+          return;
+        }
         await createCahier(currentUser.uid, form);
       }
       setShowModal(false);
@@ -349,9 +384,14 @@ const CahierTextesPage: React.FC = () => {
           <h1 className="cahier-page-title">📒 Cahier de Textes</h1>
           <p className="cahier-page-subtitle">Organisez et planifiez votre enseignement</p>
         </div>
-        <button className="btn-primary" onClick={handleNouveauCahier}>
-          + Nouveau cahier
-        </button>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <button className="btn-secondary" onClick={() => { setEdtClasse(undefined); setEdtOpen(true); }}>
+            📅 Emploi du temps
+          </button>
+          <button className="btn-primary" onClick={handleNouveauCahier}>
+            + Nouveau cahier
+          </button>
+        </div>
       </div>
 
       {/* ── Filtres ── */}
@@ -751,6 +791,20 @@ const CahierTextesPage: React.FC = () => {
               </div>
               {/* ── fin Phase 22 ── */}
 
+              {/* Conditionnement : emploi du temps requis (point 1) */}
+              {besoinEmploi && (
+                <div className="edt-gate-warning">
+                  <span>⚠️ Aucun emploi du temps pour la {form.classe}. Créez-le d'abord — les cahiers déjà existants ne sont pas affectés.</span>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => { setEdtClasse(form.classe); setEdtOpen(true); }}
+                  >
+                    📅 Créer l'emploi du temps
+                  </button>
+                </div>
+              )}
+
               {/* Erreur */}
               {error && (
                 <div style={{ color: '#dc2626', fontSize: '0.85rem', marginBottom: '0.75rem', background: '#fee2e2', padding: '0.5rem 0.75rem', borderRadius: 8 }}>
@@ -770,6 +824,17 @@ const CahierTextesPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Fenêtre flottante — Emploi du temps (points 2, 3, 4) */}
+      <EmploiDuTempsDrawer
+        open={edtOpen}
+        onClose={() => setEdtOpen(false)}
+        profId={currentUser?.uid || ''}
+        profNom={currentUser?.displayName || ''}
+        initialClasse={edtClasse}
+        initialAnnee={form.anneeScolaire}
+        onOuvrirCahier={handleOuvrirCahierDepuisCreneau}
+      />
     </div>
   );
 };

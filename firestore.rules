@@ -222,10 +222,18 @@ service cloud.firestore {
                        (isProf() && request.resource.data.profId == request.auth.uid) ||
                        isAdmin()
                      );
+      // CORRECTIF SÉCURITÉ : « isEleve() » seul laissait un élève modifier
+      // N'IMPORTE QUEL champ de N'IMPORTE QUEL groupe — y compris profId
+      // (usurpation de propriété du groupe). L'élève peut toujours mettre à
+      // jour le groupe (rejoindre / quitter) MAIS ne peut plus toucher aux
+      // champs sensibles de propriété / métadonnées. Étendez la liste protégée
+      // si d'autres champs ne doivent pas être modifiables par un élève.
       allow update: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
-                       isEleve() ||
-                       isAdmin()
+                       isAdmin() ||
+                       (isEleve() &&
+                        !request.resource.data.diff(resource.data).affectedKeys()
+                           .hasAny(['profId', 'createdAt', 'createdBy']))
                      );
       allow delete: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
@@ -467,10 +475,14 @@ service cloud.firestore {
         && request.resource.data.profId == request.auth.uid
         && getUserData().role == 'prof'
         && getUserData().isPremium == true;
-        // Note : Firestore évalue les conditions en court-circuit.
-        // Pour éliminer complètement le double get(), remplacer par :
-        //   && let u = getUserData() in (u.role == 'prof' && u.isPremium == true);
-        // (syntaxe let/in supportée depuis rules_version = '2')
+        // Note : Firestore met en cache les get() identiques au sein d'une même
+        // évaluation — les deux getUserData() ci-dessus ne comptent donc que
+        // pour UN seul accès document (aucun surcoût de facturation).
+        // ⚠️ CORRECTIF DOC : la syntaxe inline « let u = getUserData() in (...) »
+        // N'EXISTE PAS en règles Firestore — `let` ne s'utilise qu'en début de
+        // corps de fonction, jamais au milieu d'une expression. Ne l'appliquez
+        // pas (elle empêcherait le déploiement). Pour factoriser, créez une
+        // fonction helper qui fait son get() puis renvoie le booléen.
 
       allow update, delete: if request.auth != null && (
         resource.data.profId == request.auth.uid || isAdmin()
@@ -666,6 +678,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // NOTE SÉCURITÉ : `settings` est VOLONTAIREMENT le magasin de configuration
+    // PUBLIQUE (tarifs, libellés, paramètres affichés avant connexion). Le
+    // pendant privé/sensible est `platform_settings` (admin-only, ci-dessus).
+    // ⚠️ Ne JAMAIS écrire de secret, clé, e-mail ou seuil interne dans `settings`
+    // (lecture publique). Toute donnée confidentielle va dans platform_settings.
     match /settings/{docId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -685,7 +702,12 @@ service cloud.firestore {
 
     match /cours_sections/{sectionId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      // CORRECTIF SÉCURITÉ : auparavant « if request.auth != null » autorisait
+      // N'IMPORTE QUEL utilisateur connecté (élève, parent inclus) à créer,
+      // modifier ou supprimer une section de cours. On aligne désormais
+      // l'écriture sur la collection cours_en_ligne (contenu pédagogique géré
+      // par le staff). Retirez « || isProf() » si seuls les admins éditent.
+      allow write: if isAdmin() || isProf();
     }
 
     match /progression_cours/{progressionId} {
@@ -726,6 +748,19 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && (
         resource.data.profId == request.auth.uid || isAdmin()
       );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // EMPLOI DU TEMPS (partagé par classe + année scolaire)
+    //   Pré-requis souple à la création d'un cahier de textes.
+    //   Lecture           : tout utilisateur connecté.
+    //   Création / édition : prof ou admin (traçabilité via updatedBy).
+    //   Suppression        : admin uniquement.
+    // ══════════════════════════════════════════════════════════
+    match /emploi_du_temps/{edtId} {
+      allow read: if isSignedIn();
+      allow create, update: if isProf() || isAdmin();
+      allow delete: if isAdmin();
     }
 
     // ──────────────────────────────────────────────────────────

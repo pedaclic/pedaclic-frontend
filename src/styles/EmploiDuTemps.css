@@ -1,0 +1,201 @@
+/* ============================================================
+   PedaClic — Emploi du Temps (fenêtre flottante / drawer)
+   Panneau latéral droit superposé au contenu principal.
+   Réutilise .btn-primary / .btn-secondary (CahierTextes.css).
+   ============================================================ */
+
+/* --- Voile sombre derrière le panneau (le contenu reste visible) --- */
+.edt-overlay {
+  position: fixed;
+  inset: 0;                       /* couvre tout l'écran */
+  background: rgba(0, 0, 0, 0.40);
+  display: flex;
+  justify-content: flex-end;      /* panneau collé à droite */
+  z-index: 1100;                  /* au-dessus des modales (1000) */
+  backdrop-filter: blur(1px);
+}
+
+/* --- Le panneau coulissant --- */
+.edt-drawer {
+  width: min(560px, 96vw);
+  height: 100%;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -8px 0 28px rgba(0, 0, 0, 0.18);
+  animation: edt-slide-in 0.22s ease;
+}
+
+/* Glissement d'entrée depuis la droite */
+@keyframes edt-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* --- En-tête du panneau --- */
+.edt-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #e5e7eb;
+  flex-shrink: 0;
+}
+.edt-drawer-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.edt-close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0.2rem 0.4rem;
+  border-radius: 6px;
+}
+.edt-close-btn:hover { background: #f3f4f6; color: #111827; }
+
+/* --- Corps défilant --- */
+.edt-drawer-body {
+  padding: 1rem 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* --- Sélecteurs classe / année --- */
+.edt-selectors {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+.edt-selectors label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #6b7280;
+  gap: 0.25rem;
+}
+.edt-selectors select {
+  padding: 0.45rem 0.6rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+/* --- Grille hebdomadaire : une colonne par jour --- */
+.edt-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(116px, 1fr));
+  gap: 0.5rem;
+  overflow-x: auto;             /* défilement horizontal si étroit */
+  padding-bottom: 0.5rem;
+}
+.edt-day-col {
+  background: #f9fafb;
+  border: 1px solid #eef0f3;
+  border-radius: 10px;
+  padding: 0.4rem;
+  min-height: 90px;
+}
+.edt-day-head {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #374151;
+  padding: 0.2rem 0 0.45rem;
+}
+
+/* --- Carte d'un créneau --- */
+.edt-creneau {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #2563eb;   /* accent bleu PedaClic */
+  border-radius: 8px;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.78rem;
+}
+/* Créneau cliquable (matière renseignée → raccourci cahier) */
+.edt-creneau--link { cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; }
+.edt-creneau--link:hover {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+.edt-creneau-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+.edt-creneau-heure { font-weight: 700; color: #1f2937; }
+.edt-creneau-act   { color: #2563eb; font-weight: 600; margin-top: 0.1rem; }
+.edt-creneau-salle { color: #6b7280; }
+.edt-creneau-del {
+  background: transparent; border: none; cursor: pointer;
+  color: #9ca3af; font-size: 0.85rem; padding: 0 0.15rem; line-height: 1;
+}
+.edt-creneau-del:hover { color: #dc2626; }
+
+/* --- Bloc « Ajouter un créneau » --- */
+.edt-add {
+  margin-top: 1.25rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 1rem;
+}
+.edt-add-title { font-size: 0.85rem; font-weight: 700; color: #374151; margin-bottom: 0.6rem; }
+.edt-add-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.edt-add-grid label {
+  display: flex; flex-direction: column;
+  font-size: 0.72rem; font-weight: 600; color: #6b7280; gap: 0.2rem;
+}
+.edt-add-grid input,
+.edt-add-grid select {
+  padding: 0.45rem 0.55rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 7px;
+  font-size: 0.85rem;
+}
+.edt-add-actions { margin-top: 0.75rem; display: flex; justify-content: flex-end; }
+
+/* --- Bandeau de conditionnement (dans la modale Nouveau cahier) --- */
+.edt-gate-warning {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.85rem;
+  color: #92400e;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+/* --- État vide --- */
+.edt-empty {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  padding: 1.5rem 0;
+}
+
+/* --- Responsive : sous 640px, le panneau occupe tout l'écran
+       et les jours s'empilent verticalement --- */
+@media (max-width: 640px) {
+  .edt-drawer { width: 100vw; }
+  .edt-grid { grid-template-columns: 1fr; }
+  .edt-add-grid { grid-template-columns: 1fr; }
+}
