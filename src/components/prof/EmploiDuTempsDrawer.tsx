@@ -24,7 +24,7 @@ import {
   genererCreneauId,
 } from '../../types/emploiDuTemps.types';
 import type { Creneau, JourSemaine, EmploiDuTemps } from '../../types/emploiDuTemps.types';
-import { subscribeEmploi, creerOuMajEmploi } from '../../services/emploiDuTempsService';
+import { subscribeEmploi, creerOuMajEmploi, getTousEmplois } from '../../services/emploiDuTempsService';
 import { useDisciplinesOptions } from '../../hooks/useDisciplinesOptions';
 import '../../styles/EmploiDuTemps.css';
 
@@ -51,6 +51,14 @@ interface Props {
   onOuvrirCahier?: (info: OuvrirCahierInfo) => void;
 }
 
+/**
+ * Modes de consultation de l'emploi du temps (point d'optimisation demandé) :
+ *   - 'classe'        : grille hebdomadaire d'UNE classe + édition (comportement existant, inchangé)
+ *   - 'semaine-toutes': filtre hebdomadaire sur l'ENSEMBLE des classes (lecture seule)
+ *   - 'jour-toutes'   : filtre journalier exhaustif sur l'ENSEMBLE des classes (lecture seule)
+ */
+type VueEmploi = 'classe' | 'semaine-toutes' | 'jour-toutes';
+
 interface NouveauCreneau {
   jour: JourSemaine;
   heureDebut: string;
@@ -71,6 +79,18 @@ const creneauVide: NouveauCreneau = {
   groupeId: '',
 };
 
+/**
+ * Détermine le jour de la semaine courant (pour pré-sélectionner le filtre
+ * journalier sur « aujourd'hui »). getDay() : 0=dimanche … 6=samedi.
+ * Le dimanche (absent de l'emploi du temps) bascule sur 'lundi'.
+ */
+function jourCourant(): JourSemaine {
+  const map: Record<number, JourSemaine> = {
+    1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi',
+  };
+  return map[new Date().getDay()] ?? 'lundi';
+}
+
 const EmploiDuTempsDrawer: React.FC<Props> = ({
   open,
   onClose,
@@ -88,6 +108,12 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState('');
 
+  // ── Optimisation : mode de consultation + données agrégées ──────
+  const [vue, setVue] = useState<VueEmploi>('classe');           // vue active
+  const [jourFiltre, setJourFiltre] = useState<JourSemaine>(jourCourant()); // jour du filtre journalier
+  const [tousEmplois, setTousEmplois] = useState<EmploiDuTemps[]>([]);      // tous les EDT (vues agrégées)
+  const [loadingTous, setLoadingTous] = useState(false);
+
   // BUG 1 — matières issues de la MÊME source que le Cahier de textes
   const { matieres: matieresDispos, loading: loadingMatieres } = useDisciplinesOptions();
 
@@ -100,6 +126,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   }, [open, initialClasse, initialAnnee]);
 
   // Écoute temps réel de l'emploi du temps de la classe sélectionnée
+  // (inchangé — sert la vue 'classe' et l'édition).
   useEffect(() => {
     if (!open) return;
     const unsub = subscribeEmploi(
@@ -110,6 +137,21 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     );
     return () => unsub();
   }, [open, classe, annee]);
+
+  // Chargement des vues agrégées (toutes classes) : uniquement quand
+  // une vue agrégée est active. Rechargé à l'ouverture, au changement
+  // de vue ou d'année scolaire.
+  useEffect(() => {
+    if (!open || vue === 'classe') return;
+    let actif = true;
+    setLoadingTous(true);
+    setErreur('');
+    getTousEmplois(annee)
+      .then((liste) => { if (actif) setTousEmplois(liste); })
+      .catch(() => { if (actif) setErreur('Lecture des emplois du temps impossible.'); })
+      .finally(() => { if (actif) setLoadingTous(false); });
+    return () => { actif = false; };
+  }, [open, vue, annee]);
 
   if (!open) return null;
 
@@ -178,15 +220,53 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
 
   // ── Clic créneau → saisie du cahier (lien rigoureux par groupe) ─
   const estLie = (c: Creneau) => !!(c.groupeId || c.matiere) && !!onOuvrirCahier;
-  const handleClickCreneau = (c: Creneau) => {
+  // `classeCtx` = classe à laquelle appartient le créneau. En vue 'classe'
+  // c'est la classe sélectionnée ; en vues agrégées, la classe du bloc affiché.
+  const handleClickCreneau = (c: Creneau, classeCtx: Classe = classe) => {
     if (!estLie(c)) return;
     onOuvrirCahier!({
-      classe,
+      classe: classeCtx,
       matiere: c.matiere,
       groupeId: c.groupeId,
       groupeNom: c.groupeNom,
     });
   };
+
+  // ── Rendu d'une carte « créneau » (factorisé pour toutes les vues) ─
+  //   classeCtx   : classe d'appartenance (pour le lien au cahier + l'info-bulle)
+  //   lectureSeule: masque le bouton de suppression (vues agrégées = consultation)
+  const renderCreneau = (c: Creneau, classeCtx: Classe, lectureSeule: boolean) => (
+    <div
+      key={c.id}
+      className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}`}
+      onClick={() => handleClickCreneau(c, classeCtx)}
+      title={estLie(c) ? `Ouvrir le Cahier de textes (${c.groupeNom ?? classeCtx}${c.matiere ? ' · ' + c.matiere : ''})` : undefined}
+    >
+      <div className="edt-creneau-head">
+        <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
+        {!lectureSeule && (
+          <button
+            className="edt-creneau-del"
+            onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
+            disabled={busy}
+            aria-label="Supprimer le créneau"
+          >🗑</button>
+        )}
+      </div>
+      <div className="edt-creneau-act">
+        {c.activite}{estLie(c) ? ' →' : ''}
+      </div>
+      {c.groupeNom && <div className="edt-creneau-salle">👥 {c.groupeNom}</div>}
+      {c.matiere && <div className="edt-creneau-salle">📘 {c.matiere}</div>}
+      <div className="edt-creneau-salle">🏫 {c.salle}</div>
+    </div>
+  );
+
+  // Liste des classes possédant au moins un créneau (vues agrégées),
+  // triée selon l'ordre pédagogique officiel (PS → Terminale).
+  const emploisNonVides = CLASSES
+    .map((cls) => tousEmplois.find((e) => e.classe === cls))
+    .filter((e): e is EmploiDuTemps => !!e && Array.isArray(e.creneaux) && e.creneaux.length > 0);
 
   return (
     <div className="edt-overlay" onClick={onClose}>
@@ -198,14 +278,38 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
         </div>
 
         <div className="edt-drawer-body">
-          {/* Sélecteurs classe / année */}
+          {/* Sélecteurs : Vue (filtre) / Classe / Jour / Année */}
           <div className="edt-selectors">
+            {/* Filtre principal : choix du mode de consultation */}
             <label>
-              Classe
-              <select value={classe} onChange={(e) => setClasse(e.target.value as Classe)}>
-                {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+              Vue
+              <select value={vue} onChange={(e) => setVue(e.target.value as VueEmploi)}>
+                <option value="classe">Par classe (semaine)</option>
+                <option value="semaine-toutes">Toutes les classes (semaine)</option>
+                <option value="jour-toutes">Toutes les classes (jour)</option>
               </select>
             </label>
+
+            {/* Sélecteur de classe : utile uniquement en vue 'classe' (+ édition) */}
+            {vue === 'classe' && (
+              <label>
+                Classe
+                <select value={classe} onChange={(e) => setClasse(e.target.value as Classe)}>
+                  {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+            )}
+
+            {/* Sélecteur de jour : utile uniquement pour le filtre journalier */}
+            {vue === 'jour-toutes' && (
+              <label>
+                Jour
+                <select value={jourFiltre} onChange={(e) => setJourFiltre(e.target.value as JourSemaine)}>
+                  {JOURS_SEMAINE.map((j) => <option key={j.valeur} value={j.valeur}>{j.label}</option>)}
+                </select>
+              </label>
+            )}
+
             <label>
               Année scolaire
               <select value={annee} onChange={(e) => setAnnee(e.target.value as AnneeScolaire)}>
@@ -214,49 +318,106 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
             </label>
           </div>
 
-          {/* Grille hebdomadaire : une colonne par jour */}
-          <div className="edt-grid">
-            {JOURS_SEMAINE.map((j) => {
-              const duJour = creneaux
-                .filter((c) => c.jour === j.valeur)
-                .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-              return (
-                <div className="edt-day-col" key={j.valeur}>
-                  <div className="edt-day-head">{j.court}</div>
-                  {duJour.map((c) => (
-                    <div
-                      key={c.id}
-                      className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}`}
-                      onClick={() => handleClickCreneau(c)}
-                      title={estLie(c) ? `Ouvrir le Cahier de textes (${c.groupeNom ?? classe}${c.matiere ? ' · ' + c.matiere : ''})` : undefined}
-                    >
-                      <div className="edt-creneau-head">
-                        <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
-                        <button
-                          className="edt-creneau-del"
-                          onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
-                          disabled={busy}
-                          aria-label="Supprimer le créneau"
-                        >🗑</button>
-                      </div>
-                      <div className="edt-creneau-act">
-                        {c.activite}{estLie(c) ? ' →' : ''}
-                      </div>
-                      {c.groupeNom && <div className="edt-creneau-salle">👥 {c.groupeNom}</div>}
-                      {c.matiere && <div className="edt-creneau-salle">📘 {c.matiere}</div>}
-                      <div className="edt-creneau-salle">🏫 {c.salle}</div>
+          {/* ════════════════════════════════════════════════════════
+              VUE 1 — PAR CLASSE (semaine) : grille + édition.
+              Comportement existant, strictement préservé.
+              ════════════════════════════════════════════════════════ */}
+          {vue === 'classe' && (
+            <>
+              {/* Grille hebdomadaire : une colonne par jour */}
+              <div className="edt-grid">
+                {JOURS_SEMAINE.map((j) => {
+                  const duJour = creneaux
+                    .filter((c) => c.jour === j.valeur)
+                    .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+                  return (
+                    <div className="edt-day-col" key={j.valeur}>
+                      <div className="edt-day-head">{j.court}</div>
+                      {duJour.map((c) => renderCreneau(c, classe, false))}
                     </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
 
-          {creneaux.length === 0 && (
-            <div className="edt-empty">Aucun créneau pour cette classe. Ajoutez-en ci-dessous.</div>
+              {creneaux.length === 0 && (
+                <div className="edt-empty">Aucun créneau pour cette classe. Ajoutez-en ci-dessous.</div>
+              )}
+            </>
           )}
 
-          {/* Ajout d'un créneau : jour / horaire / activité / salle (+ matière, + groupe) */}
+          {/* ════════════════════════════════════════════════════════
+              VUE 2 — TOUTES LES CLASSES (semaine), lecture seule.
+              Un bloc par classe ; chaque bloc = grille hebdomadaire.
+              ════════════════════════════════════════════════════════ */}
+          {vue === 'semaine-toutes' && (
+            <div className="edt-agg">
+              {erreur && <div className="edt-error">{erreur}</div>}
+              {loadingTous && <div className="edt-empty">Chargement…</div>}
+              {!loadingTous && emploisNonVides.length === 0 && (
+                <div className="edt-empty">Aucun emploi du temps renseigné pour {annee}.</div>
+              )}
+              {!loadingTous && emploisNonVides.map((e) => (
+                <div className="edt-class-block" key={e.id}>
+                  <div className="edt-class-title">{e.classe}</div>
+                  <div className="edt-grid">
+                    {JOURS_SEMAINE.map((j) => {
+                      const duJour = e.creneaux
+                        .filter((c) => c.jour === j.valeur)
+                        .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
+                      return (
+                        <div className="edt-day-col" key={j.valeur}>
+                          <div className="edt-day-head">{j.court}</div>
+                          {duJour.map((c) => renderCreneau(c, e.classe, true))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════
+              VUE 3 — TOUTES LES CLASSES (jour choisi), lecture seule.
+              Affichage exhaustif des cours du jour, groupés par classe.
+              ════════════════════════════════════════════════════════ */}
+          {vue === 'jour-toutes' && (
+            <div className="edt-agg">
+              {erreur && <div className="edt-error">{erreur}</div>}
+              {loadingTous && <div className="edt-empty">Chargement…</div>}
+              {!loadingTous && (() => {
+                // Pour chaque classe (ordre officiel), créneaux du jour filtré.
+                const blocs = emploisNonVides
+                  .map((e) => ({
+                    classe: e.classe,
+                    creneaux: e.creneaux
+                      .filter((c) => c.jour === jourFiltre)
+                      .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
+                  }))
+                  .filter((b) => b.creneaux.length > 0);
+
+                if (blocs.length === 0) {
+                  const label = JOURS_SEMAINE.find((j) => j.valeur === jourFiltre)?.label ?? '';
+                  return <div className="edt-empty">Aucun cours le {label.toLowerCase()} pour {annee}.</div>;
+                }
+                return blocs.map((b) => (
+                  <div className="edt-class-block" key={b.classe}>
+                    <div className="edt-class-title">{b.classe}</div>
+                    {/* Liste horizontale des créneaux du jour pour cette classe */}
+                    <div className="edt-day-list">
+                      {b.creneaux.map((c) => renderCreneau(c, b.classe, true))}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
+
+          {/* ════════════════════════════════════════════════════════
+              ÉDITION — Ajout d'un créneau. Réservé à la vue 'classe'
+              (les vues agrégées sont en consultation seule).
+              ════════════════════════════════════════════════════════ */}
+          {vue === 'classe' && (
           <div className="edt-add">
             <div className="edt-add-title">Ajouter un créneau</div>
             <div className="edt-add-grid">
@@ -340,6 +501,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               Renseigner le groupe (ex. 4PFA) rend le créneau cliquable et ouvre exactement le Cahier de textes de cette section.
             </p>
           </div>
+          )}
         </div>
       </div>
     </div>

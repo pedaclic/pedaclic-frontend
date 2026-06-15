@@ -10,6 +10,10 @@ import {
   getDoc,
   setDoc,
   onSnapshot,
+  collection,
+  getDocs,
+  query,
+  where,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -48,6 +52,25 @@ export async function emploiExistePourClasse(
 ): Promise<boolean> {
   const emploi = await getEmploiByClasse(classe, annee);
   return !!emploi && Array.isArray(emploi.creneaux) && emploi.creneaux.length > 0;
+}
+
+/**
+ * Récupère TOUS les emplois du temps d'une année scolaire.
+ * Sert aux vues agrégées (filtre « jour » et filtre « semaine » sur
+ * l'ensemble des classes). Lecture seule : aucune écriture n'est faite ici.
+ *
+ * Filtre à champ unique (`anneeScolaire`) → indexé automatiquement par
+ * Firestore, donc AUCUN index composite n'est requis.
+ */
+export async function getTousEmplois(
+  annee: AnneeScolaire
+): Promise<EmploiDuTemps[]> {
+  const q = query(
+    collection(db, COL_EMPLOI),
+    where('anneeScolaire', '==', annee)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as EmploiDuTemps));
 }
 
 /** Écoute en temps réel l'emploi du temps d'une classe. */
