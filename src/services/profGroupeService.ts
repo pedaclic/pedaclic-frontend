@@ -370,6 +370,63 @@ export async function rejoindreGroupe(
   }
 }
 
+/**
+ * 🆕 EFFECTIFS RÉELS À L'ÉCHELLE DE LA PLATEFORME
+ * ───────────────────────────────────────────────
+ * Les statistiques admin basées sur la collection `users` ne comptent QUE
+ * les comptes élèves (auto-inscrits ou inscrits sur compte existant). Elles
+ * ignorent les élèves « offline » inscrits par le prof SANS compte PedaClic
+ * (eleveId synthétique préfixé « offline: », aucun document `users/{uid}`).
+ *
+ * Cette fonction lit les inscriptions actives (`inscriptions_groupe`) et
+ * restitue l'effectif réellement en classe :
+ *   • inscriptionsActives → nb de lignes d'inscription actives (somme des
+ *     effectifs de toutes les classes ; un élève dans 2 classes compte 2).
+ *   • elevesDistincts     → nb d'élèves DISTINCTS (dédupliqués par eleveId ;
+ *     un élève présent dans plusieurs classes n'est compté qu'une fois).
+ *   • elevesSansCompte    → parmi les distincts, ceux sans compte (offline).
+ *
+ * Lecture seule, non bloquante : en cas d'erreur on renvoie des zéros pour
+ * ne jamais casser l'affichage des tableaux de bord.
+ */
+export interface EffectifsClasses {
+  inscriptionsActives: number;
+  elevesDistincts: number;
+  elevesSansCompte: number;
+}
+
+export async function getEffectifsClasses(): Promise<EffectifsClasses> {
+  try {
+    const q = query(
+      collection(db, 'inscriptions_groupe'),
+      where('statut', '==', 'actif')
+    );
+    const snap = await getDocs(q);
+
+    const distincts = new Set<string>();
+    const sansCompte = new Set<string>();
+
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      const eleveId = data.eleveId as string | undefined;
+      if (!eleveId) return;
+      distincts.add(eleveId);
+      const estOffline =
+        data.sourceInscription === 'offline' || eleveId.startsWith('offline:');
+      if (estOffline) sansCompte.add(eleveId);
+    });
+
+    return {
+      inscriptionsActives: snap.size,
+      elevesDistincts: distincts.size,
+      elevesSansCompte: sansCompte.size,
+    };
+  } catch (error) {
+    console.error('Erreur lors du calcul des effectifs de classe:', error);
+    return { inscriptionsActives: 0, elevesDistincts: 0, elevesSansCompte: 0 };
+  }
+}
+
 export async function getElevesGroupe(
   groupeId: string,
   statut: string = 'actif'

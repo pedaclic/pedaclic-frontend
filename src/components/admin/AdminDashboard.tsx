@@ -23,7 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService } from '../../services/chapitreService';
 import ResourceService from '../../services/ResourceService';
-import { getGlobalUserStats } from '../../services/userService';
+import { getEffectifsClasses } from '../../services/profGroupeService';
 
 // ==================== INTERFACES ====================
 
@@ -37,8 +37,8 @@ interface DashboardStats {
   totalQuiz: number;         // Quiz classiques (collection quizzes)
   totalQuizAvances: number;  // Quiz avancés (collection quizzes_v2)
   totalLiveSessions: number;  // Sessions Live (collection live_sessions)
-  totalInscriptions: number; // 🆕 Total des élèves inscrits (collection users, role=eleve)
-  elevesActifs: number;      // 🆕 Élèves au compte actif (isActive !== false)
+  elevesEnClasse: number;    // 🆕 Élèves DISTINCTS réellement inscrits en classe (inclut offline)
+  inscriptionsActives: number; // 🆕 Total des lignes d'inscription actives (somme des effectifs)
   ressourcesParType: {
     cours: number;
     exercice: number;
@@ -65,8 +65,8 @@ const AdminDashboard: React.FC = () => {
     totalQuiz: 0,
     totalQuizAvances: 0,
     totalLiveSessions: 0,
-    totalInscriptions: 0,
-    elevesActifs: 0,
+    elevesEnClasse: 0,
+    inscriptionsActives: 0,
     ressourcesParType: {
       cours: 0,
       exercice: 0,
@@ -88,7 +88,7 @@ const AdminDashboard: React.FC = () => {
 
         // Chargement parallèle : disciplines, chapitres, ressources,
         // + comptage des quiz depuis leurs collections Firestore dédiées
-        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap, liveSnap, userStats] = await Promise.all([
+        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap, liveSnap, effectifs] = await Promise.all([
           DisciplineService.getAll(),
           ChapitreService.getAll(),
           ResourceService.getStats(),
@@ -96,9 +96,9 @@ const AdminDashboard: React.FC = () => {
           getDocs(collection(db, 'quizzes_v2')),
           getDocs(collection(db, 'cours_en_ligne')),
           getDocs(collection(db, 'live_sessions')),
-          // 🆕 Effectifs synchronisés : recalculés à la volée depuis Firestore
-          //    (pas un compteur dénormalisé), donc toujours à jour.
-          getGlobalUserStats()
+          // 🆕 Effectifs réels : recalculés à la volée depuis inscriptions_groupe
+          //    (inclut les élèves offline sans compte), donc toujours à jour.
+          getEffectifsClasses()
         ]);
 
         setStats({
@@ -111,8 +111,8 @@ const AdminDashboard: React.FC = () => {
           totalQuiz: quizzesSnap.size,
           totalQuizAvances: quizzesV2Snap.size,
           totalLiveSessions: liveSnap.size,
-          totalInscriptions: userStats.eleves,
-          elevesActifs: userStats.elevesActifs,
+          elevesEnClasse: effectifs.elevesDistincts,
+          inscriptionsActives: effectifs.inscriptionsActives,
           ressourcesParType: resourceStats.parType
         });
       } catch (err) {
@@ -164,37 +164,39 @@ const AdminDashboard: React.FC = () => {
           {/* ====== Grille des statistiques principales ====== */}
           {/* Toutes les cartes sont cliquables et redirigent vers la page admin correspondante */}
           <section className="stats-grid">
-            {/* 🆕 Carte: Total inscriptions (élèves) → /admin/utilisateurs */}
+            {/* 🆕 Carte: Élèves réellement en classe (distincts, inclut offline) */}
             <div
               className="stat-card stat-card--clickable"
               onClick={() => navigate('/admin/utilisateurs')}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/utilisateurs')}
+              title="Élèves distincts inscrits en classe (comptes + élèves offline sans compte)"
             >
               <div className="stat-card__icon stat-card__icon--primary">
                 👥
               </div>
               <div className="stat-card__content">
-                <div className="stat-card__value">{stats.totalInscriptions}</div>
-                <div className="stat-card__label">Inscriptions</div>
+                <div className="stat-card__value">{stats.elevesEnClasse}</div>
+                <div className="stat-card__label">Élèves en classe</div>
               </div>
             </div>
 
-            {/* 🆕 Carte: Élèves actifs → /admin/utilisateurs */}
+            {/* 🆕 Carte: Total des inscriptions actives (somme des effectifs de classe) */}
             <div
               className="stat-card stat-card--clickable"
               onClick={() => navigate('/admin/utilisateurs')}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/utilisateurs')}
+              title="Somme des effectifs de toutes les classes (un élève dans 2 classes compte 2 fois)"
             >
               <div className="stat-card__icon stat-card__icon--success">
-                ✅
+                📋
               </div>
               <div className="stat-card__content">
-                <div className="stat-card__value">{stats.elevesActifs}</div>
-                <div className="stat-card__label">Élèves actifs</div>
+                <div className="stat-card__value">{stats.inscriptionsActives}</div>
+                <div className="stat-card__label">Inscriptions classe</div>
               </div>
             </div>
 

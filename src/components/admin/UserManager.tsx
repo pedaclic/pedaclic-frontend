@@ -53,6 +53,7 @@ import {
   getDureeJours,
   type FormulePremium,
 } from '../../types/premiumPlans';
+import { getEffectifsClasses } from '../../services/profGroupeService';
 
 /* ══════════════════════════════════════════════
    TYPES LOCAUX
@@ -68,6 +69,14 @@ interface GlobalStats {
   elevesActifs: number;
   premium: number;
   actifs: number;
+  /**
+   * 🆕 Effectif réellement en classe : élèves DISTINCTS issus des inscriptions
+   * actives (inclut les élèves « offline » sans compte PedaClic, invisibles
+   * dans le décompte basé sur la collection `users`).
+   */
+  elevesEnClasse: number;
+  /** 🆕 Total des lignes d'inscription actives (somme des effectifs de classe). */
+  inscriptionsActives: number;
 }
 
 /** État de la modale d'octroi Premium (formule + durée configurables). */
@@ -130,12 +139,18 @@ const UserManager: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, stats] = await Promise.all([
+      const [usersData, stats, effectifs] = await Promise.all([
         getUsers(),
         getGlobalUserStats(),
+        // 🆕 Effectif réel (inscriptions_groupe) : inclut les élèves offline.
+        getEffectifsClasses(),
       ]);
       setUsers(usersData);
-      setGlobalStats(stats);
+      setGlobalStats({
+        ...stats,
+        elevesEnClasse: effectifs.elevesDistincts,
+        inscriptionsActives: effectifs.inscriptionsActives,
+      });
     } catch (err) {
       setError('Erreur lors du chargement des utilisateurs.');
       console.error(err);
@@ -314,10 +329,18 @@ const UserManager: React.FC = () => {
   const renderGlobalStats = () => {
     if (!globalStats) return null;
     const cards = [
-      { label: 'Total', value: globalStats.total, icon: <Users size={20} />, color: 'stat-blue' },
-      { label: 'Élèves inscrits', value: globalStats.eleves, icon: <BookOpen size={20} />, color: 'stat-green' },
-      // 🆕 Effectif actif : élèves dont le compte n'est pas désactivé.
-      { label: 'Élèves actifs', value: globalStats.elevesActifs, icon: <UserCheck size={20} />, color: 'stat-green' },
+      { label: 'Total comptes', value: globalStats.total, icon: <Users size={20} />, color: 'stat-blue' },
+      // 🆕 Effectif RÉEL en classe (inscriptions actives, élèves distincts) :
+      //    inclut les élèves « offline » inscrits par le prof sans compte.
+      {
+        label: 'Élèves en classe',
+        value: globalStats.elevesEnClasse,
+        icon: <UserCheck size={20} />,
+        color: 'stat-green',
+        hint: `${globalStats.inscriptionsActives} inscription(s) active(s) · ${globalStats.eleves} compte(s) élève`,
+      },
+      // Comptes élèves (collection users) — distinct de l'effectif en classe.
+      { label: 'Comptes élèves', value: globalStats.eleves, icon: <BookOpen size={20} />, color: 'stat-green' },
       { label: 'Professeurs', value: globalStats.profs, icon: <GraduationCap size={20} />, color: 'stat-purple' },
       // Premium = abonnements réellement actifs (non expirés).
       { label: 'Premium actifs', value: globalStats.premium, icon: <Star size={20} />, color: 'stat-gold' },
@@ -326,7 +349,11 @@ const UserManager: React.FC = () => {
     return (
       <div className="user-stats-grid">
         {cards.map((card) => (
-          <div key={card.label} className={`user-stat-card ${card.color}`}>
+          <div
+            key={card.label}
+            className={`user-stat-card ${card.color}`}
+            title={(card as { hint?: string }).hint}
+          >
             <div className="user-stat-icon">{card.icon}</div>
             <div className="user-stat-info">
               <span className="user-stat-value">{card.value}</span>
