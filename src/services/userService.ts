@@ -21,6 +21,11 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import {
+  getDureeJours,
+  estAbonnementPremiumActif,
+  type FormulePremium,
+} from '../types/premiumPlans';
 
 /* ──────────────────────────────────────────────
    Types locaux (définis ici pour éviter
@@ -148,9 +153,22 @@ export const updateUserRole = async (
   }
 };
 
+/**
+ * Options d'octroi Premium par l'admin.
+ * - `formule`     : formule de la grille tarifaire (détermine la durée par défaut
+ *                   ET la nature de l'accès — illimité vs à la carte).
+ * - `dureeJours`  : override explicite de la durée de validité (en jours).
+ *                   Prioritaire sur la durée déduite de la formule.
+ */
+export interface PremiumGrantOptions {
+  formule?: FormulePremium;
+  dureeJours?: number;
+}
+
 export const updatePremiumStatus = async (
   uid: string,
-  isPremium: boolean
+  isPremium: boolean,
+  options?: PremiumGrantOptions
 ): Promise<void> => {
   try {
     const updateData: any = {
@@ -159,11 +177,26 @@ export const updatePremiumStatus = async (
     };
 
     if (isPremium) {
+      // Durée : override admin explicite > durée de la formule > repli (30 j).
+      const jours =
+        typeof options?.dureeJours === 'number' && options.dureeJours > 0
+          ? options.dureeJours
+          : getDureeJours(options?.formule);
+
       const expirationDate = new Date();
-      expirationDate.setDate(expirationDate.getDate() + 30);
+      expirationDate.setDate(expirationDate.getDate() + jours);
       updateData.subscriptionEnd = Timestamp.fromDate(expirationDate);
+
+      // On mémorise la formule pour que les restrictions fonctionnelles
+      // (nombre de cours à la carte, quotas de ressources…) s'appliquent.
+      if (options?.formule) {
+        updateData.subscriptionPlan = options.formule;
+      }
     } else {
+      // Révocation : on coupe la date de fin ET la formule pour éviter
+      // qu'un accès résiduel ne subsiste.
       updateData.subscriptionEnd = null;
+      updateData.subscriptionPlan = null;
     }
 
     await updateDoc(doc(db, 'users', uid), updateData);
@@ -236,12 +269,21 @@ export const getGlobalUserStats = async () => {
     const snapshot = await getDocs(usersRef);
     const users = snapshot.docs.map((d) => d.data());
 
+    const eleves = users.filter((u) => u.role === 'eleve');
+
     return {
       total: users.length,
       admins: users.filter((u) => u.role === 'admin').length,
       profs: users.filter((u) => u.role === 'prof').length,
-      eleves: users.filter((u) => u.role === 'eleve').length,
-      premium: users.filter((u) => u.isPremium).length,
+      // Total des élèves inscrits (tous statuts confondus).
+      eleves: eleves.length,
+      // 🆕 Élèves dont le compte n'est PAS désactivé : effectif « actif ».
+      elevesActifs: eleves.filter((u) => u.isActive !== false).length,
+      // Premium réellement ACTIF (non expiré) — auparavant on comptait le
+      // simple booléen, ce qui gonflait le total avec des abonnements échus.
+      premium: users.filter((u) =>
+        estAbonnementPremiumActif(u.isPremium, u.subscriptionEnd)
+      ).length,
       actifs: users.filter((u) => u.isActive !== false).length,
     };
   } catch (error) {

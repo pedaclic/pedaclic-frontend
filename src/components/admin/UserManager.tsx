@@ -48,6 +48,11 @@ import {
   UserFilters,
   UserStats,
 } from '../../services/userService';
+import {
+  TOUS_LES_PLANS,
+  getDureeJours,
+  type FormulePremium,
+} from '../../types/premiumPlans';
 
 /* ══════════════════════════════════════════════
    TYPES LOCAUX
@@ -59,8 +64,17 @@ interface GlobalStats {
   admins: number;
   profs: number;
   eleves: number;
+  /** Élèves dont le compte n'est pas désactivé. */
+  elevesActifs: number;
   premium: number;
   actifs: number;
+}
+
+/** État de la modale d'octroi Premium (formule + durée configurables). */
+interface PremiumGrantState {
+  user: User;
+  formule: FormulePremium;
+  dureeJours: number;
 }
 
 /* ══════════════════════════════════════════════
@@ -97,6 +111,9 @@ const UserManager: React.FC = () => {
 
   /* ── Actions en cours ── */
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  /* ── Modale d'octroi Premium (formule + durée) ── */
+  const [premiumGrant, setPremiumGrant] = useState<PremiumGrantState | null>(null);
 
   /* ── Confirmations ── */
   const [confirmAction, setConfirmAction] = useState<{
@@ -212,6 +229,30 @@ const UserManager: React.FC = () => {
     }
   };
 
+  /**
+   * Octroi Premium configurable : applique la formule choisie ET la durée
+   * (durée de la formule, éventuellement surchargée par le champ « jours »).
+   */
+  const executeGrant = async () => {
+    if (!premiumGrant) return;
+    const { user, formule, dureeJours } = premiumGrant;
+    setActionLoading(user.uid);
+    try {
+      await updatePremiumStatus(user.uid, true, { formule, dureeJours });
+      const plan = TOUS_LES_PLANS.find((p) => p.id === formule);
+      setSuccessMessage(
+        `Premium activé (${plan?.nom ?? formule} · ${dureeJours} jours).`
+      );
+      await loadData();
+    } catch (err) {
+      setError("Erreur lors de l'octroi du statut Premium.");
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+      setPremiumGrant(null);
+    }
+  };
+
   /* ══════════════════════════════════════════════
      UTILITAIRES D'AFFICHAGE
      ══════════════════════════════════════════════ */
@@ -274,9 +315,12 @@ const UserManager: React.FC = () => {
     if (!globalStats) return null;
     const cards = [
       { label: 'Total', value: globalStats.total, icon: <Users size={20} />, color: 'stat-blue' },
-      { label: 'Élèves', value: globalStats.eleves, icon: <BookOpen size={20} />, color: 'stat-green' },
+      { label: 'Élèves inscrits', value: globalStats.eleves, icon: <BookOpen size={20} />, color: 'stat-green' },
+      // 🆕 Effectif actif : élèves dont le compte n'est pas désactivé.
+      { label: 'Élèves actifs', value: globalStats.elevesActifs, icon: <UserCheck size={20} />, color: 'stat-green' },
       { label: 'Professeurs', value: globalStats.profs, icon: <GraduationCap size={20} />, color: 'stat-purple' },
-      { label: 'Premium', value: globalStats.premium, icon: <Star size={20} />, color: 'stat-gold' },
+      // Premium = abonnements réellement actifs (non expirés).
+      { label: 'Premium actifs', value: globalStats.premium, icon: <Star size={20} />, color: 'stat-gold' },
     ];
 
     return (
@@ -321,6 +365,86 @@ const UserManager: React.FC = () => {
               disabled={actionLoading === confirmAction.userId}
             >
               {actionLoading === confirmAction.userId ? 'En cours...' : 'Confirmer'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  /* ══════════════════════════════════════════════
+     RENDU : MODAL OCTROI PREMIUM (formule + durée)
+     ══════════════════════════════════════════════ */
+  const renderPremiumGrantModal = () => {
+    if (!premiumGrant) return null;
+    const { user, formule, dureeJours } = premiumGrant;
+    const plan = TOUS_LES_PLANS.find((p) => p.id === formule);
+
+    return (
+      <div className="admin-modal-overlay" onClick={() => setPremiumGrant(null)}>
+        <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="admin-modal-header">
+            <h3><Crown size={18} /> Activer Premium</h3>
+            <button className="admin-modal-close" onClick={() => setPremiumGrant(null)}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="admin-modal-body">
+            <p style={{ marginBottom: '1rem' }}>
+              Octroi du statut Premium à <strong>{user.displayName || user.email}</strong>.
+            </p>
+
+            {/* ── Choix de la formule (grille tarifaire) ── */}
+            <div className="admin-filter-group" style={{ marginBottom: '0.75rem' }}>
+              <label className="admin-filter-label">Formule</label>
+              <select
+                className="admin-select"
+                value={formule}
+                onChange={(e) => {
+                  const f = e.target.value as FormulePremium;
+                  // Changer de formule réinitialise la durée sur celle de la grille.
+                  setPremiumGrant({ ...premiumGrant, formule: f, dureeJours: getDureeJours(f) });
+                }}
+              >
+                {TOUS_LES_PLANS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.nom} — {p.duree} ({p.prix.toLocaleString('fr-SN')} FCFA)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* ── Durée de validité (override en jours) ── */}
+            <div className="admin-filter-group">
+              <label className="admin-filter-label">Durée de validité (jours)</label>
+              <input
+                type="number"
+                min={1}
+                className="admin-search-input"
+                style={{ paddingLeft: '0.75rem' }}
+                value={dureeJours}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  setPremiumGrant({ ...premiumGrant, dureeJours: isNaN(v) ? 0 : v });
+                }}
+              />
+              <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                Pré-rempli selon la formule ({plan?.duree ?? '—'}). Modifiable.
+              </span>
+            </div>
+          </div>
+
+          <div className="admin-modal-footer">
+            <button className="admin-btn admin-btn-ghost" onClick={() => setPremiumGrant(null)}>
+              Annuler
+            </button>
+            <button
+              className="admin-btn admin-btn-primary"
+              onClick={executeGrant}
+              disabled={actionLoading === user.uid || dureeJours < 1}
+            >
+              {actionLoading === user.uid ? 'En cours...' : 'Activer Premium'}
             </button>
           </div>
         </div>
@@ -435,6 +559,7 @@ const UserManager: React.FC = () => {
     <div className="admin-container">
       {renderMessages()}
       {renderConfirmModal()}
+      {renderPremiumGrantModal()}
       {renderUserDetail()}
 
       <div className="user-manager">
@@ -578,16 +703,25 @@ const UserManager: React.FC = () => {
                     <td>
                       <button
                         className={`user-premium-toggle ${user.isPremium ? 'active' : ''}`}
-                        onClick={() =>
-                          setConfirmAction({
-                            type: 'premium',
-                            userId: user.uid,
-                            value: !user.isPremium,
-                            label: user.isPremium
-                              ? `Désactiver le statut Premium de "${user.displayName || user.email}" ?`
-                              : `Activer le statut Premium de "${user.displayName || user.email}" pour 30 jours ?`,
-                          })
-                        }
+                        onClick={() => {
+                          if (user.isPremium) {
+                            // Déjà Premium → confirmation de révocation.
+                            setConfirmAction({
+                              type: 'premium',
+                              userId: user.uid,
+                              value: false,
+                              label: `Désactiver le statut Premium de "${user.displayName || user.email}" ?`,
+                            });
+                          } else {
+                            // Octroi → modale formule + durée configurables.
+                            const formuleDefaut: FormulePremium = 'illimite_3m';
+                            setPremiumGrant({
+                              user,
+                              formule: formuleDefaut,
+                              dureeJours: getDureeJours(formuleDefaut),
+                            });
+                          }
+                        }}
                         disabled={actionLoading === user.uid}
                       >
                         {user.isPremium ? (

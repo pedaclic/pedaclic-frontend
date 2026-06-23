@@ -578,7 +578,18 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
                 <div className="groupe-card-infos">
                   <span>📅 {groupe.classeNiveau}</span>
                   <span>🎓 {groupe.anneeScolaire}</span>
-                  <span>👥 {groupe.nombreInscrits} élève{groupe.nombreInscrits !== 1 ? 's' : ''}</span>
+                  {/*
+                    Effectif synchronisé : on privilégie le décompte réel
+                    issu des inscriptions actives (stats.nombreEleves), calculé
+                    à la volée par getStatsGroupe. Le compteur dénormalisé
+                    groupe.nombreInscrits (incrémenté/décrémenté) sert de repli
+                    tant que les stats ne sont pas chargées — il pouvait diverger
+                    du nombre réel d'élèves actifs.
+                  */}
+                  {(() => {
+                    const effectif = stats ? stats.nombreEleves : groupe.nombreInscrits;
+                    return <span>👥 {effectif} élève{effectif !== 1 ? 's' : ''}</span>;
+                  })()}
                 </div>
 
                 <div className="groupe-card-code">

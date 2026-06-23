@@ -30,6 +30,13 @@ export interface PlanPremium {
   prix: number;
   prixOriginal?: number;
   duree: string;
+  /**
+   * Durée de validité de l'abonnement, exprimée en JOURS.
+   * Source unique de vérité pour le calcul de `subscriptionEnd` (octroi
+   * admin ET souscription payante). Évite d'avoir à reparser le libellé
+   * humain `duree` (« 3 mois », « 9 mois »…).
+   */
+  dureeJours: number;
   economie?: string;
   popular?: boolean;
   /** Nombre max de cours accessibles (null = illimité) */
@@ -49,6 +56,7 @@ export const PLANS_CLASSIQUES: PlanPremium[] = [
     description: 'Accès illimité à tous les cours',
     prix: 10000,
     duree: '3 mois',
+    dureeJours: 90,
     nombreCoursMax: null,
     accesIllimite: true,
   },
@@ -58,6 +66,7 @@ export const PLANS_CLASSIQUES: PlanPremium[] = [
     description: 'Accès illimité à tous les cours',
     prix: 20000,
     duree: '6 mois',
+    dureeJours: 180,
     economie: '10 000 FCFA vs 2×3 mois',
     popular: true,
     nombreCoursMax: null,
@@ -69,6 +78,7 @@ export const PLANS_CLASSIQUES: PlanPremium[] = [
     description: 'Accès illimité à tous les cours',
     prix: 30000,
     duree: '12 mois',
+    dureeJours: 365,
     economie: '30 000 FCFA vs 4×3 mois',
     nombreCoursMax: null,
     accesIllimite: true,
@@ -85,6 +95,7 @@ export const PLANS_A_LA_CARTE: PlanPremium[] = [
     description: 'Choisissez 1 cours par discipline et niveau',
     prix: 1000,
     duree: '1 mois',
+    dureeJours: 30,
     nombreCoursMax: 1,
     accesIllimite: false,
   },
@@ -94,6 +105,7 @@ export const PLANS_A_LA_CARTE: PlanPremium[] = [
     description: 'Choisissez 3 cours par discipline et niveau',
     prix: 2000,
     duree: '1 mois',
+    dureeJours: 30,
     nombreCoursMax: 3,
     accesIllimite: false,
   },
@@ -103,6 +115,7 @@ export const PLANS_A_LA_CARTE: PlanPremium[] = [
     description: 'Choisissez 7 cours par discipline et niveau',
     prix: 5000,
     duree: '1 mois',
+    dureeJours: 30,
     nombreCoursMax: 7,
     accesIllimite: false,
   },
@@ -112,6 +125,7 @@ export const PLANS_A_LA_CARTE: PlanPremium[] = [
     description: 'Accès à l\'intégralité du catalogue',
     prix: 25000,
     duree: '9 mois',
+    dureeJours: 270,
     nombreCoursMax: null,
     accesIllimite: true,
   },
@@ -202,4 +216,60 @@ export function getLimiteRessources(formule: FormulePremium | string | undefined
 
   // Toutes les autres formules (y compris undefined) → 50/mois
   return LIMITE_RESSOURCES_STANDARD;
+}
+
+/* ════════════════════════════════════════════════════════════
+   DURÉE DE VALIDITÉ & ÉTAT D'ACTIVITÉ DE L'ABONNEMENT
+   ════════════════════════════════════════════════════════════ */
+
+/** Durée de repli (en jours) quand aucune formule n'est précisée. */
+export const DUREE_PREMIUM_DEFAUT_JOURS = 30;
+
+/**
+ * Retourne la durée de validité (en JOURS) associée à une formule.
+ * - Formule connue → sa `dureeJours` issue de la grille tarifaire.
+ * - Formule inconnue / absente → durée de repli (30 j).
+ *
+ * Utilisé par l'octroi admin et la souscription payante pour calculer
+ * `subscriptionEnd` de façon cohérente avec la grille des prix.
+ */
+export function getDureeJours(formule: FormulePremium | string | undefined): number {
+  if (!formule) return DUREE_PREMIUM_DEFAUT_JOURS;
+  const plan = TOUS_LES_PLANS.find((p) => p.id === formule);
+  return plan?.dureeJours ?? DUREE_PREMIUM_DEFAUT_JOURS;
+}
+
+/**
+ * Vérifie qu'un abonnement Premium est réellement ACTIF à l'instant T.
+ *
+ * Règle : l'utilisateur doit être marqué Premium ET son `subscriptionEnd`
+ * (s'il existe) doit être dans le futur. C'est LE point de contrôle qui
+ * faisait défaut : auparavant seul le booléen `isPremium` était testé,
+ * ce qui rendait l'accès Premium permanent même après expiration.
+ *
+ * @param isPremium       Booléen stocké sur le compte.
+ * @param subscriptionEnd Date de fin (Date, Timestamp Firestore, string,
+ *                        number) ou null/undefined (= pas de limite ⇒ actif).
+ */
+export function estAbonnementPremiumActif(
+  isPremium: boolean | undefined,
+  subscriptionEnd: any
+): boolean {
+  if (!isPremium) return false;
+  // Pas de date de fin → on considère l'accès comme actif (compat. comptes
+  // historiques sans `subscriptionEnd`).
+  if (subscriptionEnd === null || subscriptionEnd === undefined) return true;
+
+  // Normalisation : Timestamp Firestore (.toDate), Date, string ou number.
+  let fin: Date;
+  if (typeof subscriptionEnd?.toDate === 'function') {
+    fin = subscriptionEnd.toDate();
+  } else if (subscriptionEnd instanceof Date) {
+    fin = subscriptionEnd;
+  } else {
+    fin = new Date(subscriptionEnd);
+  }
+
+  if (isNaN(fin.getTime())) return true; // date illisible → ne pas bloquer
+  return fin.getTime() > Date.now();
 }

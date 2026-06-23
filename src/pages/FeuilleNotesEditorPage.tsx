@@ -2026,9 +2026,45 @@ const FeuilleNotesEditorPage: React.FC = () => {
               <td className="col-eleve">
                 <strong>Moyenne classe</strong>
               </td>
-              {evals.map((e) => (
-                <td key={e.id} className="col-note" />
-              ))}
+              {/*
+                🆕 MOYENNE PONDÉRÉE DE CLASSE PAR COLONNE
+                ─────────────────────────────────────────
+                Pour chaque évaluation, moyenne des notes de la classe en
+                appliquant les MÊMES règles d'absence que le calcul individuel :
+                  • 'absent_justifie'     → élève EXCLU de la moyenne de colonne
+                  • 'absent_non_justifie' → compte 0 / 20
+                  • présent + note saisie → la note
+                  • présent sans note     → non comptabilisé (pas encore noté)
+                Le résultat est affiché en bas de chaque colonne, et grisé pour
+                les évaluations exclues de la moyenne générale (e.exclueDeMoyenne).
+              */}
+              {evals.map((e) => {
+                let somme = 0;
+                let compte = 0;
+                lignes.forEach((l) => {
+                  const st = feuille.absences?.[l.eleveId]?.[e.id] ?? 'present';
+                  if (st === 'absent_justifie') return;            // exclu
+                  if (st === 'absent_non_justifie') { somme += 0; compte++; return; }
+                  const note = l.notes[e.id];
+                  if (typeof note === 'number') { somme += note; compte++; }
+                });
+                const moyCol = compte > 0 ? somme / compte : null;
+                const cellExcluse = e.exclueDeMoyenne === true;
+                return (
+                  <td
+                    key={e.id}
+                    className={`col-note${cellExcluse ? ' col-note--excluse' : ''}`}
+                    title={
+                      moyCol !== null
+                        ? `Moyenne de la classe sur « ${e.libelle || 'évaluation'} » (${compte} note${compte > 1 ? 's' : ''})`
+                        : 'Aucune note saisie sur cette colonne'
+                    }
+                    style={{ fontWeight: 700, textAlign: 'center' }}
+                  >
+                    {moyCol !== null ? moyCol.toFixed(2) : '—'}
+                  </td>
+                );
+              })}
               {/* Moyennes de classe calculées sur chaque agrégat */}
               <td className={`col-moyenne ${getClasseMoyenne(moyenneClasseDevoirs)}`}>
                 {moyenneClasseDevoirs > 0 ? moyenneClasseDevoirs.toFixed(2) : '—'}

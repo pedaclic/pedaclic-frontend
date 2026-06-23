@@ -23,6 +23,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService } from '../../services/chapitreService';
 import ResourceService from '../../services/ResourceService';
+import { getGlobalUserStats } from '../../services/userService';
 
 // ==================== INTERFACES ====================
 
@@ -36,6 +37,8 @@ interface DashboardStats {
   totalQuiz: number;         // Quiz classiques (collection quizzes)
   totalQuizAvances: number;  // Quiz avancés (collection quizzes_v2)
   totalLiveSessions: number;  // Sessions Live (collection live_sessions)
+  totalInscriptions: number; // 🆕 Total des élèves inscrits (collection users, role=eleve)
+  elevesActifs: number;      // 🆕 Élèves au compte actif (isActive !== false)
   ressourcesParType: {
     cours: number;
     exercice: number;
@@ -62,6 +65,8 @@ const AdminDashboard: React.FC = () => {
     totalQuiz: 0,
     totalQuizAvances: 0,
     totalLiveSessions: 0,
+    totalInscriptions: 0,
+    elevesActifs: 0,
     ressourcesParType: {
       cours: 0,
       exercice: 0,
@@ -83,14 +88,17 @@ const AdminDashboard: React.FC = () => {
 
         // Chargement parallèle : disciplines, chapitres, ressources,
         // + comptage des quiz depuis leurs collections Firestore dédiées
-        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap, liveSnap] = await Promise.all([
+        const [disciplines, chapitres, resourceStats, quizzesSnap, quizzesV2Snap, coursSnap, liveSnap, userStats] = await Promise.all([
           DisciplineService.getAll(),
           ChapitreService.getAll(),
           ResourceService.getStats(),
           getDocs(collection(db, 'quizzes')),
           getDocs(collection(db, 'quizzes_v2')),
           getDocs(collection(db, 'cours_en_ligne')),
-          getDocs(collection(db, 'live_sessions'))
+          getDocs(collection(db, 'live_sessions')),
+          // 🆕 Effectifs synchronisés : recalculés à la volée depuis Firestore
+          //    (pas un compteur dénormalisé), donc toujours à jour.
+          getGlobalUserStats()
         ]);
 
         setStats({
@@ -103,6 +111,8 @@ const AdminDashboard: React.FC = () => {
           totalQuiz: quizzesSnap.size,
           totalQuizAvances: quizzesV2Snap.size,
           totalLiveSessions: liveSnap.size,
+          totalInscriptions: userStats.eleves,
+          elevesActifs: userStats.elevesActifs,
           ressourcesParType: resourceStats.parType
         });
       } catch (err) {
@@ -154,6 +164,40 @@ const AdminDashboard: React.FC = () => {
           {/* ====== Grille des statistiques principales ====== */}
           {/* Toutes les cartes sont cliquables et redirigent vers la page admin correspondante */}
           <section className="stats-grid">
+            {/* 🆕 Carte: Total inscriptions (élèves) → /admin/utilisateurs */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/utilisateurs')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/utilisateurs')}
+            >
+              <div className="stat-card__icon stat-card__icon--primary">
+                👥
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.totalInscriptions}</div>
+                <div className="stat-card__label">Inscriptions</div>
+              </div>
+            </div>
+
+            {/* 🆕 Carte: Élèves actifs → /admin/utilisateurs */}
+            <div
+              className="stat-card stat-card--clickable"
+              onClick={() => navigate('/admin/utilisateurs')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && navigate('/admin/utilisateurs')}
+            >
+              <div className="stat-card__icon stat-card__icon--success">
+                ✅
+              </div>
+              <div className="stat-card__content">
+                <div className="stat-card__value">{stats.elevesActifs}</div>
+                <div className="stat-card__label">Élèves actifs</div>
+              </div>
+            </div>
+
             {/* Carte: Total Disciplines → /admin/disciplines */}
             <div
               className="stat-card stat-card--clickable"

@@ -531,10 +531,45 @@ export async function retirerEleve(
 // SECTION 4 : STATISTIQUES PAR GROUPE
 // ============================================================
 
+/**
+ * Réconciliation du compteur dénormalisé `nombreInscrits`.
+ * ───────────────────────────────────────────────────────
+ * Le champ `nombreInscrits` du document groupe (collection `groupes_prof`)
+ * est maintenu par incrément/décrément (inscription, retrait…) et peut donc
+ * DÉRIVER du nombre réel d'inscriptions actives (races, suppressions hors
+ * flux, imports). On le réaligne ici sur le décompte réel `effectifReel`.
+ *
+ * Conçue pour être SÛRE :
+ *   • lecture unique du doc groupe ;
+ *   • écriture UNIQUEMENT si la valeur diverge (idempotent, rare) ;
+ *   • « fire-and-forget » : toute erreur (droits Firestore, réseau) est
+ *     avalée pour ne jamais bloquer le calcul des stats.
+ */
+async function reconcilierNombreInscrits(
+  groupeId: string,
+  effectifReel: number
+): Promise<void> {
+  try {
+    const ref = doc(db, 'groupes_prof', groupeId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    const actuel = snap.data()?.nombreInscrits ?? 0;
+    if (actuel !== effectifReel) {
+      await updateDoc(ref, { nombreInscrits: effectifReel });
+    }
+  } catch (e) {
+    // Non bloquant : la dérive du compteur ne doit pas empêcher l'affichage.
+    console.warn('Réconciliation nombreInscrits ignorée pour', groupeId, e);
+  }
+}
+
 export async function getStatsGroupe(groupeId: string): Promise<StatsGroupe> {
   try {
     const eleves = await getElevesGroupe(groupeId);
     const eleveIds = eleves.map(e => e.eleveId);
+
+    // Aligne le compteur stocké sur l'effectif réel (non bloquant).
+    void reconcilierNombreInscrits(groupeId, eleveIds.length);
 
     if (eleveIds.length === 0) {
       return {

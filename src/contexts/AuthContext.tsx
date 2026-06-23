@@ -24,6 +24,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import type { User, UserRole, RegisterFormData, AuthContextType } from '../types';
+import { estAbonnementPremiumActif } from '../types/premiumPlans';
 
 // ==================== MESSAGES D'ERREUR EN FRANÇAIS ====================
 
@@ -83,6 +84,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (userDoc.exists()) {
         const data = userDoc.data();
+        // ── Premium : on évalue l'ACTIVITÉ réelle de l'abonnement ──────────
+        // `isPremium` exposé à l'app = booléen stocké ET abonnement non expiré.
+        // C'est la correction de fond : la date de fin (`subscriptionEnd`)
+        // était écrite mais jamais comparée à « maintenant », d'où un accès
+        // Premium permanent. On dérive ici l'état effectif une bonne fois pour
+        // toutes, ce qui corrige automatiquement TOUS les points de garde
+        // (PremiumRoute, CoursDetailPage, tableaux de bord…).
+        const subscriptionEnd = data.subscriptionEnd?.toDate() || null;
+        const premiumActif = estAbonnementPremiumActif(data.isPremium, subscriptionEnd);
         return {
           uid,
           email: data.email,
@@ -93,8 +103,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // qu'une valeur arbitraire.
           sexe: data.sexe || undefined,
           sexeAutre: data.sexeAutre || undefined,
-          isPremium: data.isPremium || false,
-          subscriptionEnd: data.subscriptionEnd?.toDate() || null,
+          isPremium: premiumActif,
+          subscriptionEnd,
           subscriptionPlan: data.subscriptionPlan || undefined,
           coursChoisis: data.coursChoisis || [],
           usageRessources: data.usageRessourcesTotal ?? data.usageRessources ?? 0,
