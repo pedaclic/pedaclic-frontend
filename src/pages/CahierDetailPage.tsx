@@ -22,6 +22,8 @@ import {
   ajouterRubrique,
   modifierRubrique,
   supprimerRubrique,
+  // Phase 41 — persistance du nouvel ordre des rubriques (glisser-déposer)
+  reordonnerRubriques,
   resoudreRubriqueIdPourEntree,
   getNombreSeancesEffectif,
   // Phase 34 — duplication rapide d'une séance (raccourci de mise à jour)
@@ -54,6 +56,8 @@ import { getTravauxByGroupe } from '../services/travauxAFaireService';
 import type { TravailAFaire } from '../types/groupeAbsences.types';
 // Phase 36 — cellule "Corrigé" avec date+heure auto + éditable
 import CorrigeTravailCell from '../components/prof/CorrigeTravailCell';
+// Phase 41 — glisser-déposer (souris, tactile, clavier) des rubriques et titres
+import { useDragReorder, deplacerElement } from '../hooks/useDragReorder';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -491,6 +495,156 @@ const CahierDetailPage: React.FC = () => {
       console.error('[CahierDetailPage] Erreur suppression rubrique :', err);
       toast.error('Erreur lors de la suppression.');
     }
+  };
+
+  // ════════════════════════════════════════════════════════════
+  // Phase 41 — RÉORDONNANCEMENT DES RUBRIQUES ET DE LEURS TITRES
+  // ------------------------------------------------------------
+  // • Mise à jour OPTIMISTE : l'interface bouge immédiatement,
+  //   puis on écrit dans Firestore. En cas d'échec → retour à
+  //   l'ordre précédent + toast d'erreur.
+  // • Le champ `ordre` est réindexé (0, 1, 2…) à chaque écriture :
+  //   CahierProgressionWidget trie les titres sur ce champ.
+  // • Les titres restent dans LEUR rubrique (pas de transfert
+  //   inter-rubriques) : les séances déjà liées ne sont pas touchées.
+  // ════════════════════════════════════════════════════════════
+
+  // Message lu par les lecteurs d'écran après chaque déplacement
+  const [annonceOrdre, setAnnonceOrdre] = useState('');
+
+  /** Applique une nouvelle liste de rubriques (état local + cahier). */
+  const appliquerRubriques = useCallback((liste: RubriqueCahier[]) => {
+    setRubriques(liste);
+    setCahier(prev => prev ? { ...prev, rubriques: liste } : prev);
+  }, []);
+
+  /** Persiste un nouvel ordre de RUBRIQUES (optimiste + rollback). */
+  const persisterOrdreRubriques = useCallback(async (
+    avant: RubriqueCahier[],
+    apres: RubriqueCahier[],
+  ) => {
+    if (!cahierId) return;
+    const reindexee = apres.map((r, idx) => ({ ...r, ordre: idx }));
+    appliquerRubriques(reindexee);
+    try {
+      await reordonnerRubriques(cahierId, reindexee);
+    } catch (err) {
+      console.error('[CahierDetailPage] Erreur réordonnancement rubriques :', err);
+      appliquerRubriques(avant);
+      toast.error("Impossible d'enregistrer le nouvel ordre des rubriques.");
+    }
+  }, [cahierId, appliquerRubriques, toast]);
+
+  /** Persiste un nouvel ordre de TITRES dans une rubrique. */
+  const persisterOrdreTitres = useCallback(async (
+    rubriqueId: string,
+    titres: TitreRubrique[],
+  ) => {
+    if (!cahierId) return;
+    const avant = rubriques;
+    const titresReindexes = titres.map((t, idx) => ({ ...t, ordre: idx }));
+    const apres = rubriques.map(r => r.id === rubriqueId ? { ...r, titres: titresReindexes } : r);
+    appliquerRubriques(apres);
+    try {
+      // modifierRubrique nettoie les undefined et conserve nombreSeancesPrevu
+      // (le nombre de titres ne change pas lors d'un simple déplacement).
+      // NB : on n'applique PAS la liste renvoyée — l'état optimiste est déjà
+      // correct, et cela évite d'écraser un déplacement plus récent (clavier rapide).
+      await modifierRubrique(cahierId, avant, rubriqueId, { titres: titresReindexes });
+    } catch (err) {
+      console.error('[CahierDetailPage] Erreur réordonnancement titres :', err);
+      appliquerRubriques(avant);
+      toast.error("Impossible d'enregistrer le nouvel ordre des titres.");
+    }
+  }, [cahierId, rubriques, appliquerRubriques, toast]);
+
+  /** Déplace la rubrique `fromId` à la position de `toId`. */
+  const deplacerRubrique = useCallback((fromId: string, toId: string) => {
+    const from = rubriques.findIndex(r => r.id === fromId);
+    const to = rubriques.findIndex(r => r.id === toId);
+    if (from < 0 || to < 0 || from === to) return;
+    persisterOrdreRubriques(rubriques, deplacerElement(rubriques, from, to));
+    setAnnonceOrdre(`Rubrique « ${rubriques[from].nom} » déplacée en position ${to + 1} sur ${rubriques.length}.`);
+  }, [rubriques, persisterOrdreRubriques]);
+
+  // Les titres sont identifiés par une clé composite « rubriqueId::titreId »
+  // afin d'utiliser un seul hook pour toutes les rubriques.
+  const SEP_TITRE = '::';
+  const cleTitre = (rubriqueId: string, titreId: string) => `${rubriqueId}${SEP_TITRE}${titreId}`;
+  const lireCleTitre = (cle: string) => {
+    const [rubriqueId, titreId] = cle.split(SEP_TITRE);
+    return { rubriqueId, titreId };
+  };
+
+  /** Déplace un titre à la position d'un autre titre de la MÊME rubrique. */
+  const deplacerTitre = useCallback((fromCle: string, toCle: string) => {
+    const a = lireCleTitre(fromCle);
+    const b = lireCleTitre(toCle);
+    if (a.rubriqueId !== b.rubriqueId) return; // sécurité : pas de transfert
+    const rubrique = rubriques.find(r => r.id === a.rubriqueId);
+    const titres = rubrique?.titres ?? [];
+    const from = titres.findIndex(t => t.id === a.titreId);
+    const to = titres.findIndex(t => t.id === b.titreId);
+    if (from < 0 || to < 0 || from === to) return;
+    persisterOrdreTitres(a.rubriqueId, deplacerElement(titres, from, to));
+    setAnnonceOrdre(`Titre « ${titres[from].nom} » déplacé en position ${to + 1} sur ${titres.length}.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rubriques, persisterOrdreTitres]);
+
+  // Hook n°1 : lignes de rubriques
+  const dragRubriques = useDragReorder({
+    attr: 'reorder-rubrique',
+    onDrop: deplacerRubrique,
+    onKeyMove: (id, delta) => {
+      const idx = rubriques.findIndex(r => r.id === id);
+      const cible = rubriques[idx + delta];
+      if (cible) deplacerRubrique(id, cible.id);
+    },
+  });
+
+  // Hook n°2 : titres (restreints à leur propre rubrique)
+  const dragTitres = useDragReorder({
+    attr: 'reorder-titre',
+    accept: (from, to) => lireCleTitre(from).rubriqueId === lireCleTitre(to).rubriqueId,
+    onDrop: deplacerTitre,
+    onKeyMove: (cle, delta) => {
+      const { rubriqueId, titreId } = lireCleTitre(cle);
+      const titres = rubriques.find(r => r.id === rubriqueId)?.titres ?? [];
+      const idx = titres.findIndex(t => t.id === titreId);
+      const cible = titres[idx + delta];
+      if (cible) deplacerTitre(cle, cleTitre(rubriqueId, cible.id));
+    },
+  });
+
+  // Hook n°3 : titres DANS le formulaire d'édition (état local seulement,
+  // l'ordre sera enregistré au clic sur « Enregistrer »).
+  const dragTitresForm = useDragReorder({
+    attr: 'reorder-titre-form',
+    onDrop: (fromId, toId) => setFormTitres(prev => {
+      const from = prev.findIndex(t => t.id === fromId);
+      const to = prev.findIndex(t => t.id === toId);
+      return deplacerElement(prev, from, to);
+    }),
+    onKeyMove: (id, delta) => setFormTitres(prev => {
+      const from = prev.findIndex(t => t.id === id);
+      return deplacerElement(prev, from, from + delta);
+    }),
+  });
+
+  /**
+   * Classe CSS de l'indicateur de dépôt : la ligne cible affiche un
+   * trait AU-DESSUS si l'on remonte l'élément, EN DESSOUS si on le descend.
+   */
+  const classeDepot = (
+    ids: string[],
+    id: string,
+    draggingId: string | null,
+    overId: string | null,
+  ): string => {
+    if (!draggingId) return '';
+    if (id === draggingId) return ' pc-reorder-source';
+    if (id !== overId) return '';
+    return ids.indexOf(draggingId) > ids.indexOf(id) ? ' pc-reorder-cible-avant' : ' pc-reorder-cible-apres';
   };
 
   // ── Export PDF (modale choix période) ──────────────────────
@@ -998,20 +1152,41 @@ const CahierDetailPage: React.FC = () => {
                   suivre la progression de vos séances.
                 </p>
               ) : (
-                <div className="cahier-rubriques-list">
+                <div className="cahier-rubriques-list cahier-rubriques-list--reorder">
+                  {/* Phase 41 — Région invisible annonçant les déplacements aux lecteurs d'écran */}
+                  <span className="pc-sr-only" role="status" aria-live="polite">{annonceOrdre}</span>
                   <div className="cahier-rubriques-list-header">
+                    {/* Phase 41 — colonne vide alignée sur les poignées ⠿ */}
+                    <span className="cahier-rubriques-col-handle" aria-hidden="true" />
                     <span className="cahier-rubriques-col-nom">Module</span>
                     <span className="cahier-rubriques-col-seances">Séances</span>
                     <span className="cahier-rubriques-col-titres">Titres</span>
                     <span className="cahier-rubriques-col-actions" />
                   </div>
-                  {rubriques.map(r => {
+                  {rubriques.map((r, rIdx) => {
                     const titres = r.titres ?? [];
                     const nbAcheves = titres.filter(t => t.statut === 'acheve').length;
                     const isOpen = rubriqueOuverteId === r.id;
                     return (
-                      <div key={r.id} className="cahier-rubrique-item-wrap">
+                      <div
+                        key={r.id}
+                        /* Phase 41 — attribut repéré par useDragReorder + classes d'état */
+                        data-reorder-rubrique={r.id}
+                        className={'cahier-rubrique-item-wrap' + classeDepot(
+                          rubriques.map(x => x.id), r.id, dragRubriques.draggingId, dragRubriques.overId,
+                        )}
+                      >
                         <div className="cahier-rubrique-item">
+                          {/* Phase 41 — Poignée : glisser (souris/doigt) ou flèches ↑/↓ au clavier */}
+                          <button
+                            type="button"
+                            className="pc-reorder-handle"
+                            title="Glisser pour déplacer (ou flèches ↑/↓)"
+                            aria-label={`Déplacer la rubrique « ${r.nom} », position ${rIdx + 1} sur ${rubriques.length}. Utilisez les flèches haut et bas.`}
+                            {...dragRubriques.getHandleProps(r.id)}
+                          >
+                            ⠿
+                          </button>
                           <span
                             className="cahier-rubrique-badge"
                             style={{
@@ -1065,10 +1240,31 @@ const CahierDetailPage: React.FC = () => {
                         {/* Organisateur de titres (leçons) */}
                         {isOpen && titres.length > 0 && (
                           <div className="cahier-titres-panel">
-                            {titres.map(t => {
+                            {titres.map((t, tIdx) => {
                               const cfg = STATUT_TITRE_CONFIG[t.statut];
+                              const cle = cleTitre(r.id, t.id);
                               return (
-                                <div key={t.id} className="cahier-titre-row">
+                                <div
+                                  key={t.id}
+                                  data-reorder-titre={cle}
+                                  className={'cahier-titre-row' + classeDepot(
+                                    titres.map(x => cleTitre(r.id, x.id)), cle,
+                                    dragTitres.draggingId, dragTitres.overId,
+                                  )}
+                                >
+                                  {/* Phase 41 — Poignée de déplacement du titre (dans sa rubrique) */}
+                                  {titres.length > 1 && (
+                                    <button
+                                      type="button"
+                                      className="pc-reorder-handle pc-reorder-handle--sm"
+                                      title="Glisser pour déplacer (ou flèches ↑/↓)"
+                                      aria-label={`Déplacer le titre « ${t.nom} », position ${tIdx + 1} sur ${titres.length}. Utilisez les flèches haut et bas.`}
+                                      {...dragTitres.getHandleProps(cle)}
+                                    >
+                                      ⠿
+                                    </button>
+                                  )}
+                                  <span className="cahier-titre-num">{tIdx + 1}.</span>
                                   <span className="cahier-titre-nom">{t.nom}</span>
                                   <select
                                     className="cahier-titre-statut-select"
@@ -1178,7 +1374,26 @@ const CahierDetailPage: React.FC = () => {
                 {formTitres.length > 0 && (
                   <div className="cahier-titres-form-list">
                     {formTitres.map((t, idx) => (
-                      <div key={t.id} className="cahier-titre-form-row">
+                      <div
+                        key={t.id}
+                        data-reorder-titre-form={t.id}
+                        className={'cahier-titre-form-row' + classeDepot(
+                          formTitres.map(x => x.id), t.id,
+                          dragTitresForm.draggingId, dragTitresForm.overId,
+                        )}
+                      >
+                        {/* Phase 41 — Réordonner les titres avant enregistrement */}
+                        {formTitres.length > 1 && (
+                          <button
+                            type="button"
+                            className="pc-reorder-handle pc-reorder-handle--sm"
+                            title="Glisser pour déplacer (ou flèches ↑/↓)"
+                            aria-label={`Déplacer le titre ${idx + 1} sur ${formTitres.length}. Utilisez les flèches haut et bas.`}
+                            {...dragTitresForm.getHandleProps(t.id)}
+                          >
+                            ⠿
+                          </button>
+                        )}
                         <span className="cahier-titre-form-num">{idx + 1}.</span>
                         <input
                           type="text"

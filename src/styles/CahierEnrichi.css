@@ -3409,3 +3409,130 @@ body.rte-col-resizing * {
   .idm-offline-card__form { grid-template-columns: 1fr; }
   .rte-table-toolbar { font-size: 0.78rem; }
 }
+
+/* ═════════════════════════════════════════════════════════════
+   PHASE 41 — RÉORDONNANCEMENT DES RUBRIQUES ET DE LEURS TITRES
+   -------------------------------------------------------------
+   Glisser-déposer via la poignée « ⠿ » (souris, doigt, stylet)
+   ou au clavier (Tab jusqu'à la poignée, puis flèches ↑ / ↓).
+   Ces règles s'AJOUTENT aux précédentes : aucune règle existante
+   n'est modifiée ; la colonne poignée n'est activée que dans la
+   liste portant la classe .cahier-rubriques-list--reorder.
+   ═════════════════════════════════════════════════════════════ */
+
+/* 1. Grille : ajout d'une 1re colonne étroite pour la poignée.
+      (même gabarit pour l'en-tête et chaque ligne → alignement parfait) */
+.cahier-rubriques-list--reorder .cahier-rubriques-list-header,
+.cahier-rubriques-list--reorder .cahier-rubrique-item {
+  grid-template-columns: 1.75rem 1fr minmax(6rem, auto) minmax(4rem, auto) auto;
+}
+
+/* 2. Poignée de déplacement — discrète au repos, affirmée au survol */
+.pc-reorder-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.9rem;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #94a3b8;               /* gris ardoise : ne concurrence pas les badges */
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;           /* indispensable : empêche le scroll natif au doigt */
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+.pc-reorder-handle:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+.pc-reorder-handle:active { cursor: grabbing; }
+/* Anneau de focus visible pour la navigation clavier (accessibilité) */
+.pc-reorder-handle:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+  color: #2563eb;
+}
+/* Variante compacte pour les titres */
+.pc-reorder-handle--sm {
+  width: 1.3rem;
+  height: 1.5rem;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* 3. États pendant le glissement */
+/* Élément saisi : estompé, fond légèrement bleuté */
+.pc-reorder-source {
+  opacity: 0.45;
+  background: #eff6ff;
+  border-radius: 8px;
+}
+/* Cible : trait bleu au-dessus (on remonte) ou en dessous (on descend).
+   box-shadow inset → aucun décalage de mise en page. */
+.pc-reorder-cible-avant {
+  box-shadow: inset 0 3px 0 0 #2563eb;
+  background: #f8fbff;
+}
+.pc-reorder-cible-apres {
+  box-shadow: inset 0 -3px 0 0 #2563eb;
+  background: #f8fbff;
+}
+/* Pendant un glissement : curseur « main fermée » partout et pas de
+   sélection de texte accidentelle (classe posée sur <body> par le hook) */
+body.pc-drag-en-cours,
+body.pc-drag-en-cours * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+/* 4. Numérotation des titres dans le panneau (rend l'ordre lisible) */
+.cahier-titre-num {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9ca3af;
+  min-width: 1.4rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* 5. Texte réservé aux lecteurs d'écran (annonce des déplacements) */
+.pc-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 6. Mode sombre (thème PedaClic : [data-theme="dark"]) */
+[data-theme="dark"] .pc-reorder-handle { color: #64748b; }
+[data-theme="dark"] .pc-reorder-handle:hover { background: #1e293b; color: #e2e8f0; }
+[data-theme="dark"] .pc-reorder-source { background: #1e3a8a33; }
+[data-theme="dark"] .pc-reorder-cible-avant,
+[data-theme="dark"] .pc-reorder-cible-apres { background: #1e293b; }
+
+/* 7. Mobile : poignée un peu plus grande pour le doigt (≥ 32 px utiles) */
+@media (max-width: 640px) {
+  .cahier-rubriques-list--reorder .cahier-rubriques-list-header,
+  .cahier-rubriques-list--reorder .cahier-rubrique-item {
+    grid-template-columns: 2rem 1fr minmax(3rem, auto) minmax(3rem, auto) auto;
+  }
+  .pc-reorder-handle { width: 2rem; height: 2.2rem; }
+  .pc-reorder-handle--sm { width: 1.7rem; height: 1.9rem; }
+}
+
+/* 8. Impression : les poignées n'ont aucun sens sur papier */
+@media print {
+  .pc-reorder-handle { display: none !important; }
+}
