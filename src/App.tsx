@@ -52,6 +52,7 @@ import QuizManager       from './components/admin/QuizManager';
 import UserManager       from './components/admin/UserManager';
 import ResultsAdmin      from './components/admin/ResultsAdmin';
 import SettingsAdmin     from './components/admin/SettingsAdmin';
+import NiveauxManager    from './components/admin/NiveauxManager'; // Phase 44
 
 /* ==================== PAGES QUIZ ==================== */
 import QuizEditorPage   from './pages/QuizEditorPage';
@@ -341,6 +342,10 @@ const App: React.FC = () => {
         {/* ========== ADMIN PROTÉGÉ (avec AdminLayout + sidebar) ========== */}
         <Route path="/admin" element={
           <AdminRoute><AdminLayout><AdminDashboard /></AdminLayout></AdminRoute>
+        } />
+        {/* Phase 44 — contenu des cartes « niveaux » de l'accueil */}
+        <Route path="/admin/niveaux" element={
+          <AdminRoute><AdminLayout><NiveauxManager /></AdminLayout></AdminRoute>
         } />
         <Route path="/admin/disciplines" element={
           <AdminRoute><AdminLayout><DisciplineManager /></AdminLayout></AdminRoute>

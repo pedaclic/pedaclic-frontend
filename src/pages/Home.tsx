@@ -29,12 +29,17 @@ import {
   Award
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useNiveauxContenu } from '../hooks/useNiveauxContenu';
+import { niveauxActifsTries } from '../services/niveauxService';
+import { niveauVersSlug } from '../types/niveauxContenu.types';
 import './Home.css';
 
 /* ==================== COMPOSANT HOME ==================== */
 
 const Home: React.FC = () => {
   const { currentUser } = useAuth();
+  // Phase 44 — contenu des cartes « niveaux » (administrable)
+  const { contenu: niveauxContenu } = useNiveauxContenu();
 
   return (
     <div className="home-page">
@@ -128,86 +133,30 @@ const Home: React.FC = () => {
             De la maternelle au lycée, accompagnons chaque élève vers la réussite
           </p>
 
+          {/* Phase 44 — Cartes générées depuis settings/niveaux (admin : /admin/niveaux).
+              Valeurs par défaut identiques à l'ancien contenu codé en dur. */}
           <div className="home-page__levels-grid home-page__levels-grid--5">
-            {/* Maternelle */}
-            <Link to="/niveaux/maternelle" className="home-page__level-card">
-              <div className="home-page__level-icon home-page__level-icon--maternelle">
-                🧒
-              </div>
-              <h3>Maternelle</h3>
-              <p>PS · MS · GS</p>
-              <ul>
-                <li><CheckCircle size={16} /> Éveil et découverte</li>
-                <li><CheckCircle size={16} /> Activités ludiques</li>
-              </ul>
-              <span className="home-page__level-link">
-                Découvrir <ArrowRight size={16} />
-              </span>
-            </Link>
-
-            {/* Élémentaire */}
-            <Link to="/niveaux/elementaire" className="home-page__level-card">
-              <div className="home-page__level-icon home-page__level-icon--elementaire">
-                📖
-              </div>
-              <h3>Élémentaire</h3>
-              <p>CI · CP · CE1 · CE2 · CM1 · CM2</p>
-              <ul>
-                <li><CheckCircle size={16} /> Fondamentaux solides</li>
-                <li><CheckCircle size={16} /> Exercices progressifs</li>
-              </ul>
-              <span className="home-page__level-link">
-                Découvrir <ArrowRight size={16} />
-              </span>
-            </Link>
-
-            {/* Collège */}
-            <Link to="/niveaux/college" className="home-page__level-card">
-              <div className="home-page__level-icon home-page__level-icon--college">
-                🏫
-              </div>
-              <h3>Collège</h3>
-              <p>6ème · 5ème · 4ème · 3ème</p>
-              <ul>
-                <li><CheckCircle size={16} /> Préparation au BFEM</li>
-                <li><CheckCircle size={16} /> Exercices corrigés</li>
-              </ul>
-              <span className="home-page__level-link">
-                Voir les cours <ArrowRight size={16} />
-              </span>
-            </Link>
-
-            {/* Lycée */}
-            <Link to="/niveaux/lycee" className="home-page__level-card">
-              <div className="home-page__level-icon home-page__level-icon--lycee">
-                🎓
-              </div>
-              <h3>Lycée</h3>
-              <p>2nde · 1ère · Terminale</p>
-              <ul>
-                <li><CheckCircle size={16} /> Séries L, S, STEG, T</li>
-                <li><CheckCircle size={16} /> Préparation au BAC</li>
-              </ul>
-              <span className="home-page__level-link">
-                Voir les cours <ArrowRight size={16} />
-              </span>
-            </Link>
-
-            {/* Formation libre */}
-            <Link to="/niveaux/formation-libre" className="home-page__level-card">
-              <div className="home-page__level-icon home-page__level-icon--formation">
-                🌍
-              </div>
-              <h3>Formation libre</h3>
-              <p>Tous publics</p>
-              <ul>
-                <li><CheckCircle size={16} /> Apprentissage autonome</li>
-                <li><CheckCircle size={16} /> Contenus variés</li>
-              </ul>
-              <span className="home-page__level-link">
-                Découvrir <ArrowRight size={16} />
-              </span>
-            </Link>
+            {niveauxActifsTries(niveauxContenu).map((niveau) => {
+              const n = niveauxContenu[niveau];
+              return (
+                <Link key={niveau} to={`/niveaux/${niveauVersSlug(niveau)}`} className="home-page__level-card">
+                  {/* Icône — classe CSS d'origine conservée (maternelle, college…, formation) */}
+                  <div className={`home-page__level-icon home-page__level-icon--${niveau === 'formation_libre' ? 'formation' : niveau}`}>
+                    {n.icone}
+                  </div>
+                  <h3>{n.titre}</h3>
+                  <p>{n.sousTitre}</p>
+                  <ul>
+                    {n.pointsForts.map((point, i) => (
+                      <li key={i}><CheckCircle size={16} /> {point}</li>
+                    ))}
+                  </ul>
+                  <span className="home-page__level-link">
+                    {n.ctaLabel} <ArrowRight size={16} />
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       </section>

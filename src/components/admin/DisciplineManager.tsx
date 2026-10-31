@@ -29,6 +29,8 @@ import {
   getClassesByNiveau,
   getClasseLabel,
   NIVEAUX_LABELS,
+  SERIES_LYCEE,
+  SerieLycee,
 } from '../../types';
 
 // --- Styles en ligne conformes au design PedaClic ---
@@ -243,6 +245,7 @@ const defaultFormData: DisciplineFormData = {
   couleur: '',
   icone: '',
   description: '',
+  series: [], // Phase 44 — séries lycée (vide = toutes)
 };
 
 const DisciplineManager: React.FC = () => {
@@ -281,6 +284,8 @@ const DisciplineManager: React.FC = () => {
       classe: premiereclasse as Classe,
       // Reset du coefficient pour formation libre (optionnel)
       coefficient: niveau === 'formation_libre' ? undefined : prev.coefficient,
+      // Phase 44 — les séries n'ont de sens qu'au lycée
+      series: niveau === 'lycee' ? prev.series : [],
     }));
   }, []);
 
@@ -301,6 +306,8 @@ const DisciplineManager: React.FC = () => {
         couleur: formData.couleur || '',
         icone: formData.icone || '',
         description: formData.description || '',
+        // Phase 44 — séries lycée (tableau vide = commune à toutes les séries)
+        series: formData.niveau === 'lycee' ? (formData.series ?? []) : [],
         updatedAt: Timestamp.now(),
       };
 
@@ -337,6 +344,7 @@ const DisciplineManager: React.FC = () => {
       couleur: discipline.couleur || '',
       icone: discipline.icone || '',
       description: discipline.description || '',
+      series: discipline.series ?? [],
     });
     setEditingId(discipline.id);
   };
@@ -437,6 +445,39 @@ const DisciplineManager: React.FC = () => {
               ))}
             </select>
           </div>
+
+          {/* --- Phase 44 : Séries (lycée uniquement) ---
+               Aucune case cochée = discipline commune à toutes les séries.
+               Sert au filtrage des pages publiques /niveaux/lycee/:classe/:serie/cours */}
+          {formData.niveau === 'lycee' && (
+            <div style={styles.fieldGroup}>
+              <label style={styles.label}>
+                Séries
+                <span style={styles.labelOptional}>(aucune = toutes)</span>
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', paddingTop: '6px' }}>
+                {SERIES_LYCEE.map(({ value }) => {
+                  const coche = (formData.series ?? []).includes(value);
+                  return (
+                    <label key={value} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={coche}
+                        onChange={() => {
+                          const actuelles = formData.series ?? [];
+                          const series: SerieLycee[] = coche
+                            ? actuelles.filter((x) => x !== value)
+                            : [...actuelles, value];
+                          setFormData({ ...formData, series });
+                        }}
+                      />
+                      {value}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* --- Ordre d'affichage --- */}
           <div style={styles.fieldGroup}>
@@ -607,6 +648,12 @@ const DisciplineManager: React.FC = () => {
                   {getClasseLabel(discipline.classe)}
                   {discipline.coefficient !== undefined && (
                     <span style={{ marginLeft: '12px' }}>| Coeff : {discipline.coefficient}</span>
+                  )}
+                  {/* Phase 44 — séries lycée */}
+                  {discipline.niveau === 'lycee' && (
+                    <span style={{ marginLeft: '12px' }}>
+                      | Séries : {discipline.series && discipline.series.length > 0 ? discipline.series.join(', ') : 'toutes'}
+                    </span>
                   )}
                 </div>
               </div>

@@ -42,6 +42,7 @@ const navigationSections: NavSection[] = [
     title: 'Principal',
     items: [
       { id: 'dashboard', label: 'Tableau de bord', icon: '📊', href: '/admin' },
+      { id: 'niveaux', label: 'Niveaux (accueil)', icon: '🏫', href: '/admin/niveaux' }, // Phase 44
       { id: 'disciplines', label: 'Disciplines', icon: '📚', href: '/admin/disciplines' },
       { id: 'chapitres', label: 'Chapitres', icon: '📖', href: '/admin/chapitres' },
       { id: 'ressources', label: 'Ressources', icon: '📝', href: '/admin/ressources' },
