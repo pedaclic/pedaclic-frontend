@@ -501,8 +501,13 @@ const EntreeEditorPage: React.FC = () => {
 
       <div className="editor-layout">
       <form onSubmit={handleSubmit} className="editor-layout__form">
+        {/* ══ Phase 42 — Grille de mise en page (CSS uniquement, voir
+             « PHASE 42 » dans CahierTextes.css). Les cartes « --full »
+             occupent toute la largeur, les cartes « --tile » se rangent
+             côte à côte (3, 2 ou 1 par ligne selon la place disponible). ══ */}
+        <div className="editor-grid">
         {/* ── Informations de base (Phase 21 — inchangé) ── */}
-        <div className="editor-card">
+        <div className="editor-card editor-card--full">
           <div className="editor-section-title">📋 Informations de la séance</div>
 
           <div className="form-row" style={{ gridTemplateColumns: '1.5fr 1fr 1fr' }}>
@@ -681,7 +686,7 @@ const EntreeEditorPage: React.FC = () => {
                   - Exercice du jour (exercice d'application)
                   - Exercice à domicile
             ═══════════════════════════════════════════════════════ */}
-        <div className="editor-card">
+        <div className="editor-card editor-card--full">
           <div className="editor-section-title">📝 Cahier de textes — contenu à saisir</div>
 
           {/* Barre d'onglets */}
@@ -826,7 +831,7 @@ const EntreeEditorPage: React.FC = () => {
         </div>
 
         {/* ── Signet d'évaluation (Phase 21 — inchangé) ── */}
-        <div className="editor-card">
+        <div className="editor-card editor-card--tile">
           <div className="editor-section-title">📌 Signet d'évaluation</div>
           <div className="signet-section">
             <div className="signet-toggle"
@@ -867,7 +872,7 @@ const EntreeEditorPage: React.FC = () => {
         </div>
 
         {/* ── Pièces jointes (Phase 21 — inchangé) ── */}
-        <div className="editor-card">
+        <div className="editor-card editor-card--tile">
           <div className="editor-section-title">📎 Pièces jointes</div>
           {piecesJointes.length > 0 && (
             <div className="pieces-jointes-list">
@@ -894,13 +899,28 @@ const EntreeEditorPage: React.FC = () => {
           </label>
         </div>
 
+        {/* ── Notes privées (Phase 21 — inchangé) ── */}
+        <div className="editor-card editor-card--tile editor-card--tile-wide">
+          <div className="editor-section-title">🔒 Notes privées</div>
+          <textarea className="form-textarea"
+            placeholder="Notes personnelles (non visibles par l'administration)..."
+            value={form.notesPrivees}
+            onChange={e => setForm(f => ({ ...f, notesPrivees: e.target.value }))} rows={3} />
+          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
+            Ces notes sont uniquement visibles par vous.
+          </div>
+        </div>
+
         {/* ── PHASE 22 : Ressources enrichies ── */}
-        <div className="editor-card">
+        <div className="editor-card editor-card--full">
           <div className="editor-section-title">🌐 Ressources enrichies</div>
           <p style={{ fontSize: '0.82rem', color: '#6b7280', margin: '0 0 4px' }}>
             Ajoutez des liens ou des ebooks pour enrichir cette séance.
           </p>
 
+          {/* Phase 42 — Sous-grille : Liens sur toute la largeur (son formulaire
+               a besoin de place), Ebooks et IA côte à côte en dessous. */}
+          <div className="editor-ressources-grid">
           {/* Liens externes (vidéos, articles, exercices) */}
           <LienExterneEditor liens={liens} onChange={setLiens} />
 
@@ -913,19 +933,10 @@ const EntreeEditorPage: React.FC = () => {
             contenuIA={contenuIA}
             onChange={setContenuIA}
           />
+          </div>{/* /editor-ressources-grid */}
         </div>
 
-        {/* ── Notes privées (Phase 21 — inchangé) ── */}
-        <div className="editor-card">
-          <div className="editor-section-title">🔒 Notes privées</div>
-          <textarea className="form-textarea"
-            placeholder="Notes personnelles (non visibles par l'administration)..."
-            value={form.notesPrivees}
-            onChange={e => setForm(f => ({ ...f, notesPrivees: e.target.value }))} rows={3} />
-          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-            Ces notes sont uniquement visibles par vous.
-          </div>
-        </div>
+        </div>{/* /editor-grid — Phase 42 */}
 
         {/* ── Erreur + Boutons ── */}
         {error && (
@@ -934,7 +945,9 @@ const EntreeEditorPage: React.FC = () => {
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', paddingBottom: '2rem' }}>
+        {/* Phase 42 — Barre d'actions collante : reste visible en bas de l'écran
+             pendant la saisie (fini le défilement jusqu'en bas pour enregistrer). */}
+        <div className="editor-actions-bar">
           <button type="button" className="btn-secondary"
             onClick={() => navigate(`/prof/cahiers/${cahierId}`)}>
             Annuler

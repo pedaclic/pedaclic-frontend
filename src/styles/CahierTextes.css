@@ -1703,3 +1703,170 @@
   /* Phase 34 : en mobile les selects rétrécissent un peu mais conservent la place pour « Times New Roman » */
   .rte-select { min-width: 120px; max-width: 150px; }
 }
+
+/* ═════════════════════════════════════════════════════════════
+   PHASE 42 — ÉDITEUR DE SÉANCE : MISE EN PAGE EN GRILLE
+   -------------------------------------------------------------
+   Page : EntreeEditorPage (/prof/cahiers/:id/modifier/:entreeId)
+   Objectif : un rendu plus aéré et plus « tableau de bord », sans
+   toucher à la logique. Uniquement de la mise en page :
+     • .editor-grid           → grille 12 colonnes des cartes ;
+     • .editor-card--full     → carte sur toute la largeur ;
+     • .editor-card--tile     → tuile (3 / 2 / 1 par ligne) ;
+     • .editor-ressources-grid→ sous-grille Liens / Ebooks / IA ;
+     • .editor-actions-bar    → boutons collés en bas de l'écran.
+   La largeur s'adapte à la COLONNE du formulaire (container
+   queries) et non à l'écran : la barre latérale « Aperçu /
+   Autres séances » est donc prise en compte automatiquement.
+   Navigateur trop ancien → les tuiles s'empilent (affichage
+   identique à l'ancien) : aucun risque de casse.
+   ═════════════════════════════════════════════════════════════ */
+
+/* 1. La colonne du formulaire devient un « conteneur » mesurable */
+.editor-layout__form {
+  container-type: inline-size;
+  container-name: editor-form;
+  /* Indispensable : un conteneur « inline-size » n'a plus de largeur
+     intrinsèque. Sous 1024 px la mise en page passe en colonne
+     (align-items: flex-start) → sans width: 100 % le formulaire se
+     rétracterait. En mode 2 colonnes, flex: 1 garde la main. */
+  width: 100%;
+}
+
+/* 2. Grille principale : 12 colonnes, espacement régulier */
+.editor-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+  align-items: stretch;           /* tuiles d'une même rangée = même hauteur */
+}
+/* L'espacement est désormais géré par « gap » : on neutralise la
+   marge basse historique des cartes, uniquement dans la grille. */
+.editor-grid > .editor-card {
+  margin-bottom: 0;
+  min-width: 0;                   /* évite tout débordement horizontal */
+}
+
+/* 3. Cartes pleine largeur (Informations, Contenu, Ressources) */
+.editor-card--full { grid-column: span 12; }
+
+/* 4. Tuiles (Signet, Pièces jointes, Notes privées)
+      Par défaut (étroit) : pleine largeur → empilées. */
+.editor-card--tile {
+  grid-column: span 12;
+  display: flex;
+  flex-direction: column;
+  padding: 1.35rem 1.4rem;        /* un peu plus compact qu'une grande carte */
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.editor-card--tile:hover {
+  border-color: var(--ct-blue-light);
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.07);
+}
+.editor-card--tile .editor-section-title {
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+}
+/* Dans une tuile étroite, les champs du signet passent sur 1 colonne */
+.editor-card--tile .form-row { grid-template-columns: 1fr; }
+/* Zone de dépôt de fichier : occupe toute la tuile, plus accueillante */
+.editor-card--tile .upload-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 92px;
+  line-height: 1.45;
+  background: var(--ct-gray-50);
+}
+.editor-card--tile .upload-zone:hover { background: var(--ct-blue-xlight); }
+/* Notes privées : la zone de texte remplit la hauteur disponible */
+.editor-card--tile .form-textarea { flex: 1; min-height: 92px; }
+
+/* Colonne moyenne (≥ 620 px) : 2 tuiles par ligne ; la 3e (Notes)
+   (.editor-card--tile-wide) prend toute la largeur → pas de trou. */
+@container editor-form (min-width: 620px) {
+  .editor-card--tile { grid-column: span 6; }
+  .editor-card--tile-wide { grid-column: span 12; }
+}
+/* Colonne large (≥ 900 px) : 3 tuiles alignées sur une rangée */
+@container editor-form (min-width: 900px) {
+  .editor-card--tile,
+  .editor-card--tile-wide { grid-column: span 4; }
+}
+
+/* 5. Ressources enrichies : sous-grille
+      Liens = pleine largeur (formulaire d'ajout large),
+      Ebooks + IA = deux tuiles côte à côte. */
+.editor-ressources-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+/* Chaque bloc enfant devient une tuile homogène (même fond, même
+   bordure que « Liens et ressources » qui avait déjà ce style). */
+.editor-ressources-grid > section {
+  display: flex;
+  flex-direction: column;
+  margin: 0 !important;           /* neutralise le marginTop inline (16 / 20 px) */
+  padding: 16px;
+  background: var(--ct-gray-50);
+  border: 1px solid var(--ct-gray-200);
+  border-radius: 10px;
+  min-width: 0;
+}
+.editor-ressources-grid > .liens-section { grid-column: 1 / -1; }
+/* Bouton d'action calé en bas de chaque tuile → alignement parfait */
+.editor-ressources-grid > section > .btn-secondary {
+  margin-top: auto !important;
+  align-self: flex-start;
+}
+/* Colonne étroite : Ebooks et IA s'empilent */
+@container editor-form (max-width: 619px) {
+  .editor-ressources-grid { grid-template-columns: 1fr; }
+}
+
+/* 5 bis. Colonne très étroite (smartphone) : les rangées de champs
+   (Date / Heure début / Heure fin, Report…) passent sur une colonne.
+   !important nécessaire : ces rangées ont un gridTemplateColumns
+   en style inline qui débordait de l'écran sur mobile. */
+@container editor-form (max-width: 520px) {
+  .editor-grid .form-row { grid-template-columns: 1fr !important; }
+}
+
+/* 6. Barre d'actions collante (Annuler / Enregistrer) */
+.editor-actions-bar {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 20;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 0 0 2rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--ct-gray-200);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(15, 23, 42, 0.10);
+}
+[data-theme="dark"] .editor-actions-bar {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: #334155;
+}
+
+/* 7. Mobile : boutons pleine largeur, faciles à toucher */
+@media (max-width: 640px) {
+  .editor-grid { gap: 1rem; }
+  .editor-actions-bar { bottom: 0.5rem; padding: 0.6rem; }
+  .editor-actions-bar > button { flex: 1; min-width: 0 !important; }
+}
+
+/* 8. Impression : pas de barre collante sur papier */
+@media print {
+  .editor-actions-bar { position: static; box-shadow: none; }
+}
