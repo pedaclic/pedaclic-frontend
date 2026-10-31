@@ -44,6 +44,20 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "statut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "groupeIds",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "cours_en_ligne",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "profId",
           "order": "ASCENDING"
         },

@@ -330,11 +330,12 @@ const App: React.FC = () => {
           <ProfRoute><Layout><ProfCoursPage /></Layout></ProfRoute>
         } />
         {/* Création et modification réservées aux admins */}
+        {/* Phase 43 — ouvert aux profs : l'éditeur vérifie lui-même Premium + propriété */}
         <Route path="/prof/cours/nouveau" element={
-          <AdminRoute><Layout><CoursEditorPage /></Layout></AdminRoute>
+          <ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>
         } />
         <Route path="/prof/cours/:coursId/modifier" element={
-          <AdminRoute><Layout><CoursEditorPage /></Layout></AdminRoute>
+          <ProfRoute><Layout><CoursEditorPage /></Layout></ProfRoute>
         } />
 
         {/* ========== ADMIN PROTÉGÉ (avec AdminLayout + sidebar) ========== */}

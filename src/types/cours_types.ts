@@ -170,7 +170,15 @@ export interface SectionCours {
 export type StatutCours =
   | 'brouillon'   // En cours de création (visible prof seul)
   | 'publie'      // Visible dans le catalogue public
+  | 'partage'     // Phase 43 — Cours de prof : visible UNIQUEMENT par les élèves de ses classes
   | 'archive';    // Retiré du catalogue (conservé pour historique)
+
+/**
+ * Phase 43 — Origine d'un cours.
+ *  • 'plateforme' (ou champ absent) : cours PedaClic créé par l'admin → catalogue public.
+ *  • 'prof' : cours conçu par un professeur Premium → partagé avec SES classes uniquement.
+ */
+export type OrigineCours = 'plateforme' | 'prof';
 
 /**
  * Niveau scolaire sénégalais.
@@ -223,6 +231,19 @@ export interface CoursEnLigne {
 
   /** ID du cahier de textes lié (création par admin uniquement) */
   cahierTextesId?: string;
+
+  // ── Phase 43 — Cours conçus par un professeur Premium ─────
+  // Champs OPTIONNELS : les cours existants (sans ces champs) restent
+  // des cours « plateforme » et se comportent exactement comme avant.
+
+  /** Origine du cours (absent = 'plateforme') */
+  origine?: OrigineCours;
+  /** Classes (groupes_prof) avec lesquelles le cours est partagé */
+  groupeIds?: string[];
+  /** Noms des classes partagées (dénormalisés, pour l'affichage) */
+  groupeNoms?: string[];
+  /** Date du dernier partage avec les classes */
+  partageAt?: Timestamp;
 
   // ── Médias ─────────────────────────────────────────────────
 
@@ -308,8 +329,13 @@ export interface ProgressionCours {
 export type CoursFormData = Omit<
   CoursEnLigne,
   'id' | 'profId' | 'profNom' | 'createdAt' | 'updatedAt' | 'publieAt'
-    | 'nombreInscrits' | 'nombreSections'
+    | 'nombreInscrits' | 'nombreSections' | 'partageAt'
 >;
+
+/** Phase 43 — Vrai si le cours a été conçu par un professeur (et non par la plateforme). */
+export function estCoursProf(cours: Pick<CoursEnLigne, 'origine'> | null | undefined): boolean {
+  return cours?.origine === 'prof';
+}
 
 export type SectionFormData = Omit<
   SectionCours,
@@ -378,5 +404,6 @@ export const MATIERES_COURS = [
 export const CONFIG_STATUT_COURS: Record<StatutCours, { label: string; couleur: string; bg: string }> = {
   brouillon: { label: 'Brouillon', couleur: '#6b7280', bg: '#f3f4f6' },
   publie:    { label: 'Publié',    couleur: '#16a34a', bg: '#f0fdf4' },
+  partage:   { label: 'Partagé', couleur: '#7c3aed', bg: '#f5f3ff' },
   archive:   { label: 'Archivé',   couleur: '#9ca3af', bg: '#f9fafb' },
 };

@@ -2,6 +2,10 @@
 // PedaClic — Phase 24 : CoursDetailPage.tsx — Lecture élève
 // Route : /cours/:coursId
 // Accès : Tous (sections Premium nécessitent abonnement)
+// Phase 43 : • prof Premium → lecture intégrale des cours publiés ;
+//            • cours de prof (origine 'prof', statut 'partage') → lisibles
+//              par les élèves inscrits dans les classes ciblées (gratuits),
+//              par leur auteur (aperçu, y compris brouillon) et par l'admin.
 // www.pedaclic.sn | Auteur : Kadou / PedaClic
 // ============================================================
 
@@ -33,7 +37,9 @@ import type {
   BlocExercice,
   ProgressionCours,
 } from '../types/cours_types';
-import { CONFIG_ENCADRE, NIVEAUX_COURS } from '../types/cours_types';
+import { CONFIG_ENCADRE, NIVEAUX_COURS, estCoursProf } from '../types/cours_types';
+// Phase 43 — vérification de l'appartenance de l'élève aux classes ciblées
+import { getGroupesEleve } from '../services/profGroupeService';
 import '../styles/CoursEnLigne.css';
 
 // ─────────────────────────────────────────────────────────────
@@ -257,12 +263,14 @@ export default function CoursDetailPage() {
   const navigate = useNavigate();
   const { currentUser: user } = useAuth();
   const userIsPremium = user?.isPremium ?? false;
-  const userHasAccess = userIsPremium && aAccesCours(
+  const userHasAccess = (userIsPremium && aAccesCours(
     coursId || '',
     userIsPremium,
     user?.subscriptionPlan,
     user?.coursChoisis ?? []
-  );
+  ))
+    // Phase 43 — un professeur Premium lit l'intégralité des cours publiés
+    || (user?.role === 'prof' && userIsPremium);
 
   // ── Données ───────────────────────────────────────────────
   const [cours, setCours] = useState<CoursEnLigne | null>(null);
@@ -292,7 +300,22 @@ export default function CoursDetailPage() {
         getSectionsCours(coursId),
       ]);
 
-      if (!coursData || coursData.statut !== 'publie') {
+      // ── Phase 43 — Qui peut lire ce cours ? ─────────────────
+      //   • statut 'publie'                → tout le monde (inchangé) ;
+      //   • auteur du cours ou admin       → toujours (aperçu) ;
+      //   • statut 'partage' (cours prof)  → élèves inscrits dans
+      //                                      une des classes ciblées.
+      let lisible = !!coursData && coursData.statut === 'publie';
+      if (coursData && !lisible && user) {
+        if (user.role === 'admin' || coursData.profId === user.uid) {
+          lisible = true;
+        } else if (coursData.statut === 'partage' && user.role === 'eleve') {
+          const mesGroupes = await getGroupesEleve(user.uid);
+          const cibles = coursData.groupeIds ?? [];
+          lisible = mesGroupes.some(g => cibles.includes(g.id));
+        }
+      }
+      if (!coursData || !lisible) {
         setError('Ce cours n\'est pas disponible.');
         setLoading(false);
         return;
@@ -390,6 +413,8 @@ export default function CoursDetailPage() {
   function peutAccederSection(section: SectionCours): boolean {
     // La 1ère section est toujours accessible (aperçu)
     if (section.estGratuite || section.ordre === 1) return true;
+    // Phase 43 — un cours de prof est gratuit pour ses élèves
+    if (estCoursProf(cours)) return true;
     // Si le cours est gratuit, toutes les sections sont accessibles
     if (!cours?.isPremium) return true;
     // Si l'utilisateur a accès (illimité ou cours choisi), accès total
@@ -450,10 +475,16 @@ export default function CoursDetailPage() {
             <div className="cours-detail__badges">
               <span className="badge badge--matiere">{cours.matiere}</span>
               <span className="badge badge--niveau">{niveauLabel}</span>
-              {cours.isPremium
-                ? <span className="badge badge--premium">⭐ Premium</span>
-                : <span className="badge badge--gratuit">✅ Gratuit</span>
+              {estCoursProf(cours)
+                /* Phase 43 — cours conçu par le professeur pour ses classes */
+                ? <span className="badge badge--prof">👨‍🏫 Cours de votre professeur</span>
+                : cours.isPremium
+                  ? <span className="badge badge--premium">⭐ Premium</span>
+                  : <span className="badge badge--gratuit">✅ Gratuit</span>
               }
+              {estCoursProf(cours) && user?.uid === cours.profId && cours.statut !== 'partage' && (
+                <span className="badge badge--apercu">👁 Aperçu — non partagé</span>
+              )}
             </div>
             <h1 className="cours-detail__titre">{cours.titre}</h1>
             <p className="cours-detail__description">{cours.description}</p>
@@ -599,7 +630,8 @@ export default function CoursDetailPage() {
                     {sectionCourante.blocs
                       .sort((a, b) => a.ordre - b.ordre)
                       .map(bloc => {
-                        const verrou = bloc.isPremium && !userIsPremium && !sectionCourante.estGratuite;
+                        const verrou = bloc.isPremium && !userIsPremium && !sectionCourante.estGratuite
+                          && !estCoursProf(cours) /* Phase 43 — cours de prof : jamais verrouillé */;
                         const reponseQuiz = progression?.reponsesQuiz
                           .find(r => r.blocId === bloc.id)?.optionChoisieId;
 

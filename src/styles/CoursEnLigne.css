@@ -1770,3 +1770,205 @@
     max-width: 100%;
   }
 }
+
+/* ═════════════════════════════════════════════════════════════
+   PHASE 43 — COURS CONÇUS PAR LES PROFESSEURS PREMIUM
+   -------------------------------------------------------------
+   • Espace prof : onglets « Catalogue » / « Mes cours »
+   • Éditeur : carte « Partage avec mes classes »
+   • Élève : section « Cours de mes professeurs »
+   • Badges « cours de prof » et « aperçu »
+   Couleur signature : violet (#7c3aed), distincte du bleu
+   « plateforme » et de l'ambre « Premium ».
+   Toutes les règles sont NOUVELLES : rien d'existant n'est modifié.
+   ═════════════════════════════════════════════════════════════ */
+
+/* ── 1. Badges ─────────────────────────────────────────────── */
+.badge--prof            { background: #f5f3ff; color: #6d28d9; }
+.badge--apercu          { background: #fff7ed; color: #c2410c; }
+.cours-card__badge--prof { background: #ede9fe; color: #6d28d9; }
+
+/* ── 2. Onglets de l'espace prof ───────────────────────────── */
+.prof-cours-onglets {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 1.5rem;
+  background: var(--cours-gray-100);
+  border-radius: 10px;
+}
+.prof-cours-onglets__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.55rem 1.1rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cours-gray-600);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+.prof-cours-onglets__btn:hover { color: var(--cours-gray-800); }
+.prof-cours-onglets__btn.is-actif {
+  background: #fff;
+  color: var(--cours-primary);
+  box-shadow: var(--cours-shadow);
+}
+.prof-cours-onglets__btn:focus-visible { outline: 2px solid var(--cours-primary); outline-offset: 2px; }
+/* Compteur discret à côté de « Mes cours » */
+.prof-cours-onglets__badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: var(--cours-primary-light);
+  color: var(--cours-primary);
+  font-size: 0.72rem;
+  line-height: 20px;
+  text-align: center;
+}
+
+/* ── 3. Onglet « Catalogue » ───────────────────────────────── */
+.prof-cours-catalogue__filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.prof-cours-catalogue__recherche {
+  flex: 1 1 260px;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--cours-gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+.prof-cours-catalogue__select {
+  flex: 0 1 240px;
+  padding: 0.6rem 0.9rem;
+  border: 1.5px solid var(--cours-gray-200);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.prof-cours-catalogue__recherche:focus,
+.prof-cours-catalogue__select:focus {
+  outline: none;
+  border-color: var(--cours-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+/* Bandeau d'information (prof non Premium) */
+.prof-cours-catalogue__info {
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
+/* ── 4. Encart d'accès (Premium requis / créer une classe / etc.) ── */
+.prof-cours-gate {
+  max-width: 560px;
+  margin: 3rem auto;
+  padding: 2rem 1.75rem;
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--cours-gray-200);
+  border-radius: var(--cours-radius);
+  box-shadow: var(--cours-shadow-md);
+}
+.prof-cours-gate--inline { margin: 0 auto 1.5rem; }
+.prof-cours-gate__icone { display: block; font-size: 2.2rem; margin-bottom: 0.5rem; }
+.prof-cours-gate h2 { margin: 0 0 0.5rem; font-size: 1.15rem; color: var(--cours-gray-800); }
+.prof-cours-gate p  { margin: 0 0 1.25rem; color: var(--cours-gray-600); font-size: 0.92rem; line-height: 1.5; }
+.prof-cours-gate__actions { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; }
+
+/* ── 5. Carte « Mes cours » : classes destinataires ────────── */
+.prof-cours-card__classes {
+  margin: 0.6rem 0 0;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: #f5f3ff;
+  color: #5b21b6;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* ── 6. Éditeur : carte « Partage avec mes classes » ───────── */
+.cours-partage-card { border-left: 4px solid #7c3aed; }
+.cours-partage-card__intro {
+  margin: 0 0 1rem;
+  color: var(--cours-gray-600);
+  font-size: 0.88rem;
+}
+/* Grille de cases à cocher : s'adapte à la largeur disponible */
+.cours-partage-card__liste {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+.cours-partage-card__classe {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.6rem;
+  align-items: center;
+  padding: 0.7rem 0.85rem;
+  border: 1.5px solid var(--cours-gray-200);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.cours-partage-card__classe:hover { border-color: #c4b5fd; }
+.cours-partage-card__classe.is-coche { border-color: #7c3aed; background: #f5f3ff; }
+.cours-partage-card__classe input { grid-row: span 2; width: 18px; height: 18px; accent-color: #7c3aed; }
+.cours-partage-card__nom  { font-weight: 600; color: var(--cours-gray-800); font-size: 0.9rem; }
+.cours-partage-card__meta { color: var(--cours-gray-400); font-size: 0.76rem; }
+.cours-partage-card__vide {
+  margin: 0;
+  padding: 0.8rem 1rem;
+  border-radius: 8px;
+  background: var(--cours-gray-50);
+  color: var(--cours-gray-600);
+  font-size: 0.86rem;
+}
+.cours-partage-card__etat {
+  margin: 1rem 0 0;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--cours-gray-600);
+}
+
+/* ── 7. Élève : « Cours de mes professeurs » (page /cours) ──── */
+.cours-mes-profs {
+  max-width: 1200px;
+  margin: 1.5rem auto 0;
+  padding: 1.25rem 1rem 1.5rem;
+  border-radius: var(--cours-radius);
+  background: linear-gradient(180deg, #f5f3ff 0%, rgba(245, 243, 255, 0) 100%);
+}
+.cours-mes-profs__titre {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  color: #4c1d95;
+}
+.cours-mes-profs__compteur {
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 0.75rem;
+  line-height: 22px;
+}
+
+/* ── 8. Mobile ─────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .prof-cours-onglets { display: flex; width: 100%; }
+  .prof-cours-onglets__btn { flex: 1; justify-content: center; padding: 0.55rem 0.5rem; font-size: 0.85rem; }
+  .prof-cours-gate { margin: 1.5rem auto; padding: 1.5rem 1.1rem; }
+}

@@ -1,7 +1,8 @@
 // ============================================================
 // PedaClic — Phase 24 : CoursEditorPage.tsx — Éditeur prof
 // Routes : /prof/cours/nouveau | /prof/cours/:coursId/modifier
-// Accès : Professeurs Premium uniquement
+// Accès : Admin (cours plateforme) + Professeurs Premium (Phase 43 :
+//         cours personnels, dans leur matière, partagés avec leurs classes)
 // www.pedaclic.sn | Auteur : Kadou / PedaClic
 // ============================================================
 // Fonctionnalités :
@@ -32,8 +33,14 @@ import {
   reordonnerSections,
   saveBlocsSection,
   publierCours,
+  // Phase 43 — partage d'un cours de prof avec ses classes
+  partagerCoursAvecClasses,
+  retirerPartageCours,
 } from '../services/coursService';
 import { getAllCahiers } from '../services/cahierTextesService';
+// Phase 43 — classes du prof (groupes_prof) : source de SA matière et des destinataires
+import { getGroupesProf } from '../services/profGroupeService';
+import type { GroupeProf } from '../types/prof';
 import type {
   CoursEnLigne,
   SectionCours,
@@ -113,12 +120,15 @@ interface EditorBlocProps {
   storageBasePath: string;
   onBlocUploadStart: (blocIndex: number) => void;
   onBlocUploadEnd: (blocIndex: number) => void;
+  /** Phase 43 — masque la case « ⭐ Premium » (cours de prof : gratuit pour ses élèves) */
+  masquerPremium?: boolean;
 }
 
 function EditorBloc({
   bloc, index, total, onUpdate, onDelete, onMoveUp, onMoveDown,
   isDragging, onDragStart, onDragOver, onDrop, onDragEnd, dragOverIndex,
   storageBasePath, onBlocUploadStart, onBlocUploadEnd,
+  masquerPremium = false,
 }: EditorBlocProps) {
   const config = LABELS_TYPE_BLOC[bloc.type];
   const isOver = dragOverIndex === index;
@@ -374,15 +384,17 @@ function EditorBloc({
           {config.emoji} {config.label}
         </span>
 
-        {/* Toggle Premium */}
-        <label className="editor-bloc__premium-toggle" title="Réserver aux abonnés Premium">
-          <input
-            type="checkbox"
-            checked={bloc.isPremium}
-            onChange={e => onUpdate({ ...bloc, isPremium: e.target.checked })}
-          />
-          <span>⭐ Premium</span>
-        </label>
+        {/* Toggle Premium (masqué pour les cours de prof — Phase 43) */}
+        {!masquerPremium && (
+          <label className="editor-bloc__premium-toggle" title="Réserver aux abonnés Premium">
+            <input
+              type="checkbox"
+              checked={bloc.isPremium}
+              onChange={e => onUpdate({ ...bloc, isPremium: e.target.checked })}
+            />
+            <span>⭐ Premium</span>
+          </label>
+        )}
 
         {/* Actions navigation */}
         <div className="editor-bloc__actions">
@@ -492,6 +504,25 @@ export default function CoursEditorPage() {
   // ── Cahiers de textes (admin — liaison cours ↔ cahier) ─────
   const [cahiers, setCahiers] = useState<Array<{ id: string; titre: string }>>([]);
 
+  // ══ Phase 43 — MODE PROFESSEUR ═══════════════════════════
+  // L'admin garde exactement l'éditeur d'avant. Le prof Premium
+  // édite SES cours : matière limitée à celles de ses classes,
+  // pas d'option Premium, et partage ciblé avec ses classes.
+  const modeProf = user?.role === 'prof';
+  const [groupesProf, setGroupesProf] = useState<GroupeProf[]>([]);
+  const [groupesCharges, setGroupesCharges] = useState(false);
+  const [groupesSelection, setGroupesSelection] = useState<string[]>([]);
+  // Cours ouvert appartenant à un autre auteur → lecture seule interdite ici
+  const [coursEtranger, setCoursEtranger] = useState(false);
+
+  // Matières du prof = matières de ses classes actives (sans doublon)
+  const matieresProf = Array.from(new Set(
+    groupesProf.map(g => (g.matiereNom ?? '').trim()).filter(Boolean)
+  )).sort((a, b) => a.localeCompare(b, 'fr'));
+
+  // Classes proposées au partage : celles de la matière choisie
+  const groupesMatiere = groupesProf.filter(g => (g.matiereNom ?? '').trim() === formCours.matiere);
+
   // ── États upload images ───────────────────────────────────
   // coverUploading   : true pendant l'upload de l'image de couverture du cours
   // blocksUploading  : map { [blocId]: boolean } — un booléen par bloc image actif
@@ -515,6 +546,24 @@ export default function CoursEditorPage() {
     }
   }, [user?.role]);
 
+  // Phase 43 — Chargement des classes du prof (matières + destinataires)
+  useEffect(() => {
+    if (!modeProf || !user) return;
+    getGroupesProf(user.uid)
+      .then(list => setGroupesProf(list.filter(g => !g.statut || g.statut === 'actif')))
+      .catch(err => console.error('[CoursEditorPage] Classes du prof :', err))
+      .finally(() => setGroupesCharges(true));
+  }, [modeProf, user?.uid]);
+
+  // Phase 43 — En création, la matière par défaut est la 1ère matière du prof
+  useEffect(() => {
+    if (!modeProf || isEdition || matieresProf.length === 0) return;
+    if (!matieresProf.includes(formCours.matiere)) {
+      updateFormField('matiere', matieresProf[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modeProf, isEdition, matieresProf.join('|')]);
+
   async function chargerCours(id: string) {
     setLoading(true);
     try {
@@ -523,6 +572,12 @@ export default function CoursEditorPage() {
         getSectionsCours(id),
       ]);
       if (coursData) {
+        // Phase 43 — un prof ne peut ouvrir dans l'éditeur que SES cours
+        if (user?.role === 'prof' && coursData.profId !== user.uid) {
+          setCoursEtranger(true);
+          return;
+        }
+        setGroupesSelection(coursData.groupeIds ?? []);
         setFormCours({
           titre: coursData.titre,
           description: coursData.description,
@@ -540,6 +595,7 @@ export default function CoursEditorPage() {
           objectifs: coursData.objectifs.length > 0 ? coursData.objectifs : [''],
           prerequis: coursData.prerequis ?? '',
           tags: coursData.tags,
+          origine: coursData.origine,
         });
         // Restaurer le sélecteur de niveau scolaire
         if (coursData.niveauScolaire) {
@@ -611,6 +667,12 @@ export default function CoursEditorPage() {
       return;
     }
 
+    // Phase 43 — le mode professeur a son propre circuit (partage ciblé)
+    if (modeProf) {
+      await sauvegarderCoursProf(publier);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
@@ -636,6 +698,97 @@ export default function CoursEditorPage() {
     } catch (err) {
       console.error('[CoursEditorPage] Erreur sauvegarde :', err);
       setError('Erreur lors de la sauvegarde. Réessayez.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /**
+   * Phase 43 — Sauvegarde d'un cours de PROFESSEUR.
+   * @param partager true = « Partager avec mes classes » (statut 'partage')
+   * Garanties (doublées par les règles Firestore) :
+   *   • origine 'prof', jamais Premium, jamais statut 'publie' ;
+   *   • matière = une des matières des classes du prof ;
+   *   • destinataires = classes du prof dans cette matière.
+   */
+  async function sauvegarderCoursProf(partager: boolean) {
+    if (!user) return;
+    if (!matieresProf.includes(formCours.matiere)) {
+      setError('Choisissez une de vos matières (celles de vos classes).');
+      return;
+    }
+    const groupesChoisis = groupesMatiere.filter(g => groupesSelection.includes(g.id));
+    if (partager && groupesChoisis.length === 0) {
+      setError('Cochez au moins une classe avec laquelle partager ce cours.');
+      setOnglet('infos');
+      return;
+    }
+
+    setSaving(true);
+    setError(null);
+    try {
+      const data: CoursFormData = {
+        ...formCours,
+        objectifs: formCours.objectifs.filter(o => o.trim()),
+        origine: 'prof',
+        isPremium: false,
+        reservedPro: false,
+        cahierTextesId: undefined,
+        // Un cours de prof n'est jamais « publié » au catalogue public ;
+        // partagé mais plus aucune classe cochée → retour en brouillon.
+        statut: formCours.statut === 'publie' ||
+                (formCours.statut === 'partage' && groupesChoisis.length === 0)
+          ? 'brouillon'
+          : formCours.statut,
+        groupeIds: groupesChoisis.map(g => g.id),
+        groupeNoms: groupesChoisis.map(g => g.nom),
+      };
+
+      let id = coursId;
+      if (data.statut !== formCours.statut) updateFormField('statut', data.statut);
+      if (isEdition && coursId) {
+        await updateCours(coursId, data);
+      } else {
+        const profNom = user.displayName ?? 'Professeur';
+        id = await createCours(user.uid, profNom, data);
+      }
+      if (partager && id) {
+        await partagerCoursAvecClasses(id, groupesChoisis.map(g => ({ id: g.id, nom: g.nom })));
+        updateFormField('statut', 'partage');
+      }
+
+      if (isEdition) {
+        afficherSucces(partager
+          ? `📤 Cours partagé avec ${groupesChoisis.length} classe${groupesChoisis.length > 1 ? 's' : ''}.`
+          : '✅ Cours sauvegardé.');
+      } else {
+        afficherSucces('✅ Cours créé ! Ajoutez maintenant vos sections.');
+        navigate(`/prof/cours/${id}/modifier`);
+      }
+    } catch (err) {
+      console.error('[CoursEditorPage] Erreur sauvegarde (prof) :', err);
+      setError('Erreur lors de la sauvegarde. Vérifiez votre abonnement Premium et réessayez.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  /** Phase 43 — Retire le partage (le cours redevient un brouillon). */
+  async function handleRetirerPartage() {
+    if (!coursId) return;
+    if (!await confirmDlg({
+      title: 'Retirer le partage ?',
+      message: 'Vos élèves ne verront plus ce cours. Son contenu est conservé et vous pourrez le partager à nouveau.',
+      confirmLabel: 'Retirer le partage',
+      variant: 'warning',
+    })) return;
+    setSaving(true);
+    try {
+      await retirerPartageCours(coursId);
+      updateFormField('statut', 'brouillon');
+      afficherSucces('Le cours n\'est plus partagé.');
+    } catch {
+      setError('Impossible de retirer le partage.');
     } finally {
       setSaving(false);
     }
@@ -855,6 +1008,53 @@ export default function CoursEditorPage() {
     return <SkeletonDashboard />;
   }
 
+  // ── Phase 43 — Accès professeur ─────────────────────────
+  // (1) Premium requis ; (2) au moins une classe (= sa matière) ;
+  // (3) on ne modifie que ses propres cours.
+  if (modeProf && !user?.isPremium) {
+    return (
+      <div className="cours-editor">
+        <div className="prof-cours-gate" role="status">
+          <span className="prof-cours-gate__icone" aria-hidden="true">⭐</span>
+          <h2>La conception de cours est réservée aux professeurs Premium</h2>
+          <p>Avec Premium, créez vos propres cours dans votre matière et partagez-les avec les élèves de vos classes.</p>
+          <div className="prof-cours-gate__actions">
+            <button className="btn-primary" onClick={() => navigate('/premium')}>Découvrir Premium</button>
+            <button className="btn-secondary" onClick={() => navigate('/prof/cours')}>Retour aux cours</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (modeProf && coursEtranger) {
+    return (
+      <div className="cours-editor">
+        <div className="prof-cours-gate" role="alert">
+          <span className="prof-cours-gate__icone" aria-hidden="true">🔒</span>
+          <h2>Vous ne pouvez modifier que vos propres cours</h2>
+          <div className="prof-cours-gate__actions">
+            <button className="btn-secondary" onClick={() => navigate('/prof/cours')}>Retour aux cours</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (modeProf && groupesCharges && matieresProf.length === 0) {
+    return (
+      <div className="cours-editor">
+        <div className="prof-cours-gate" role="status">
+          <span className="prof-cours-gate__icone" aria-hidden="true">🏫</span>
+          <h2>Créez d'abord une classe</h2>
+          <p>Vos cours sont conçus dans la matière de vos classes et partagés avec leurs élèves. Créez une classe (avec sa matière) pour commencer.</p>
+          <div className="prof-cours-gate__actions">
+            <button className="btn-primary" onClick={() => navigate('/prof/dashboard')}>Gérer mes classes</button>
+            <button className="btn-secondary" onClick={() => navigate('/prof/cours')}>Retour aux cours</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="cours-editor">
 
@@ -885,13 +1085,32 @@ export default function CoursEditorPage() {
             >
               {saving ? <><span className="spinner" /> Sauvegarde...</> : '💾 Sauvegarder'}
             </button>
-            <button
-              className="btn-primary"
-              onClick={() => sauvegarder(true)}
-              disabled={saving || formCours.statut === 'publie'}
-            >
-              {formCours.statut === 'publie' ? '✅ Publié' : '🚀 Publier'}
-            </button>
+            {modeProf ? (
+              /* Phase 43 — Partage ciblé (prof) au lieu de la publication au catalogue */
+              <>
+                {formCours.statut === 'partage' && isEdition && (
+                  <button className="btn-secondary" onClick={handleRetirerPartage} disabled={saving}>
+                    Retirer le partage
+                  </button>
+                )}
+                <button
+                  className="btn-primary"
+                  onClick={() => sauvegarder(true)}
+                  disabled={saving || isAnyUploading}
+                  title="Rendre ce cours visible par les élèves des classes cochées"
+                >
+                  {formCours.statut === 'partage' ? '📤 Mettre à jour le partage' : '📤 Partager avec mes classes'}
+                </button>
+              </>
+            ) : (
+              <button
+                className="btn-primary"
+                onClick={() => sauvegarder(true)}
+                disabled={saving || formCours.statut === 'publie'}
+              >
+                {formCours.statut === 'publie' ? '✅ Publié' : '🚀 Publier'}
+              </button>
+            )}
           </div>
         </div>
 
@@ -967,10 +1186,18 @@ export default function CoursEditorPage() {
                   onChange={e => updateFormField('matiere', e.target.value)}
                   className="cours-editor__select"
                 >
-                  {matieres.map(m => (
-                    <option key={m.valeur} value={m.valeur}>{m.label}</option>
-                  ))}
+                  {modeProf
+                    /* Phase 43 — le prof conçoit uniquement dans SA (ses) matière(s) */
+                    ? matieresProf.map(m => <option key={m} value={m}>{m}</option>)
+                    : matieres.map(m => (
+                        <option key={m.valeur} value={m.valeur}>{m.label}</option>
+                      ))}
                 </select>
+                {modeProf && (
+                  <span className="cours-editor__label-hint">
+                    Matières de vos classes.
+                  </span>
+                )}
               </div>
               {/* Niveau scolaire (cycle) */}
               <div className="cours-editor__field">
@@ -1093,19 +1320,63 @@ export default function CoursEditorPage() {
                   </p>
                 )}
               </div>
-              {/* Toggle Premium */}
-              <div className="cours-editor__field cours-editor__field--full">
-                <label className="cours-editor__toggle-label">
-                  <input
-                    type="checkbox"
-                    checked={formCours.isPremium}
-                    onChange={e => updateFormField('isPremium', e.target.checked)}
-                  />
-                  <span>⭐ Cours Premium — Les sections (sauf la 1ère) nécessitent un abonnement</span>
-                </label>
-              </div>
+              {/* Toggle Premium (cours plateforme uniquement — masqué en mode prof) */}
+              {!modeProf && (
+                <div className="cours-editor__field cours-editor__field--full">
+                  <label className="cours-editor__toggle-label">
+                    <input
+                      type="checkbox"
+                      checked={formCours.isPremium}
+                      onChange={e => updateFormField('isPremium', e.target.checked)}
+                    />
+                    <span>⭐ Cours Premium — Les sections (sauf la 1ère) nécessitent un abonnement</span>
+                  </label>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* ── Phase 43 — Partage avec les classes du prof ── */}
+          {modeProf && (
+            <div className="cours-editor__card cours-partage-card">
+              <h2 className="cours-editor__card-titre">👥 Partage avec mes classes</h2>
+              <p className="cours-partage-card__intro">
+                Seuls les élèves inscrits dans les classes cochées verront ce cours, gratuitement.
+                Il n'apparaît pas dans le catalogue public.
+              </p>
+              {groupesMatiere.length === 0 ? (
+                <p className="cours-partage-card__vide">
+                  Aucune classe active en « {formCours.matiere} ».
+                </p>
+              ) : (
+                <div className="cours-partage-card__liste" role="group" aria-label="Classes destinataires">
+                  {groupesMatiere.map(g => {
+                    const coche = groupesSelection.includes(g.id);
+                    return (
+                      <label key={g.id} className={`cours-partage-card__classe ${coche ? 'is-coche' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={coche}
+                          onChange={e => setGroupesSelection(prev => e.target.checked
+                            ? [...prev, g.id]
+                            : prev.filter(x => x !== g.id))}
+                        />
+                        <span className="cours-partage-card__nom">{g.nom}</span>
+                        <span className="cours-partage-card__meta">
+                          {g.classeNiveau}{g.anneeScolaire ? ` · ${g.anneeScolaire}` : ''}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <p className="cours-partage-card__etat">
+                {formCours.statut === 'partage'
+                  ? '🟣 Partagé — visible par les élèves des classes cochées.'
+                  : '⚪ Brouillon — invisible pour vos élèves tant que vous ne l\'avez pas partagé.'}
+              </p>
+            </div>
+          )}
 
           {/* ── Objectifs pédagogiques ── */}
           <div className="cours-editor__card">
@@ -1330,6 +1601,7 @@ export default function CoursEditorPage() {
                           onDrop={handleDropBloc}
                           onDragEnd={handleDragEndBloc}
                           dragOverIndex={dragOverBlocIndex}
+                          masquerPremium={modeProf}
                           storageBasePath={`${storageBasePath}/section-${sectionActive}`}
                           onBlocUploadStart={(blocIdx) => {
                             const key = `${sectionActive}-${blocIdx}`;

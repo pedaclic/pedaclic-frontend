@@ -2,6 +2,9 @@
 // PedaClic — Phase 24 : ProfCoursPage.tsx — Mes cours (prof)
 // Route : /prof/cours
 // Accès : Professeurs uniquement
+// Phase 43 : onglets « Catalogue PedaClic » (lecture des cours publiés)
+//            et « Mes cours » (conception réservée aux profs Premium,
+//            partage avec leurs classes). Vue admin inchangée.
 // www.pedaclic.sn | Auteur : Kadou / PedaClic
 // ============================================================
 
@@ -14,10 +17,13 @@ import {
   deleteCours,
   archiverCours,
   publierCours,
+  getCoursPublies,
 } from '../services/coursService';
+// Phase 43 — carte du catalogue réutilisée pour l'onglet « Catalogue »
+import { CoursCatalogCard } from './CoursPage';
 import { getProgressionsCours, calculerStatsProgression } from '../services/progressionCoursService';
 import type { CoursEnLigne } from '../types/cours_types';
-import { CONFIG_STATUT_COURS, NIVEAUX_COURS } from '../types/cours_types';
+import { CONFIG_STATUT_COURS, NIVEAUX_COURS, estCoursProf } from '../types/cours_types';
 import { NIVEAUX_LABELS } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../contexts/ConfirmContext';
@@ -66,7 +72,7 @@ function ProfCoursCard({
             title="Modifier"
             aria-label={`Modifier ${cours.titre}`}
           >✏️</button>
-          {cours.statut === 'brouillon' && (
+          {cours.statut === 'brouillon' && !estCoursProf(cours) && (
             <button
               className="btn-icon btn-icon--success"
               onClick={onPublier}
@@ -74,7 +80,7 @@ function ProfCoursCard({
               aria-label={`Publier ${cours.titre}`}
             >🚀</button>
           )}
-          {cours.statut === 'publie' && (
+          {cours.statut === 'publie' && !estCoursProf(cours) && (
             <button
               className="btn-icon"
               onClick={onArchiver}
@@ -114,6 +120,15 @@ function ProfCoursCard({
           {cours.serie && <span className="badge badge--serie">{cours.serie}</span>}
           {cours.classe && <span className="badge badge--classe">{cours.classe}</span>}
         </div>
+
+        {/* Phase 43 — classes destinataires d'un cours de prof */}
+        {estCoursProf(cours) && (
+          <p className="prof-cours-card__classes">
+            {cours.statut === 'partage' && (cours.groupeNoms?.length ?? 0) > 0
+              ? <>👥 Partagé avec : {cours.groupeNoms!.join(', ')}</>
+              : <>⚪ Non partagé — ouvrez le cours pour choisir vos classes</>}
+          </p>
+        )}
       </div>
 
       {/* Pied : statistiques rapides */}
@@ -242,6 +257,35 @@ export default function ProfCoursPage() {
   const [filtreStatut, setFiltreStatut] = useState<string>('');
   const [coursStats, setCoursStats] = useState<CoursEnLigne | null>(null);
 
+  // ── Phase 43 — Espace professeur ──────────────────────────
+  const estProf = user?.role === 'prof';
+  const profPremium = estProf && !!user?.isPremium;
+  const peutCreer = user?.role === 'admin' || profPremium;
+  const [vue, setVue] = useState<'catalogue' | 'mes-cours'>('catalogue');
+  const [catalogue, setCatalogue] = useState<CoursEnLigne[]>([]);
+  const [catalogueCharge, setCatalogueCharge] = useState(false);
+  const [rechercheCatalogue, setRechercheCatalogue] = useState('');
+  const [matiereCatalogue, setMatiereCatalogue] = useState('');
+
+  // Catalogue chargé à la 1ère ouverture de l'onglet (prof uniquement)
+  useEffect(() => {
+    if (!estProf || vue !== 'catalogue' || catalogueCharge) return;
+    getCoursPublies()
+      .then(setCatalogue)
+      .catch(() => setError('Impossible de charger le catalogue.'))
+      .finally(() => setCatalogueCharge(true));
+  }, [estProf, vue, catalogueCharge]);
+
+  const matieresCatalogue = Array.from(new Set(catalogue.map(c => c.matiere))).sort((a, b) => a.localeCompare(b, 'fr'));
+  const catalogueFiltre = catalogue.filter(c => {
+    if (matiereCatalogue && c.matiere !== matiereCatalogue) return false;
+    const t = rechercheCatalogue.trim().toLowerCase();
+    if (!t) return true;
+    return c.titre.toLowerCase().includes(t)
+      || c.description.toLowerCase().includes(t)
+      || (c.tags ?? []).some(tag => tag.toLowerCase().includes(t));
+  });
+
   // ── Chargement ────────────────────────────────────────────
   useEffect(() => {
     if (user) charger();
@@ -330,22 +374,119 @@ export default function ProfCoursPage() {
           <p className="prof-cours-page__sous-titre">
             {user?.role === 'admin'
               ? 'Gérez tous les cours de la plateforme. Seul l\'admin peut créer des cours.'
-              : 'Consultez les cours publiés par vos collègues.'}
+              : profPremium
+                ? 'Consultez le catalogue PedaClic et concevez vos propres cours pour vos classes.'
+                : 'Consultez les cours publiés sur PedaClic.'}
           </p>
         </div>
-        {user?.role === 'admin' && (
+        {peutCreer && (
           <button
             className="btn-primary"
             onClick={() => navigate('/prof/cours/nouveau')}
           >
-            ✨ Créer un cours
+            {user?.role === 'admin' ? '✨ Créer un cours' : '✨ Concevoir un cours'}
           </button>
         )}
       </header>
 
+      {/* ══════════════════════════════════════════════════════
+          Phase 43 — ONGLETS (professeur uniquement)
+      ══════════════════════════════════════════════════════ */}
+      {estProf && (
+        <div className="prof-cours-onglets" role="tablist" aria-label="Espace cours">
+          <button
+            role="tab"
+            aria-selected={vue === 'catalogue'}
+            className={`prof-cours-onglets__btn ${vue === 'catalogue' ? 'is-actif' : ''}`}
+            onClick={() => setVue('catalogue')}
+          >
+            📚 Catalogue PedaClic
+          </button>
+          <button
+            role="tab"
+            aria-selected={vue === 'mes-cours'}
+            className={`prof-cours-onglets__btn ${vue === 'mes-cours' ? 'is-actif' : ''}`}
+            onClick={() => setVue('mes-cours')}
+          >
+            ✍️ Mes cours {cours.length > 0 && <span className="prof-cours-onglets__badge">{cours.length}</span>}
+          </button>
+        </div>
+      )}
+
       {/* Banners */}
       {error   && <div className="error-banner"   role="alert">⚠️ {error}</div>}
       {success && <div className="success-banner" role="status">{success}</div>}
+
+      {/* ══════════════════════════════════════════════════════
+          Phase 43 — ONGLET CATALOGUE (lecture des cours publiés)
+      ══════════════════════════════════════════════════════ */}
+      {estProf && vue === 'catalogue' && (
+        <section className="prof-cours-catalogue" aria-label="Catalogue des cours publiés">
+          <div className="prof-cours-catalogue__filtres">
+            <input
+              type="search"
+              className="prof-cours-catalogue__recherche"
+              placeholder="🔍 Rechercher un cours, un thème…"
+              value={rechercheCatalogue}
+              onChange={e => setRechercheCatalogue(e.target.value)}
+              aria-label="Rechercher dans le catalogue"
+            />
+            <select
+              className="prof-cours-catalogue__select"
+              value={matiereCatalogue}
+              onChange={e => setMatiereCatalogue(e.target.value)}
+              aria-label="Filtrer par matière"
+            >
+              <option value="">Toutes les matières</option>
+              {matieresCatalogue.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          {!profPremium && (
+            <p className="prof-cours-catalogue__info">
+              ⭐ Avec Premium, lisez l'intégralité des cours et concevez les vôtres pour vos classes.{' '}
+              <button className="btn-link" onClick={() => navigate('/premium')}>Découvrir Premium</button>
+            </p>
+          )}
+          {!catalogueCharge ? (
+            <div className="cours-catalogue__grille" aria-busy="true">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="cours-card cours-card--skeleton">
+                  <div className="skeleton" style={{ height: 120 }} />
+                </div>
+              ))}
+            </div>
+          ) : catalogueFiltre.length === 0 ? (
+            <div className="prof-cours-page__vide" role="status">
+              <span aria-hidden="true">🔎</span>
+              <h3>Aucun cours ne correspond à votre recherche.</h3>
+            </div>
+          ) : (
+            <div className="cours-catalogue__grille">
+              {catalogueFiltre.map(c => (
+                <CoursCatalogCard key={c.id} cours={c} onClick={() => navigate(`/cours/${c.id}`)} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          « MES COURS » — vue historique (admin : tous les cours)
+          Phase 43 : pour un prof, affichée dans l'onglet « Mes cours »
+      ══════════════════════════════════════════════════════ */}
+      {(!estProf || vue === 'mes-cours') && (<>
+
+      {/* Phase 43 — prof non Premium : invitation */}
+      {estProf && !profPremium && (
+        <div className="prof-cours-gate prof-cours-gate--inline" role="status">
+          <span className="prof-cours-gate__icone" aria-hidden="true">⭐</span>
+          <h2>Concevez vos propres cours avec Premium</h2>
+          <p>Créez des cours dans votre matière et partagez-les uniquement avec les élèves de vos classes.</p>
+          <div className="prof-cours-gate__actions">
+            <button className="btn-primary" onClick={() => navigate('/premium')}>Découvrir Premium</button>
+          </div>
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           STATISTIQUES GLOBALES
@@ -358,9 +499,9 @@ export default function ProfCoursPage() {
           </div>
           <div className="prof-cours-page__stat">
             <span className="prof-cours-page__stat-val" style={{ color: '#16a34a' }}>
-              {cours.filter(c => c.statut === 'publie').length}
+              {cours.filter(c => c.statut === (estProf ? 'partage' : 'publie')).length}
             </span>
-            <span>Publiés</span>
+            <span>{estProf ? 'Partagés' : 'Publiés'}</span>
           </div>
           <div className="prof-cours-page__stat">
             <span className="prof-cours-page__stat-val" style={{ color: '#ca8a04' }}>
@@ -384,7 +525,10 @@ export default function ProfCoursPage() {
         <div className="prof-cours-page__filtres" role="tablist" aria-label="Filtrer par statut">
           {[
             { val: '',          label: `Tous (${cours.length})` },
-            { val: 'publie',    label: `Publiés (${cours.filter(c => c.statut === 'publie').length})` },
+            // Phase 43 — le prof « partage » ; l'admin « publie »
+            estProf
+              ? { val: 'partage', label: `Partagés (${cours.filter(c => c.statut === 'partage').length})` }
+              : { val: 'publie',  label: `Publiés (${cours.filter(c => c.statut === 'publie').length})` },
             { val: 'brouillon', label: `Brouillons (${cours.filter(c => c.statut === 'brouillon').length})` },
             { val: 'archive',   label: `Archivés (${cours.filter(c => c.statut === 'archive').length})` },
           ].map(f => (
@@ -436,17 +580,20 @@ export default function ProfCoursPage() {
         )}
 
         {/* État vide */}
-        {!loading && coursFiltres.length === 0 && (
+        {/* (Phase 43 : masqué pour un prof non Premium — l'invitation suffit) */}
+        {!loading && coursFiltres.length === 0 && !(estProf && !profPremium && cours.length === 0) && (
           <div className="prof-cours-page__vide" role="status">
             <span aria-hidden="true">📭</span>
             <h3>
               {cours.length === 0
                 ? (user?.role === 'admin'
                     ? 'Aucun cours sur la plateforme.' 
-                    : 'Aucun cours dans cette catégorie.')
+                    : estProf
+                      ? 'Vous n\'avez pas encore conçu de cours.'
+                      : 'Aucun cours dans cette catégorie.')
                 : 'Aucun cours dans cette catégorie.'}
             </h3>
-            {cours.length === 0 && user?.role === 'admin' && (
+            {cours.length === 0 && peutCreer && (
               <button
                 className="btn-primary"
                 onClick={() => navigate('/prof/cours/nouveau')}
@@ -457,6 +604,8 @@ export default function ProfCoursPage() {
           </div>
         )}
       </main>
+
+      </>)}
 
       {/* Modale statistiques */}
       {coursStats && (

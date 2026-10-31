@@ -60,6 +60,27 @@ service cloud.firestore {
              getUserData().subscriptionEnd > request.time;
     }
 
+    // ── Phase 43 — Professeur Premium (cours conçus par le prof) ──
+    // Aligné sur estAbonnementPremiumActif() côté application :
+    // isPremium == true ET (pas de date de fin — comptes historiques —
+    // OU date de fin dans le futur). Un seul get() du profil.
+    function isProfPremiumActif() {
+      let u = getUserData();
+      return isSignedIn() && u.role == 'prof' && u.isPremium == true &&
+             (u.get('subscriptionEnd', null) == null ||
+              u.subscriptionEnd > request.time);
+    }
+
+    // Un cours de prof reste hors catalogue public : jamais 'publie',
+    // jamais Premium (ses élèves y ont accès sans abonnement), jamais
+    // « réservé Pro ».
+    function estCoursProfValide(d) {
+      return d.get('origine', '') == 'prof' &&
+             d.statut in ['brouillon', 'partage', 'archive'] &&
+             d.get('isPremium', false) == false &&
+             d.get('reservedPro', false) == false;
+    }
+
     // ──────────────────────────────────────────────────────────
     // COLLECTION: users — inchangée
     // ──────────────────────────────────────────────────────────
@@ -689,15 +710,43 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────────────────
-    // COLLECTION: cours_en_ligne — inchangée
+    // COLLECTION: cours_en_ligne
+    // Phase 43 — ouverture aux professeurs Premium :
+    //   • les règles « admin » et la lecture du catalogue ('publie')
+    //     sont INCHANGÉES ;
+    //   • un prof Premium crée / modifie SES cours (origine 'prof'),
+    //     qui ne peuvent jamais passer au statut 'publie' ;
+    //   • statut 'partage' : lisible par tout utilisateur connecté qui
+    //     connaît le cours — même niveau que les cahiers de textes
+    //     partagés (isPartage) ; l'application ne le propose qu'aux
+    //     élèves inscrits dans les classes ciblées (groupeIds).
     // ──────────────────────────────────────────────────────────
 
     match /cours_en_ligne/{coursId} {
       allow read: if resource.data.statut == 'publie'
                   || (request.auth != null && resource.data.profId == request.auth.uid)
+                  || (isSignedIn() && resource.data.statut == 'partage')
                   || isAdmin();
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin();
+      allow create: if isAdmin() || (
+                       isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid &&
+                       estCoursProfValide(request.resource.data) &&
+                       isProfPremiumActif()
+                     );
+      allow update: if isAdmin() || (
+                       isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       resource.data.get('origine', '') == 'prof' &&
+                       request.resource.data.profId == request.auth.uid &&
+                       estCoursProfValide(request.resource.data) &&
+                       isProfPremiumActif()
+                     );
+      // Le prof peut toujours supprimer SES cours (même Premium expiré).
+      allow delete: if isAdmin() || (
+                       isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       resource.data.get('origine', '') == 'prof'
+                     );
     }
 
     match /cours_sections/{sectionId} {
@@ -711,7 +760,14 @@ service cloud.firestore {
     }
 
     match /progression_cours/{progressionId} {
-      allow read, update: if request.auth != null
+      // Phase 43 — l'auteur du cours (prof) et l'admin peuvent LIRE les
+      // progressions pour les statistiques ; écriture inchangée.
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/cours_en_ligne/$(resource.data.coursId)).data.profId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if request.auth != null
         && resource.data.userId == request.auth.uid;
       allow create: if request.auth != null
         && request.resource.data.userId == request.auth.uid;

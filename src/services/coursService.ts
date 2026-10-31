@@ -253,6 +253,80 @@ export async function deleteCours(coursId: string): Promise<void> {
   await batch.commit();
 }
 
+// ═════════════════════════════════════════════════════════════
+// PHASE 43 — COURS CONÇUS PAR UN PROFESSEUR PREMIUM
+// -------------------------------------------------------------
+// Principe : un cours de prof a `origine: 'prof'`. Il n'est JAMAIS
+// au statut 'publie' (réservé au catalogue public PedaClic) : il
+// passe de 'brouillon' à 'partage', et n'est alors visible que par
+// les élèves inscrits dans les classes listées dans `groupeIds`.
+// Le catalogue public (getCoursPublies → statut == 'publie') ne
+// voit donc jamais ces cours : aucune fuite, aucun changement.
+// ═════════════════════════════════════════════════════════════
+
+/**
+ * Partage un cours de prof avec ses classes (statut 'partage').
+ * Les noms des classes sont dénormalisés pour l'affichage.
+ */
+export async function partagerCoursAvecClasses(
+  coursId: string,
+  groupes: Array<{ id: string; nom: string }>
+): Promise<void> {
+  if (groupes.length === 0) {
+    throw new Error('Sélectionnez au moins une classe.');
+  }
+  const now = Timestamp.now();
+  await updateDoc(doc(db, COL_COURS, coursId), {
+    statut: 'partage',
+    groupeIds: groupes.map(g => g.id),
+    groupeNoms: groupes.map(g => g.nom),
+    partageAt: now,
+    updatedAt: now,
+  });
+}
+
+/**
+ * Retire le partage : le cours redevient un brouillon (invisible
+ * pour les élèves). Le contenu est conservé.
+ */
+export async function retirerPartageCours(coursId: string): Promise<void> {
+  await updateDoc(doc(db, COL_COURS, coursId), {
+    statut: 'brouillon',
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/**
+ * Cours partagés par leurs professeurs avec les classes d'un élève.
+ * Même schéma que getCahiersPartagesForEleve (cahier de textes).
+ * Index composite requis : statut ASC + groupeIds ARRAY (voir firestore.indexes.json).
+ * NB : array-contains-any est limité à 30 valeurs ; un élève a rarement
+ * plus de quelques classes, on découpe tout de même par paquets de 10.
+ */
+export async function getCoursPartagesForEleve(groupeIds: string[]): Promise<CoursEnLigne[]> {
+  const ids = Array.from(new Set(groupeIds.filter(Boolean)));
+  if (ids.length === 0) return [];
+  const paquets: string[][] = [];
+  for (let i = 0; i < ids.length; i += 10) paquets.push(ids.slice(i, i + 10));
+
+  const resultats = await Promise.all(paquets.map(async paquet => {
+    const q = query(
+      collection(db, COL_COURS),
+      where('statut', '==', 'partage'),
+      where('groupeIds', 'array-contains-any', paquet)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ id: d.id, ...d.data() } as CoursEnLigne));
+  }));
+
+  // Dédoublonnage (un cours partagé avec 2 classes de l'élève) + tri récent d'abord
+  const parId = new Map<string, CoursEnLigne>();
+  resultats.flat().forEach(c => parId.set(c.id, c));
+  return Array.from(parId.values()).sort(
+    (a, b) => (b.updatedAt?.toMillis?.() ?? 0) - (a.updatedAt?.toMillis?.() ?? 0)
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // SECTIONS — LECTURE
 // ─────────────────────────────────────────────────────────────

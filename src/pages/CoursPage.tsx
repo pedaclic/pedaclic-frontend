@@ -9,7 +9,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { estFormuleALaCarte } from '../types/premiumPlans';
-import { getCoursPublies } from '../services/coursService';
+import { getCoursPublies, getCoursPartagesForEleve } from '../services/coursService';
+// Phase 43 — classes de l'élève → cours partagés par ses professeurs
+import { getGroupesEleve } from '../services/profGroupeService';
 import type { CoursEnLigne, FiltresCours } from '../types/cours_types';
 import { NIVEAUX_COURS } from '../types/cours_types';
 import { CLASSES, normaliserClassePourComparaison } from '../types/cahierTextes.types';
@@ -23,9 +25,12 @@ import '../styles/CoursEnLigne.css';
 interface CoursCatalogCardProps {
   cours: CoursEnLigne;
   onClick: () => void;
+  /** Phase 43 — remplace le badge Premium/Gratuit (ex. « 👨‍🏫 Cours de votre prof ») */
+  badgeLabel?: string;
 }
 
-function CoursCatalogCard({ cours, onClick }: CoursCatalogCardProps) {
+// Phase 43 — exportée pour être réutilisée (espace prof, cours partagés aux élèves)
+export function CoursCatalogCard({ cours, onClick, badgeLabel }: CoursCatalogCardProps) {
   // Durée lisible (ex: "1h30" ou "45 min")
   const dureeLabel =
     cours.dureeEstimee >= 60
@@ -53,12 +58,16 @@ function CoursCatalogCard({ cours, onClick }: CoursCatalogCardProps) {
               <span>{cours.matiere.charAt(0)}</span>
             </div>
         }
+        {/* Phase 43 — badge personnalisé (cours de prof) */}
+        {badgeLabel && (
+          <span className="cours-card__badge cours-card__badge--prof">{badgeLabel}</span>
+        )}
         {/* Badge Premium */}
-        {cours.isPremium && (
+        {!badgeLabel && cours.isPremium && (
           <span className="cours-card__badge cours-card__badge--premium">⭐ Premium</span>
         )}
         {/* Badge Gratuit */}
-        {!cours.isPremium && (
+        {!badgeLabel && !cours.isPremium && (
           <span className="cours-card__badge cours-card__badge--gratuit">✅ Gratuit</span>
         )}
       </div>
@@ -118,6 +127,24 @@ export default function CoursPage() {
   useEffect(() => {
     chargerCours();
   }, [currentUser?.role]);
+
+  // ── Phase 43 — Cours partagés par les professeurs de l'élève ──
+  // Chargement indépendant : en cas d'échec, le catalogue reste intact.
+  const [coursDeMesProfs, setCoursDeMesProfs] = useState<CoursEnLigne[]>([]);
+  useEffect(() => {
+    if (currentUser?.role !== 'eleve') { setCoursDeMesProfs([]); return; }
+    let annule = false;
+    (async () => {
+      try {
+        const groupes = await getGroupesEleve(currentUser.uid);
+        const liste = await getCoursPartagesForEleve(groupes.map(g => g.id));
+        if (!annule) setCoursDeMesProfs(liste);
+      } catch (err) {
+        console.error('[CoursPage] Cours de mes professeurs :', err);
+      }
+    })();
+    return () => { annule = true; };
+  }, [currentUser?.role, currentUser?.uid]);
 
   async function chargerCours() {
     setLoading(true);
@@ -230,6 +257,30 @@ export default function CoursPage() {
           </div>
         </div>
       </section>
+
+      {/* ══════════════════════════════════════════════════════
+          Phase 43 — COURS DE MES PROFESSEURS (élèves uniquement)
+          Cours conçus par les profs Premium et partagés avec les
+          classes de l'élève. Absents du catalogue public.
+      ══════════════════════════════════════════════════════ */}
+      {coursDeMesProfs.length > 0 && (
+        <section className="cours-mes-profs" aria-label="Cours de mes professeurs">
+          <h2 className="cours-mes-profs__titre">
+            👨‍🏫 Cours de mes professeurs
+            <span className="cours-mes-profs__compteur">{coursDeMesProfs.length}</span>
+          </h2>
+          <div className="cours-catalogue__grille">
+            {coursDeMesProfs.map(c => (
+              <CoursCatalogCard
+                key={c.id}
+                cours={c}
+                badgeLabel="👨‍🏫 Votre prof"
+                onClick={() => navigate(`/cours/${c.id}`)}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           FILTRES — Barre de recherche et sélecteurs
