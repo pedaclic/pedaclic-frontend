@@ -10,9 +10,12 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import DisciplineService from '../../services/disciplineService';
 import { ChapitreService, Chapitre, ChapitreFormData } from '../../services/chapitreService';
 import type { Discipline } from '../../types';
+// [Chapitres] Comptage des ressources rattachées à chaque chapitre
+import { ResourceService } from '../../services/ResourceService';
 
 // ==================== CONSTANTES ====================
 
@@ -43,6 +46,9 @@ const ChapitreManager: React.FC = () => {
   // Données
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [chapitres, setChapitres] = useState<Chapitre[]>([]);
+  /* [Chapitres] Nombre de ressources actives par chapitre (id → nombre).
+     Un chapitre n'apparaît côté élève que s'il contient au moins une ressource. */
+  const [nbRessources, setNbRessources] = useState<Record<string, number>>({});
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>('');
   
   // État de chargement
@@ -105,6 +111,21 @@ const ChapitreManager: React.FC = () => {
       setLoadingChapitres(true);
       const data = await ChapitreService.getByDiscipline(selectedDiscipline);
       setChapitres(data);
+
+      /* [Chapitres] Comptage non bloquant des ressources par chapitre */
+      try {
+        const ressources = await ResourceService.getAll({ disciplineId: selectedDiscipline });
+        const compte: Record<string, number> = {};
+        ressources.forEach(r => {
+          if (r.actif === false) return;               // ressource masquée = non visible
+          const cle = r.chapitre || r.chapitreId;
+          if (cle) compte[cle] = (compte[cle] || 0) + 1;
+        });
+        setNbRessources(compte);
+      } catch (e) {
+        console.warn('Comptage des ressources indisponible :', e);
+        setNbRessources({});
+      }
     } catch (err) {
       console.error('Erreur lors du chargement des chapitres:', err);
       setError('Impossible de charger les chapitres.');
@@ -412,6 +433,20 @@ const ChapitreManager: React.FC = () => {
         </div>
       </div>
 
+      {/* ===== [Chapitres] Rôle de cette page (aide à l'administrateur) =====
+          Un chapitre est un « classeur » : il structure les ressources d'une
+          discipline, mais n'a pas de contenu propre à lire. */}
+      <div className="chapitres-info">
+        <span className="chapitres-info__icon" aria-hidden="true">💡</span>
+        <p className="chapitres-info__texte">
+          Un chapitre sert à <strong>regrouper les ressources</strong> d'une discipline
+          (cours, exercices, vidéos…). Il apparaît sur la page de la discipline côté élève
+          dès qu'au moins une ressource active y est rattachée, avec sa description et ses objectifs.
+          Pour le remplir : <Link to="/admin/ressources">Ressources</Link> → choisir ce chapitre
+          dans le champ « Chapitre ».
+        </p>
+      </div>
+
       {/* Liste des chapitres */}
       <div className="admin-table-container">
         <div className="admin-table-header">
@@ -474,13 +509,24 @@ const ChapitreManager: React.FC = () => {
                   )}
 
                   <div className="chapitre-card__meta">
-                    {chapitre.dureeEstimee && (
+                    {/* !! : évite d'afficher « 0 » quand la durée vaut 0 */}
+                    {!!chapitre.dureeEstimee && (
                       <span>⏱️ {chapitre.dureeEstimee}h estimée</span>
                     )}
                     {chapitre.objectifs && chapitre.objectifs.length > 0 && (
                       <span>🎯 {chapitre.objectifs.length} objectif(s)</span>
                     )}
+                    {/* [Chapitres] Nombre de ressources rattachées */}
+                    <span>📎 {nbRessources[chapitre.id] || 0} ressource(s)</span>
                   </div>
+
+                  {/* [Chapitres] Alerte : chapitre vide = invisible pour les élèves */}
+                  {chapitre.actif && !nbRessources[chapitre.id] && (
+                    <p className="chapitre-card__alerte">
+                      Non visible par les élèves : aucune ressource rattachée.{' '}
+                      <Link to="/admin/ressources">Ajouter une ressource</Link>
+                    </p>
+                  )}
                 </div>
 
                 {/* Actions */}
@@ -715,6 +761,11 @@ const ChapitreManager: React.FC = () => {
                 <div className="alert__content">
                   <p className="alert__message">
                     Les ressources associées ne seront pas supprimées automatiquement.
+                    {/* [Chapitres] Conséquence précise de la suppression */}
+                    {(nbRessources[deletingChapitre.id] || 0) > 0 && (
+                      <> Les {nbRessources[deletingChapitre.id]} ressource(s) rattachée(s)
+                      apparaîtront ensuite dans « Autres ressources » de la discipline.</>
+                    )}
                   </p>
                 </div>
               </div>
@@ -852,6 +903,34 @@ const ChapitreManager: React.FC = () => {
           font-size: var(--text-xs);
           color: var(--color-text-lighter);
         }
+
+        /* [Chapitres] Encadré d'aide sous le sélecteur de discipline */
+        .chapitres-info {
+          display: flex;
+          gap: var(--spacing-sm);
+          align-items: flex-start;
+          margin-bottom: var(--spacing-lg);
+          padding: var(--spacing-md) var(--spacing-lg);
+          background: #eff6ff;                 /* bleu très clair */
+          border: 1px solid #bfdbfe;
+          border-radius: 12px;
+        }
+        .chapitres-info__icon { font-size: 1.1rem; line-height: 1.5; }
+        .chapitres-info__texte {
+          margin: 0;
+          font-size: var(--text-sm);
+          line-height: 1.55;
+          color: #1e3a8a;
+        }
+        .chapitres-info__texte a { font-weight: 600; text-decoration: underline; }
+
+        /* [Chapitres] Alerte « chapitre vide » sur une carte */
+        .chapitre-card__alerte {
+          margin: var(--spacing-sm) 0 0;
+          font-size: var(--text-xs);
+          color: #b45309;                      /* ambre : avertissement */
+        }
+        .chapitre-card__alerte a { font-weight: 600; text-decoration: underline; }
 
         .chapitre-card__actions {
           display: flex;

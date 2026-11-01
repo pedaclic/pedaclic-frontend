@@ -24,7 +24,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DisciplineService } from '../services/disciplineService';
 import { ResourceService } from '../services/ResourceService';
 // [FIX ressources] Résolution des ID de chapitre en libellés lisibles
-import { ChapitreService } from '../services/chapitreService';
+import { ChapitreService, type Chapitre } from '../services/chapitreService';
 import type { Discipline, Resource } from '../types';
 
 /* ==================== INTERFACES LOCALES ==================== */
@@ -55,6 +55,11 @@ const DisciplineDetail: React.FC = () => {
      Les ressources stockent l'ID Firestore du chapitre dans `chapitre` :
      on le traduit en libellé lisible pour l'en-tête de l'accordéon. */
   const [nomsChapitres, setNomsChapitres] = useState<Record<string, string>>({});
+
+  /* ===== [Chapitres] Fiches complètes des chapitres (id → Chapitre) =====
+     Sert à l'ordre (numéro), à la visibilité (actif) et à l'affichage
+     de la description, des objectifs et de la durée estimée. */
+  const [infosChapitres, setInfosChapitres] = useState<Record<string, Chapitre>>({});
 
   /* ===== État : filtre par type de ressource ===== */
   const [filtreType, setFiltreType] = useState<string>('tous');
@@ -90,14 +95,27 @@ const DisciplineDetail: React.FC = () => {
 
       /* --- 2bis. [FIX ressources] Charger les libellés de chapitres ---
          Non bloquant : en cas d'échec, on garde l'affichage d'origine. */
+      const infos: Record<string, Chapitre> = {};
+      let chapitresCharges = false;
       try {
         const chaps = await ChapitreService.getByDiscipline(id);
         const noms: Record<string, string> = {};
-        chaps.forEach(c => { noms[c.id] = `${c.numero}. ${c.titre}`; });
+        chaps.forEach(c => {
+          noms[c.id] = `${c.numero}. ${c.titre}`;
+          infos[c.id] = c;
+        });
         setNomsChapitres(noms);
+        setInfosChapitres(infos);
+        chapitresCharges = true;
       } catch (e) {
         console.warn('Libellés de chapitres indisponibles :', e);
       }
+
+      /* [Chapitres] Une clé au format ID Firestore (20 caractères) absente de la
+         liste chargée = chapitre supprimé : la ressource passe dans « Autres ressources »
+         au lieu d'afficher un identifiant illisible. Les anciens libellés texte sont conservés. */
+      const estChapitreSupprime = (cle: string) =>
+        chapitresCharges && !infos[cle] && /^[A-Za-z0-9]{20}$/.test(cle);
 
       /* --- 3. Regrouper par chapitre --- */
       const groupeParChapitre = new Map<string, Resource[]>();
@@ -107,7 +125,9 @@ const DisciplineDetail: React.FC = () => {
         // [FIX ressources] une ressource désactivée par l'admin n'est pas listée
         if (res.actif === false) continue;
         const chapNom = res.chapitre || res.chapitreId;
-        if (chapNom) {
+        // [Chapitres] chapitre désactivé par l'admin → ses ressources ne sont pas listées
+        if (chapNom && infos[chapNom]?.actif === false) continue;
+        if (chapNom && !estChapitreSupprime(chapNom)) {
           if (!groupeParChapitre.has(chapNom)) {
             groupeParChapitre.set(chapNom, []);
           }
@@ -123,7 +143,16 @@ const DisciplineDetail: React.FC = () => {
           chapitreNom: nom,
           ressources: ressources.sort((a, b) => a.ordre - b.ordre)
         }))
-        .sort((a, b) => a.chapitreNom.localeCompare(b.chapitreNom, 'fr'));
+        /* [Chapitres] Tri par numéro de chapitre (et non plus par ID Firestore,
+           qui donnait un ordre aléatoire). Les anciens libellés texte suivent. */
+        .sort((a, b) => {
+          const na = infos[a.chapitreNom]?.numero;
+          const nb = infos[b.chapitreNom]?.numero;
+          if (na !== undefined && nb !== undefined) return na - nb;
+          if (na !== undefined) return -1;
+          if (nb !== undefined) return 1;
+          return a.chapitreNom.localeCompare(b.chapitreNom, 'fr');
+        });
 
       setChapitresMap(chapitresArr);
       setRessourcesSansChapitre(sansChap);
@@ -516,7 +545,22 @@ const DisciplineDetail: React.FC = () => {
                         marginTop: '2px'
                       }}>
                         {chapitre.ressources.length} ressource{chapitre.ressources.length !== 1 ? 's' : ''}
+                        {/* [Chapitres] durée estimée saisie par l'admin */}
+                        {!!infosChapitres[chapitre.chapitreNom]?.dureeEstimee &&
+                          ` · ⏱️ ${infosChapitres[chapitre.chapitreNom].dureeEstimee} h estimée${(infosChapitres[chapitre.chapitreNom].dureeEstimee || 0) > 1 ? 's' : ''}`}
                       </span>
+                      {/* [Chapitres] description du chapitre (si renseignée) */}
+                      {infosChapitres[chapitre.chapitreNom]?.description && (
+                        <span style={{
+                          display: 'block',
+                          fontSize: '0.85rem',
+                          color: '#4b5563',
+                          marginTop: '4px',
+                          fontWeight: 400
+                        }}>
+                          {infosChapitres[chapitre.chapitreNom].description}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </button>
@@ -529,6 +573,25 @@ const DisciplineDetail: React.FC = () => {
                     flexDirection: 'column',
                     gap: '0.5rem'
                   }}>
+                    {/* [Chapitres] Objectifs pédagogiques du chapitre */}
+                    {(infosChapitres[chapitre.chapitreNom]?.objectifs?.length || 0) > 0 && (
+                      <div style={{
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        padding: '0.75rem 1rem',
+                        marginBottom: '0.25rem'
+                      }}>
+                        <strong style={{ fontSize: '0.85rem', color: '#1e3a8a' }}>
+                          🎯 Objectifs du chapitre
+                        </strong>
+                        <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.25rem', fontSize: '0.85rem', color: '#374151' }}>
+                          {infosChapitres[chapitre.chapitreNom].objectifs!.map((obj, i) => (
+                            <li key={i}>{obj}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                     {ressourcesAffichees.map(res => (
                       <div
                         key={res.id}
