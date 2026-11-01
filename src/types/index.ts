@@ -255,6 +255,8 @@ export interface Discipline {
   couleur?: string;               // Couleur pour l'interface (optionnel)
   icone?: string;                 // Icône associée (optionnel)
   description?: string;           // Description courte (optionnel)
+  /** Phase 44 — Séries lycée concernées (vide/absent = toutes les séries) */
+  series?: SerieLycee[];
   createdAt: Date;                // Date de création
   updatedAt?: Date;               // Dernière mise à jour
 }
@@ -271,6 +273,8 @@ export interface DisciplineFormData {
   couleur?: string;
   icone?: string;
   description?: string;
+  /** Phase 44 — Séries lycée concernées (vide = toutes les séries) */
+  series?: SerieLycee[];
 }
 
 // ==================== TYPES CHAPITRES ====================

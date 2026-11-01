@@ -18,6 +18,7 @@ export { default as ChapitreManager } from './ChapitreManager';
 export { default as ResourceManager } from './ResourceManager';
 export { default as QuizManager } from './QuizManager';
 export { default as UserManager } from './UserManager';
+export { default as NiveauxManager } from './NiveauxManager';
 
 // ==================== TYPES RÉEXPORTÉS ====================
 // Pour faciliter l'utilisation dans d'autres parties de l'application
