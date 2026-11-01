@@ -23,6 +23,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { DisciplineService } from '../services/disciplineService';
 import { ResourceService } from '../services/ResourceService';
+// [FIX ressources] Résolution des ID de chapitre en libellés lisibles
+import { ChapitreService } from '../services/chapitreService';
 import type { Discipline, Resource } from '../types';
 
 /* ==================== INTERFACES LOCALES ==================== */
@@ -48,6 +50,11 @@ const DisciplineDetail: React.FC = () => {
   const [ressourcesSansChapitre, setRessourcesSansChapitre] = useState<Resource[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  /* ===== [FIX ressources] Libellés des chapitres (id → "N. Titre") =====
+     Les ressources stockent l'ID Firestore du chapitre dans `chapitre` :
+     on le traduit en libellé lisible pour l'en-tête de l'accordéon. */
+  const [nomsChapitres, setNomsChapitres] = useState<Record<string, string>>({});
 
   /* ===== État : filtre par type de ressource ===== */
   const [filtreType, setFiltreType] = useState<string>('tous');
@@ -81,11 +88,24 @@ const DisciplineDetail: React.FC = () => {
       /* --- 2. Charger les ressources de cette discipline --- */
       const ressources = await ResourceService.getAll({ disciplineId: id });
 
+      /* --- 2bis. [FIX ressources] Charger les libellés de chapitres ---
+         Non bloquant : en cas d'échec, on garde l'affichage d'origine. */
+      try {
+        const chaps = await ChapitreService.getByDiscipline(id);
+        const noms: Record<string, string> = {};
+        chaps.forEach(c => { noms[c.id] = `${c.numero}. ${c.titre}`; });
+        setNomsChapitres(noms);
+      } catch (e) {
+        console.warn('Libellés de chapitres indisponibles :', e);
+      }
+
       /* --- 3. Regrouper par chapitre --- */
       const groupeParChapitre = new Map<string, Resource[]>();
       const sansChap: Resource[] = [];
 
       for (const res of ressources) {
+        // [FIX ressources] une ressource désactivée par l'admin n'est pas listée
+        if (res.actif === false) continue;
         const chapNom = res.chapitre || res.chapitreId;
         if (chapNom) {
           if (!groupeParChapitre.has(chapNom)) {
@@ -139,6 +159,22 @@ const DisciplineDetail: React.FC = () => {
       }
       return next;
     });
+  };
+
+  /**
+   * [FIX ressources] Ouvre la page de consultation d'une ressource.
+   * Avant ce correctif, les cartes n'avaient aucun gestionnaire de clic.
+   */
+  const ouvrirRessource = (resId: string) => {
+    navigate(`/ressources/${resId}`);
+  };
+
+  /** Accessibilité clavier : Entrée / Espace ouvrent la ressource */
+  const ouvrirAuClavier = (e: React.KeyboardEvent, resId: string) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      ouvrirRessource(resId);
+    }
   };
 
   /** Filtrer les ressources par type */
@@ -470,7 +506,8 @@ const DisciplineDetail: React.FC = () => {
                     </span>
                     <div>
                       <span style={{ fontWeight: 700, color: '#1f2937', fontSize: '1rem' }}>
-                        {chapitre.chapitreNom}
+                        {/* [FIX ressources] libellé lisible si l'ID est connu */}
+                        {nomsChapitres[chapitre.chapitreNom] || chapitre.chapitreNom}
                       </span>
                       <span style={{
                         display: 'block',
@@ -495,6 +532,11 @@ const DisciplineDetail: React.FC = () => {
                     {ressourcesAffichees.map(res => (
                       <div
                         key={res.id}
+                        /* [FIX ressources] carte cliquable + accessible */
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => ouvrirRessource(res.id)}
+                        onKeyDown={(e) => ouvrirAuClavier(e, res.id)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -591,6 +633,11 @@ const DisciplineDetail: React.FC = () => {
                 {filtrerRessources(ressourcesSansChapitre).map(res => (
                   <div
                     key={res.id}
+                    /* [FIX ressources] carte cliquable + accessible */
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => ouvrirRessource(res.id)}
+                    onKeyDown={(e) => ouvrirAuClavier(e, res.id)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -598,7 +645,8 @@ const DisciplineDetail: React.FC = () => {
                       padding: '0.75rem 1rem',
                       background: '#f9fafb',
                       borderRadius: '8px',
-                      border: '1px solid #f3f4f6'
+                      border: '1px solid #f3f4f6',
+                      cursor: 'pointer'
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

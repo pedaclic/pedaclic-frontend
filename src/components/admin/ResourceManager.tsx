@@ -17,6 +17,9 @@ import ResourceService from '../../services/ResourceService';
 import type { Resource, ResourceFormData, TypeRessource as ResourceType } from '../../types';
 import type { Discipline } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
+// [FIX ressources] détection du type de fichier (URL Firebase avec ?alt=media…),
+// rendu du contenu et téléchargement — partagés avec la page élève
+import { getFileType, estHtml, toEmbedUrl, telechargerFichier } from '../../utils/fichierRessource';
 
 // ==================== CONSTANTES ====================
 
@@ -337,6 +340,17 @@ const ResourceManager: React.FC = () => {
   const handlePreview = (resource: Resource) => {
     setPreviewResource(resource);
     setIsPreviewOpen(true);
+  };
+
+  /** [FIX ressources] Téléchargement du fichier joint depuis l'aperçu */
+  const [previewDownloading, setPreviewDownloading] = useState(false);
+  const handlePreviewDownload = async (url: string, nom?: string) => {
+    setPreviewDownloading(true);
+    try {
+      await telechargerFichier(url, nom);
+    } finally {
+      setPreviewDownloading(false);
+    }
   };
 
   /**
@@ -817,15 +831,15 @@ const ResourceManager: React.FC = () => {
                     >
                       {resource.actif !== false ? '✓' : '○'}
                     </button>
-                    {(resource.fichierURL || resource.urlExterne) && (
-                      <button
-                        onClick={() => handlePreview(resource)}
-                        className="table-action-btn table-action-btn--view"
-                        title="Prévisualiser"
-                      >
-                        👁️
-                      </button>
-                    )}
+                    {/* [FIX ressources] aperçu disponible pour toute ressource
+                        (fichier, lien externe ou simple contenu texte) */}
+                    <button
+                      onClick={() => handlePreview(resource)}
+                      className="table-action-btn table-action-btn--view"
+                      title="Prévisualiser"
+                    >
+                      👁️
+                    </button>
                     <button
                       onClick={() => handleEdit(resource)}
                       className="table-action-btn table-action-btn--edit"
@@ -1205,46 +1219,90 @@ const ResourceManager: React.FC = () => {
               <button onClick={handleCloseModal} className="modal__close">✕</button>
             </div>
             <div className="modal__body">
-              {/* Prévisualisation selon le type */}
-              {previewResource.type === 'video' && previewResource.urlExterne ? (
-                <div className="preview-video">
-                  <iframe
-                    src={previewResource.urlExterne.replace('watch?v=', 'embed/')}
-                    title={previewResource.titre}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              ) : previewResource.fichierURL ? (
-                <div className="preview-file">
-                  {previewResource.fichierURL.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                    <img src={previewResource.fichierURL} alt={previewResource.titre} />
-                  ) : previewResource.fichierURL.match(/\.(mp4|webm)$/i) ? (
-                    <video src={previewResource.fichierURL} controls />
-                  ) : previewResource.fichierURL.match(/\.pdf$/i) ? (
-                    <iframe src={previewResource.fichierURL} title={previewResource.titre} />
-                  ) : (
-                    <div className="preview-download">
+              {/* ============================================================
+                  [FIX ressources] Aperçu complet :
+                  1. vidéo externe (YouTube) si présente ;
+                  2. fichier joint (PDF / image / vidéo) + barre d'actions
+                     Ouvrir / Télécharger — toujours visible ;
+                  3. contenu du cours — affiché AUSSI quand un fichier existe
+                     (avant : masqué dès qu'un fichier était joint).
+                  ============================================================ */}
+
+              {/* 1. Vidéo externe */}
+              {previewResource.urlExterne && (
+                toEmbedUrl(previewResource.urlExterne) ? (
+                  <div className="preview-video">
+                    <iframe
+                      src={toEmbedUrl(previewResource.urlExterne)!}
+                      title={previewResource.titre}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <p className="preview-link">
+                    🔗 <a href={previewResource.urlExterne} target="_blank" rel="noopener noreferrer">
+                      {previewResource.urlExterne}
+                    </a>
+                  </p>
+                )
+              )}
+
+              {/* 2. Fichier joint */}
+              {previewResource.fichierURL && (() => {
+                const url = previewResource.fichierURL;
+                const kind = getFileType(url, previewResource.fichierNom);
+                return (
+                  <div className="preview-file">
+                    {kind === 'image' && <img src={url} alt={previewResource.titre} />}
+                    {kind === 'video' && <video src={url} controls />}
+                    {kind === 'pdf' && <iframe src={url} title={previewResource.titre} />}
+                    {kind === 'other' && (
                       <span className="preview-download__icon">
                         {getTypeInfo(previewResource.type).icon}
                       </span>
-                      <p>{previewResource.fichierNom}</p>
+                    )}
+
+                    {/* Barre d'actions du fichier */}
+                    <div className="preview-file__actions">
+                      <span className="preview-file__name">
+                        📎 {previewResource.fichierNom || 'Fichier joint'}
+                      </span>
                       <a
-                        href={previewResource.fichierURL}
+                        href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="btn btn--primary"
+                        className="btn btn--secondary"
                       >
-                        Télécharger
+                        ↗ Ouvrir
                       </a>
+                      <button
+                        type="button"
+                        className="btn btn--primary"
+                        disabled={previewDownloading}
+                        onClick={() => handlePreviewDownload(url, previewResource.fichierNom)}
+                      >
+                        {previewDownloading ? '⏳ Téléchargement…' : '📥 Télécharger'}
+                      </button>
                     </div>
-                  )}
-                </div>
-              ) : previewResource.contenu ? (
-                <div className="preview-content">
-                  <p>{previewResource.contenu}</p>
-                </div>
-              ) : (
+                  </div>
+                );
+              })()}
+
+              {/* 3. Contenu du cours (HTML rendu, ou texte brut avec retours à la ligne) */}
+              {previewResource.contenu && (
+                estHtml(previewResource.contenu) ? (
+                  <div
+                    className="preview-content preview-content--html"
+                    dangerouslySetInnerHTML={{ __html: previewResource.contenu }}
+                  />
+                ) : (
+                  <div className="preview-content">{previewResource.contenu}</div>
+                )
+              )}
+
+              {/* Rien à afficher */}
+              {!previewResource.urlExterne && !previewResource.fichierURL && !previewResource.contenu && (
                 <div className="preview-empty">
                   <p>Aucun contenu à prévisualiser</p>
                 </div>
@@ -1259,6 +1317,15 @@ const ResourceManager: React.FC = () => {
                   <span>Type : {getTypeInfo(previewResource.type).label}</span>
                   {previewResource.duree && <span>Durée : {previewResource.duree} min</span>}
                   {previewResource.isPremium && <span className="badge badge--premium">Premium</span>}
+                  {/* [FIX ressources] contrôle du rendu réel côté élève */}
+                  <a
+                    href={`/ressources/${previewResource.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="preview-student-link"
+                  >
+                    👁️ Voir la page élève ↗
+                  </a>
                 </div>
               </div>
             </div>
@@ -1611,6 +1678,48 @@ const ResourceManager: React.FC = () => {
           background: var(--color-bg-secondary);
           border-radius: var(--radius-lg);
           white-space: pre-wrap;
+          /* [FIX ressources] contenu long : défilement dans le modal */
+          max-height: 50vh;
+          overflow-y: auto;
+          margin-top: var(--spacing-lg);
+        }
+
+        /* [FIX ressources] contenu HTML : mise en forme normale du HTML */
+        .preview-content--html {
+          white-space: normal;
+          line-height: 1.7;
+        }
+
+        /* [FIX ressources] barre Ouvrir / Télécharger sous le fichier */
+        .preview-file__actions {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: center;
+          gap: var(--spacing-md);
+          margin-top: var(--spacing-md);
+        }
+
+        .preview-file__name {
+          font-weight: 600;
+          overflow-wrap: anywhere;
+        }
+
+        .preview-link {
+          margin-bottom: var(--spacing-md);
+          overflow-wrap: anywhere;
+        }
+
+        /* [FIX ressources] lien vers la page de consultation élève */
+        .preview-student-link {
+          margin-left: auto;
+          color: var(--color-primary, #2563eb);
+          font-weight: 600;
+          text-decoration: none;
+        }
+
+        .preview-student-link:hover {
+          text-decoration: underline;
         }
 
         .preview-empty {

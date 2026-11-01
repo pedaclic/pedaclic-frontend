@@ -2,24 +2,37 @@
  * ============================================================
  * PAGE RESOURCE VIEW - AFFICHAGE COMPLET D'UNE RESSOURCE
  * ============================================================
- * 
+ *
  * Page de consultation d'une ressource pédagogique :
  * - Affichage du contenu complet (cours, exercice, etc.)
- * - Lecteur vidéo intégré pour les vidéos
- * - Visualiseur PDF pour les documents
+ * - Lecteur vidéo intégré pour les vidéos (fichier ou YouTube)
+ * - Visualiseur PDF pour les documents + téléchargement
  * - Accès Premium avec vérification
- * - Navigation vers ressource précédente/suivante
- * 
- * Route: /resources/:id
- * 
+ * - Ressources liées du même chapitre
+ *
+ * Route: /ressources/:id
+ *
+ * [FIX ressources — v1.1.0]
+ *  - Lecture via ResourceService.getById (dates Firestore converties en Date :
+ *    l'ancien appel brut faisait planter formatDate sur un Timestamp).
+ *  - Ressources liées : chargement non bloquant, filtré côté client
+ *    (champ `chapitre`, pas d'index composite requis).
+ *  - Lien des ressources liées corrigé (/ressources/…).
+ *  - Type de fichier déduit du nom du fichier (les URL Firebase Storage
+ *    se terminent par « ?alt=media&token=… »).
+ *  - Contenu texte brut : retours à la ligne conservés.
+ *  - Bouton de téléchargement explicite (nom de fichier d'origine).
+ *  - Vidéo externe (YouTube) prise en charge.
+ *
  * @author PedaClic Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Resource, Discipline, TypeRessource } from '../types';
-import { getResourceById, getResourcesByChapter } from '../services/ResourceService';
+import { ResourceService } from '../services/ResourceService';
+import { ChapitreService } from '../services/chapitreService';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +44,7 @@ interface ResourceViewState {
   resource: Resource | null;
   discipline: Discipline | null;
   relatedResources: Resource[];
+  chapitreNom: string | null;     // [FIX] libellé lisible du chapitre
   loading: boolean;
   error: string | null;
 }
@@ -40,41 +54,107 @@ interface ResourceViewState {
 /**
  * Configuration des types de ressources
  */
-const TYPE_CONFIG: Record<TypeRessource, { 
-  icon: string; 
-  label: string; 
+const TYPE_CONFIG: Record<TypeRessource, {
+  icon: string;
+  label: string;
   color: string;
   bgColor: string;
 }> = {
-  cours: { 
-    icon: '📖', 
+  cours: {
+    icon: '📖',
     label: 'Cours',
     color: '#2563eb',
     bgColor: '#eff6ff'
   },
-  exercice: { 
-    icon: '✏️', 
+  exercice: {
+    icon: '✏️',
     label: 'Exercice',
     color: '#059669',
     bgColor: '#ecfdf5'
   },
-  video: { 
-    icon: '🎬', 
+  video: {
+    icon: '🎬',
     label: 'Vidéo',
     color: '#dc2626',
     bgColor: '#fef2f2'
   },
-  document: { 
-    icon: '📄', 
+  document: {
+    icon: '📄',
     label: 'Document',
     color: '#7c3aed',
     bgColor: '#f5f3ff'
   },
-  quiz: { 
-    icon: '❓', 
+  quiz: {
+    icon: '❓',
     label: 'Quiz',
     color: '#f59e0b',
     bgColor: '#fffbeb'
+  }
+};
+
+/** [FIX] Configuration de repli si le type stocké est inconnu (évite un crash) */
+const TYPE_FALLBACK = {
+  icon: '📌',
+  label: 'Ressource',
+  color: '#475569',
+  bgColor: '#f1f5f9'
+};
+
+const getTypeConfig = (type?: string) =>
+  (type && TYPE_CONFIG[type as TypeRessource]) || TYPE_FALLBACK;
+
+// ==================== HELPERS PURS ====================
+
+/**
+ * [FIX] Déterminer le type de fichier.
+ * On teste d'abord le nom d'origine (fichierNom), puis le chemin de l'URL
+ * débarrassé de sa query string et décodé (les URL Firebase Storage encodent
+ * le chemin : « ressources%2Fid%2Ffichier.pdf?alt=media&token=… »).
+ */
+export const getFileType = (
+  url: string,
+  nom?: string
+): 'pdf' | 'video' | 'image' | 'other' => {
+  let chemin = url.split('?')[0];
+  try { chemin = decodeURIComponent(chemin); } catch { /* URL non décodable : on garde brut */ }
+  const cible = `${nom || ''} ${chemin}`.toLowerCase();
+  if (/\.pdf\b/.test(cible)) return 'pdf';
+  if (/\.(mp4|webm|ogg|mov)\b/.test(cible)) return 'video';
+  if (/\.(jpe?g|png|gif|webp|svg)\b/.test(cible)) return 'image';
+  return 'other';
+};
+
+/** [FIX] Le contenu contient-il du HTML ? (sinon : texte brut saisi au clavier) */
+const estHtml = (texte: string): boolean => /<\/?[a-z][\s\S]*?>/i.test(texte);
+
+/** [FIX] URL d'intégration YouTube à partir d'une URL « watch » ou « youtu.be » */
+const toEmbedUrl = (url: string): string | null => {
+  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
+  return m ? `https://www.youtube.com/embed/${m[1]}` : null;
+};
+
+/**
+ * [FIX] Téléchargement d'un fichier distant avec son nom d'origine.
+ * L'attribut HTML `download` est ignoré pour une URL d'un autre domaine
+ * (Firebase Storage) : on récupère donc le fichier en Blob. En cas d'échec
+ * (CORS, réseau), on ouvre simplement le fichier dans un nouvel onglet.
+ */
+export const telechargerFichier = async (url: string, nom?: string): Promise<void> => {
+  try {
+    const reponse = await fetch(url);
+    if (!reponse.ok) throw new Error(`HTTP ${reponse.status}`);
+    const blob = await reponse.blob();
+    const lienLocal = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = lienLocal;
+    a.download = nom || 'fichier';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(lienLocal), 1000);
+  } catch (err) {
+    console.warn('Téléchargement direct impossible, ouverture du fichier :', err);
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 };
 
@@ -90,16 +170,25 @@ const ResourceView: React.FC = () => {
     resource: null,
     discipline: null,
     relatedResources: [],
+    chapitreNom: null,
     loading: true,
     error: null
   });
 
-  // État Premium de l'utilisateur (à connecter avec AuthContext)
-  const { currentUser } = useAuth();
-  const isPremiumUser = currentUser?.isPremium || false;
+  /** [FIX] Téléchargement en cours (désactive le bouton) */
+  const [downloading, setDownloading] = useState(false);
+
+  // État Premium de l'utilisateur
+  const { currentUser, loading: authLoading } = useAuth();
+  // [FIX] l'administrateur garde l'accès complet (contrôle de ses contenus)
+  const isPremiumUser = currentUser?.isPremium || currentUser?.role === 'admin' || false;
 
   // ===== CHARGEMENT DES DONNÉES =====
   useEffect(() => {
+    // [FIX] Attendre la restauration de la session : les règles Firestore
+    // exigent un utilisateur connecté pour lire « ressources ».
+    if (authLoading) return;
+
     const loadResource = async () => {
       if (!id) {
         setState(prev => ({
@@ -110,39 +199,74 @@ const ResourceView: React.FC = () => {
         return;
       }
 
+      // [FIX] Visiteur non connecté : message clair au lieu d'une erreur technique
+      if (!currentUser) {
+        setState(prev => ({
+          ...prev,
+          loading: false,
+          error: "Connectez-vous pour consulter cette ressource."
+        }));
+        return;
+      }
+
       try {
         setState(prev => ({ ...prev, loading: true, error: null }));
 
-        // 1. Charger la ressource
-        const resource = await getResourceById(id) as Resource;
+        // 1. Charger la ressource (format normalisé, dates converties)
+        const resource = await ResourceService.getById(id);
 
         if (!resource) {
           throw new Error("Ressource introuvable");
         }
 
-        // 2. Charger la discipline
-        const disciplineRef = doc(db, 'disciplines', resource.disciplineId);
-        const disciplineSnap = await getDoc(disciplineRef);
-        
-        let discipline: Discipline | null = null;
-        if (disciplineSnap.exists()) {
-          discipline = {
-            id: disciplineSnap.id,
-            ...disciplineSnap.data()
-          } as Discipline;
+        // [FIX] Ressource désactivée : invisible pour les non-admins
+        if (resource.actif === false && currentUser.role !== 'admin') {
+          throw new Error("Cette ressource n'est pas disponible pour le moment.");
         }
 
-        // 3. Charger les ressources liées (même chapitre)
+        // 2. Charger la discipline (non bloquant)
+        let discipline: Discipline | null = null;
+        try {
+          const disciplineSnap = await getDoc(doc(db, 'disciplines', resource.disciplineId));
+          if (disciplineSnap.exists()) {
+            discipline = {
+              id: disciplineSnap.id,
+              ...disciplineSnap.data()
+            } as Discipline;
+          }
+        } catch (e) {
+          console.warn('Discipline indisponible :', e);
+        }
+
+        // 3. [FIX] Libellé du chapitre + ressources liées (non bloquants)
+        const chapitreKey = resource.chapitre || resource.chapitreId;
+        let chapitreNom: string | null = null;
         let relatedResources: Resource[] = [];
-        if (resource.chapitre) {
-          const relatedList = await getResourcesByChapter(resource.chapitre);
-	  relatedResources = (relatedList as Resource[]).filter(r => r.id !== id);
+        if (chapitreKey) {
+          try {
+            const chap = await ChapitreService.getById(chapitreKey);
+            if (chap) chapitreNom = `${chap.numero}. ${chap.titre}`;
+          } catch { /* l'ID restera affiché tel quel */ }
+
+          try {
+            // Même requête que la page discipline (index déjà existant),
+            // puis filtrage local par chapitre.
+            const memeDiscipline = await ResourceService.getAll({ disciplineId: resource.disciplineId });
+            relatedResources = memeDiscipline.filter(r =>
+              r.id !== id &&
+              r.actif !== false &&
+              (r.chapitre || r.chapitreId) === chapitreKey
+            );
+          } catch (e) {
+            console.warn('Ressources liées indisponibles :', e);
+          }
         }
 
         setState({
           resource,
           discipline,
           relatedResources,
+          chapitreNom,
           loading: false,
           error: null
         });
@@ -158,7 +282,8 @@ const ResourceView: React.FC = () => {
     };
 
     loadResource();
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, authLoading, currentUser?.uid, currentUser?.role]);
 
 
   // ===== PHASE 14 : SUIVI PROGRESSION =====
@@ -194,26 +319,30 @@ const ResourceView: React.FC = () => {
 
   /**
    * Formatage de la date
+   * [FIX] tolère Date, Timestamp Firestore ou valeur absente
    */
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('fr-SN', {
+  const formatDate = (date: unknown): string => {
+    const d: Date | null =
+      date instanceof Date ? date
+      : date && typeof (date as { toDate?: () => Date }).toDate === 'function'
+        ? (date as { toDate: () => Date }).toDate()
+        : null;
+    if (!d || isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('fr-SN', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
   };
 
-  /**
-   * Déterminer le type de fichier
-   */
-  const getFileType = (url: string): 'pdf' | 'video' | 'image' | 'other' => {
-    const lower = url.toLowerCase();
-    if (lower.includes('.pdf')) return 'pdf';
-    if (lower.includes('.mp4') || lower.includes('.webm')) return 'video';
-    if (lower.includes('.jpg') || lower.includes('.jpeg') || 
-        lower.includes('.png') || lower.includes('.gif') || 
-        lower.includes('.webp')) return 'image';
-    return 'other';
+  /** [FIX] Lance le téléchargement du fichier joint */
+  const handleDownload = async (url: string, nom?: string) => {
+    setDownloading(true);
+    try {
+      await telechargerFichier(url, nom);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   // ===== RENDU =====
@@ -228,7 +357,7 @@ const ResourceView: React.FC = () => {
           <div className="skeleton-title"></div>
           <div className="skeleton-meta"></div>
         </div>
-        
+
         {/* ===== Skeleton Content ===== */}
         <div className="resource-view__body">
           <div className="resource-view__content skeleton">
@@ -248,9 +377,15 @@ const ResourceView: React.FC = () => {
       <div className="resource-view resource-view--error">
         <div className="error-container">
           <span className="error-icon">😕</span>
-          <h2>Ressource introuvable</h2>
+          <h2>Ressource indisponible</h2>
           <p>{state.error || "Cette ressource n'existe pas ou a été supprimée."}</p>
-          <button 
+          {/* [FIX] lien de connexion pour un visiteur non connecté */}
+          {!currentUser && (
+            <Link to="/connexion" className="btn btn--primary" style={{ marginRight: '0.5rem' }}>
+              Se connecter
+            </Link>
+          )}
+          <button
             className="btn btn--primary"
             onClick={() => navigate(-1)}
           >
@@ -261,20 +396,24 @@ const ResourceView: React.FC = () => {
     );
   }
 
-  const { resource, discipline, relatedResources } = state;
-  const typeConfig = TYPE_CONFIG[resource.type];
+  const { resource, discipline, relatedResources, chapitreNom } = state;
+  const typeConfig = getTypeConfig(resource.type);
   const canAccess = !resource.isPremium || isPremiumUser;
+  // [FIX] valeurs sûres (champs facultatifs dans Firestore)
+  const contenu = resource.contenu || '';
+  const duree = resource.dureeEstimee || resource.duree;
+  const videoEmbed = resource.urlExterne ? toEmbedUrl(resource.urlExterne) : null;
 
   return (
     <div className="resource-view">
       {/* ============================================
           EN-TÊTE DE LA RESSOURCE
           ============================================ */}
-      <header 
+      <header
         className="resource-view__header"
-        style={{ 
+        style={{
           '--type-color': typeConfig.color,
-          '--type-bg': typeConfig.bgColor 
+          '--type-bg': typeConfig.bgColor
         } as React.CSSProperties}
       >
         {/* Navigation fil d'Ariane */}
@@ -285,7 +424,7 @@ const ResourceView: React.FC = () => {
           <span className="breadcrumb-separator">/</span>
           {discipline && (
             <>
-              <Link 
+              <Link
                 to={`/disciplines/${discipline.id}`}
                 className="breadcrumb-link"
               >
@@ -298,7 +437,7 @@ const ResourceView: React.FC = () => {
         </nav>
 
         {/* Bouton retour */}
-        <button 
+        <button
           className="resource-view__back"
           onClick={() => navigate(-1)}
         >
@@ -308,9 +447,9 @@ const ResourceView: React.FC = () => {
         {/* Informations principales */}
         <div className="resource-view__info">
           {/* Badge type */}
-          <span 
+          <span
             className="resource-view__type-badge"
-            style={{ 
+            style={{
               background: typeConfig.bgColor,
               color: typeConfig.color
             }}
@@ -330,24 +469,26 @@ const ResourceView: React.FC = () => {
 
           {/* Métadonnées */}
           <div className="resource-view__meta">
-            {/* Chapitre */}
-            {resource.chapitre && (
+            {/* Chapitre ([FIX] libellé lisible si disponible) */}
+            {(chapitreNom || resource.chapitre) && (
               <span className="meta-item">
-                📚 {resource.chapitre}
+                📚 {chapitreNom || resource.chapitre}
               </span>
             )}
 
-            {/* Durée */}
-            {resource.dureeEstimee && (
+            {/* Durée ([FIX] champ `duree` du formulaire admin pris en compte) */}
+            {duree && (
               <span className="meta-item">
-                ⏱️ {formatDuration(resource.dureeEstimee)}
+                ⏱️ {formatDuration(duree)}
               </span>
             )}
 
             {/* Date */}
-            <span className="meta-item">
-              📅 {formatDate(resource.createdAt)}
-            </span>
+            {formatDate(resource.createdAt) && (
+              <span className="meta-item">
+                📅 {formatDate(resource.createdAt)}
+              </span>
+            )}
 
             {/* Badge Premium/Gratuit */}
             {resource.isPremium ? (
@@ -397,97 +538,134 @@ const ResourceView: React.FC = () => {
                 ⭐ Devenir Premium
               </Link>
             </div>
-            
+
             {/* Aperçu flou du contenu */}
-            <div className="locked-preview">
-              <div 
-                className="preview-blur"
-                dangerouslySetInnerHTML={{ 
-                  __html: resource.contenu.substring(0, 200) + '...' 
-                }}
-              />
-            </div>
+            {contenu && (
+              <div className="locked-preview">
+                <div
+                  className="preview-blur"
+                  dangerouslySetInnerHTML={{
+                    __html: contenu.substring(0, 200) + '...'
+                  }}
+                />
+              </div>
+            )}
           </div>
         ) : (
           /* ===== Contenu accessible ===== */
           <div className="resource-view__content">
+            {/* [FIX] Vidéo externe (YouTube) */}
+            {resource.urlExterne && (
+              <div className="resource-view__media">
+                {videoEmbed ? (
+                  <div className="media-video media-video--embed">
+                    <iframe
+                      src={videoEmbed}
+                      title={resource.titre}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                ) : (
+                  <a
+                    href={resource.urlExterne}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn--secondary"
+                  >
+                    🔗 Ouvrir le lien externe
+                  </a>
+                )}
+              </div>
+            )}
+
             {/* Fichier joint (vidéo, PDF, image) */}
             {resource.fichierURL && (
               <div className="resource-view__media">
                 {(() => {
-                  const fileType = getFileType(resource.fichierURL);
-                  
+                  const fichierURL = resource.fichierURL;
+                  const fileType = getFileType(fichierURL, resource.fichierNom);
+
                   switch (fileType) {
                     case 'video':
                       return (
                         <div className="media-video">
-                          <video 
-                            controls 
+                          {/* [FIX] src direct : le navigateur détecte le format */}
+                          <video
+                            controls
                             className="video-player"
-                            poster=""
+                            src={fichierURL}
                           >
-                            <source 
-                              src={resource.fichierURL} 
-                              type="video/mp4" 
-                            />
                             Votre navigateur ne supporte pas la lecture vidéo.
                           </video>
                         </div>
                       );
-                    
+
                     case 'pdf':
                       return (
                         <div className="media-pdf">
                           <iframe
-                            src={`${resource.fichierURL}#toolbar=0`}
+                            src={fichierURL}
                             className="pdf-viewer"
                             title={resource.titre}
                           />
-                          <a 
-                            href={resource.fichierURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn--secondary pdf-download"
-                          >
-                            📥 Télécharger le PDF
-                          </a>
                         </div>
                       );
-                    
+
                     case 'image':
                       return (
                         <div className="media-image">
-                          <img 
-                            src={resource.fichierURL}
+                          <img
+                            src={fichierURL}
                             alt={resource.titre}
                             className="image-viewer"
                           />
                         </div>
                       );
-                    
+
                     default:
-                      return (
-                        <div className="media-download">
-                          <a 
-                            href={resource.fichierURL}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn--primary"
-                          >
-                            📥 Télécharger le fichier
-                          </a>
-                        </div>
-                      );
+                      return null; // le bouton de téléchargement ci-dessous suffit
                   }
                 })()}
+
+                {/* [FIX] Barre d'actions du fichier joint — toujours visible */}
+                <div className="resource-view__file-actions">
+                  <span className="file-actions__name">
+                    📎 {resource.fichierNom || 'Fichier joint'}
+                  </span>
+                  <a
+                    href={resource.fichierURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn--secondary"
+                  >
+                    ↗ Ouvrir
+                  </a>
+                  <button
+                    type="button"
+                    className="btn btn--primary"
+                    disabled={downloading}
+                    onClick={() => handleDownload(resource.fichierURL!, resource.fichierNom)}
+                  >
+                    {downloading ? '⏳ Téléchargement…' : '📥 Télécharger'}
+                  </button>
+                </div>
               </div>
             )}
 
-            {/* Contenu textuel */}
-            <article 
-              className="resource-view__text"
-              dangerouslySetInnerHTML={{ __html: resource.contenu }}
-            />
+            {/* Contenu textuel ([FIX] texte brut : retours à la ligne conservés) */}
+            {contenu && (
+              estHtml(contenu) ? (
+                <article
+                  className="resource-view__text"
+                  dangerouslySetInnerHTML={{ __html: contenu }}
+                />
+              ) : (
+                <article className="resource-view__text resource-view__text--plain">
+                  {contenu}
+                </article>
+              )
+            )}
           </div>
         )}
 
@@ -502,17 +680,18 @@ const ResourceView: React.FC = () => {
             <ul className="related-list">
               {relatedResources.slice(0, 5).map((related) => (
                 <li key={related.id}>
-                  <Link 
-                    to={`/resources/${related.id}`}
+                  {/* [FIX] route corrigée : /ressources (et non /resources) */}
+                  <Link
+                    to={`/ressources/${related.id}`}
                     className="related-item"
                   >
                     <span className="related-icon">
-                      {TYPE_CONFIG[related.type].icon}
+                      {getTypeConfig(related.type).icon}
                     </span>
                     <div className="related-info">
                       <span className="related-name">{related.titre}</span>
                       <span className="related-type">
-                        {TYPE_CONFIG[related.type].label}
+                        {getTypeConfig(related.type).label}
                       </span>
                     </div>
                     {related.isPremium && (
@@ -536,9 +715,9 @@ const ResourceView: React.FC = () => {
         >
           ← Retour aux ressources
         </button>
-        
+
         {discipline && (
-          <Link 
+          <Link
             to={`/disciplines/${discipline.id}`}
             className="btn btn--primary"
           >
