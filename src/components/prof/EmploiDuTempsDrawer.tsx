@@ -1,18 +1,19 @@
 // ============================================================
 // PedaClic — Emploi du Temps (fenêtre flottante / drawer)
-// Affiche la grille hebdomadaire d'une classe (emploi du temps
-// partagé par classe + année), permet d'ajouter/supprimer des
-// créneaux, et ouvre directement la saisie du Cahier de textes
-// du GROUPE/section correspondant.
+// ------------------------------------------------------------
+// PHASE 48 — Emploi du temps PERSONNEL, par établissement.
+//   • Vue « Par classe »  : grille + édition pour (établissement, classe)
+//   • Vue « Ma semaine »  : TOUS mes créneaux, tous établissements,
+//                           avec alertes de chevauchement / battement
+//   • Vue « Mon jour »    : les créneaux d'un jour, dans l'ordre
+//   • Reprise : les créneaux saisis par ce professeur dans l'ancien
+//     emploi du temps commun peuvent être importés en un clic.
 //
-// Sources de référence (corrige les anomalies signalées) :
-//   - Matières : useDisciplinesOptions() (collection `disciplines`,
-//     EXACTEMENT la même source que le Cahier de textes).
-//   - Classe réelle : le GROUPE du prof (4PIB, 4PFA…), qui assure
-//     une liaison rigoureuse au bon cahier (résolution par groupeId).
+// Inchangé : matières issues de `disciplines`, liaison rigoureuse
+// au cahier par groupe (4PFA…), clic créneau → saisie du cahier.
 // ============================================================
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   CLASSES,
   normaliserClassePourComparaison,
@@ -21,21 +22,47 @@ import type { Classe, AnneeScolaire, GroupeProf } from '../../types/cahierTextes
 import {
   JOURS_SEMAINE,
   genererCreneauId,
+  emploiProfId,
 } from '../../types/emploiDuTemps.types';
-import type { Creneau, JourSemaine, EmploiDuTemps } from '../../types/emploiDuTemps.types';
-import { subscribeEmploi, creerOuMajEmploi, getTousEmplois } from '../../services/emploiDuTempsService';
+import type {
+  Creneau,
+  CreneauContexte,
+  JourSemaine,
+  EmploiDuTempsProf,
+} from '../../types/emploiDuTemps.types';
+import {
+  subscribeEmploiProf,
+  subscribeEmploisProfAnnee,
+  enregistrerEmploiProf,
+  creneauxHeritesDuProf,
+} from '../../services/emploiDuTempsService';
+import {
+  aplatirCreneaux,
+  detecterAlertes,
+  chevauchementsAvec,
+  trierCreneaux,
+  enMinutes,
+  jourCourant,
+  type AlerteCreneau,
+} from '../../utils/emploiDuTempsUtils';
+import type { EtablissementProf } from '../../types/etablissement.types';
+import { libelleCourtEtablissement } from '../../types/etablissement.types';
 import { useDisciplinesOptions } from '../../hooks/useDisciplinesOptions';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { messageErreurFirestore } from '../../utils/messageErreurFirestore';
 // Phase 45 — années scolaires administrables
 import { useAnneesScolaires } from '../../hooks/useAnneesScolaires';
 import { anneesPourSelect, calculerAnneeScolaireEnCours } from '../../types/anneesScolaires.types';
 import '../../styles/EmploiDuTemps.css';
 
-/** Données transmises au parent quand on clique un créneau (point 4). */
+/** Données transmises au parent quand on clique un créneau. */
 export interface OuvrirCahierInfo {
   classe: Classe;
   matiere?: string;
   groupeId?: string;
   groupeNom?: string;
+  /** Phase 48 — établissement du créneau (cahier du bon établissement) */
+  etablissementId?: string | null;
 }
 
 interface Props {
@@ -45,21 +72,25 @@ interface Props {
   profNom: string;
   /** Groupes/sections du prof (source de la liaison rigoureuse au cahier) */
   groupes: GroupeProf[];
+  /** Phase 48 — établissements actifs du carnet du professeur (Phase 46) */
+  etablissements: EtablissementProf[];
   /** Classe pré-sélectionnée (ex. depuis le conditionnement de création) */
   initialClasse?: Classe;
   /** Année pré-sélectionnée */
   initialAnnee?: AnneeScolaire;
+  /** Phase 48 — établissement pré-sélectionné (null = sans établissement) */
+  initialEtablissementId?: string | null;
+  /** Phase 48 — onglet affiché à l'ouverture (défaut : « Par classe ») */
+  initialVue?: VueEmploi;
   /** Clic sur un créneau lié → ouvrir la saisie du cahier correspondant */
   onOuvrirCahier?: (info: OuvrirCahierInfo) => void;
 }
 
-/**
- * Modes de consultation de l'emploi du temps (point d'optimisation demandé) :
- *   - 'classe'        : grille hebdomadaire d'UNE classe + édition (comportement existant, inchangé)
- *   - 'semaine-toutes': filtre hebdomadaire sur l'ENSEMBLE des classes (lecture seule)
- *   - 'jour-toutes'   : filtre journalier exhaustif sur l'ENSEMBLE des classes (lecture seule)
- */
-type VueEmploi = 'classe' | 'semaine-toutes' | 'jour-toutes';
+/** Modes de consultation (Phase 48 : vues personnelles) */
+export type VueEmploi = 'classe' | 'ma-semaine' | 'mon-jour';
+
+/** Valeur des <select> pour « Sans établissement » */
+const OPTION_SANS_ETAB = '';
 
 interface NouveauCreneau {
   jour: JourSemaine;
@@ -81,16 +112,11 @@ const creneauVide: NouveauCreneau = {
   groupeId: '',
 };
 
-/**
- * Détermine le jour de la semaine courant (pour pré-sélectionner le filtre
- * journalier sur « aujourd'hui »). getDay() : 0=dimanche … 6=samedi.
- * Le dimanche (absent de l'emploi du temps) bascule sur 'lundi'.
- */
-function jourCourant(): JourSemaine {
-  const map: Record<number, JourSemaine> = {
-    1: 'lundi', 2: 'mardi', 3: 'mercredi', 4: 'jeudi', 5: 'vendredi', 6: 'samedi',
-  };
-  return map[new Date().getDay()] ?? 'lundi';
+/** Durée totale d'une liste de créneaux, au format « 12 h 30 » */
+function dureeTotale(liste: Creneau[]): string {
+  const min = liste.reduce((t, c) => t + Math.max(0, enMinutes(c.heureFin) - enMinutes(c.heureDebut)), 0);
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
 }
 
 const EmploiDuTempsDrawer: React.FC<Props> = ({
@@ -99,73 +125,120 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   profId,
   profNom,
   groupes,
+  etablissements,
   initialClasse,
   initialAnnee,
+  initialEtablissementId,
+  initialVue,
   onOuvrirCahier,
 }) => {
+  const confirmDialog = useConfirm();
   const [classe, setClasse] = useState<Classe>(initialClasse ?? '6ème');
-  // Phase 45 : année en cours par défaut (au lieu d'une valeur figée)
+  // Phase 45 : année en cours par défaut
   const { config: anneesConfig, anneeCourante } = useAnneesScolaires();
   const [annee, setAnnee] = useState<AnneeScolaire>(initialAnnee ?? calculerAnneeScolaireEnCours());
-  const [emploi, setEmploi] = useState<EmploiDuTemps | null>(null);
+  // Phase 48 : établissement de l'emploi du temps édité (null = sans)
+  const [etabId, setEtabId] = useState<string | null>(
+    initialEtablissementId !== undefined ? initialEtablissementId : (etablissements[0]?.id ?? null)
+  );
+  const [emploi, setEmploi] = useState<EmploiDuTempsProf | null>(null);
+  const [tousMesEmplois, setTousMesEmplois] = useState<EmploiDuTempsProf[]>([]);
+  const [herites, setHerites] = useState<Creneau[]>([]);
   const [nouveau, setNouveau] = useState<NouveauCreneau>(creneauVide);
   const [busy, setBusy] = useState(false);
   const [erreur, setErreur] = useState('');
 
-  // ── Optimisation : mode de consultation + données agrégées ──────
-  const [vue, setVue] = useState<VueEmploi>('classe');           // vue active
-  const [jourFiltre, setJourFiltre] = useState<JourSemaine>(jourCourant()); // jour du filtre journalier
-  const [tousEmplois, setTousEmplois] = useState<EmploiDuTemps[]>([]);      // tous les EDT (vues agrégées)
-  const [loadingTous, setLoadingTous] = useState(false);
+  const [vue, setVue] = useState<VueEmploi>('classe');
+  const [jourFiltre, setJourFiltre] = useState<JourSemaine>(jourCourant());
+  /** Filtre des vues agrégées : 'tous' | id d'établissement | '' (sans) */
+  const [filtreEtab, setFiltreEtab] = useState<string>('tous');
 
-  // BUG 1 — matières issues de la MÊME source que le Cahier de textes
+  // Matières issues de la MÊME source que le Cahier de textes
   const { matieres: matieresDispos, loading: loadingMatieres } = useDisciplinesOptions();
 
-  // Resynchronise la classe/année quand on (ré)ouvre le panneau
-  useEffect(() => {
-    if (open) {
-      if (initialClasse) setClasse(initialClasse);
-      if (initialAnnee) setAnnee(initialAnnee);
-    }
-  }, [open, initialClasse, initialAnnee]);
+  const etabsParId = useMemo(() => new Map(etablissements.map(e => [e.id, e])), [etablissements]);
+  const etabCourant = etabId ? etabsParId.get(etabId) ?? null : null;
 
-  // Écoute temps réel de l'emploi du temps de la classe sélectionnée
-  // (inchangé — sert la vue 'classe' et l'édition).
+  // Si aucun établissement n'était choisi et que le carnet se charge
+  // après l'ouverture, on sélectionne le premier établissement.
+  useEffect(() => {
+    if (initialEtablissementId === undefined && etabId === null && etablissements.length > 0) {
+      setEtabId(etablissements[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etablissements.length]);
+
+  // Resynchronise classe / année / établissement à la (ré)ouverture
   useEffect(() => {
     if (!open) return;
-    const unsub = subscribeEmploi(
-      classe,
-      annee,
+    if (initialClasse) setClasse(initialClasse);
+    if (initialAnnee) setAnnee(initialAnnee);
+    if (initialEtablissementId !== undefined) setEtabId(initialEtablissementId);
+    setVue(initialVue ?? 'classe');
+  }, [open, initialClasse, initialAnnee, initialEtablissementId, initialVue]);
+
+  // ── Emploi du temps personnel (établissement + classe) ─────
+  useEffect(() => {
+    if (!open || !profId) return;
+    const unsub = subscribeEmploiProf(
+      profId, etabId, classe, annee,
       (e) => setEmploi(e),
-      () => setErreur('Lecture de l\'emploi du temps impossible.')
+      (err) => setErreur(messageErreurFirestore(err, 'Lecture de l\'emploi du temps'))
     );
     return () => unsub();
-  }, [open, classe, annee]);
+  }, [open, profId, etabId, classe, annee]);
 
-  // Chargement des vues agrégées (toutes classes) : uniquement quand
-  // une vue agrégée est active. Rechargé à l'ouverture, au changement
-  // de vue ou d'année scolaire.
+  // ── Tous mes emplois du temps de l'année (vues + alertes) ──
   useEffect(() => {
-    if (!open || vue === 'classe') return;
+    if (!open || !profId) return;
+    const unsub = subscribeEmploisProfAnnee(
+      profId, annee,
+      (liste) => setTousMesEmplois(liste),
+      (err) => setErreur(messageErreurFirestore(err, 'Lecture des emplois du temps'))
+    );
+    return () => unsub();
+  }, [open, profId, annee]);
+
+  // ── Reprise : anciens créneaux de ce prof pour cette classe ─
+  useEffect(() => {
+    if (!open || !profId || vue !== 'classe') return;
     let actif = true;
-    setLoadingTous(true);
-    setErreur('');
-    getTousEmplois(annee)
-      .then((liste) => { if (actif) setTousEmplois(liste); })
-      .catch(() => { if (actif) setErreur('Lecture des emplois du temps impossible.'); })
-      .finally(() => { if (actif) setLoadingTous(false); });
+    creneauxHeritesDuProf(profId, classe, annee).then(liste => { if (actif) setHerites(liste); });
     return () => { actif = false; };
-  }, [open, vue, annee]);
+  }, [open, profId, classe, annee, vue]);
+
+  // ── Données dérivées (calculées AVANT le retour anticipé) ──
+  const tousCreneaux: CreneauContexte[] = useMemo(() => aplatirCreneaux(tousMesEmplois), [tousMesEmplois]);
+  const alertes = useMemo(() => detecterAlertes(tousCreneaux), [tousCreneaux]);
+  const nbConflits = useMemo(
+    () => Array.from(alertes.values()).filter(l => l.some(a => a.type === 'chevauchement')).length,
+    [alertes]
+  );
 
   if (!open) return null;
 
   const creneaux: Creneau[] = emploi?.creneaux ?? [];
+  const emploiIdCourant = emploiProfId(profId, etabId, classe, annee);
 
-  // BUG 2 — groupes du prof correspondant à la classe affichée (4PIB, 4PFA…)
+  // Créneaux hérités pas encore repris dans AUCUN de mes emplois du temps
+  const idsDejaRepris = new Set(tousCreneaux.map(c => c.id));
+  const heritesAReprendre = herites.filter(c => !idsDejaRepris.has(c.id));
+
+  // Groupes du prof correspondant à la classe affichée (4PIB, 4PFA…)
   const groupesClasse = groupes.filter(
     (g) => normaliserClassePourComparaison(g.classe) === normaliserClassePourComparaison(classe)
   );
   const groupesProposes = groupesClasse.length > 0 ? groupesClasse : groupes;
+
+  /** Enregistre la liste complète des créneaux de (établissement, classe) */
+  const enregistrer = (liste: Creneau[]) =>
+    enregistrerEmploiProf(
+      profId,
+      etabCourant ? { id: etabCourant.id, nom: etabCourant.nom } : null,
+      classe,
+      annee,
+      liste
+    );
 
   // ── Ajouter un créneau ────────────────────────────────────
   const handleAjouter = async () => {
@@ -177,6 +250,19 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     if (nouveau.heureFin <= nouveau.heureDebut) {
       setErreur('L\'heure de fin doit suivre l\'heure de début.');
       return;
+    }
+    // Phase 48 — contrôle des chevauchements avec TOUS mes créneaux
+    const conflits = chevauchementsAvec(nouveau, tousCreneaux);
+    if (conflits.length) {
+      const ok = await confirmDialog({
+        title: 'Chevauchement d\'horaires',
+        message: `Ce créneau chevauche : ${conflits
+          .map(c => `${c.classe}${c.etablissementNom ? ` (${c.etablissementNom})` : ''} ${c.heureDebut}–${c.heureFin}`)
+          .join(' ; ')}. L'ajouter quand même ?`,
+        confirmLabel: 'Ajouter quand même',
+        variant: 'warning',
+      });
+      if (!ok) return;
     }
     const groupeSel = groupes.find((g) => g.id === nouveau.groupeId);
     const creneau: Creneau = {
@@ -193,11 +279,11 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     };
     setBusy(true);
     try {
-      await creerOuMajEmploi(classe, annee, [...creneaux, creneau], profId, profNom);
+      await enregistrer([...creneaux, creneau]);
       // Conserve jour + horaires pour enchaîner, vide le reste
       setNouveau((n) => ({ ...n, activite: '', salle: '', matiere: '', groupeId: '' }));
-    } catch {
-      setErreur('Enregistrement impossible.');
+    } catch (err) {
+      setErreur(messageErreurFirestore(err, 'Enregistrement'));
     } finally {
       setBusy(false);
     }
@@ -208,15 +294,22 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     setBusy(true);
     setErreur('');
     try {
-      await creerOuMajEmploi(
-        classe,
-        annee,
-        creneaux.filter((c) => c.id !== id),
-        profId,
-        profNom
-      );
-    } catch {
-      setErreur('Suppression impossible.');
+      await enregistrer(creneaux.filter((c) => c.id !== id));
+    } catch (err) {
+      setErreur(messageErreurFirestore(err, 'Suppression'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Reprise des anciens créneaux ──────────────────────────
+  const handleReprendre = async () => {
+    setBusy(true);
+    setErreur('');
+    try {
+      await enregistrer([...creneaux, ...heritesAReprendre]);
+    } catch (err) {
+      setErreur(messageErreurFirestore(err, 'Reprise'));
     } finally {
       setBusy(false);
     }
@@ -224,88 +317,154 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
 
   // ── Clic créneau → saisie du cahier (lien rigoureux par groupe) ─
   const estLie = (c: Creneau) => !!(c.groupeId || c.matiere) && !!onOuvrirCahier;
-  // `classeCtx` = classe à laquelle appartient le créneau. En vue 'classe'
-  // c'est la classe sélectionnée ; en vues agrégées, la classe du bloc affiché.
-  const handleClickCreneau = (c: Creneau, classeCtx: Classe = classe) => {
+  const handleClickCreneau = (c: Creneau, classeCtx: Classe, etabCtx: string | null) => {
     if (!estLie(c)) return;
     onOuvrirCahier!({
       classe: classeCtx,
       matiere: c.matiere,
       groupeId: c.groupeId,
       groupeNom: c.groupeNom,
+      etablissementId: etabCtx,
     });
   };
 
-  // ── Rendu d'une carte « créneau » (factorisé pour toutes les vues) ─
-  //   classeCtx   : classe d'appartenance (pour le lien au cahier + l'info-bulle)
-  //   lectureSeule: masque le bouton de suppression (vues agrégées = consultation)
-  const renderCreneau = (c: Creneau, classeCtx: Classe, lectureSeule: boolean) => (
-    <div
-      key={c.id}
-      className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}`}
-      onClick={() => handleClickCreneau(c, classeCtx)}
-      title={estLie(c) ? `Ouvrir le Cahier de textes (${c.groupeNom ?? classeCtx}${c.matiere ? ' · ' + c.matiere : ''})` : undefined}
-    >
-      <div className="edt-creneau-head">
-        <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
-        {!lectureSeule && (
-          <button
-            className="edt-creneau-del"
-            onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
-            disabled={busy}
-            aria-label="Supprimer le créneau"
-          >🗑</button>
+  // ── Carte « créneau » (toutes les vues) ───────────────────
+  //   ctx              : classe / établissement / clé d'alerte
+  //   lectureSeule     : masque la suppression (vues agrégées)
+  //   afficherContexte : affiche classe + établissement (vues agrégées)
+  const renderCreneau = (
+    c: Creneau,
+    ctx: { classe: Classe; etablissementId: string | null; etablissementNom: string; cle: string },
+    lectureSeule: boolean,
+    afficherContexte: boolean
+  ) => {
+    const etab = ctx.etablissementId ? etabsParId.get(ctx.etablissementId) : undefined;
+    const sesAlertes: AlerteCreneau[] = alertes.get(ctx.cle) ?? [];
+    const enConflit = sesAlertes.some(a => a.type === 'chevauchement');
+    return (
+      <div
+        key={ctx.cle}
+        className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}${enConflit ? ' edt-creneau--conflit' : ''}`}
+        // Liseré gauche = couleur de l'établissement (Phase 48)
+        style={etab ? { borderLeftColor: etab.couleur } : undefined}
+        onClick={() => handleClickCreneau(c, ctx.classe, ctx.etablissementId)}
+        title={estLie(c) ? `Ouvrir le Cahier de textes (${c.groupeNom ?? ctx.classe}${c.matiere ? ' · ' + c.matiere : ''})` : undefined}
+      >
+        <div className="edt-creneau-head">
+          <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
+          {!lectureSeule && (
+            <button
+              className="edt-creneau-del"
+              onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
+              disabled={busy}
+              aria-label="Supprimer le créneau"
+            >🗑</button>
+          )}
+        </div>
+        {/* Vues agrégées : classe + établissement en tête de carte */}
+        {afficherContexte && (
+          <div className="edt-creneau-ctx">
+            <strong>{c.groupeNom ?? ctx.classe}</strong>
+            {(etab || ctx.etablissementNom) && (
+              <span className="edt-etab-badge" style={etab ? { background: etab.couleur } : undefined}>
+                {etab ? libelleCourtEtablissement(etab) : ctx.etablissementNom}
+              </span>
+            )}
+          </div>
         )}
+        <div className="edt-creneau-act">
+          {c.activite}{estLie(c) ? ' →' : ''}
+        </div>
+        {!afficherContexte && c.groupeNom && <div className="edt-creneau-salle">👥 {c.groupeNom}</div>}
+        {c.matiere && <div className="edt-creneau-salle">📘 {c.matiere}</div>}
+        <div className="edt-creneau-salle">🏫 {c.salle}</div>
+        {/* Alertes : chevauchement (rouge) / battement court (ambre) */}
+        {sesAlertes.map((a, i) => (
+          <div key={i} className={`edt-alerte edt-alerte--${a.type}`}>
+            {a.type === 'chevauchement' ? '⚠️' : '⏱️'} {a.message}
+          </div>
+        ))}
       </div>
-      <div className="edt-creneau-act">
-        {c.activite}{estLie(c) ? ' →' : ''}
-      </div>
-      {c.groupeNom && <div className="edt-creneau-salle">👥 {c.groupeNom}</div>}
-      {c.matiere && <div className="edt-creneau-salle">📘 {c.matiere}</div>}
-      <div className="edt-creneau-salle">🏫 {c.salle}</div>
-    </div>
-  );
+    );
+  };
 
-  // Liste des classes possédant au moins un créneau (vues agrégées),
-  // triée selon l'ordre pédagogique officiel (PS → Terminale).
-  const emploisNonVides = CLASSES
-    .map((cls) => tousEmplois.find((e) => e.classe === cls))
-    .filter((e): e is EmploiDuTemps => !!e && Array.isArray(e.creneaux) && e.creneaux.length > 0);
+  // Créneaux des vues agrégées, filtrés par établissement
+  const creneauxAgreges = tousCreneaux.filter(c =>
+    filtreEtab === 'tous' ? true : (c.etablissementId ?? OPTION_SANS_ETAB) === filtreEtab
+  );
+  const ctxDe = (c: CreneauContexte) => ({
+    classe: c.classe, etablissementId: c.etablissementId, etablissementNom: c.etablissementNom, cle: c.cle,
+  });
+
+  // Établissements présents dans mes emplois du temps (légende)
+  const etabsPresents = Array.from(new Set(tousCreneaux.map(c => c.etablissementId ?? OPTION_SANS_ETAB)));
 
   return (
     <div className="edt-overlay" onClick={onClose}>
-      <div className="edt-drawer" onClick={(e) => e.stopPropagation()}>
+      <div className="edt-drawer edt-drawer--large" onClick={(e) => e.stopPropagation()}>
         {/* En-tête */}
         <div className="edt-drawer-header">
-          <span className="edt-drawer-title">📅 Emploi du temps</span>
+          <span className="edt-drawer-title">📅 Mon emploi du temps</span>
           <button className="edt-close-btn" onClick={onClose} aria-label="Fermer">✕</button>
         </div>
 
         <div className="edt-drawer-body">
-          {/* Sélecteurs : Vue (filtre) / Classe / Jour / Année */}
-          <div className="edt-selectors">
-            {/* Filtre principal : choix du mode de consultation */}
-            <label>
-              Vue
-              <select value={vue} onChange={(e) => setVue(e.target.value as VueEmploi)}>
-                <option value="classe">Par classe (semaine)</option>
-                <option value="semaine-toutes">Toutes les classes (semaine)</option>
-                <option value="jour-toutes">Toutes les classes (jour)</option>
-              </select>
-            </label>
+          {/* Onglets de vue */}
+          <div className="edt-onglets" role="tablist" aria-label="Vue de l'emploi du temps">
+            {([
+              ['classe', '✏️ Par classe'],
+              ['ma-semaine', '🗓️ Ma semaine'],
+              ['mon-jour', '📍 Mon jour'],
+            ] as const).map(([v, label]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={vue === v}
+                className={`edt-onglet ${vue === v ? 'active' : ''}`}
+                onClick={() => setVue(v)}
+              >
+                {label}
+                {v === 'ma-semaine' && nbConflits > 0 && (
+                  <span className="edt-onglet-alerte" title="Créneaux en chevauchement">{nbConflits}</span>
+                )}
+              </button>
+            ))}
+          </div>
 
-            {/* Sélecteur de classe : utile uniquement en vue 'classe' (+ édition) */}
-            {vue === 'classe' && (
+          {/* Sélecteurs */}
+          <div className="edt-selectors">
+            {vue === 'classe' ? (
+              <>
+                <label>
+                  Établissement
+                  <select
+                    value={etabId ?? OPTION_SANS_ETAB}
+                    onChange={(e) => setEtabId(e.target.value || null)}
+                  >
+                    {etablissements.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+                    <option value={OPTION_SANS_ETAB}>— Sans établissement —</option>
+                  </select>
+                </label>
+                <label>
+                  Classe
+                  <select value={classe} onChange={(e) => setClasse(e.target.value as Classe)}>
+                    {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+              </>
+            ) : (
               <label>
-                Classe
-                <select value={classe} onChange={(e) => setClasse(e.target.value as Classe)}>
-                  {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
+                Établissement
+                <select value={filtreEtab} onChange={(e) => setFiltreEtab(e.target.value)}>
+                  <option value="tous">Tous</option>
+                  {etablissements.map(e => <option key={e.id} value={e.id}>{e.nom}</option>)}
+                  <option value={OPTION_SANS_ETAB}>Sans établissement</option>
                 </select>
               </label>
             )}
 
-            {/* Sélecteur de jour : utile uniquement pour le filtre journalier */}
-            {vue === 'jour-toutes' && (
+            {vue === 'mon-jour' && (
               <label>
                 Jour
                 <select value={jourFiltre} onChange={(e) => setJourFiltre(e.target.value as JourSemaine)}>
@@ -324,108 +483,118 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
             </label>
           </div>
 
+          {erreur && <div className="edt-error" role="alert">{erreur}</div>}
+
           {/* ════════════════════════════════════════════════════════
-              VUE 1 — PAR CLASSE (semaine) : grille + édition.
-              Comportement existant, strictement préservé.
+              VUE 1 — PAR CLASSE : grille + édition
               ════════════════════════════════════════════════════════ */}
           {vue === 'classe' && (
             <>
-              {/* Grille hebdomadaire : une colonne par jour */}
+              {/* Reprise des créneaux de l'ancien emploi du temps commun */}
+              {heritesAReprendre.length > 0 && (
+                <div className="edt-reprise">
+                  <span>
+                    📥 <strong>{heritesAReprendre.length} créneau(x)</strong> que vous aviez saisi(s) pour
+                    la {classe} dans l'ancien emploi du temps commun.
+                  </span>
+                  <button type="button" className="btn-primary" onClick={handleReprendre} disabled={busy}>
+                    Les reprendre ici{etabCourant ? ` (${libelleCourtEtablissement(etabCourant)})` : ''}
+                  </button>
+                </div>
+              )}
+
               <div className="edt-grid">
-                {JOURS_SEMAINE.map((j) => {
-                  const duJour = creneaux
-                    .filter((c) => c.jour === j.valeur)
-                    .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-                  return (
-                    <div className="edt-day-col" key={j.valeur}>
-                      <div className="edt-day-head">{j.court}</div>
-                      {duJour.map((c) => renderCreneau(c, classe, false))}
-                    </div>
-                  );
-                })}
+                {JOURS_SEMAINE.map((j) => (
+                  <div className="edt-day-col" key={j.valeur}>
+                    <div className="edt-day-head">{j.court}</div>
+                    {trierCreneaux(creneaux.filter((c) => c.jour === j.valeur)).map((c) =>
+                      renderCreneau(
+                        c,
+                        { classe, etablissementId: etabId, etablissementNom: etabCourant?.nom ?? '', cle: `${emploiIdCourant}:${c.id}` },
+                        false,
+                        false
+                      )
+                    )}
+                  </div>
+                ))}
               </div>
 
               {creneaux.length === 0 && (
-                <div className="edt-empty">Aucun créneau pour cette classe. Ajoutez-en ci-dessous.</div>
+                <div className="edt-empty">
+                  Aucun créneau pour la {classe}{etabCourant ? ` — ${etabCourant.nom}` : ''}. Ajoutez-en ci-dessous.
+                </div>
               )}
             </>
           )}
 
           {/* ════════════════════════════════════════════════════════
-              VUE 2 — TOUTES LES CLASSES (semaine), lecture seule.
-              Un bloc par classe ; chaque bloc = grille hebdomadaire.
+              VUE 2 — MA SEMAINE : tous mes établissements
               ════════════════════════════════════════════════════════ */}
-          {vue === 'semaine-toutes' && (
-            <div className="edt-agg">
-              {erreur && <div className="edt-error">{erreur}</div>}
-              {loadingTous && <div className="edt-empty">Chargement…</div>}
-              {!loadingTous && emploisNonVides.length === 0 && (
-                <div className="edt-empty">Aucun emploi du temps renseigné pour {annee}.</div>
-              )}
-              {!loadingTous && emploisNonVides.map((e) => (
-                <div className="edt-class-block" key={e.id}>
-                  <div className="edt-class-title">{e.classe}</div>
-                  <div className="edt-grid">
-                    {JOURS_SEMAINE.map((j) => {
-                      const duJour = e.creneaux
-                        .filter((c) => c.jour === j.valeur)
-                        .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut));
-                      return (
-                        <div className="edt-day-col" key={j.valeur}>
-                          <div className="edt-day-head">{j.court}</div>
-                          {duJour.map((c) => renderCreneau(c, e.classe, true))}
-                        </div>
-                      );
-                    })}
-                  </div>
+          {vue === 'ma-semaine' && (
+            <>
+              {/* Synthèse + légende des établissements */}
+              <div className="edt-synthese">
+                <span>
+                  <strong>{creneauxAgreges.length}</strong> créneau(x) ·{' '}
+                  <strong>{dureeTotale(creneauxAgreges)}</strong> par semaine
+                </span>
+                {nbConflits > 0 && <span className="edt-synthese-alerte">⚠️ {nbConflits} créneau(x) en chevauchement</span>}
+              </div>
+              {etabsPresents.length > 1 && (
+                <div className="edt-legende">
+                  {etabsPresents.map(id => {
+                    const e = id ? etabsParId.get(id) : undefined;
+                    return (
+                      <span key={id || 'aucun'} className="edt-legende-item">
+                        <span className="edt-legende-point" style={{ background: e?.couleur ?? '#9ca3af' }} />
+                        {e ? e.nom : 'Sans établissement'}
+                      </span>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-          )}
+              )}
 
-          {/* ════════════════════════════════════════════════════════
-              VUE 3 — TOUTES LES CLASSES (jour choisi), lecture seule.
-              Affichage exhaustif des cours du jour, groupés par classe.
-              ════════════════════════════════════════════════════════ */}
-          {vue === 'jour-toutes' && (
-            <div className="edt-agg">
-              {erreur && <div className="edt-error">{erreur}</div>}
-              {loadingTous && <div className="edt-empty">Chargement…</div>}
-              {!loadingTous && (() => {
-                // Pour chaque classe (ordre officiel), créneaux du jour filtré.
-                const blocs = emploisNonVides
-                  .map((e) => ({
-                    classe: e.classe,
-                    creneaux: e.creneaux
-                      .filter((c) => c.jour === jourFiltre)
-                      .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut)),
-                  }))
-                  .filter((b) => b.creneaux.length > 0);
-
-                if (blocs.length === 0) {
-                  const label = JOURS_SEMAINE.find((j) => j.valeur === jourFiltre)?.label ?? '';
-                  return <div className="edt-empty">Aucun cours le {label.toLowerCase()} pour {annee}.</div>;
-                }
-                return blocs.map((b) => (
-                  <div className="edt-class-block" key={b.classe}>
-                    <div className="edt-class-title">{b.classe}</div>
-                    {/* Liste horizontale des créneaux du jour pour cette classe */}
-                    <div className="edt-day-list">
-                      {b.creneaux.map((c) => renderCreneau(c, b.classe, true))}
+              {creneauxAgreges.length === 0 ? (
+                <div className="edt-empty">Aucun créneau pour {annee}. Commencez par l'onglet « Par classe ».</div>
+              ) : (
+                <div className="edt-grid">
+                  {JOURS_SEMAINE.map((j) => (
+                    <div className="edt-day-col" key={j.valeur}>
+                      <div className="edt-day-head">{j.court}</div>
+                      {trierCreneaux(creneauxAgreges.filter(c => c.jour === j.valeur)).map(c =>
+                        renderCreneau(c, ctxDe(c), true, true)
+                      )}
                     </div>
-                  </div>
-                ));
-              })()}
-            </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
 
           {/* ════════════════════════════════════════════════════════
-              ÉDITION — Ajout d'un créneau. Réservé à la vue 'classe'
-              (les vues agrégées sont en consultation seule).
+              VUE 3 — MON JOUR : chronologie d'une journée
+              ════════════════════════════════════════════════════════ */}
+          {vue === 'mon-jour' && (() => {
+            const duJour = trierCreneaux(creneauxAgreges.filter(c => c.jour === jourFiltre));
+            if (duJour.length === 0) {
+              const label = JOURS_SEMAINE.find((j) => j.valeur === jourFiltre)?.label ?? '';
+              return <div className="edt-empty">Aucun cours le {label.toLowerCase()} pour {annee}.</div>;
+            }
+            return (
+              <div className="edt-day-list edt-day-list--chrono">
+                {duJour.map(c => renderCreneau(c, ctxDe(c), true, true))}
+              </div>
+            );
+          })()}
+
+          {/* ════════════════════════════════════════════════════════
+              ÉDITION — Ajout d'un créneau (onglet « Par classe »)
               ════════════════════════════════════════════════════════ */}
           {vue === 'classe' && (
           <div className="edt-add">
-            <div className="edt-add-title">Ajouter un créneau</div>
+            <div className="edt-add-title">
+              Ajouter un créneau — {classe}{etabCourant ? ` · ${etabCourant.nom}` : ''}
+            </div>
             <div className="edt-add-grid">
               <label>
                 Jour
@@ -481,7 +650,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                   {matieresDispos.map((m) => <option key={m.valeur} value={m.valeur}>{m.label}</option>)}
                 </select>
               </label>
-              {/* BUG 2 — liaison rigoureuse : groupe/section exact du prof */}
+              {/* Liaison rigoureuse : groupe/section exact du prof */}
               <label style={{ gridColumn: '1 / -1' }}>
                 Classe / groupe (recommandé pour le lien au cahier)
                 <select
@@ -494,17 +663,14 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               </label>
             </div>
 
-            {erreur && (
-              <div style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.6rem' }}>{erreur}</div>
-            )}
-
             <div className="edt-add-actions">
               <button className="btn-primary" onClick={handleAjouter} disabled={busy}>
                 {busy ? 'Enregistrement…' : '+ Ajouter le créneau'}
               </button>
             </div>
             <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.6rem' }}>
-              Renseigner le groupe (ex. 4PFA) rend le créneau cliquable et ouvre exactement le Cahier de textes de cette section.
+              Renseigner le groupe (ex. 4PFA) rend le créneau cliquable et ouvre exactement le Cahier de textes
+              de cette section. Cet emploi du temps est personnel : vos collègues ne le voient pas.
             </p>
           </div>
           )}

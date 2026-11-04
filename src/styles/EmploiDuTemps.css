@@ -251,3 +251,206 @@
   .edt-grid { grid-template-columns: 1fr; }
   .edt-add-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   PHASE 48 — EMPLOI DU TEMPS PERSONNEL
+   Onglets de vue, couleurs d'établissement, alertes,
+   reprise de l'ancien emploi du temps, bandeau « Aujourd'hui ».
+   ============================================================ */
+
+/* Panneau élargi : la vue « Ma semaine » a besoin de place */
+.edt-drawer--large { width: min(760px, 96vw); }
+
+/* --- Onglets « Par classe / Ma semaine / Mon jour » --- */
+.edt-onglets {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+  padding: 0.25rem;
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+.edt-onglet {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #4b5563;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+/* Onglet actif : carte blanche en relief */
+.edt-onglet.active { background: #ffffff; color: #1d4ed8; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+/* Pastille rouge : nombre de créneaux en chevauchement */
+.edt-onglet-alerte {
+  min-width: 1.2rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 0.7rem;
+  line-height: 1.2rem;
+}
+
+/* --- Créneau : contexte (classe + établissement) des vues agrégées --- */
+.edt-creneau-ctx {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  color: #111827;
+}
+/* Badge établissement (couleur passée en style inline) */
+.edt-etab-badge {
+  flex-shrink: 0;
+  max-width: 70px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #6b7280;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* --- Alertes sous un créneau --- */
+.edt-creneau--conflit { background: #fef2f2; border-color: #fecaca; }
+.edt-alerte {
+  margin-top: 0.3rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  line-height: 1.3;
+}
+.edt-alerte--chevauchement { background: #fee2e2; color: #b91c1c; }   /* rouge */
+.edt-alerte--battement     { background: #fef3c7; color: #92400e; }   /* ambre */
+
+/* --- Synthèse et légende de « Ma semaine » --- */
+.edt-synthese {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  color: #374151;
+}
+.edt-synthese-alerte { color: #b91c1c; font-weight: 600; }
+.edt-legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.78rem;
+  color: #4b5563;
+}
+.edt-legende-item { display: inline-flex; align-items: center; gap: 0.3rem; }
+.edt-legende-point { width: 10px; height: 10px; border-radius: 50%; }
+
+/* « Mon jour » : une carte par ligne, dans l'ordre chronologique */
+.edt-day-list--chrono { flex-direction: column; }
+.edt-day-list--chrono .edt-creneau { flex: none; }
+
+/* --- Bandeau de reprise de l'ancien emploi du temps commun --- */
+.edt-reprise {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.9rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 0.83rem;
+}
+
+/* ============================================================
+   BANDEAU « AUJOURD'HUI » (page /prof/cahiers)
+   Défilement horizontal des cours du jour.
+   ============================================================ */
+.edt-aujourdhui {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1.5px solid #dbeafe;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+.edt-aujourdhui-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+.edt-aujourdhui-lien {
+  border: none;
+  background: none;
+  color: #2563eb;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.edt-aujourdhui-liste {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;              /* défile sur téléphone */
+  padding-bottom: 0.25rem;
+}
+/* Une « puce » de cours : heure, classe, établissement */
+.edt-aujourdhui-item {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 140px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #e5e7eb;
+  border-left: 3px solid #2563eb; /* remplacée par la couleur de l'établissement */
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 0.78rem;
+  text-align: left;
+  color: #374151;
+  cursor: pointer;
+}
+.edt-aujourdhui-item:hover { box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10); }
+.edt-aujourdhui-item strong { color: #111827; }
+/* Cours en cours (heure actuelle comprise dans le créneau) */
+.edt-aujourdhui-item--maintenant { background: #eff6ff; border-color: #93c5fd; }
+.edt-aujourdhui-item--passe { opacity: 0.55; }
+
+/* --- Petits écrans --- */
+@media (max-width: 640px) {
+  .edt-drawer--large { width: 100vw; }
+  .edt-onglet { font-size: 0.75rem; padding: 0.4rem 0.25rem; }
+}
+
+/* --- Mode sombre (thème PedaClic : [data-theme="dark"]) --- */
+[data-theme="dark"] .edt-drawer,
+[data-theme="dark"] .edt-onglet.active,
+[data-theme="dark"] .edt-creneau,
+[data-theme="dark"] .edt-aujourdhui-item { background: var(--color-bg-secondary); color: var(--color-text); }
+[data-theme="dark"] .edt-onglets,
+[data-theme="dark"] .edt-day-col,
+[data-theme="dark"] .edt-aujourdhui { background: var(--color-bg); border-color: var(--color-border); }
+[data-theme="dark"] .edt-creneau--conflit { background: #450a0a; }
+[data-theme="dark"] .edt-creneau-ctx,
+[data-theme="dark"] .edt-creneau-heure,
+[data-theme="dark"] .edt-aujourdhui-titre,
+[data-theme="dark"] .edt-aujourdhui-item strong { color: var(--color-text); }

@@ -59,8 +59,10 @@ import {
   toggleArchiveCahier,
   getGroupesProf,
 } from '../services/cahierTextesService';
-import { emploiExistePourClasse } from '../services/emploiDuTempsService';
-import EmploiDuTempsDrawer, { type OuvrirCahierInfo } from '../components/prof/EmploiDuTempsDrawer';
+// Phase 48 — emploi du temps PERSONNEL par établissement
+import { emploiPersonnelExiste } from '../services/emploiDuTempsService';
+import EmploiDuTempsDrawer, { type OuvrirCahierInfo, type VueEmploi } from '../components/prof/EmploiDuTempsDrawer';
+import EdtAujourdhui from '../components/prof/EdtAujourdhui';
 
 import {
   COULEURS_CAHIER,
@@ -150,6 +152,9 @@ const CahierTextesPage: React.FC = () => {
   // Emploi du temps (fenêtre flottante) + conditionnement de la création
   const [edtOpen, setEdtOpen]       = useState(false);
   const [edtClasse, setEdtClasse]   = useState<Classe | undefined>(undefined);
+  // Phase 48 — établissement et onglet pré-sélectionnés à l'ouverture
+  const [edtEtab, setEdtEtab]       = useState<string | null | undefined>(undefined);
+  const [edtVue, setEdtVue]         = useState<VueEmploi | undefined>(undefined);
   const [besoinEmploi, setBesoinEmploi] = useState(false);
   const [editCahier, setEditCahier] = useState<CahierTextes | null>(null);
   const [form, setForm]             = useState<CahierFormData>(emptyForm());
@@ -334,7 +339,10 @@ const CahierTextesPage: React.FC = () => {
       ? cahiers.find(c => (c.groupeIds ?? []).includes(info.groupeId as string))
       : undefined;
     if (!found && info.matiere) {
-      found = cahiers.find(c => c.classe === info.classe && c.matiere === info.matiere);
+      // Phase 48 — priorité au cahier du MÊME établissement que le créneau
+      const candidats = cahiers.filter(c => c.classe === info.classe && c.matiere === info.matiere);
+      found = candidats.find(c => (c.etablissementId ?? null) === (info.etablissementId ?? null))
+           ?? candidats[0];
     }
     setEdtOpen(false);
     if (found) {
@@ -348,6 +356,13 @@ const CahierTextesPage: React.FC = () => {
         ...(info.matiere ? { matiere: info.matiere as Matiere } : {}),
         ...(info.groupeId
           ? { groupeIds: [info.groupeId], groupeNoms: info.groupeNom ? [info.groupeNom] : [] }
+          : {}),
+        // Phase 48 — le nouveau cahier hérite de l'établissement du créneau
+        ...(info.etablissementId !== undefined
+          ? {
+              etablissementId:  info.etablissementId,
+              etablissementNom: info.etablissementId ? (etabsParId.get(info.etablissementId)?.nom ?? '') : '',
+            }
           : {}),
       }));
       setBesoinEmploi(false);
@@ -425,7 +440,11 @@ const CahierTextesPage: React.FC = () => {
       } else {
         // Conditionnement (point 1) : un emploi du temps de la classe est requis.
         // Les cahiers déjà existants ne sont pas affectés (grandfathering).
-        const emploiOk = await emploiExistePourClasse(form.classe, form.anneeScolaire);
+        // Phase 48 : emploi du temps PERSONNEL de cet établissement
+        // (ou anciens créneaux du professeur dans l'emploi du temps commun).
+        const emploiOk = await emploiPersonnelExiste(
+          currentUser.uid, formFinal.etablissementId ?? null, form.classe, form.anneeScolaire
+        );
         if (!emploiOk) {
           setBesoinEmploi(true);
           setSaving(false);
@@ -545,7 +564,10 @@ const CahierTextesPage: React.FC = () => {
           <p className="cahier-page-subtitle">Organisez et planifiez votre enseignement</p>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn-secondary" onClick={() => { setEdtClasse(undefined); setEdtOpen(true); }}>
+          <button
+            className="btn-secondary"
+            onClick={() => { setEdtClasse(undefined); setEdtEtab(undefined); setEdtVue(undefined); setEdtOpen(true); }}
+          >
             📅 Emploi du temps
           </button>
           <button className="btn-primary" onClick={handleNouveauCahier}>
@@ -553,6 +575,17 @@ const CahierTextesPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* ── Phase 48 — Mes cours d'aujourd'hui (tous établissements) ── */}
+      {currentUser?.uid && (
+        <EdtAujourdhui
+          profId={currentUser.uid}
+          annee={anneeCourante}
+          etablissements={etablissements}
+          onOuvrirCahier={handleOuvrirCahierDepuisCreneau}
+          onVoirSemaine={() => { setEdtClasse(undefined); setEdtEtab(undefined); setEdtVue('ma-semaine'); setEdtOpen(true); }}
+        />
+      )}
 
       {/* ── Filtres ── */}
       <div className="cahier-filtres">
@@ -1109,11 +1142,20 @@ const CahierTextesPage: React.FC = () => {
               {/* Conditionnement : emploi du temps requis (point 1) */}
               {besoinEmploi && (
                 <div className="edt-gate-warning">
-                  <span>⚠️ Aucun emploi du temps pour la {form.classe}. Créez-le d'abord — les cahiers déjà existants ne sont pas affectés.</span>
+                  <span>
+                    ⚠️ Aucun emploi du temps pour la {form.classe}
+                    {form.etablissementId ? ` — ${etabsParId.get(form.etablissementId)?.nom ?? form.etablissementNom}` : ''}.
+                    Créez-le d'abord — les cahiers déjà existants ne sont pas affectés.
+                  </span>
                   <button
                     type="button"
                     className="btn-primary"
-                    onClick={() => { setEdtClasse(form.classe); setEdtOpen(true); }}
+                    onClick={() => {
+                      setEdtClasse(form.classe);
+                      setEdtEtab(form.etablissementId ?? null); // Phase 48
+                      setEdtVue('classe');
+                      setEdtOpen(true);
+                    }}
                   >
                     📅 Créer l'emploi du temps
                   </button>
@@ -1179,8 +1221,11 @@ const CahierTextesPage: React.FC = () => {
         profId={currentUser?.uid || ''}
         profNom={currentUser?.displayName || ''}
         groupes={groupesDispos}
+        etablissements={etabsActifs}
         initialClasse={edtClasse}
         initialAnnee={form.anneeScolaire}
+        initialEtablissementId={edtEtab}
+        initialVue={edtVue}
         onOuvrirCahier={handleOuvrirCahierDepuisCreneau}
       />
     </div>

@@ -82,3 +82,64 @@ export function emploiDuTempsId(classe: Classe, annee: AnneeScolaire): string {
 export function genererCreneauId(): string {
   return `cr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 }
+
+// ═════════════════════════════════════════════════════════════
+// PHASE 48 — EMPLOI DU TEMPS PERSONNEL (par professeur)
+// ─────────────────────────────────────────────────────────────
+// Un document par (professeur, établissement, classe, année) dans
+// la collection `emplois_du_temps_prof`. Chaque professeur gère le
+// sien : plus de collision entre écoles ni entre collègues.
+// L'ancien emploi du temps commun (`emploi_du_temps`) est conservé
+// en LECTURE SEULE pour la reprise des créneaux.
+// ═════════════════════════════════════════════════════════════
+
+/** Clé utilisée quand aucun établissement n'est choisi */
+export const SANS_ETABLISSEMENT = 'aucun';
+
+export interface EmploiDuTempsProf {
+  id: string;                     // = emploiProfId(...)
+  profId: string;                 // propriétaire (règles Firestore)
+  etablissementId: string | null; // établissement du carnet (Phase 46)
+  etablissementNom: string;       // dénormalisé pour l'affichage
+  classe: Classe;
+  anneeScolaire: AnneeScolaire;
+  creneaux: Creneau[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/** Slug ASCII d'une classe : « 6ème » → « 6eme » */
+export function slugClasse(classe: Classe): string {
+  return classe
+    .toLowerCase()
+    .replace(/[èéêë]/g, 'e')
+    .replace(/[àâä]/g, 'a')
+    .replace(/\s+/g, '');
+}
+
+/**
+ * Identifiant déterministe : getDoc direct, aucun index composite.
+ * Ex : ('uid42', 'etabA', '6ème', '2026-2027') → "uid42_etabA_6eme_2026-2027"
+ * Le préfixe = uid du professeur (vérifié par les règles Firestore).
+ */
+export function emploiProfId(
+  profId: string,
+  etablissementId: string | null,
+  classe: Classe,
+  annee: AnneeScolaire
+): string {
+  return `${profId}_${etablissementId || SANS_ETABLISSEMENT}_${slugClasse(classe)}_${annee}`;
+}
+
+/** Créneau enrichi de son contexte (vues « Ma semaine » / « Mon jour ») */
+export interface CreneauContexte extends Creneau {
+  /** Clé unique : `${emploiId}:${creneau.id}` */
+  cle: string;
+  emploiId: string;
+  classe: Classe;
+  etablissementId: string | null;
+  etablissementNom: string;
+}
+
+/** Battement minimal (minutes) conseillé pour changer d'établissement */
+export const BATTEMENT_MIN_ETABLISSEMENTS = 30;
