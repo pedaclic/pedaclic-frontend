@@ -934,6 +934,11 @@ service cloud.firestore {
     function estAnimateurCellule(cid) {
       return isSignedIn() && cellule(cid).animateurId == request.auth.uid;
     }
+    // PHASE 51 — membre qui peut ÉCRIRE (un observateur ne le peut pas)
+    function estContributeurCellule(cid) {
+      return estMembreCellule(cid) &&
+             !(request.auth.uid in cellule(cid).get('observateurIds', []));
+    }
 
     match /cellules/{cid} {
       allow read: if isSignedIn() && (
@@ -982,7 +987,7 @@ service cloud.firestore {
       // Bibliothèque : tout membre partage ; l'auteur ou l'animateur supprime
       match /ressources/{rid} {
         allow read: if estMembreCellule(cid);
-        allow create: if estMembreCellule(cid) &&
+        allow create: if estContributeurCellule(cid) &&
                          request.resource.data.auteurId == request.auth.uid;
         allow update: if false;
         allow delete: if isSignedIn() && (
@@ -994,7 +999,7 @@ service cloud.firestore {
       // Avancement : chaque membre publie (ou retire) le sien
       match /avancements/{uid} {
         allow read: if estMembreCellule(cid);
-        allow create, update: if estMembreCellule(cid) && request.auth.uid == uid;
+        allow create, update: if estContributeurCellule(cid) && request.auth.uid == uid;
         allow delete: if isSignedIn() &&
                          (request.auth.uid == uid || estAnimateurCellule(cid));
       }
@@ -1010,10 +1015,10 @@ service cloud.firestore {
         allow read: if estMembreCellule(cid);
         allow create, update, delete: if estAnimateurCellule(cid);
 
-        // Commentaires : tout membre commente ; auteur ou animateur supprime
+        // Commentaires : tout membre (hors observateur) commente ; auteur ou animateur supprime
         match /commentaires/{comId} {
           allow read: if estMembreCellule(cid);
-          allow create: if estMembreCellule(cid) &&
+          allow create: if estContributeurCellule(cid) &&
                            request.resource.data.auteurId == request.auth.uid &&
                            request.resource.data.texte is string &&
                            request.resource.data.texte.size() > 0 &&
@@ -1023,6 +1028,38 @@ service cloud.firestore {
                            resource.data.auteurId == request.auth.uid ||
                            estAnimateurCellule(cid)
                          );
+        }
+      }
+
+      // ── PHASE 51 — Épreuves communes (co-construction versionnée)
+      //   Animateur : crée, valide / rouvre, supprime.
+      //   Membre    : modifie un BROUILLON, sans pouvoir le valider, et
+      //               seulement en incrémentant la version (anti-écrasement).
+      match /epreuves/{eid} {
+        allow read: if estMembreCellule(cid);
+        allow create, delete: if estAnimateurCellule(cid);
+        allow update: if estAnimateurCellule(cid) || (
+                         estContributeurCellule(cid) &&
+                         resource.data.statut == 'brouillon' &&
+                         request.resource.data.statut == 'brouillon' &&
+                         request.resource.data.version == resource.data.version + 1
+                       );
+
+        // Historique : instantanés en ajout seul
+        match /versions/{vid} {
+          allow read: if estMembreCellule(cid);
+          allow create: if estContributeurCellule(cid) &&
+                           request.resource.data.auteurId == request.auth.uid;
+          allow update: if false;
+          allow delete: if estAnimateurCellule(cid);
+        }
+
+        // Résultats ANONYMES : chaque professeur publie les agrégats de sa classe
+        match /resultats/{uid} {
+          allow read: if estMembreCellule(cid);
+          allow create, update: if estContributeurCellule(cid) && request.auth.uid == uid;
+          allow delete: if isSignedIn() &&
+                           (request.auth.uid == uid || estAnimateurCellule(cid));
         }
       }
     }

@@ -29,7 +29,8 @@ export const PORTEES_CELLULE: Array<{ valeur: PorteeCellule; label: string }> = 
 /** Fiche d'un membre (stockée dans la map `membres`) */
 export interface MembreCellule {
   nom: string;
-  role: RoleCellule;
+  /** 'observateur' ajouté en Phase 51 */
+  role: RoleCellule | 'observateur';
   depuis: Timestamp;
 }
 
@@ -50,6 +51,8 @@ export interface Cellule {
   membres: Record<string, MembreCellule>;
   /** Code d'invitation actuel (aussi stocké dans cellules_codes) */
   codeInvitation: string;
+  /** Phase 51 — observateurs (lecture seule), aussi présents dans membreIds */
+  observateurIds?: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
 }
@@ -231,4 +234,96 @@ export function libelleEcheance(iso: string): string {
   if (n === 1) return 'demain';
   if (n === -1) return 'hier';
   return n > 0 ? `dans ${n} jours` : `il y a ${-n} jours`;
+}
+
+// ═════════════════════════════════════════════════════════════
+// PHASE 51 — LOT 3 : OBSERVATEUR, ÉPREUVE COMMUNE, STATISTIQUES
+// ─────────────────────────────────────────────────────────────
+//   Cellule.observateurIds (optionnel)       → lecture seule
+//   cellules/{id}/epreuves/{eid}             → épreuve commune
+//   cellules/{id}/epreuves/{eid}/versions/{v}→ historique
+//   cellules/{id}/epreuves/{eid}/resultats/{uid} → statistiques
+// ═════════════════════════════════════════════════════════════
+
+/** Rôle étendu (la map `membres` peut contenir 'observateur') */
+export type RoleCelluleEtendu = RoleCellule | 'observateur';
+
+/** Un observateur (censeur, inspecteur…) lit tout mais n'écrit rien */
+export function estObservateur(cellule: Pick<Cellule, 'membres'> & { observateurIds?: string[] }, uid: string): boolean {
+  return (cellule.observateurIds ?? []).includes(uid);
+}
+
+export type StatutEpreuve = 'brouillon' | 'validee';
+
+/** Une ligne du barème */
+export interface LigneBareme {
+  intitule: string;   // « I. Compréhension du texte »
+  points: number;
+}
+
+export interface EpreuveCommune {
+  id: string;
+  titre: string;              // « Devoir harmonisé n°1 — 3ème »
+  classe: string;
+  type: 'devoir_harmonise' | 'composition';
+  date: string;               // AAAA-MM-JJ ('' = non fixée)
+  duree: string;              // « 2 h »
+  noteSur: number;            // 20 par défaut
+  sujet: string;              // texte du sujet
+  bareme: LigneBareme[];
+  corrige: string;            // corrigé / éléments de réponse
+  statut: StatutEpreuve;
+  version: number;            // incrémentée à chaque enregistrement
+  derniereModifParId: string;
+  derniereModifParNom: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+export type EpreuveFormData = Pick<
+  EpreuveCommune, 'titre' | 'classe' | 'type' | 'date' | 'duree' | 'noteSur' | 'sujet' | 'bareme' | 'corrige'
+>;
+
+/** Instantané d'une version (historique) */
+export interface VersionEpreuve {
+  id: string;
+  numero: number;
+  sujet: string;
+  bareme: LigneBareme[];
+  corrige: string;
+  note: string;               // commentaire de la modification
+  auteurId: string;
+  auteurNom: string;
+  createdAt: Timestamp;
+}
+
+/** Tranches de notes (sur 20) pour la répartition */
+export const TRANCHES_NOTES: Array<{ label: string; min: number; max: number }> = [
+  { label: '0 – 5',   min: 0,  max: 5 },
+  { label: '5 – 8',   min: 5,  max: 8 },
+  { label: '8 – 10',  min: 8,  max: 10 },
+  { label: '10 – 12', min: 10, max: 12 },
+  { label: '12 – 14', min: 12, max: 14 },
+  { label: '14 – 16', min: 14, max: 16 },
+  { label: '16 – 20', min: 16, max: 20.0001 },
+];
+
+/**
+ * Résultats ANONYMES publiés par un professeur pour une classe :
+ * uniquement des agrégats — aucun nom, aucune note individuelle.
+ */
+export interface ResultatsEpreuve {
+  id: string;                 // = uid du professeur
+  profNom: string;
+  groupeNom: string;          // « 3ème B »
+  effectif: number;           // élèves de la feuille
+  presents: number;           // notes saisies
+  moyenne: number;
+  mediane: number;
+  min: number;
+  max: number;
+  ecartType: number;
+  tauxReussite: number;       // % de notes ≥ moyenne de réussite (10/20)
+  repartition: number[];      // effectifs par tranche (TRANCHES_NOTES)
+  updatedAt: Timestamp;
 }

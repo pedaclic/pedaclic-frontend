@@ -19,6 +19,8 @@ import {
   where,
   orderBy,
   onSnapshot,
+  runTransaction,
+  getDocs,
   arrayUnion,
   arrayRemove,
   deleteField,
@@ -38,7 +40,14 @@ import type {
   CompteRenduCellule,
   CompteRenduFormData,
   CommentaireCR,
+  // Phase 51 — lot 3
+  EpreuveCommune,
+  EpreuveFormData,
+  VersionEpreuve,
+  ResultatsEpreuve,
 } from '../types/cellule.types';
+import type { FeuilleDeNotes } from '../types/feuillesNotes.types';
+import { calculerStatistiques } from '../utils/statistiquesNotes';
 import { TYPE_EVENEMENT_CONFIG, dateLongue } from '../types/cellule.types';
 import { creerNotification } from './notificationService';
 import { genererCodeCellule, normaliserCode } from '../types/cellule.types';
@@ -221,11 +230,14 @@ export async function accepterDemande(
   celluleId: string,
   demande: DemandeAdhesion,
   animateur?: Auteur,
-  nomCellule = 'la cellule'
+  nomCellule = 'la cellule',
+  role: 'membre' | 'observateur' = 'membre'   // Phase 51
 ): Promise<void> {
   await updateDoc(doc(db, COL_CELLULES, celluleId), {
     membreIds: arrayUnion(demande.id),
-    [`membres.${demande.id}`]: { nom: demande.nom, role: 'membre', depuis: Timestamp.now() },
+    [`membres.${demande.id}`]: { nom: demande.nom, role, depuis: Timestamp.now() },
+    // Phase 51 — un observateur lit tout mais n'écrit rien (règles Firestore)
+    ...(role === 'observateur' ? { observateurIds: arrayUnion(demande.id) } : {}),
     updatedAt: Timestamp.now(),
   });
   await deleteDoc(doc(db, COL_CELLULES, celluleId, 'demandes', demande.id));
@@ -233,7 +245,9 @@ export async function accepterDemande(
   if (animateur) {
     await notifier([demande.id], animateur, {
       titre: '✅ Adhésion acceptée',
-      message: `Vous êtes désormais membre de « ${nomCellule} ».`,
+      message: role === 'observateur'
+        ? `Vous êtes désormais observateur de « ${nomCellule} » (consultation).`
+        : `Vous êtes désormais membre de « ${nomCellule} ».`,
       lien: `/prof/cellules/${celluleId}`,
       celluleId,
     });
@@ -248,6 +262,7 @@ export async function refuserDemande(celluleId: string, demandeId: string): Prom
 export async function retirerMembre(celluleId: string, uid: string): Promise<void> {
   await updateDoc(doc(db, COL_CELLULES, celluleId), {
     membreIds: arrayRemove(uid),
+    observateurIds: arrayRemove(uid),   // Phase 51
     [`membres.${uid}`]: deleteField(),
     updatedAt: Timestamp.now(),
   });
@@ -639,4 +654,212 @@ export async function ajouterCommentaire(
 
 export async function supprimerCommentaire(celluleId: string, compteRenduId: string, commentaireId: string): Promise<void> {
   await deleteDoc(doc(db, COL_CELLULES, celluleId, 'comptesRendus', compteRenduId, 'commentaires', commentaireId));
+}
+
+// ═════════════════════════════════════════════════════════════
+// PHASE 51 — LOT 3
+// ═════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// RÔLE OBSERVATEUR (censeur, inspecteur…) — lecture seule
+// ─────────────────────────────────────────────────────────────
+export async function changerRoleMembre(
+  celluleId: string,
+  uid: string,
+  role: 'membre' | 'observateur'
+): Promise<void> {
+  await updateDoc(doc(db, COL_CELLULES, celluleId), {
+    [`membres.${uid}.role`]: role,
+    observateurIds: role === 'observateur' ? arrayUnion(uid) : arrayRemove(uid),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// ÉPREUVES COMMUNES (co-construction versionnée)
+// ─────────────────────────────────────────────────────────────
+const refEpreuve = (celluleId: string, epreuveId: string) =>
+  doc(db, COL_CELLULES, celluleId, 'epreuves', epreuveId);
+
+export function subscribeEpreuves(
+  celluleId: string,
+  onData: (liste: EpreuveCommune[]) => void
+): () => void {
+  return onSnapshot(
+    sousCol(celluleId, 'epreuves'),
+    snap => onData(
+      snap.docs.map(d => ({ id: d.id, ...d.data() } as EpreuveCommune))
+        .sort((a, b) => (b.date || '9999').localeCompare(a.date || '9999') || a.titre.localeCompare(b.titre, 'fr'))
+    ),
+    () => onData([])
+  );
+}
+
+/** Création par l'animateur (version 1 + premier instantané) */
+export async function creerEpreuve(
+  cellule: Pick<Cellule, 'id' | 'membreIds'>,
+  auteur: Auteur,
+  form: EpreuveFormData
+): Promise<void> {
+  const now = Timestamp.now();
+  const ref = await addDoc(sousCol(cellule.id, 'epreuves'), {
+    ...nettoyerEpreuve(form),
+    statut: 'brouillon',
+    version: 1,
+    derniereModifParId: auteur.uid,
+    derniereModifParNom: auteur.nom,
+    createdAt: now,
+    updatedAt: now,
+  });
+  await addDoc(collection(db, COL_CELLULES, cellule.id, 'epreuves', ref.id, 'versions'), {
+    numero: 1, sujet: form.sujet, bareme: form.bareme, corrige: form.corrige,
+    note: 'Création', auteurId: auteur.uid, auteurNom: auteur.nom, createdAt: now,
+  });
+  await notifierMembres(cellule, auteur, {
+    titre: '🧪 Nouvelle épreuve commune',
+    message: `${form.titre} (${form.classe}) — vos propositions sont les bienvenues.`,
+    onglet: 'epreuves',
+  });
+}
+
+function nettoyerEpreuve(form: EpreuveFormData) {
+  return {
+    titre: form.titre.trim(),
+    classe: form.classe,
+    type: form.type,
+    date: form.date,
+    duree: form.duree.trim(),
+    noteSur: Number(form.noteSur) > 0 ? Number(form.noteSur) : 20,
+    sujet: form.sujet,
+    bareme: form.bareme
+      .filter(l => l.intitule.trim())
+      .map(l => ({ intitule: l.intitule.trim(), points: Number(l.points) || 0 })),
+    corrige: form.corrige,
+  };
+}
+
+/**
+ * Enregistre une modification. TRANSACTION : si un collègue a enregistré
+ * entre-temps (version différente), on refuse plutôt que d'écraser son travail.
+ */
+export async function enregistrerEpreuve(
+  celluleId: string,
+  epreuveId: string,
+  auteur: Auteur,
+  form: EpreuveFormData,
+  versionChargee: number,
+  noteModif: string
+): Promise<number> {
+  return runTransaction(db, async tx => {
+    const snap = await tx.get(refEpreuve(celluleId, epreuveId));
+    if (!snap.exists()) throw new Error('Cette épreuve a été supprimée.');
+    const actuelle = snap.data() as EpreuveCommune;
+    if (actuelle.version !== versionChargee) {
+      throw new Error(`${actuelle.derniereModifParNom} a enregistré une version plus récente (v${actuelle.version}). Rouvrez l'épreuve pour repartir de sa version.`);
+    }
+    if (actuelle.statut === 'validee') throw new Error('L\'épreuve est validée : elle n\'est plus modifiable.');
+    const nouvelle = actuelle.version + 1;
+    const propre = nettoyerEpreuve(form);
+    tx.update(refEpreuve(celluleId, epreuveId), {
+      ...propre,
+      statut: 'brouillon',
+      version: nouvelle,
+      derniereModifParId: auteur.uid,
+      derniereModifParNom: auteur.nom,
+      updatedAt: Timestamp.now(),
+    });
+    tx.set(doc(collection(db, COL_CELLULES, celluleId, 'epreuves', epreuveId, 'versions')), {
+      numero: nouvelle, sujet: propre.sujet, bareme: propre.bareme, corrige: propre.corrige,
+      note: noteModif.trim().slice(0, 200), auteurId: auteur.uid, auteurNom: auteur.nom, createdAt: Timestamp.now(),
+    });
+    return nouvelle;
+  });
+}
+
+/** Validation (verrouillage) ou réouverture — animateur */
+export async function changerStatutEpreuve(
+  cellule: Pick<Cellule, 'id' | 'membreIds'>,
+  epreuve: EpreuveCommune,
+  auteur: Auteur,
+  statut: 'brouillon' | 'validee'
+): Promise<void> {
+  await updateDoc(refEpreuve(cellule.id, epreuve.id), { statut, updatedAt: Timestamp.now() });
+  if (statut === 'validee') {
+    await notifierMembres(cellule, auteur, {
+      titre: '✅ Épreuve commune validée',
+      message: `${epreuve.titre} (${epreuve.classe}) est prête : sujet et barème définitifs.`,
+      onglet: 'epreuves',
+    });
+  }
+}
+
+export async function supprimerEpreuve(celluleId: string, epreuveId: string): Promise<void> {
+  await deleteDoc(refEpreuve(celluleId, epreuveId));
+}
+
+export function subscribeVersions(
+  celluleId: string,
+  epreuveId: string,
+  onData: (liste: VersionEpreuve[]) => void
+): () => void {
+  return onSnapshot(
+    query(collection(db, COL_CELLULES, celluleId, 'epreuves', epreuveId, 'versions'), orderBy('numero', 'desc')),
+    snap => onData(snap.docs.map(d => ({ id: d.id, ...d.data() } as VersionEpreuve))),
+    () => onData([])
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// STATISTIQUES HARMONISÉES (anonymes)
+// ─────────────────────────────────────────────────────────────
+
+/** Mes feuilles de notes (pour choisir l'évaluation correspondante) */
+export async function getMesFeuillesNotes(uid: string): Promise<FeuilleDeNotes[]> {
+  const snap = await getDocs(query(collection(db, 'feuilles_notes'), where('profId', '==', uid)));
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as FeuilleDeNotes));
+}
+
+export function subscribeResultats(
+  celluleId: string,
+  epreuveId: string,
+  onData: (liste: ResultatsEpreuve[]) => void
+): () => void {
+  return onSnapshot(
+    collection(db, COL_CELLULES, celluleId, 'epreuves', epreuveId, 'resultats'),
+    snap => onData(
+      snap.docs.map(d => ({ id: d.id, ...d.data() } as ResultatsEpreuve))
+        .sort((a, b) => a.groupeNom.localeCompare(b.groupeNom, 'fr'))
+    ),
+    () => onData([])
+  );
+}
+
+/**
+ * Calcule CHEZ LE PROFESSEUR les agrégats d'une évaluation de sa feuille
+ * de notes, puis publie uniquement ces chiffres (aucun nom, aucune note).
+ */
+export async function publierResultats(
+  celluleId: string,
+  epreuve: Pick<EpreuveCommune, 'id' | 'noteSur'>,
+  auteur: Auteur,
+  feuille: FeuilleDeNotes,
+  evaluationId: string,
+  groupeNom: string
+): Promise<void> {
+  const notes = Object.values(feuille.notes ?? {})
+    .map(n => n?.[evaluationId])
+    .filter((x): x is number => typeof x === 'number');
+  const effectif = Math.max(Object.keys(feuille.notes ?? {}).length, notes.length);
+  const stats = calculerStatistiques(notes, effectif, epreuve.noteSur || 20);
+  if (stats.presents === 0) throw new Error('Aucune note saisie pour cette évaluation.');
+  await setDoc(doc(db, COL_CELLULES, celluleId, 'epreuves', epreuve.id, 'resultats', auteur.uid), {
+    ...stats,
+    profNom: auteur.nom,
+    groupeNom: groupeNom.trim() || feuille.groupeNom,
+    updatedAt: Timestamp.now(),
+  });
+}
+
+export async function retirerResultats(celluleId: string, epreuveId: string, uid: string): Promise<void> {
+  await deleteDoc(doc(db, COL_CELLULES, celluleId, 'epreuves', epreuveId, 'resultats', uid));
 }

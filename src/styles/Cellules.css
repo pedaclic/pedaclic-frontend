@@ -484,3 +484,116 @@
 [data-theme="dark"] .cel-cr,
 [data-theme="dark"] .cel-cr h4 { color: var(--color-text); }
 [data-theme="dark"] .cel-evt-echeance { background: var(--color-bg-tertiary); color: var(--color-text); }
+
+/* ============================================================
+   PHASE 51 — LOT 3 : OBSERVATEUR, ÉPREUVES, STATISTIQUES
+   ============================================================ */
+
+/* ─── 13. Bandeau « observateur » (lecture seule) ─────────── */
+.cel-bandeau-observateur {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--ct-radius-sm);
+  background: var(--ct-purple-light);
+  color: var(--ct-purple);
+  font-size: 0.86rem;
+}
+
+/* ─── 14. Épreuves : statut, barème, textes longs ─────────── */
+.cel-statut {
+  flex-shrink: 0;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ct-amber-light);
+  color: var(--ct-amber);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+.cel-statut--validee { background: var(--ct-green-light); color: var(--ct-green); }
+
+/* Zones de saisie du sujet / corrigé : police lisible, redimensionnables */
+.cel-texte-long { font-family: Georgia, 'Times New Roman', serif; line-height: 1.55; resize: vertical; }
+
+/* Barème en saisie : intitulé | points | supprimer */
+.cel-bareme { margin: 0 0 1.25rem; padding: 0; border: none; }
+.cel-bareme legend { margin-bottom: 0.5rem; }
+.cel-bareme-alerte { color: var(--ct-amber); font-weight: 600; }
+.cel-bareme-ligne { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+.cel-bareme-ligne .form-input:first-child { flex: 1; min-width: 0; }
+
+/* Barème en lecture : intitulé à gauche, points à droite */
+.cel-bareme-lecture { list-style: none; margin: 0; padding: 0; max-width: 560px; }
+.cel-bareme-lecture li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dotted var(--ct-gray-300);
+}
+
+/* ─── 15. Historique des versions ─────────────────────────── */
+.cel-versions { margin-top: 1rem; padding-top: 0.8rem; border-top: 1px dashed var(--ct-gray-200); }
+.cel-versions-liste { list-style: none; margin: 0; padding: 0; }
+.cel-versions-liste > li { padding: 0.5rem 0; border-bottom: 1px solid var(--ct-gray-100); }
+.cel-version-entete { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; font-size: 0.86rem; }
+.cel-version-entete .cel-bloc-meta { margin: 0; }
+.cel-version-note { color: var(--ct-gray-500); font-size: 0.82rem; }
+.cel-version-actions { margin: 0 0 0 auto; }
+.cel-version-contenu {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  border-radius: var(--ct-radius-sm);
+  background: var(--ct-gray-50);
+  font-size: 0.86rem;
+}
+.cel-version-contenu h5 { margin: 0.5rem 0 0.2rem; color: #1F3864; font-size: 0.78rem; text-transform: uppercase; }
+
+/* ─── 16. Résultats harmonisés ────────────────────────────── */
+.cel-resultats { margin-top: 1.2rem; padding-top: 0.9rem; border-top: 2px solid var(--ct-gray-100); }
+
+/* Le tableau défile horizontalement sur téléphone (jamais la page) */
+.cel-tableau-defilant { overflow-x: auto; }
+.cel-tableau {
+  width: 100%;
+  min-width: 620px;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+}
+.cel-tableau caption { caption-side: bottom; text-align: left; padding-top: 0.4rem; }
+.cel-tableau th, .cel-tableau td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--ct-gray-100);
+  text-align: left;
+  white-space: nowrap;
+}
+.cel-tableau thead th { background: #1F3864; color: white; font-weight: 600; }
+.cel-tableau tbody th { font-weight: 700; color: var(--ct-gray-800); }
+.cel-tableau tfoot th, .cel-tableau tfoot td { background: var(--ct-blue-xlight); font-weight: 700; }
+.cel-ok { color: var(--ct-green); font-weight: 700; }
+.cel-ko { color: #C00000; font-weight: 700; }
+
+/* Répartition : libellé | barre proportionnelle | effectif */
+.cel-repartition { margin-top: 1rem; max-width: 560px; }
+.cel-repartition h5 { margin: 0 0 0.5rem; font-size: 0.82rem; color: var(--ct-gray-600); }
+.cel-repartition-ligne {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+}
+.cel-repartition-barre { height: 12px; border-radius: 4px; background: var(--ct-gray-100); overflow: hidden; }
+.cel-repartition-barre span { display: block; height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+.cel-ok-fond { background: var(--ct-green); }
+.cel-ko-fond { background: #C00000; opacity: 0.8; }
+.cel-repartition-nb { text-align: right; font-weight: 600; color: var(--ct-gray-600); }
+
+/* ─── 17. Mode sombre (lot 3) ─────────────────────────────── */
+[data-theme="dark"] .cel-version-contenu,
+[data-theme="dark"] .cel-tableau tfoot th,
+[data-theme="dark"] .cel-tableau tfoot td { background: var(--color-bg-tertiary); color: var(--color-text); }
+[data-theme="dark"] .cel-tableau th,
+[data-theme="dark"] .cel-tableau td { border-color: var(--color-border); }
+[data-theme="dark"] .cel-tableau tbody th { color: var(--color-text); }
+[data-theme="dark"] .cel-repartition-barre { background: var(--color-bg-tertiary); }

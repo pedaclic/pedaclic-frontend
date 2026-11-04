@@ -11,6 +11,9 @@
 //   📅 Calendrier    — devoirs harmonisés, compositions, réunions
 //   📝 Comptes rendus — réunions, commentaires, export PDF
 //   🔔 Notifications — membres prévenus (cloche de l'en-tête)
+// Phase 51 (lot 3) :
+//   🧪 Épreuves      — épreuve commune versionnée + statistiques anonymes
+//   👁️ Observateur   — censeur / inspecteur : consultation seule
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -26,12 +29,15 @@ import {
   publierAvancement, retirerAvancement,
   // Phase 50
   subscribeEvenements, subscribeComptesRendus, notifierMembres,
+  // Phase 51
+  subscribeEpreuves, changerRoleMembre,
 } from '../services/cellulesService';
 import { getCahiersByProf } from '../services/cahierTextesService';
 import type {
   Cellule, DemandeAdhesion, ProgressionCellule, RessourceCellule, AvancementMembre, CelluleFormData,
-  EvenementCellule, CompteRenduCellule,
+  EvenementCellule, CompteRenduCellule, EpreuveCommune,
 } from '../types/cellule.types';
+import OngletEpreuves from '../components/cellules/OngletEpreuves';
 import { joursAvant } from '../types/cellule.types';
 import OngletCalendrier from '../components/cellules/OngletCalendrier';
 import OngletComptesRendus from '../components/cellules/OngletComptesRendus';
@@ -46,8 +52,8 @@ import PartagerSeanceModal from '../components/cellules/PartagerSeanceModal';
 import '../styles/CahierTextes.css';
 import '../styles/Cellules.css';
 
-type Onglet = 'calendrier' | 'progressions' | 'bibliotheque' | 'avancement' | 'comptes-rendus' | 'membres';
-const ONGLETS_VALIDES: Onglet[] = ['calendrier', 'progressions', 'bibliotheque', 'avancement', 'comptes-rendus', 'membres'];
+type Onglet = 'calendrier' | 'progressions' | 'bibliotheque' | 'epreuves' | 'avancement' | 'comptes-rendus' | 'membres';
+const ONGLETS_VALIDES: Onglet[] = ['calendrier', 'progressions', 'bibliotheque', 'epreuves', 'avancement', 'comptes-rendus', 'membres'];
 
 /** Texte brut d'un contenu HTML (aperçu sûr : aucun HTML d'un collègue n'est injecté) */
 function texteBrut(html: string, max = 220): string {
@@ -82,6 +88,7 @@ const CelluleDetailPage: React.FC = () => {
   // Phase 50
   const [evenements, setEvenements] = useState<EvenementCellule[]>([]);
   const [comptesRendus, setComptesRendus] = useState<CompteRenduCellule[]>([]);
+  const [epreuves, setEpreuves] = useState<EpreuveCommune[]>([]);   // Phase 51
 
   // ── Interface ─────────────────────────────────────────────
   // Phase 50 : onglet par défaut = calendrier ; suit le paramètre ?onglet=
@@ -104,6 +111,9 @@ const CelluleDetailPage: React.FC = () => {
 
   const estAnimateur = !!cellule && cellule.animateurId === uid;
   const estMembre = !!cellule && cellule.membreIds.includes(uid);
+  // Phase 51 — un observateur consulte tout mais n'écrit rien
+  const estObservateurCellule = !!cellule && (cellule.observateurIds ?? []).includes(uid);
+  const peutContribuer = estMembre && !estObservateurCellule;
 
   // ── Abonnements ───────────────────────────────────────────
   useEffect(() => {
@@ -122,7 +132,8 @@ const CelluleDetailPage: React.FC = () => {
     const u3 = subscribeAvancements(celluleId, setAvancements);
     const u4 = subscribeEvenements(celluleId, setEvenements);        // Phase 50
     const u5 = subscribeComptesRendus(celluleId, setComptesRendus);  // Phase 50
-    return () => { u1(); u2(); u3(); u4(); u5(); };
+    const u6 = subscribeEpreuves(celluleId, setEpreuves);            // Phase 51
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); };
   }, [celluleId, estMembre]);
 
   useEffect(() => {
@@ -206,12 +217,20 @@ const CelluleDetailPage: React.FC = () => {
         )}
       </div>
 
+      {/* Phase 51 — bandeau « observateur » */}
+      {estObservateurCellule && (
+        <p className="cel-bandeau-observateur" role="status">
+          👁️ Vous consultez cette cellule en tant qu'<strong>observateur</strong> : lecture seule.
+        </p>
+      )}
+
       {/* ── Onglets ── */}
       <div className="cel-onglets" role="tablist">
         {([
           ['calendrier', '📅 Calendrier', evenements.filter(e => joursAvant(e.date) >= 0).length],
           ['progressions', '🧭 Progressions', progressions.length],
           ['bibliotheque', '📚 Bibliothèque', ressources.length],
+          ['epreuves', '🧪 Épreuves', epreuves.length],
           ['avancement', '📈 Avancement', avancements.length],
           ['comptes-rendus', '📝 Comptes rendus', comptesRendus.length],
           ['membres', '👥 Membres', membres.length],
@@ -230,8 +249,13 @@ const CelluleDetailPage: React.FC = () => {
       {onglet === 'calendrier' && (
         <OngletCalendrier cellule={cellule} evenements={evenements} auteur={auteur} estAnimateur={estAnimateur} />
       )}
+      {onglet === 'epreuves' && (
+        <OngletEpreuves cellule={cellule} epreuves={epreuves} auteur={auteur}
+          estAnimateur={estAnimateur} peutContribuer={peutContribuer} />
+      )}
       {onglet === 'comptes-rendus' && (
         <OngletComptesRendus
+          peutCommenter={peutContribuer}
           cellule={cellule}
           comptesRendus={comptesRendus}
           auteur={auteur}
@@ -292,7 +316,9 @@ const CelluleDetailPage: React.FC = () => {
                 )}
 
                 <div className="cel-bloc-actions">
-                  <button className="btn-primary" onClick={() => setProgAImporter(p)}>📥 Importer dans mon cahier</button>
+                  {peutContribuer && (
+                    <button className="btn-primary" onClick={() => setProgAImporter(p)}>📥 Importer dans mon cahier</button>
+                  )}
                   {estAnimateur && (
                     <>
                       <button className="btn-secondary" onClick={() => setProgEditee(p)}>✏️ Modifier</button>
@@ -321,7 +347,7 @@ const CelluleDetailPage: React.FC = () => {
                 {classesRessources.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             ) : <span />}
-            <button className="btn-primary" onClick={() => setShowPartager(true)}>📤 Partager une séance</button>
+            {peutContribuer && <button className="btn-primary" onClick={() => setShowPartager(true)}>📤 Partager une séance</button>}
           </div>
 
           {ressourcesFiltrees.length === 0 ? (
@@ -347,7 +373,9 @@ const CelluleDetailPage: React.FC = () => {
                 {ouvert && r.exerciceJour && <p className="cel-apercu"><strong>Exercice en classe :</strong> {texteBrut(r.exerciceJour, 1000)}</p>}
                 {ouvert && r.exerciceDomicile && <p className="cel-apercu"><strong>Exercice à la maison :</strong> {texteBrut(r.exerciceDomicile, 1000)}</p>}
                 <div className="cel-bloc-actions">
-                  <button className="btn-primary" onClick={() => setRessourceACopier(r)}>📋 Copier dans mon cahier</button>
+                  {peutContribuer && (
+                    <button className="btn-primary" onClick={() => setRessourceACopier(r)}>📋 Copier dans mon cahier</button>
+                  )}
                   {peutSupprimer && (
                     <button className="btn-secondary cel-btn-danger" onClick={async () => {
                       const ok = await confirmDialog({ title: 'Retirer cette séance ?', message: `« ${r.titre} » sera retirée de la bibliothèque. Les copies déjà faites ne sont pas touchées.`, confirmLabel: 'Retirer', variant: 'danger' });
@@ -372,9 +400,11 @@ const CelluleDetailPage: React.FC = () => {
               (pourcentages par rubrique). Le contenu des séances n'est jamais visible.
             </p>
             <div className="cel-bloc-actions">
+              {peutContribuer && (
               <button className="btn-primary" onClick={() => setShowPublier(true)}>
                 {monAvancement ? '🔄 Actualiser mon avancement' : '📈 Publier mon avancement'}
               </button>
+              )}
               {monAvancement && (
                 <button className="btn-secondary" onClick={() =>
                   executer(() => retirerAvancement(cellule.id, uid), 'Avancement retiré.', 'Retrait').catch(() => {})
@@ -463,6 +493,10 @@ const CelluleDetailPage: React.FC = () => {
                       <button className="btn-primary" onClick={() =>
                         executer(() => accepterDemande(cellule.id, d, auteur, cellule.nom), `${d.nom} a rejoint la cellule.`, 'Acceptation').catch(() => {})
                       }>Accepter</button>
+                      {/* Phase 51 — censeur, inspecteur… : consultation seule */}
+                      <button className="btn-secondary" title="Lecture seule : censeur, inspecteur…" onClick={() =>
+                        executer(() => accepterDemande(cellule.id, d, auteur, cellule.nom, 'observateur'), `${d.nom} a rejoint la cellule comme observateur.`, 'Acceptation').catch(() => {})
+                      }>👁️ Comme observateur</button>
                       <button className="btn-secondary" onClick={() =>
                         executer(() => refuserDemande(cellule.id, d.id), 'Demande refusée.', 'Refus').catch(() => {})
                       }>Refuser</button>
@@ -480,15 +514,23 @@ const CelluleDetailPage: React.FC = () => {
               {membres.map(m => (
                 <li key={m.id}>
                   <span>
-                    {m.id === cellule.animateurId ? '⭐' : '👤'} <strong>{m.nom}</strong>
+                    {m.id === cellule.animateurId ? '⭐' : (cellule.observateurIds ?? []).includes(m.id) ? '👁️' : '👤'} <strong>{m.nom}</strong>
                     {m.id === uid ? ' (moi)' : ''}
-                    <span className="cel-bloc-meta"> · {m.id === cellule.animateurId ? 'animateur' : 'membre'}</span>
+                    <span className="cel-bloc-meta"> · {m.id === cellule.animateurId ? 'animateur' : (cellule.observateurIds ?? []).includes(m.id) ? 'observateur' : 'membre'}</span>
                   </span>
                   {estAnimateur && m.id !== uid && (
+                    <span className="cel-bloc-actions">
+                    {/* Phase 51 — bascule membre ↔ observateur */}
+                    <button className="btn-secondary" onClick={() => {
+                      const obs = (cellule.observateurIds ?? []).includes(m.id);
+                      executer(() => changerRoleMembre(cellule.id, m.id, obs ? 'membre' : 'observateur'),
+                        obs ? `${m.nom} est de nouveau membre.` : `${m.nom} est désormais observateur.`, 'Changement de rôle').catch(() => {});
+                    }}>{(cellule.observateurIds ?? []).includes(m.id) ? '👤 Rendre membre' : '👁️ Rendre observateur'}</button>
                     <button className="btn-secondary cel-btn-danger" onClick={async () => {
                       const ok = await confirmDialog({ title: 'Retirer ce membre ?', message: `${m.nom} n'aura plus accès à la cellule. Ses cahiers ne sont pas touchés.`, confirmLabel: 'Retirer', variant: 'danger' });
                       if (ok) executer(() => retirerMembre(cellule.id, m.id), 'Membre retiré.', 'Retrait').catch(() => {});
                     }}>Retirer</button>
+                    </span>
                   )}
                 </li>
               ))}

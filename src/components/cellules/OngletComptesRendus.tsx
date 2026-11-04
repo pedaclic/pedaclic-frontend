@@ -29,6 +29,8 @@ interface OngletComptesRendusProps {
   estAnimateur: boolean;
   /** Membres actifs (pour cocher les présents) */
   membres: Array<{ id: string; nom: string }>;
+  /** Phase 51 — false pour un observateur (pas de commentaire) */
+  peutCommenter?: boolean;
 }
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
@@ -38,8 +40,8 @@ const lignes = (t: string) => t.split('\n').map(s => s.trim()).filter(Boolean);
 // Fil de commentaires d'un compte rendu
 // ─────────────────────────────────────────────────────────────
 const FilCommentaires: React.FC<{
-  celluleId: string; compteRenduId: string; auteur: Auteur; estAnimateur: boolean;
-}> = ({ celluleId, compteRenduId, auteur, estAnimateur }) => {
+  celluleId: string; compteRenduId: string; auteur: Auteur; estAnimateur: boolean; peutCommenter: boolean;
+}> = ({ celluleId, compteRenduId, auteur, estAnimateur, peutCommenter }) => {
   const { toast } = useToast();
   const [commentaires, setCommentaires] = useState<CommentaireCR[]>([]);
   const [texte, setTexte] = useState('');
@@ -77,11 +79,13 @@ const FilCommentaires: React.FC<{
           <p className="cel-commentaire-texte">{c.texte}</p>
         </div>
       ))}
+      {peutCommenter && (
       <form className="cel-commentaire-form" onSubmit={envoyer}>
         <textarea className="form-textarea" rows={2} maxLength={2000} placeholder="Ajouter un commentaire…"
           value={texte} onChange={e => setTexte(e.target.value)} aria-label="Votre commentaire" />
         <button type="submit" className="btn-primary" disabled={envoi || !texte.trim()}>{envoi ? '…' : 'Publier'}</button>
       </form>
+      )}
     </div>
   );
 };
@@ -90,7 +94,7 @@ const FilCommentaires: React.FC<{
 // Onglet
 // ─────────────────────────────────────────────────────────────
 const OngletComptesRendus: React.FC<OngletComptesRendusProps> = ({
-  cellule, comptesRendus, auteur, estAnimateur, membres,
+  cellule, comptesRendus, auteur, estAnimateur, membres, peutCommenter = true,
 }) => {
   const confirmDialog = useConfirm();
   const { toast } = useToast();
@@ -200,7 +204,7 @@ const OngletComptesRendus: React.FC<OngletComptesRendusProps> = ({
                   )}
                 </div>
 
-                <FilCommentaires celluleId={cellule.id} compteRenduId={cr.id} auteur={auteur} estAnimateur={estAnimateur} />
+                <FilCommentaires celluleId={cellule.id} compteRenduId={cr.id} auteur={auteur} estAnimateur={estAnimateur} peutCommenter={peutCommenter} />
               </div>
             )}
           </article>
