@@ -1,0 +1,87 @@
+/* ============================================================
+   PedaClic — Phase 45 : AnneesScolaires.css
+   Écran admin /admin/annees-scolaires (AnneesScolairesManager)
+   ------------------------------------------------------------
+   Complète admin.css (settings-*, admin-*) : seuls les éléments
+   propres à cet écran sont définis ici. Toutes les classes sont
+   préfixées « annees- » pour n'interférer avec aucun autre écran.
+   ============================================================ */
+
+/* ── Choix du mode (Automatique / Manuel) : deux cartes radio ── */
+.annees-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-md);
+}
+
+.annees-mode {
+  display: flex;
+  gap: var(--spacing-sm);
+  align-items: flex-start;
+  padding: var(--spacing-md);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+/* Carte sélectionnée : bordure à la couleur principale */
+.annees-mode--active {
+  border-color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.annees-mode input { margin-top: 3px; }          /* aligne le bouton radio sur le titre */
+.annees-mode strong { display: block; color: var(--color-text); }
+.annees-mode span   { font-size: var(--text-sm); color: var(--color-text-light); }
+
+/* ── Encadré « Année en cours effective » ── */
+.annees-effective {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: var(--text-sm);
+}
+.annees-effective strong { font-size: var(--text-lg); }
+
+/* ── Tableau des années ── */
+.annees-table td { vertical-align: middle; }
+.annees-table__libelle { font-weight: var(--font-semibold); font-variant-numeric: tabular-nums; }
+/* Sélecteur renforcé (th + td) : prime sur l'alignement par défaut de .admin-table th */
+.annees-table th.annees-table__actions,
+.annees-table td.annees-table__actions { text-align: right; white-space: nowrap; }
+
+/* Ligne inactive : atténuée */
+.annees-table tr.annees-row--inactive td { opacity: 0.6; }
+
+/* Pastille « En cours » */
+.annees-badge-courante {
+  display: inline-block;
+  margin-left: var(--spacing-sm);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #166534;
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+}
+
+/* ── Formulaire d'ajout ── */
+.annees-ajout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  align-items: center;
+  margin-top: var(--spacing-lg);
+}
+.annees-ajout .admin-input { max-width: 180px; }
+
+/* ── Mobile : une colonne, tableau défilant horizontalement ── */
+@media (max-width: 640px) {
+  .annees-modes { grid-template-columns: 1fr; }
+  .annees-table-wrap { overflow-x: auto; }
+  .annees-ajout .admin-input { max-width: none; flex: 1 1 100%; }
+}

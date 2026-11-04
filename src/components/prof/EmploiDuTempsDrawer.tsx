@@ -15,7 +15,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   CLASSES,
-  ANNEES_SCOLAIRES,
   normaliserClassePourComparaison,
 } from '../../types/cahierTextes.types';
 import type { Classe, AnneeScolaire, GroupeProf } from '../../types/cahierTextes.types';
@@ -26,6 +25,9 @@ import {
 import type { Creneau, JourSemaine, EmploiDuTemps } from '../../types/emploiDuTemps.types';
 import { subscribeEmploi, creerOuMajEmploi, getTousEmplois } from '../../services/emploiDuTempsService';
 import { useDisciplinesOptions } from '../../hooks/useDisciplinesOptions';
+// Phase 45 — années scolaires administrables
+import { useAnneesScolaires } from '../../hooks/useAnneesScolaires';
+import { anneesPourSelect, calculerAnneeScolaireEnCours } from '../../types/anneesScolaires.types';
 import '../../styles/EmploiDuTemps.css';
 
 /** Données transmises au parent quand on clique un créneau (point 4). */
@@ -102,7 +104,9 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   onOuvrirCahier,
 }) => {
   const [classe, setClasse] = useState<Classe>(initialClasse ?? '6ème');
-  const [annee, setAnnee] = useState<AnneeScolaire>(initialAnnee ?? '2025-2026');
+  // Phase 45 : année en cours par défaut (au lieu d'une valeur figée)
+  const { config: anneesConfig, anneeCourante } = useAnneesScolaires();
+  const [annee, setAnnee] = useState<AnneeScolaire>(initialAnnee ?? calculerAnneeScolaireEnCours());
   const [emploi, setEmploi] = useState<EmploiDuTemps | null>(null);
   const [nouveau, setNouveau] = useState<NouveauCreneau>(creneauVide);
   const [busy, setBusy] = useState(false);
@@ -313,7 +317,9 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
             <label>
               Année scolaire
               <select value={annee} onChange={(e) => setAnnee(e.target.value as AnneeScolaire)}>
-                {ANNEES_SCOLAIRES.map((a) => <option key={a} value={a}>{a}</option>)}
+                {anneesPourSelect(anneesConfig, anneeCourante, [annee]).map((a) => (
+                  <option key={a} value={a}>{a}{a === anneeCourante ? ' (en cours)' : ''}</option>
+                ))}
               </select>
             </label>
           </div>

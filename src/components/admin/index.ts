@@ -19,6 +19,7 @@ export { default as ResourceManager } from './ResourceManager';
 export { default as QuizManager } from './QuizManager';
 export { default as UserManager } from './UserManager';
 export { default as NiveauxManager } from './NiveauxManager';
+export { default as AnneesScolairesManager } from './AnneesScolairesManager'; // Phase 45
 
 // ==================== TYPES RÉEXPORTÉS ====================
 // Pour faciliter l'utilisation dans d'autres parties de l'application

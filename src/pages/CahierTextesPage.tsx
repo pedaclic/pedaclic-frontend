@@ -63,7 +63,6 @@ import { emploiExistePourClasse } from '../services/emploiDuTempsService';
 import EmploiDuTempsDrawer, { type OuvrirCahierInfo } from '../components/prof/EmploiDuTempsDrawer';
 
 import {
-  ANNEES_SCOLAIRES,
   COULEURS_CAHIER,
   CLASSES,
 } from '../types/cahierTextes.types';
@@ -76,12 +75,17 @@ import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
+// Phase 45 — années scolaires administrables (/admin/annees-scolaires)
+import { useAnneesScolaires } from '../hooks/useAnneesScolaires';
+import { anneesPourSelect, calculerAnneeScolaireEnCours } from '../types/anneesScolaires.types';
 
 // ─── Formulaire vide ─────────────────────────────────────────
-const emptyForm = (): CahierFormData => ({
+// Phase 45 : l'année par défaut est l'année scolaire EN COURS
+// (paramètre fourni par le hook ; calcul local en repli).
+const emptyForm = (anneeScolaire: string = calculerAnneeScolaireEnCours()): CahierFormData => ({
   classe:               '3ème',
   matiere:              'Mathématiques',
-  anneeScolaire:        '2025-2026',
+  anneeScolaire,
   titre:                '',
   description:          '',
   couleur:              '#2563eb',
@@ -105,7 +109,10 @@ const CahierTextesPage: React.FC = () => {
   // ── États principaux ─────────────────────────────────────
   const [cahiers, setCahiers]       = useState<CahierTextes[]>([]);
   const [loading, setLoading]       = useState(true);
-  const [filtreAnnee, setFiltreAnnee] = useState<string>('2025-2026');
+  // Phase 45 : filtre initialisé sur l'année scolaire EN COURS (et non plus figé)
+  const [filtreAnnee, setFiltreAnnee] = useState<string>(() => calculerAnneeScolaireEnCours());
+  // true dès que l'enseignant choisit lui-même une année → on ne l'écrase plus
+  const filtreAnneeChoisi = useRef(false);
   const [filtreArchive, setFiltreArchive] = useState<'actif' | 'archive' | 'tous'>('actif');
   const [vueMode, setVueMode]       = useState<'grille' | 'liste'>('grille');
   const [showModal, setShowModal]   = useState(false);
@@ -120,6 +127,19 @@ const CahierTextesPage: React.FC = () => {
 
   // Matières et niveaux dynamiques depuis Firestore
   const { matieres: matieresDispos, niveaux: niveauxDispos, loading: loadingDisciplines } = useDisciplinesOptions();
+
+  // ── Phase 45 — années scolaires (config admin, temps réel) ──
+  const { config: anneesConfig, anneeCourante, charge: anneesChargees } = useAnneesScolaires();
+
+  /* Si l'admin a imposé une autre année en cours (mode manuel) ou un
+     autre mois de rentrée, on aligne le filtre ET le formulaire vierge
+     — uniquement tant que l'enseignant n'a rien choisi lui-même. */
+  useEffect(() => {
+    if (!anneesChargees) return;
+    const anneeAuto = calculerAnneeScolaireEnCours();
+    if (!filtreAnneeChoisi.current) setFiltreAnnee(anneeCourante);
+    setForm(f => (f.anneeScolaire === anneeAuto ? { ...f, anneeScolaire: anneeCourante } : f));
+  }, [anneesChargees, anneeCourante]);
 
   /* ─────────────────────────────────────────────────────────────
      Reprise sur la dernière activité — ne s'exécute QU'UNE fois
@@ -240,7 +260,7 @@ const CahierTextesPage: React.FC = () => {
   // ── Ouvrir modal création ─────────────────────────────────
   const handleNouveauCahier = () => {
     setEditCahier(null);
-    setForm(emptyForm());
+    setForm(emptyForm(anneeCourante)); // Phase 45
     setGroupesSelectionnes([]);
     setError('');
     setBesoinEmploi(false);
@@ -412,10 +432,13 @@ const CahierTextesPage: React.FC = () => {
         <select
           className="filtre-select"
           value={filtreAnnee}
-          onChange={e => setFiltreAnnee(e.target.value)}
+          onChange={e => { filtreAnneeChoisi.current = true; setFiltreAnnee(e.target.value); }}
         >
           <option value="">Toutes les années</option>
-          {ANNEES_SCOLAIRES.map(a => <option key={a} value={a}>{a}</option>)}
+          {/* Phase 45 : années actives (admin) + année en cours + sélection actuelle */}
+          {anneesPourSelect(anneesConfig, anneeCourante, [filtreAnnee]).map(a => (
+            <option key={a} value={a}>{a}{a === anneeCourante ? ' (en cours)' : ''}</option>
+          ))}
         </select>
         <div className="cahier-filtres-archive" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginLeft: '1.5rem' }}>
           <button
@@ -655,7 +678,10 @@ const CahierTextesPage: React.FC = () => {
                   value={form.anneeScolaire}
                   onChange={e => setForm(f => ({ ...f, anneeScolaire: e.target.value as AnneeScolaire }))}
                 >
-                  {ANNEES_SCOLAIRES.map(a => <option key={a} value={a}>{a}</option>)}
+                  {/* Phase 45 : on conserve l'année d'un cahier existant même si elle a été désactivée */}
+                  {anneesPourSelect(anneesConfig, anneeCourante, [form.anneeScolaire]).map(a => (
+                    <option key={a} value={a}>{a}{a === anneeCourante ? ' (en cours)' : ''}</option>
+                  ))}
                 </select>
               </div>
 

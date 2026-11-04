@@ -79,6 +79,7 @@ const navigationSections: NavSection[] = [
     title: 'Paramètres',
     items: [
       { id: 'settings', label: 'Configuration', icon: '⚙️', href: '/admin/settings' },
+      { id: 'annees-scolaires', label: 'Années scolaires', icon: '📅', href: '/admin/annees-scolaires' }, // Phase 45
       { id: 'mentions-legales', label: 'Mentions légales', icon: '📄', href: '/mentions-legales' },
       { id: 'cgu', label: 'CGU', icon: '📋', href: '/cgu' },
       { id: 'confidentialite', label: 'Confidentialité', icon: '🔒', href: '/confidentialite' },

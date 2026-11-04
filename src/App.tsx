@@ -53,6 +53,7 @@ import UserManager       from './components/admin/UserManager';
 import ResultsAdmin      from './components/admin/ResultsAdmin';
 import SettingsAdmin     from './components/admin/SettingsAdmin';
 import NiveauxManager    from './components/admin/NiveauxManager'; // Phase 44
+import AnneesScolairesManager from './components/admin/AnneesScolairesManager'; // Phase 45
 
 /* ==================== PAGES QUIZ ==================== */
 import QuizEditorPage   from './pages/QuizEditorPage';
@@ -379,6 +380,10 @@ const App: React.FC = () => {
         } />
         <Route path="/admin/resultats" element={
           <AdminRoute><AdminLayout><ResultsAdmin /></AdminLayout></AdminRoute>
+        } />
+        {/* Phase 45 — années scolaires (année en cours + années proposées) */}
+        <Route path="/admin/annees-scolaires" element={
+          <AdminRoute><AdminLayout><AnneesScolairesManager /></AdminLayout></AdminRoute>
         } />
         <Route path="/admin/settings" element={
           <AdminRoute><AdminLayout><SettingsAdmin /></AdminLayout></AdminRoute>

@@ -91,10 +91,21 @@ export type Matiere = typeof MATIERES[number];
 // ─────────────────────────────────────────────────────────────
 // ANNÉES SCOLAIRES
 // ─────────────────────────────────────────────────────────────
+// Phase 45 : la liste effective est désormais administrable
+// (/admin/annees-scolaires → settings/annees_scolaires, voir
+// types/anneesScolaires.types.ts et hooks/useAnneesScolaires.ts).
+// Cette constante reste la liste HISTORIQUE de repli (aucune donnée
+// existante n'est perdue) et ne doit plus être utilisée directement
+// dans les listes déroulantes.
 export const ANNEES_SCOLAIRES = [
   '2023-2024', '2024-2025', '2025-2026', '2026-2027',
 ] as const;
-export type AnneeScolaire = typeof ANNEES_SCOLAIRES[number];
+/**
+ * Libellé « AAAA-AAAA ». Élargi en `string` (Phase 45) pour accepter
+ * les années ajoutées par l'administrateur. Compatible avec tout le
+ * code existant (les anciennes valeurs littérales restent valides).
+ */
+export type AnneeScolaire = string;
 
 // ─────────────────────────────────────────────────────────────
 // COULEURS DU CAHIER (Phase 21 — palette complète)
