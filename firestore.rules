@@ -396,15 +396,11 @@ service cloud.firestore {
     //   Les notes privées vivent dans entrees_cahier_privees (ci-dessous).
     // ══════════════════════════════════════════════════════════
     match /entrees_cahier/{entreeId} {
-      // ⚠️ PHASE 47 — RÈGLE TRANSITOIRE (le temps de la migration) :
-      //    lecture inchangée pour ne pas casser le site en ligne.
-      //    À REMPLACER avant `npm run deploy:prod` par la règle finale :
-      //      allow read: if isSignedIn() && (
-      //                     resource.data.profId == request.auth.uid ||
-      //                     resource.data.visibleEleves == true ||
-      //                     isAdmin()
-      //                   );
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (
+                     resource.data.profId == request.auth.uid ||
+                     resource.data.visibleEleves == true ||
+                     isAdmin()
+                   );
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
       // Le propriétaire ne peut pas réattribuer sa séance à un autre profId
