@@ -15,7 +15,7 @@
  * @version 2.0.0
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import Header from './Header';
 import Footer from './Footer';
@@ -44,6 +44,18 @@ const Layout: React.FC<LayoutProps> = ({
 }) => {
   const location = useLocation();
 
+  /* Pied de page escamotable (confort de lecture).
+     Choix mémorisé sur l'appareil ; lecture protégée (navigation privée). */
+  const [footerMasque, setFooterMasque] = useState<boolean>(() => {
+    try { return localStorage.getItem('pedaclic.footerMasque') === '1'; } catch { return false; }
+  });
+  const basculerFooter = () => {
+    setFooterMasque(m => {
+      try { localStorage.setItem('pedaclic.footerMasque', m ? '0' : '1'); } catch { /* indisponible */ }
+      return !m;
+    });
+  };
+
   return (
     <div className="layout">
       {/* ===== SKIP TO CONTENT (Accessibilité) ===== */}
@@ -63,8 +75,23 @@ const Layout: React.FC<LayoutProps> = ({
         {children}
       </main>
 
-      {/* ===== FOOTER ===== */}
-      {!hideFooter && <Footer />}
+      {/* ===== FOOTER (escamotable) ===== */}
+      {!hideFooter && (
+        <>
+          {/* Barre fine avec le bouton Masquer / Afficher */}
+          <div className={`layout__footer-toggle ${footerMasque ? 'layout__footer-toggle--masque' : ''}`}>
+            <button
+              type="button"
+              onClick={basculerFooter}
+              aria-expanded={!footerMasque}
+              aria-controls="pied-de-page"
+            >
+              {footerMasque ? '▴ Afficher le pied de page' : '▾ Masquer le pied de page'}
+            </button>
+          </div>
+          {!footerMasque && <div id="pied-de-page"><Footer /></div>}
+        </>
+      )}
     </div>
   );
 };

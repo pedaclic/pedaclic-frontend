@@ -84,3 +84,35 @@
 .layout__page--gray {
   background-color: var(--color-bg-secondary);
 }
+
+/* ==================== PIED DE PAGE ESCAMOTABLE ==================== */
+
+/**
+ * Barre fine au-dessus du pied de page : bouton « Masquer / Afficher ».
+ * Le choix est mémorisé sur l'appareil (localStorage).
+ */
+.layout__footer-toggle {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 1rem;
+  background: #1f2937;                 /* même fond que le pied de page */
+}
+
+/* Pied de page masqué : la barre devient discrète, couleur de la page */
+.layout__footer-toggle--masque {
+  background: transparent;
+  border-top: 1px solid var(--color-border, #e5e7eb);
+}
+
+.layout__footer-toggle button {
+  padding: 0.35rem 0.75rem;
+  border: none;
+  background: none;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.layout__footer-toggle button:hover,
+.layout__footer-toggle button:focus-visible { color: #ffffff; text-decoration: underline; }
+.layout__footer-toggle--masque button { color: var(--color-text-light, #6b7280); }
+.layout__footer-toggle--masque button:hover { color: var(--color-primary, #2563eb); }

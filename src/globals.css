@@ -376,6 +376,17 @@ a:hover {
 
 /* ==================== PAGE TRANSITION (Fade-in) ==================== */
 
+/*
+ * CORRECTIF (fenêtres modales coupées) : avec `animation-fill-mode:
+ * both`, l'état final de l'animation RESTAIT appliqué à <main>
+ * (transform: translateY(0) → matrice identité). Or tout transform,
+ * même nul, fait de <main> le « containing block » des éléments en
+ * position: fixed : les fenêtres modales se retrouvaient enfermées
+ * entre l'en-tête et le pied de page, coupées en haut et en bas.
+ * → `backwards` : l'état initial s'applique pendant le délai (pas de
+ *   flash), puis, l'animation terminée, <main> retrouve son style
+ *   normal (opacité 1, aucun transform). Rendu visuel identique.
+ */
 @keyframes page-fade-in {
   from {
     opacity: 0;
@@ -383,12 +394,12 @@ a:hover {
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
 .page-enter {
-  animation: page-fade-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: page-fade-in 0.35s cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
 /* ==================== MICRO-INTERACTIONS ==================== */

@@ -597,3 +597,44 @@
 [data-theme="dark"] .cel-tableau td { border-color: var(--color-border); }
 [data-theme="dark"] .cel-tableau tbody th { color: var(--color-text); }
 [data-theme="dark"] .cel-repartition-barre { background: var(--color-bg-tertiary); }
+
+/* ─── 18. Éditeurs : champs en ligne (correctif de largeur) ───
+   La règle globale `.form-input { width: 100% }` écrasait les
+   largeurs : le nom de rubrique devenait minuscule et le nombre de
+   séances occupait toute la ligne. Sélecteurs plus précis ci-dessous. */
+.cel-rubrique-entete { align-items: flex-end; flex-wrap: wrap; }
+
+/* Champ avec libellé au-dessus */
+.cel-champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ct-gray-500);
+}
+.cel-champ > .form-input,
+.cel-champ > .form-textarea { width: 100%; }
+
+/* Nom : prend toute la place disponible ; Séances : étroit (3 chiffres) */
+.cel-rubrique-entete > .cel-champ--nom { flex: 1 1 240px; min-width: 0; }
+.cel-rubrique-entete > .cel-champ--nb  { flex: 0 0 5.5rem; }
+.cel-rubrique-entete > .cel-champ--nb .form-input { text-align: center; }
+.cel-rubrique-actions { display: flex; gap: 0.25rem; padding-bottom: 0.4rem; }
+.cel-rubrique-ligne > .cel-champ { margin-top: 0.6rem; }
+
+/* Indication « séances calculées automatiquement » */
+.cel-seances-info { margin: 0.35rem 0 0; font-size: 0.75rem; color: var(--ct-gray-500); }
+.cel-lien {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--ct-blue);
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Barème des épreuves : même correctif (intitulé large, points étroit) */
+.cel-bareme-ligne > .form-input:not(.cel-input-nb) { flex: 1 1 auto; width: auto; min-width: 0; }
+.cel-bareme-ligne > .form-input.cel-input-nb { flex: 0 0 5.5rem; width: 5.5rem; text-align: center; }
