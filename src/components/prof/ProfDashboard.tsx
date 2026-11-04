@@ -448,6 +448,13 @@ const ProfDashboard: React.FC = () => {
           >
             📚 Séquences pédagogiques
           </button>
+          {/* Phase 49 — cellules pédagogiques (adhésion gratuite, création Premium) */}
+          <button
+            className="prof-nav-btn"
+            onClick={() => navigate('/prof/cellules')}
+          >
+            👥 Mes cellules
+          </button>
           <button
             className="prof-nav-btn"
             onClick={() => navigate('/prof/cours')}

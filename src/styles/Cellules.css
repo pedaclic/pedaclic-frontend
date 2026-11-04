@@ -1,0 +1,362 @@
+/* ============================================================
+   PEDACLIC — PHASE 49 : CELLULES PÉDAGOGIQUES
+   ------------------------------------------------------------
+   Préfixe .cel-* ; s'appuie sur CahierTextes.css (variables --ct-*,
+   .btn-primary, .modal-*, .form-*). Mode sombre et mobile en fin.
+   ============================================================ */
+
+/* ─── 1. Page « Mes cellules » ────────────────────────────── */
+
+/* Boutons d'en-tête : passent à la ligne sur petit écran */
+.cel-actions-entete { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+
+/* Grille de cartes (1 à 3 colonnes selon la largeur) */
+.cel-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+/* Carte d'une cellule : <button> entièrement cliquable */
+.cel-carte {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 1.1rem 1.2rem;
+  border: 1.5px solid var(--ct-gray-100);
+  border-top: 4px solid #1F3864;          /* bleu marine PedaClic */
+  border-radius: var(--ct-radius);
+  background: white;
+  box-shadow: var(--ct-shadow);
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.cel-carte:hover { box-shadow: var(--ct-shadow-md); transform: translateY(-2px); }
+.cel-carte-titre { margin: 0.3rem 0 0.2rem; font-size: 1.05rem; color: var(--ct-gray-800); }
+.cel-carte-meta  { margin: 0; font-size: 0.83rem; color: var(--ct-gray-600); }
+.cel-carte-pied  { margin: 0.4rem 0 0; font-size: 0.78rem; color: var(--ct-gray-400); }
+
+/* Badge de rôle (coin supérieur droit) */
+.cel-role {
+  align-self: flex-start;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  color: var(--ct-gray-600);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.cel-role--animateur { background: var(--ct-amber-light); color: var(--ct-amber); }
+
+/* Champ du code d'invitation : grand, espacé, majuscules */
+.cel-input-code {
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+/* Messages */
+.cel-aide   { margin: 0 0 0.75rem; font-size: 0.85rem; color: var(--ct-gray-500); }
+.cel-erreur { margin: 0.6rem 0 0; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--ct-red-light); color: var(--ct-red); font-size: 0.85rem; }
+.cel-succes { margin: 0.6rem 0 0; padding: 0.5rem 0.75rem; border-radius: 8px; background: var(--ct-green-light); color: var(--ct-green); font-size: 0.85rem; }
+.cel-vide   { padding: 2rem 1rem; text-align: center; color: var(--ct-gray-400); font-size: 0.9rem; }
+
+/* ─── 2. Page de détail : en-tête et onglets ──────────────── */
+.cel-retour {
+  border: none;
+  background: none;
+  color: var(--ct-blue);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0.75rem;
+}
+.cel-description { margin: 0.4rem 0 0; font-size: 0.88rem; color: var(--ct-gray-600); max-width: 70ch; }
+
+/* Barre d'onglets défilante sur mobile */
+.cel-onglets {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid var(--ct-gray-100);
+  overflow-x: auto;
+}
+.cel-onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;                    /* recouvre la bordure du conteneur */
+  background: none;
+  color: var(--ct-gray-500);
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.cel-onglet.active { color: var(--ct-blue); border-bottom-color: var(--ct-blue); }
+.cel-onglet-nb {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  font-size: 0.72rem;
+}
+/* Pastille rouge : demandes d'adhésion en attente */
+.cel-onglet-alerte {
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--ct-red);
+  color: white;
+  font-size: 0.72rem;
+}
+
+/* Barre d'actions au-dessus d'une liste */
+.cel-barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.cel-barre .cel-aide { flex: 1 1 320px; margin: 0; }
+
+/* ─── 3. Blocs (progression, séance, avancement) ──────────── */
+.cel-bloc {
+  margin-bottom: 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1.5px solid var(--ct-gray-100);
+  border-radius: var(--ct-radius);
+  background: white;
+}
+.cel-bloc-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+/* Titre cliquable (déplie / replie le détail) */
+.cel-bloc-titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ct-gray-800);
+  text-align: left;
+  cursor: pointer;
+}
+.cel-chevron { color: var(--ct-gray-400); width: 1rem; }
+.cel-bloc-meta { margin: 0.25rem 0 0; font-size: 0.8rem; color: var(--ct-gray-500); }
+.cel-bloc-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.cel-sous-titre { margin: 0 0 0.6rem; font-size: 0.95rem; color: var(--ct-gray-800); }
+
+/* Badge de classe */
+.cel-badge {
+  flex-shrink: 0;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--ct-blue-light);
+  color: var(--ct-blue-dark);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+/* Bouton secondaire « destructif » */
+.cel-btn-danger { color: var(--ct-red); border-color: var(--ct-red-light); }
+.cel-btn-danger:hover { border-color: var(--ct-red); color: var(--ct-red); }
+
+/* Aperçu en texte brut d'une séance partagée */
+.cel-apercu { margin: 0.5rem 0 0; font-size: 0.86rem; color: var(--ct-gray-700); line-height: 1.55; }
+
+/* Rubriques d'une progression (liste numérotée, leçons en puces) */
+.cel-rubriques { margin: 0.75rem 0 0; padding-left: 1.4rem; font-size: 0.88rem; color: var(--ct-gray-700); }
+.cel-rubriques > li { margin-bottom: 0.4rem; }
+.cel-rubriques ul { margin: 0.2rem 0 0; padding-left: 1.2rem; color: var(--ct-gray-500); }
+.cel-pastille {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* ─── 4. Avancement ───────────────────────────────────────── */
+.cel-avancements {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.9rem;
+}
+.cel-avancements .cel-bloc { margin-bottom: 0; }
+
+/* Barre de progression globale */
+.cel-barre-prog {
+  height: 10px;
+  margin-top: 0.75rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  overflow: hidden;
+}
+.cel-barre-prog-remplie {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1F3864, var(--ct-blue));
+  transition: width 0.4s ease;
+}
+
+/* Lignes par rubrique : nom | mini-barre | % */
+.cel-rubriques-prog { list-style: none; margin: 0.75rem 0 0; padding: 0; }
+.cel-rubriques-prog li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 90px 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--ct-gray-600);
+}
+.cel-rubrique-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cel-mini-barre { height: 6px; border-radius: 999px; background: var(--ct-gray-100); overflow: hidden; }
+.cel-mini-barre span { display: block; height: 100%; border-radius: 999px; }
+.cel-rubrique-pct { text-align: right; font-weight: 600; }
+
+/* ─── 5. Membres et code d'invitation ─────────────────────── */
+.cel-code {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.2rem;
+  border: 1.5px dashed var(--ct-blue);
+  border-radius: var(--ct-radius);
+  background: var(--ct-blue-xlight);
+}
+.cel-code .cel-bloc-actions { margin-top: 0; }
+.cel-code-valeur {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: #1F3864;
+  font-family: 'Courier New', monospace;
+}
+.cel-membres { list-style: none; margin: 0; padding: 0; }
+.cel-membres li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid var(--ct-gray-100);
+  font-size: 0.9rem;
+}
+.cel-membres li:last-child { border-bottom: none; }
+.cel-membres .cel-bloc-actions { margin-top: 0; }
+
+/* ─── 6. Modales : choix d'un cahier / d'une séance ───────── */
+.cel-modal-large { max-width: 760px; }
+.cel-choix-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  border: 1px solid var(--ct-gray-100);
+  border-radius: var(--ct-radius-sm);
+}
+.cel-choix-liste li + li { border-top: 1px solid var(--ct-gray-100); }
+.cel-choix-liste label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  cursor: pointer;
+}
+.cel-choix-liste label:hover,
+.cel-choix-liste label.actif { background: var(--ct-blue-xlight); }
+.cel-choix-titre { font-weight: 600; font-size: 0.88rem; color: var(--ct-gray-800); }
+.cel-choix-meta  { margin-left: auto; font-size: 0.75rem; color: var(--ct-gray-500); text-align: right; }
+
+/* Éditeur de progression : une « fiche » par rubrique */
+.cel-rubriques-editeur { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 0.5rem; }
+.cel-rubrique-ligne {
+  margin: 0;
+  padding: 0.6rem 0.75rem 0.75rem;
+  border: 1px solid var(--ct-gray-200);
+  border-radius: var(--ct-radius-sm);
+}
+.cel-rubrique-ligne legend { padding: 0 0.3rem; font-size: 0.75rem; font-weight: 700; color: var(--ct-gray-500); }
+.cel-rubrique-entete { display: flex; gap: 0.4rem; align-items: center; margin-bottom: 0.5rem; }
+.cel-rubrique-entete .form-input:first-child { flex: 1; min-width: 0; }
+.cel-input-nb { width: 6.5rem; flex-shrink: 0; }
+.cel-rubrique-entete button:disabled { opacity: 0.3; cursor: default; }
+
+/* ─── 7. Petits écrans ────────────────────────────────────── */
+@media (max-width: 640px) {
+  .cel-choix-meta { display: none; }
+  .cel-rubrique-entete { flex-wrap: wrap; }
+  .cel-code-valeur { font-size: 1.3rem; }
+}
+
+/* ─── 8. Mode sombre ──────────────────────────────────────── */
+[data-theme="dark"] .cel-carte,
+[data-theme="dark"] .cel-bloc,
+[data-theme="dark"] .cel-code {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+[data-theme="dark"] .cel-carte-titre,
+[data-theme="dark"] .cel-bloc-titre,
+[data-theme="dark"] .cel-sous-titre,
+[data-theme="dark"] .cel-choix-titre,
+[data-theme="dark"] .cel-apercu,
+[data-theme="dark"] .cel-code-valeur { color: var(--color-text); }
+[data-theme="dark"] .cel-choix-liste label:hover,
+[data-theme="dark"] .cel-choix-liste label.actif { background: var(--color-bg-tertiary); }
+[data-theme="dark"] .cel-onglets,
+[data-theme="dark"] .cel-membres li,
+[data-theme="dark"] .cel-choix-liste,
+[data-theme="dark"] .cel-choix-liste li + li { border-color: var(--color-border); }
+[data-theme="dark"] .cel-barre-prog,
+[data-theme="dark"] .cel-mini-barre,
+[data-theme="dark"] .cel-onglet-nb { background: var(--color-bg-tertiary); }
+
+/* ─── 9. Fenêtres modales des cellules (correctif d'affichage) ──
+   Deux feuilles globales définissent .modal-overlay (CahierTextes.css,
+   z-index 1000 ; CoursEnLigne.css, z-index 100) : selon l'ordre de
+   chargement, la fenêtre passait SOUS la barre de navigation fixe
+   (z-index 1030) et son haut devenait inaccessible.
+   La classe .cel-overlay fixe un comportement sûr et indépendant. */
+.modal-overlay.cel-overlay {
+  z-index: var(--z-modal, 1050);   /* au-dessus de la barre fixe (1030) */
+  align-items: flex-start;         /* la fenêtre part du haut…            */
+  overflow-y: auto;                /* …et c'est le voile qui défile       */
+  padding: 1.5rem 1rem;
+}
+.cel-overlay > .modal-content {
+  margin: auto 0;                  /* centrée si elle tient, sinon en haut */
+  max-height: none;                /* plus de coupure : le voile défile    */
+  max-width: 620px;
+  padding: 2rem;
+  border-radius: var(--ct-radius);
+}
+.cel-overlay > .modal-content.cel-modal-large { max-width: 760px; }
+
+@media (max-width: 640px) {
+  .modal-overlay.cel-overlay { padding: 0.75rem 0.5rem; }
+  .cel-overlay > .modal-content { padding: 1.25rem 1rem; }
+}

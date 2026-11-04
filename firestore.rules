@@ -915,6 +915,102 @@ service cloud.firestore {
                      );
     }
 
+    // ══════════════════════════════════════════════════════════
+    // PHASE 49 — CELLULES PÉDAGOGIQUES
+    //   • Une cellule n'est lisible que par ses membres (membreIds).
+    //   • Création réservée aux professeurs Premium (ou admin) ;
+    //     l'adhésion par code est gratuite.
+    //   • Le code d'invitation vit dans cellules_codes/{CODE} :
+    //     lecture DIRECTE seulement (get), jamais de listage.
+    //   • On partage des MODÈLES copiés par chacun : aucune règle
+    //     ne donne accès au cahier ou aux séances d'un collègue.
+    // ══════════════════════════════════════════════════════════
+    function cellule(cid) {
+      return get(/databases/$(database)/documents/cellules/$(cid)).data;
+    }
+    function estMembreCellule(cid) {
+      return isSignedIn() && request.auth.uid in cellule(cid).membreIds;
+    }
+    function estAnimateurCellule(cid) {
+      return isSignedIn() && cellule(cid).animateurId == request.auth.uid;
+    }
+
+    match /cellules/{cid} {
+      allow read: if isSignedIn() && (
+                     request.auth.uid in resource.data.membreIds || isAdmin()
+                   );
+      allow create: if isSignedIn() &&
+                       (isProfPremiumActif() || isAdmin()) &&
+                       request.resource.data.animateurId == request.auth.uid &&
+                       request.resource.data.membreIds == [request.auth.uid];
+      // Animateur : gestion complète, sans pouvoir céder l'animation (MVP)
+      // Membre    : peut seulement se retirer lui-même de membreIds
+      allow update: if isSignedIn() && (
+                       (resource.data.animateurId == request.auth.uid &&
+                        request.resource.data.animateurId == resource.data.animateurId) ||
+                       (request.auth.uid in resource.data.membreIds &&
+                        request.auth.uid != resource.data.animateurId &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['membreIds', 'updatedAt']) &&
+                        request.resource.data.membreIds ==
+                          resource.data.membreIds.removeAll([request.auth.uid]))
+                     );
+      allow delete: if isSignedIn() &&
+                       (resource.data.animateurId == request.auth.uid || isAdmin());
+
+      // Demandes d'adhésion : ID = uid du demandeur, code vérifié
+      match /demandes/{uid} {
+        allow read: if isSignedIn() &&
+                       (request.auth.uid == uid || estAnimateurCellule(cid));
+        allow create: if isSignedIn() &&
+                         request.auth.uid == uid &&
+                         (isProf() || isAdmin()) &&
+                         request.resource.data.code is string &&
+                         exists(/databases/$(database)/documents/cellules_codes/$(request.resource.data.code)) &&
+                         get(/databases/$(database)/documents/cellules_codes/$(request.resource.data.code)).data.celluleId == cid;
+        allow update: if false;
+        allow delete: if isSignedIn() &&
+                         (request.auth.uid == uid || estAnimateurCellule(cid));
+      }
+
+      // Progressions communes : lues par les membres, écrites par l'animateur
+      match /progressions/{pid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+      }
+
+      // Bibliothèque : tout membre partage ; l'auteur ou l'animateur supprime
+      match /ressources/{rid} {
+        allow read: if estMembreCellule(cid);
+        allow create: if estMembreCellule(cid) &&
+                         request.resource.data.auteurId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSignedIn() && (
+                         resource.data.auteurId == request.auth.uid ||
+                         estAnimateurCellule(cid)
+                       );
+      }
+
+      // Avancement : chaque membre publie (ou retire) le sien
+      match /avancements/{uid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update: if estMembreCellule(cid) && request.auth.uid == uid;
+        allow delete: if isSignedIn() &&
+                         (request.auth.uid == uid || estAnimateurCellule(cid));
+      }
+    }
+
+    match /cellules_codes/{code} {
+      // get direct uniquement : connaître le code = avoir été invité
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       request.resource.data.animateurId == request.auth.uid &&
+                       cellule(request.resource.data.celluleId).animateurId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.animateurId == request.auth.uid;
+    }
+
     // ──────────────────────────────────────────────────────────
     // DENY ALL par défaut
     // ──────────────────────────────────────────────────────────

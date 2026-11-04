@@ -73,6 +73,9 @@ import ProfDashboard from './components/prof/ProfDashboard';
 /* ==================== PHASE 21 — CAHIER DE TEXTES ==================== */
 import CahierTextesPage from './pages/CahierTextesPage';
 import CahierDetailPage from './pages/CahierDetailPage';
+// Phase 49 — Cellules pédagogiques
+import CellulesPage from './pages/CellulesPage';
+import CelluleDetailPage from './pages/CelluleDetailPage';
 import EntreeEditorPage from './pages/EntreeEditorPage';
 import PlanificationPage from './pages/PlanificationPage';
 import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
@@ -306,6 +309,14 @@ const App: React.FC = () => {
         } />
         <Route path="/prof/quiz/avance/:quizId/modifier" element={
           <ProfRoute><Layout><ProfQuizAvanceEditPage /></Layout></ProfRoute>
+        } />
+
+        {/* ========== CELLULES PÉDAGOGIQUES (Phase 49) ========== */}
+        <Route path="/prof/cellules" element={
+          <ProfRoute><Layout><CellulesPage /></Layout></ProfRoute>
+        } />
+        <Route path="/prof/cellules/:celluleId" element={
+          <ProfRoute><Layout><CelluleDetailPage /></Layout></ProfRoute>
         } />
 
         {/* ========== SÉQUENCES PÉDAGOGIQUES (Prof Premium) ========== */}

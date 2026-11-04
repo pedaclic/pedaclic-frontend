@@ -68,7 +68,7 @@ const ClassementLotModal: React.FC<ClassementLotModalProps> = ({
   const nbCoches = visibles.filter(c => selection.has(c.id)).length;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay org-modal-superpose" onClick={onClose}>
       <div className="modal-content org-modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="org-lot-titre">
         <h2 className="modal-title" id="org-lot-titre">🗂️ Classer mes cahiers</h2>
 

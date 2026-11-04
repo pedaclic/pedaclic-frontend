@@ -27,3 +27,13 @@ export function messageErreurFirestore(err: unknown, action = 'Enregistrement'):
       return `${action} impossible${code ? ` (${code})` : ''}.`;
   }
 }
+
+/**
+ * Phase 49 — message à afficher pour n'importe quelle erreur :
+ * erreur Firebase (avec `code`) → message traduit ; sinon le
+ * message de l'erreur applicative tel quel.
+ */
+export function texteErreur(err: unknown, action = 'Opération'): string {
+  if (err && typeof err === 'object' && 'code' in err) return messageErreurFirestore(err, action);
+  return err instanceof Error ? err.message : String(err);
+}
