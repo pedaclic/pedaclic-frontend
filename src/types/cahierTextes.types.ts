@@ -296,6 +296,20 @@ export interface CahierTextes {
   rubriques?: RubriqueCahier[];
   // Phase 31 — nombre de séances par jour (défaut 1)
   seancesParJour?: number;
+  // ──────────────────────────────────────────────────────────
+  // Phase 46 — Organisateur (TOUS optionnels : un ancien cahier
+  // sans ces champs apparaît simplement dans « Non classés »)
+  // ──────────────────────────────────────────────────────────
+  /** ID du doc `etablissements_prof` — null/absent = non classé */
+  etablissementId?: string | null;
+  /** Nom dénormalisé (affichage sans requête supplémentaire) */
+  etablissementNom?: string;
+  /** Division / groupe-classe : « A », « B », « L1 », « S2 »… */
+  division?: string;
+  /** Étiquettes libres : « Cellule Lettres », « Classe d'examen »… */
+  etiquettes?: string[];
+  /** Cahier épinglé : affiché en tête de son groupe */
+  epingle?: boolean;
 }
 
 export interface CahierFormData {
@@ -312,6 +326,12 @@ export interface CahierFormData {
   isPartage?: boolean;
   // Phase 31 — nombre de séances par jour (défaut 1)
   seancesParJour?: number;
+  // Phase 46 — Organisateur (jamais `undefined` à l'écriture :
+  // Firestore refuse les valeurs undefined → null / '' / [])
+  etablissementId?: string | null;
+  etablissementNom?: string;
+  division?: string;
+  etiquettes?: string[];
 }
 
 // ─────────────────────────────────────────────────────────────

@@ -363,6 +363,13 @@ export async function createCahier(
     groupeIds:            form.groupeIds  ?? [],
     groupeNoms:           form.groupeNoms ?? [],
     isPartage:            form.isPartage  ?? false,
+    // Phase 31 — était saisi dans le formulaire mais non écrit à la création
+    seancesParJour:       form.seancesParJour ?? 1,
+    // Phase 46 — Organisateur (valeurs neutres si non renseignées)
+    etablissementId:      form.etablissementId  ?? null,
+    etablissementNom:     form.etablissementNom ?? '',
+    division:             (form.division ?? '').trim(),
+    etiquettes:           form.etiquettes ?? [],
     createdAt: now,
     updatedAt: now,
   });

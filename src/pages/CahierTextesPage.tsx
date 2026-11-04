@@ -74,6 +74,32 @@ import type {
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
+// ── Phase 46 — Organisateur (établissements, division, étiquettes, filtres) ──
+import '../styles/Organisateur.css';
+import { useEtablissements } from '../hooks/useEtablissements';
+import { basculerEpingleCahier } from '../services/etablissementsService';
+import OrganisateurFiltres from '../components/prof/OrganisateurFiltres';
+import EtablissementManager from '../components/prof/EtablissementManager';
+import ClassementLotModal from '../components/prof/ClassementLotModal';
+import EtiquettesInput from '../components/prof/EtiquettesInput';
+import {
+  FILTRE_SANS_ETABLISSEMENT,
+  libelleCourtEtablissement,
+} from '../types/etablissement.types';
+import {
+  filtrerCahiers,
+  grouperCahiers,
+  etiquettesConnues,
+  libelleClasse,
+  lireFiltresMemorises,
+  memoriserFiltres,
+  lireDernierEtablissement,
+  memoriserDernierEtablissement,
+  nettoyerEtiquettes,
+  filtresVides,
+  type FiltresOrganisateur,
+} from '../utils/organisateurCahiers';
+
 import { useDisciplinesOptions } from '../hooks/useDisciplinesOptions';
 // Phase 45 — années scolaires administrables (/admin/annees-scolaires)
 import { useAnneesScolaires } from '../hooks/useAnneesScolaires';
@@ -96,6 +122,11 @@ const emptyForm = (anneeScolaire: string = calculerAnneeScolaireEnCours()): Cahi
   isPartage:            false,
   // Phase 31
   seancesParJour:       1,
+  // Phase 46 — valeurs neutres (jamais undefined pour Firestore)
+  etablissementId:      null,
+  etablissementNom:     '',
+  division:             '',
+  etiquettes:           [],
 });
 
 // ─── Composant principal ─────────────────────────────────────
@@ -153,6 +184,23 @@ const CahierTextesPage: React.FC = () => {
   // ── Phase 22 — états groupes ─────────────────────────────
   const [groupesDispos, setGroupesDispos]             = useState<GroupeProf[]>([]);
   const [groupesSelectionnes, setGroupesSelectionnes] = useState<string[]>([]);
+
+  // ── Phase 46 — Organisateur ──────────────────────────────
+  // (déclaré AVANT le contrôle Premium : ordre des hooks constant)
+  const { etablissements, actifs: etabsActifs, parId: etabsParId } = useEtablissements(currentUser?.uid);
+  const [filtresOrg, setFiltresOrg] = useState<FiltresOrganisateur>(() => lireFiltresMemorises());
+  const [showEtabManager, setShowEtabManager] = useState(false);
+  /** true = gestionnaire ouvert depuis la modale de cahier (présélection au retour) */
+  const [etabDepuisForm, setEtabDepuisForm] = useState(false);
+  const [showClassementLot, setShowClassementLot] = useState(false);
+  const [sectionsRepliees, setSectionsRepliees] = useState<Set<string>>(new Set());
+  const [bandeauMasque, setBandeauMasque] = useState<boolean>(() => {
+    try { return sessionStorage.getItem('pedaclic.cahier.bandeauClassement') === 'masque'; }
+    catch { return false; }
+  });
+
+  // Mémorise les filtres à chaque changement (localStorage, pas l'URL)
+  useEffect(() => { memoriserFiltres(filtresOrg); }, [filtresOrg]);
 
   // ── Vérification Premium (les admins sont toujours exemptés) ─
   if (!currentUser?.isPremium && currentUser?.role !== 'admin') {
@@ -260,7 +308,18 @@ const CahierTextesPage: React.FC = () => {
   // ── Ouvrir modal création ─────────────────────────────────
   const handleNouveauCahier = () => {
     setEditCahier(null);
-    setForm(emptyForm(anneeCourante)); // Phase 45
+    // Phase 46 — établissement pré-rempli : celui du filtre s'il n'y en
+    // a qu'un, sinon le dernier utilisé (s'il est toujours actif)
+    const filtreUnique = filtresOrg.etablissements.length === 1 ? filtresOrg.etablissements[0] : '';
+    const dernier = lireDernierEtablissement();
+    const etabParDefaut = etabsActifs.find(e => e.id === filtreUnique)
+                       ?? etabsActifs.find(e => e.id === dernier)
+                       ?? null;
+    setForm({
+      ...emptyForm(anneeCourante), // Phase 45
+      etablissementId:  etabParDefaut?.id  ?? null,
+      etablissementNom: etabParDefaut?.nom ?? '',
+    });
     setGroupesSelectionnes([]);
     setError('');
     setBesoinEmploi(false);
@@ -317,6 +376,12 @@ const CahierTextesPage: React.FC = () => {
       isPartage:            cahier.isPartage  ?? false,
       // Phase 31
       seancesParJour:       cahier.seancesParJour ?? 1,
+      // Phase 46 — un ID d'établissement supprimé est traité comme « aucun »
+      etablissementId:      cahier.etablissementId && etabsParId.has(cahier.etablissementId)
+                              ? cahier.etablissementId : null,
+      etablissementNom:     cahier.etablissementNom ?? '',
+      division:             cahier.division ?? '',
+      etiquettes:           cahier.etiquettes ?? [],
     });
     setError('');
     setShowModal(true);
@@ -344,9 +409,19 @@ const CahierTextesPage: React.FC = () => {
     setSaving(true);
     setError('');
     setBesoinEmploi(false);
+    // Phase 46 — normalisation des champs de l'organisateur
+    const etabChoisi = form.etablissementId ? etabsParId.get(form.etablissementId) : undefined;
+    const formFinal: CahierFormData = {
+      ...form,
+      etablissementId:  etabChoisi?.id  ?? null,
+      etablissementNom: etabChoisi?.nom ?? '',
+      division:         (form.division ?? '').trim().slice(0, 12),
+      etiquettes:       nettoyerEtiquettes(form.etiquettes ?? []),
+    };
+    if (etabChoisi) memoriserDernierEtablissement(etabChoisi.id);
     try {
       if (editCahier) {
-        await updateCahier(editCahier.id, form);
+        await updateCahier(editCahier.id, formFinal);
       } else {
         // Conditionnement (point 1) : un emploi du temps de la classe est requis.
         // Les cahiers déjà existants ne sont pas affectés (grandfathering).
@@ -356,7 +431,7 @@ const CahierTextesPage: React.FC = () => {
           setSaving(false);
           return;
         }
-        await createCahier(currentUser.uid, form);
+        await createCahier(currentUser.uid, formFinal);
       }
       setShowModal(false);
     } catch (err: unknown) {
@@ -400,6 +475,59 @@ const CahierTextesPage: React.FC = () => {
     if (filtreArchive === 'archive') return archived;
     return true;
   });
+
+  // ── Phase 46 — Organisateur : filtres, regroupement, compteurs ──
+  // Calculs locaux sur les cahiers déjà chargés (aucune requête en plus).
+  const cahiersAffiches = filtrerCahiers(cahiersFiltres, filtresOrg, etabsParId);
+  const groupesCahiers  = grouperCahiers(cahiersAffiches, filtresOrg.regroupement, etablissements);
+
+  /** Nombre de cahiers par établissement (+ « non classés ») */
+  const compteursEtab = new Map<string, number>();
+  for (const c of cahiersFiltres) {
+    const cle = c.etablissementId && etabsParId.has(c.etablissementId)
+      ? c.etablissementId : FILTRE_SANS_ETABLISSEMENT;
+    compteursEtab.set(cle, (compteursEtab.get(cle) ?? 0) + 1);
+  }
+  const nbNonClasses = compteursEtab.get(FILTRE_SANS_ETABLISSEMENT) ?? 0;
+  /** Pastilles : établissements actifs + archivés qui ont encore des cahiers */
+  const etabsPourFiltre = etablissements.filter(e => !e.isArchived || compteursEtab.has(e.id));
+  const matieresPresentes = Array.from(new Set(cahiers.map(c => c.matiere))).sort((a, b) => a.localeCompare(b, 'fr'));
+  const etiquettesPresentes = etiquettesConnues(cahiers);
+
+  const basculerSection = (cle: string) => setSectionsRepliees(prev => {
+    const s = new Set(prev);
+    if (s.has(cle)) s.delete(cle); else s.add(cle);
+    return s;
+  });
+
+  const masquerBandeau = () => {
+    setBandeauMasque(true);
+    try { sessionStorage.setItem('pedaclic.cahier.bandeauClassement', 'masque'); } catch { /* noop */ }
+  };
+
+  const handleToggleEpingle = async (cahier: CahierTextes, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try { await basculerEpingleCahier(cahier.id, !cahier.epingle); }
+    catch { toast.error('Impossible d\'épingler ce cahier.'); }
+  };
+
+  /** Badges ajoutés aux cartes : établissement + 3 premières étiquettes */
+  const renderBadgesOrganisateur = (cahier: CahierTextes) => {
+    const etab = cahier.etablissementId ? etabsParId.get(cahier.etablissementId) : undefined;
+    const tags = cahier.etiquettes ?? [];
+    return (
+      <>
+        {etab && (
+          <span className="badge-etab" title={etab.nom} style={{ '--org-couleur': etab.couleur } as React.CSSProperties}>
+            <span className="org-point" aria-hidden="true" />
+            {libelleCourtEtablissement(etab)}
+          </span>
+        )}
+        {tags.slice(0, 3).map(t => <span key={t} className="org-puce-etiquette">#{t}</span>)}
+        {tags.length > 3 && <span className="org-puce-etiquette">+{tags.length - 3}</span>}
+      </>
+    );
+  };
 
   // ── Progression ───────────────────────────────────────────
   const progressionPct = (cahier: CahierTextes) =>
@@ -486,9 +614,52 @@ const CahierTextesPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Phase 46 — Organisateur : filtres établissement / niveau / étiquettes ── */}
+      <OrganisateurFiltres
+        filtres={filtresOrg}
+        onChange={setFiltresOrg}
+        etablissements={etabsPourFiltre}
+        compteurs={compteursEtab}
+        matieres={matieresPresentes}
+        etiquettes={etiquettesPresentes}
+        onGererEtablissements={() => { setEtabDepuisForm(false); setShowEtabManager(true); }}
+        onClasserEnLot={() => setShowClassementLot(true)}
+      />
+
+      {/* ── Phase 46 — Bandeau de rattrapage des cahiers non classés ── */}
+      {!loading && !bandeauMasque && nbNonClasses > 0 && (
+        <div className="org-bandeau" role="status">
+          <span>
+            🗂️ <strong>{nbNonClasses} cahier{nbNonClasses > 1 ? 's' : ''}</strong>{' '}
+            {nbNonClasses > 1 ? 'ne sont rattachés' : 'n\'est rattaché'} à aucun établissement.
+          </span>
+          <div className="org-bandeau-actions">
+            <button type="button" className="btn-primary" onClick={() => setShowClassementLot(true)}>
+              Les classer
+            </button>
+            <button type="button" className="org-bandeau-fermer" onClick={masquerBandeau}>
+              Plus tard
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Contenu ── */}
       {loading ? (
         <div className="loading-spinner"><div className="spinner-circle" /></div>
+      ) : cahiersFiltres.length > 0 && cahiersAffiches.length === 0 ? (
+        /* Phase 46 — des cahiers existent mais aucun ne correspond aux filtres */
+        <div className="empty-state">
+          <div style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '0.75rem' }}>🔎</div>
+          <h3>Aucun cahier ne correspond à ces filtres</h3>
+          <button
+            className="btn-secondary"
+            style={{ marginTop: '1rem' }}
+            onClick={() => setFiltresOrg({ ...filtresVides(), regroupement: filtresOrg.regroupement })}
+          >
+            ✕ Réinitialiser les filtres
+          </button>
+        </div>
       ) : cahiersFiltres.length === 0 ? (
         <div className="empty-state">
           <div style={{ fontSize: '3rem', opacity: 0.3, marginBottom: '0.75rem' }}>📒</div>
@@ -501,8 +672,35 @@ const CahierTextesPage: React.FC = () => {
           </button>
         </div>
       ) : (
+        /* Phase 46 — une section repliable par établissement / niveau */
+        <div className="org-groupes">
+        {groupesCahiers.map(groupe => {
+          const replie = sectionsRepliees.has(groupe.cle);
+          return (
+          <section
+            key={groupe.cle}
+            className={`org-section ${replie ? 'org-section--repliee' : ''}`}
+            style={{ '--org-couleur': groupe.couleur } as React.CSSProperties}
+          >
+            {/* En-tête masqué en mode « Aucun » regroupement */}
+            {groupe.titre && (
+              <button
+                type="button"
+                className="org-section-entete"
+                onClick={() => basculerSection(groupe.cle)}
+                aria-expanded={!replie}
+              >
+                <span className="org-chevron" aria-hidden="true">▾</span>
+                <h2>{groupe.titre}</h2>
+                {groupe.sousTitre && <span className="org-section-sous-titre">{groupe.sousTitre}</span>}
+                <span className="org-section-nb">
+                  {groupe.cahiers.length} cahier{groupe.cahiers.length > 1 ? 's' : ''}
+                </span>
+              </button>
+            )}
+            {!replie && (
         <div className={vueMode === 'grille' ? 'cahiers-grid' : 'cahiers-liste'}>
-          {cahiersFiltres.map(cahier => {
+          {groupe.cahiers.map(cahier => {
             const pct = progressionPct(cahier);
             const isArchived = cahier.isArchived ?? false;
 
@@ -517,10 +715,11 @@ const CahierTextesPage: React.FC = () => {
                   <div className="cahier-row-color" style={{ background: cahier.couleur }} />
                   <div className="cahier-row-main">
                     <div className="cahier-row-top">
-                      <h3 className="cahier-row-titre">{cahier.titre}</h3>
+                      <h3 className="cahier-row-titre">{cahier.epingle && <span className="org-epingle-marque" aria-label="Épinglé">📌</span>}{cahier.titre}</h3>
                       <div className="cahier-row-badges">
-                        <span className="badge-classe">{cahier.classe}</span>
+                        <span className="badge-classe">{libelleClasse(cahier)}</span>
                         <span className="badge-matiere">{cahier.matiere}</span>
+                        {renderBadgesOrganisateur(cahier)}
                         <span className="badge-annee">{cahier.anneeScolaire}</span>
                         {isArchived && <span className="badge-archive">📦 Archivé</span>}
                         {(cahier.groupeIds?.length ?? 0) > 0 && (
@@ -546,6 +745,14 @@ const CahierTextesPage: React.FC = () => {
                     {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) || '—'}
                   </div>
                   <div className="cahier-row-actions" onClick={e => e.stopPropagation()}>
+                    <button
+                      className={`btn-icon-sm ${cahier.epingle ? 'org-epingle--active' : ''}`}
+                      onClick={e => handleToggleEpingle(cahier, e)}
+                      title={cahier.epingle ? 'Désépingler' : 'Épingler en tête'}
+                      aria-pressed={!!cahier.epingle}
+                    >
+                      📌
+                    </button>
                     <button className="btn-icon-sm" onClick={e => handleToggleArchive(cahier, e)} title={isArchived ? 'Restaurer' : 'Archiver'}>
                       {isArchived ? '↩️' : '📦'}
                     </button>
@@ -567,10 +774,11 @@ const CahierTextesPage: React.FC = () => {
 
                 <div className="cahier-card-header">
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <h3 className="cahier-card-titre">{cahier.titre}</h3>
+                    <h3 className="cahier-card-titre">{cahier.epingle && <span className="org-epingle-marque" aria-label="Épinglé">📌</span>}{cahier.titre}</h3>
                     <div className="cahier-card-meta">
-                      <span className="badge-classe">{cahier.classe}</span>
+                      <span className="badge-classe">{libelleClasse(cahier)}</span>
                       <span className="badge-matiere">{cahier.matiere}</span>
+                        {renderBadgesOrganisateur(cahier)}
                       <span className="badge-annee">{cahier.anneeScolaire}</span>
                       {isArchived && <span className="badge-archive">📦</span>}
                     </div>
@@ -607,6 +815,14 @@ const CahierTextesPage: React.FC = () => {
                     {cahier.updatedAt?.toDate().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) || '—'}
                   </span>
                   <div className="cahier-actions">
+                    <button
+                      className={`btn-icon-sm ${cahier.epingle ? 'org-epingle--active' : ''}`}
+                      onClick={e => handleToggleEpingle(cahier, e)}
+                      title={cahier.epingle ? 'Désépingler' : 'Épingler en tête'}
+                      aria-pressed={!!cahier.epingle}
+                    >
+                      📌
+                    </button>
                     <button className="btn-icon-sm" onClick={e => handleToggleArchive(cahier, e)} title={isArchived ? 'Restaurer' : 'Archiver'}>
                       {isArchived ? '↩️' : '📦'}
                     </button>
@@ -617,6 +833,11 @@ const CahierTextesPage: React.FC = () => {
               </div>
             );
           })}
+        </div>
+            )}
+          </section>
+          );
+        })}
         </div>
       )}
 
@@ -683,6 +904,62 @@ const CahierTextesPage: React.FC = () => {
                     <option key={a} value={a}>{a}{a === anneeCourante ? ' (en cours)' : ''}</option>
                   ))}
                 </select>
+              </div>
+
+              {/* ── Phase 46 : Établissement + division ── */}
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cahier-etab">Établissement</label>
+                  <select
+                    id="cahier-etab"
+                    className="form-select"
+                    value={form.etablissementId ?? ''}
+                    onChange={e => {
+                      const etab = etabsParId.get(e.target.value);
+                      setForm(f => ({ ...f, etablissementId: etab?.id ?? null, etablissementNom: etab?.nom ?? '' }));
+                    }}
+                  >
+                    <option value="">— Non classé —</option>
+                    {etabsActifs.map(et => <option key={et.id} value={et.id}>{et.nom}</option>)}
+                    {/* Établissement archivé déjà rattaché : reste affiché */}
+                    {form.etablissementId && !etabsActifs.some(et => et.id === form.etablissementId) && (
+                      <option value={form.etablissementId}>{form.etablissementNom} (archivé)</option>
+                    )}
+                  </select>
+                  <button
+                    type="button"
+                    className="org-lien-ajout"
+                    onClick={() => { setEtabDepuisForm(true); setShowEtabManager(true); }}
+                  >
+                    + Nouvel établissement
+                  </button>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" htmlFor="cahier-division">Division</label>
+                  <input
+                    id="cahier-division"
+                    className="form-input"
+                    maxLength={12}
+                    placeholder="Ex : A, B, L1, S2"
+                    value={form.division ?? ''}
+                    onChange={e => setForm(f => ({ ...f, division: e.target.value }))}
+                  />
+                  <span style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: 2 }}>
+                    Affiché « {form.classe}{form.division?.trim() ? ` ${form.division.trim()}` : ''} »
+                  </span>
+                </div>
+              </div>
+
+              {/* ── Phase 46 : Étiquettes libres ── */}
+              <div className="form-group">
+                <label className="form-label">
+                  Étiquettes <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optionnel — Entrée pour valider)</span>
+                </label>
+                <EtiquettesInput
+                  value={form.etiquettes ?? []}
+                  onChange={etiquettes => setForm(f => ({ ...f, etiquettes }))}
+                  suggestions={etiquettesPresentes}
+                />
               </div>
 
               {/* Titre */}
@@ -861,6 +1138,38 @@ const CahierTextesPage: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* ── Phase 46 — Gestionnaire d'établissements (peut se superposer à la modale) ── */}
+      {showEtabManager && currentUser?.uid && (
+        <EtablissementManager
+          profId={currentUser.uid}
+          etablissements={etablissements}
+          compteurs={compteursEtab}
+          ouvrirEnAjout={etabDepuisForm}
+          onClose={() => setShowEtabManager(false)}
+          onCree={etab => {
+            // Ouvert depuis le formulaire : on présélectionne et on y revient
+            if (etabDepuisForm) {
+              setForm(f => ({ ...f, etablissementId: etab.id, etablissementNom: etab.nom }));
+              setShowEtabManager(false);
+            }
+          }}
+        />
+      )}
+
+      {/* ── Phase 46 — Classement des cahiers en lot ── */}
+      {showClassementLot && (
+        <ClassementLotModal
+          cahiers={cahiersFiltres}
+          etablissements={etabsActifs}
+          onClose={() => setShowClassementLot(false)}
+          onGererEtablissements={() => {
+            setShowClassementLot(false);
+            setEtabDepuisForm(false);
+            setShowEtabManager(true);
+          }}
+        />
       )}
 
       {/* Fenêtre flottante — Emploi du temps (points 2, 3, 4) */}

@@ -1,0 +1,410 @@
+/* ============================================================
+   PEDACLIC — PHASE 46 : ORGANISATEUR DES CAHIERS DE TEXTES
+   ------------------------------------------------------------
+   Préfixe .org-* : aucune règle existante n'est modifiée.
+   Réutilise les variables --ct-* de CahierTextes.css.
+   Mode sombre : [data-theme="dark"] (en fin de fichier).
+   ============================================================ */
+
+/* ─── 1. Barre de filtres ─────────────────────────────────── */
+
+/* Conteneur : carte claire au-dessus de la liste */
+.org-filtres {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  background: var(--ct-gray-50);
+  border: 1.5px solid var(--ct-gray-100);
+  border-radius: var(--ct-radius);
+}
+
+/* Chaque ligne passe à la ligne sur petit écran */
+.org-filtres-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Champ de recherche avec icône (prend la place disponible) */
+.org-recherche {
+  flex: 1 1 260px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+  background: white;
+  border: 1.5px solid var(--ct-gray-200);
+  border-radius: var(--ct-radius-sm);
+  transition: border-color 0.2s;
+}
+.org-recherche:focus-within { border-color: var(--ct-blue); }
+.org-recherche input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  padding: 0.5rem 0;
+  font-size: 0.88rem;
+  color: var(--ct-gray-800);
+}
+
+/* « Regrouper par » : libellé + liste */
+.org-regroupement {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ct-gray-500);
+}
+
+.org-btn-gerer { white-space: nowrap; }
+
+/* Lien discret de réinitialisation */
+.org-btn-reinit {
+  border: none;
+  background: none;
+  color: var(--ct-red);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0.5rem;
+}
+.org-btn-reinit:hover { text-decoration: underline; }
+
+/* ─── 2. Pastilles d'établissements ───────────────────────── */
+
+/* --org-couleur est fournie en style inline par le composant */
+.org-pastille {
+  --org-couleur: var(--ct-blue);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--ct-gray-200);
+  background: white;
+  color: var(--ct-gray-700);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--ct-transition);
+}
+.org-pastille:hover { border-color: var(--org-couleur); }
+/* Sélectionnée : fond de la couleur de l'établissement */
+.org-pastille.active {
+  background: var(--org-couleur);
+  border-color: var(--org-couleur);
+  color: white;
+}
+.org-pastille--aucun { --org-couleur: var(--ct-gray-500); border-style: dashed; }
+.org-pastille--archivee { opacity: 0.65; }
+
+/* Point de couleur avant le sigle */
+.org-point {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--org-couleur);
+  flex-shrink: 0;
+}
+.org-pastille.active .org-point { background: white; }
+
+/* Compteur de cahiers dans la pastille */
+.org-compteur {
+  min-width: 1.3rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  color: var(--ct-gray-600);
+  font-size: 0.72rem;
+  text-align: center;
+}
+.org-pastille.active .org-compteur { background: rgba(255, 255, 255, 0.25); color: white; }
+
+/* ─── 3. Étiquettes (filtre + saisie) ─────────────────────── */
+
+.org-etiquettes-filtre { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+
+/* Puce de filtre cliquable */
+.org-puce-filtre {
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--ct-purple-light);
+  background: white;
+  color: var(--ct-purple);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.org-puce-filtre.active { background: var(--ct-purple); border-color: var(--ct-purple); color: white; }
+
+/* Champ de saisie : puces + input dans un même cadre */
+.org-etiquettes-champ {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border: 1.5px solid var(--ct-gray-200);
+  border-radius: var(--ct-radius-sm);
+  background: white;
+}
+.org-etiquettes-champ:focus-within { border-color: var(--ct-blue); }
+.org-etiquettes-champ input {
+  flex: 1 1 140px;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.88rem;
+  padding: 0.2rem;
+  color: var(--ct-gray-800);
+}
+
+/* Puce d'étiquette (saisie et cartes) */
+.org-puce-etiquette {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ct-purple-light);
+  color: var(--ct-purple);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.org-puce-etiquette button {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.7rem;
+}
+
+/* Suggestions sous le champ */
+.org-etiquettes-suggestions { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.4rem; }
+.org-suggestion {
+  border: 1px dashed var(--ct-gray-300);
+  background: none;
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.75rem;
+  color: var(--ct-gray-500);
+  cursor: pointer;
+}
+.org-suggestion:hover { border-color: var(--ct-purple); color: var(--ct-purple); }
+
+/* ─── 4. Bandeau « cahiers non classés » ──────────────────── */
+.org-bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border-radius: var(--ct-radius-sm);
+  background: var(--ct-blue-xlight);
+  border: 1px solid var(--ct-blue-light);
+  color: var(--ct-gray-700);
+  font-size: 0.88rem;
+}
+.org-bandeau-actions { display: flex; gap: 0.5rem; }
+.org-bandeau-fermer {
+  border: none;
+  background: none;
+  color: var(--ct-gray-500);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+
+/* ─── 5. Sections groupées de la liste ────────────────────── */
+.org-section { margin-bottom: 1.75rem; }
+
+/* En-tête de section : bouton repliable avec filet de couleur */
+.org-section-entete {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 0 0.6rem;
+  margin-bottom: 0.9rem;
+  border: none;
+  border-bottom: 2px solid var(--org-couleur, var(--ct-gray-200));
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--ct-gray-800);
+}
+.org-section-entete h2 { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.org-section-sous-titre { font-size: 0.8rem; color: var(--ct-gray-400); }
+.org-section-nb {
+  margin-left: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ct-gray-500);
+}
+/* Chevron qui pivote quand la section est repliée */
+.org-chevron { transition: transform 0.2s; color: var(--ct-gray-400); }
+.org-section--repliee .org-chevron { transform: rotate(-90deg); }
+
+/* ─── 6. Badges ajoutés aux cartes / lignes de cahier ─────── */
+
+/* Badge établissement : point coloré + sigle */
+.badge-etab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  color: var(--ct-gray-700);
+  font-size: 0.7rem;
+  font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.badge-etab .org-point { width: 7px; height: 7px; }
+
+/* Ligne d'étiquettes sous les badges */
+.org-carte-etiquettes { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
+
+/* Épingle : visible quand active */
+.btn-icon-sm.org-epingle--active { background: var(--ct-amber-light); }
+.org-epingle-marque { font-size: 0.8rem; margin-right: 0.25rem; }
+
+/* ─── 7. Modales de l'organisateur ────────────────────────── */
+
+/* Modale ouverte PAR-DESSUS la modale de création du cahier */
+.org-modal-superpose { z-index: 1100; }
+.org-modal { max-width: 640px; }
+
+.org-aide { font-size: 0.85rem; color: var(--ct-gray-500); margin: -0.75rem 0 1rem; }
+
+/* Sélecteur de couleur en <button> : neutralise le style natif */
+.org-modal .couleur-option { border: none; padding: 0; }
+
+/* Liste des établissements */
+.org-etab-liste { list-style: none; margin: 0 0 1rem; padding: 0; }
+.org-etab-ligne {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--ct-gray-100);
+}
+.org-etab-ligne--archivee { opacity: 0.6; }
+.org-etab-pastille { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.org-etab-infos { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.org-etab-infos strong { font-size: 0.92rem; color: var(--ct-gray-800); }
+.org-etab-infos span { font-size: 0.78rem; color: var(--ct-gray-500); }
+.org-etab-actions { display: flex; gap: 0.25rem; flex-shrink: 0; }
+.org-etab-actions button:disabled { opacity: 0.3; cursor: default; }
+.org-etab-archives { margin-bottom: 1rem; font-size: 0.85rem; color: var(--ct-gray-500); }
+.org-etab-archives summary { cursor: pointer; margin-bottom: 0.5rem; }
+
+/* Formulaire d'établissement (encadré) */
+.org-etab-form {
+  padding: 1rem;
+  border: 1.5px solid var(--ct-blue-light);
+  border-radius: var(--ct-radius-sm);
+  background: var(--ct-blue-xlight);
+}
+.org-etab-form h3 { margin: 0 0 1rem; font-size: 0.95rem; color: var(--ct-gray-800); }
+
+/* Classement en lot */
+.org-lot-outils {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+}
+.org-lot-liens button {
+  border: none;
+  background: none;
+  color: var(--ct-blue);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 0;
+}
+.org-lot-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 45vh;
+  overflow-y: auto;
+  border: 1px solid var(--ct-gray-100);
+  border-radius: var(--ct-radius-sm);
+}
+.org-lot-liste li + li { border-top: 1px solid var(--ct-gray-100); }
+.org-lot-liste label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  cursor: pointer;
+}
+.org-lot-liste label:hover { background: var(--ct-gray-50); }
+.org-lot-titre { font-weight: 600; font-size: 0.88rem; color: var(--ct-gray-800); }
+.org-lot-meta { margin-left: auto; font-size: 0.75rem; color: var(--ct-gray-500); text-align: right; }
+
+/* Lien « + Nouvel établissement » sous le select du formulaire */
+.org-lien-ajout {
+  border: none;
+  background: none;
+  color: var(--ct-blue);
+  cursor: pointer;
+  padding: 0;
+  margin-top: 0.3rem;
+  font-size: 0.8rem;
+}
+
+/* ─── 8. Petits écrans ────────────────────────────────────── */
+@media (max-width: 640px) {
+  .org-filtres { padding: 0.75rem; }
+  .org-regroupement span { display: none; }          /* gain de place */
+  .org-filtres-ligne .filtre-select { flex: 1 1 45%; }
+  .org-lot-meta { display: none; }
+}
+
+/* ─── 9. Mode sombre ──────────────────────────────────────── */
+[data-theme="dark"] .org-filtres,
+[data-theme="dark"] .org-etab-form,
+[data-theme="dark"] .org-bandeau {
+  background: var(--color-bg-secondary);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+[data-theme="dark"] .org-recherche,
+[data-theme="dark"] .org-etiquettes-champ,
+[data-theme="dark"] .org-pastille,
+[data-theme="dark"] .org-puce-filtre {
+  background: var(--color-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+[data-theme="dark"] .org-recherche input,
+[data-theme="dark"] .org-etiquettes-champ input,
+[data-theme="dark"] .org-section-entete,
+[data-theme="dark"] .org-etab-infos strong,
+[data-theme="dark"] .org-lot-titre,
+[data-theme="dark"] .org-etab-form h3 { color: var(--color-text); }
+[data-theme="dark"] .org-pastille.active { background: var(--org-couleur); color: white; }
+[data-theme="dark"] .org-puce-filtre.active { background: var(--ct-purple); color: white; }
+[data-theme="dark"] .badge-etab,
+[data-theme="dark"] .org-compteur { background: var(--color-bg-tertiary); color: var(--color-text); }
+[data-theme="dark"] .org-lot-liste,
+[data-theme="dark"] .org-lot-liste li + li,
+[data-theme="dark"] .org-etab-ligne { border-color: var(--color-border); }
+[data-theme="dark"] .org-lot-liste label:hover { background: var(--color-bg-tertiary); }

@@ -362,6 +362,26 @@ service cloud.firestore {
                                (isSignedIn() && resource.data.profId == request.auth.uid);
     }
 
+    // ══════════════════════════════════════════════════════════
+    // PHASE 46 — ÉTABLISSEMENTS DU PROFESSEUR (organisateur)
+    //   Carnet PERSONNEL : seul le propriétaire lit et écrit.
+    //   Le profId ne peut pas être modifié après création.
+    // ══════════════════════════════════════════════════════════
+    match /etablissements_prof/{etabId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.profId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid &&
+                       request.resource.data.nom is string &&
+                       request.resource.data.nom.size() > 0 &&
+                       request.resource.data.nom.size() <= 120;
+      allow update: if isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       request.resource.data.profId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+                       (resource.data.profId == request.auth.uid || isAdmin());
+    }
+
     match /entrees_cahier/{entreeId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
