@@ -360,3 +360,127 @@
   .modal-overlay.cel-overlay { padding: 0.75rem 0.5rem; }
   .cel-overlay > .modal-content { padding: 1.25rem 1rem; }
 }
+
+/* ============================================================
+   PHASE 50 — LOT 2 : CALENDRIER ET COMPTES RENDUS
+   ============================================================ */
+
+/* ─── 10. Événements du calendrier ────────────────────────── */
+/* Carte : bloc date à gauche, contenu à droite ; liseré = type */
+.cel-evt {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.8rem;
+  padding: 0.9rem 1rem;
+  border: 1.5px solid var(--ct-gray-100);
+  border-left: 5px solid var(--ct-blue);   /* couleur du type (style inline) */
+  border-radius: var(--ct-radius);
+  background: white;
+}
+.cel-evt--passe { opacity: 0.6; }
+
+/* Pavé « 12 / nov. » façon éphéméride */
+.cel-evt-date {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 3.6rem;
+  height: 3.6rem;
+  border-radius: 10px;
+  background: #1F3864;                     /* bleu marine PedaClic */
+  color: white;
+  line-height: 1.05;
+}
+.cel-evt-jour { font-size: 1.35rem; font-weight: 800; }
+.cel-evt-mois { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.cel-evt-corps { flex: 1; min-width: 0; }
+.cel-evt-entete { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.4rem; }
+.cel-evt-type { font-size: 0.78rem; font-weight: 700; }
+.cel-evt-titre { margin: 0.2rem 0 0; font-size: 1rem; color: var(--ct-gray-800); }
+
+/* Compte à rebours (rouge PedaClic à 3 jours ou moins) */
+.cel-evt-echeance {
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ct-gray-100);
+  color: var(--ct-gray-600);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.cel-evt-echeance--proche { background: #fde2e2; color: #C00000; }
+
+/* ─── 11. Comptes rendus ──────────────────────────────────── */
+.cel-cr { margin-top: 0.75rem; font-size: 0.9rem; color: var(--ct-gray-700); }
+.cel-cr h4 {
+  margin: 0.9rem 0 0.3rem;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1F3864;
+}
+.cel-cr ol, .cel-cr ul { margin: 0; padding-left: 1.3rem; }
+.cel-cr-texte { white-space: pre-line; line-height: 1.6; }   /* garde les paragraphes saisis */
+
+/* Cases « présents » en pastilles cliquables */
+.cel-presents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border: none;
+}
+.cel-presents legend { margin-bottom: 0.4rem; }
+.cel-presents label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.7rem;
+  border: 1.5px solid var(--ct-gray-200);
+  border-radius: 999px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.cel-presents label.actif { border-color: var(--ct-green); background: var(--ct-green-light); color: var(--ct-green); }
+
+/* Fil de commentaires */
+.cel-commentaires {
+  margin-top: 1.1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--ct-gray-200);
+}
+.cel-commentaire {
+  margin-bottom: 0.6rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--ct-radius-sm);
+  background: var(--ct-gray-50);
+}
+.cel-commentaire-entete { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.85rem; }
+.cel-commentaire-entete .cel-bloc-meta { margin: 0; }
+.cel-commentaire-suppr {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: var(--ct-gray-400);
+  cursor: pointer;
+}
+.cel-commentaire-suppr:hover { color: var(--ct-red); }
+.cel-commentaire-texte { margin: 0.25rem 0 0; font-size: 0.88rem; white-space: pre-line; }
+.cel-commentaire-form { display: flex; gap: 0.5rem; align-items: flex-end; }
+.cel-commentaire-form .form-textarea { flex: 1; }
+
+/* ─── 12. Mobile et mode sombre (lot 2) ───────────────────── */
+@media (max-width: 640px) {
+  .cel-evt { gap: 0.7rem; padding: 0.75rem; }
+  .cel-evt-date { width: 3rem; height: 3rem; }
+  .cel-commentaire-form { flex-direction: column; align-items: stretch; }
+}
+[data-theme="dark"] .cel-evt,
+[data-theme="dark"] .cel-commentaire { background: var(--color-bg-secondary); border-color: var(--color-border); color: var(--color-text); }
+[data-theme="dark"] .cel-evt-titre,
+[data-theme="dark"] .cel-cr,
+[data-theme="dark"] .cel-cr h4 { color: var(--color-text); }
+[data-theme="dark"] .cel-evt-echeance { background: var(--color-bg-tertiary); color: var(--color-text); }

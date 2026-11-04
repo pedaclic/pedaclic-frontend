@@ -32,7 +32,15 @@ import type {
   ProgressionCellule,
   RessourceCellule,
   AvancementMembre,
+  // Phase 50 — lot 2
+  EvenementCellule,
+  EvenementFormData,
+  CompteRenduCellule,
+  CompteRenduFormData,
+  CommentaireCR,
 } from '../types/cellule.types';
+import { TYPE_EVENEMENT_CONFIG, dateLongue } from '../types/cellule.types';
+import { creerNotification } from './notificationService';
 import { genererCodeCellule, normaliserCode } from '../types/cellule.types';
 import type { CahierTextes, EntreeCahier, RubriqueCahier } from '../types/cahierTextes.types';
 import {
@@ -178,10 +186,21 @@ export async function demanderAdhesion(saisie: string, auteur: Auteur): Promise<
     if (c.exists() && (c.data().membreIds ?? []).includes(auteur.uid)) return 'deja-membre';
   } catch { /* non membre : on continue */ }
 
-  await setDoc(doc(db, COL_CELLULES, celluleId, 'demandes', auteur.uid), {
+  // Demande déjà envoyée ? (les règles interdisent de la réécrire)
+  const refDemande = doc(db, COL_CELLULES, celluleId, 'demandes', auteur.uid);
+  if ((await getDoc(refDemande)).exists()) return 'envoyee';
+
+  await setDoc(refDemande, {
     nom: auteur.nom,
     code,
     createdAt: Timestamp.now(),
+  });
+  // Phase 50 — l'animateur est prévenu (son uid est dans le document du code)
+  await notifier([String(codeSnap.data().animateurId ?? '')], auteur, {
+    titre: '🙋 Nouvelle demande d\'adhésion',
+    message: `${auteur.nom} souhaite rejoindre votre cellule.`,
+    lien: `/prof/cellules/${celluleId}?onglet=membres`,
+    celluleId,
   });
   return 'envoyee';
 }
@@ -198,13 +217,27 @@ export function subscribeDemandes(
 }
 
 /** L'animateur accepte : ajout aux membres puis suppression de la demande */
-export async function accepterDemande(celluleId: string, demande: DemandeAdhesion): Promise<void> {
+export async function accepterDemande(
+  celluleId: string,
+  demande: DemandeAdhesion,
+  animateur?: Auteur,
+  nomCellule = 'la cellule'
+): Promise<void> {
   await updateDoc(doc(db, COL_CELLULES, celluleId), {
     membreIds: arrayUnion(demande.id),
     [`membres.${demande.id}`]: { nom: demande.nom, role: 'membre', depuis: Timestamp.now() },
     updatedAt: Timestamp.now(),
   });
   await deleteDoc(doc(db, COL_CELLULES, celluleId, 'demandes', demande.id));
+  // Phase 50 — le nouveau membre est prévenu
+  if (animateur) {
+    await notifier([demande.id], animateur, {
+      titre: '✅ Adhésion acceptée',
+      message: `Vous êtes désormais membre de « ${nomCellule} ».`,
+      lien: `/prof/cellules/${celluleId}`,
+      celluleId,
+    });
+  }
 }
 
 export async function refuserDemande(celluleId: string, demandeId: string): Promise<void> {
@@ -417,4 +450,193 @@ export async function publierAvancement(celluleId: string, auteur: Auteur, cahie
 
 export async function retirerAvancement(celluleId: string, uid: string): Promise<void> {
   await deleteDoc(doc(db, COL_CELLULES, celluleId, 'avancements', uid));
+}
+
+// ═════════════════════════════════════════════════════════════
+// PHASE 50 — LOT 2
+// ═════════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────────────────────────
+// NOTIFICATIONS (cloche de l'en-tête)
+//   Une notification par destinataire (modèle existant de
+//   notificationService). Jamais bloquant : un échec d'envoi
+//   n'empêche pas l'action principale.
+// ─────────────────────────────────────────────────────────────
+async function notifier(
+  destinataires: string[],
+  emetteur: Auteur,
+  contenu: { titre: string; message: string; lien: string; celluleId: string }
+): Promise<void> {
+  const cibles = Array.from(new Set(destinataires)).filter(id => id && id !== emetteur.uid);
+  await Promise.allSettled(cibles.map(id => creerNotification({
+    destinataireId: id,
+    destinataireRole: 'prof',
+    type: 'annonce',
+    titre: contenu.titre,
+    message: contenu.message,
+    lienAction: contenu.lien,
+    labelAction: 'Ouvrir la cellule',
+    emetteurId: emetteur.uid,
+    emetteurNom: emetteur.nom,
+    entiteId: contenu.celluleId,
+    entiteType: 'autre',
+    canal: 'in_app',
+  })));
+}
+
+/** Prévient tous les membres de la cellule (sauf l'auteur de l'action) */
+export async function notifierMembres(
+  cellule: Pick<Cellule, 'id' | 'membreIds'>,
+  emetteur: Auteur,
+  contenu: { titre: string; message: string; onglet: string }
+): Promise<void> {
+  await notifier(cellule.membreIds, emetteur, {
+    titre: contenu.titre,
+    message: contenu.message,
+    lien: `/prof/cellules/${cellule.id}?onglet=${contenu.onglet}`,
+    celluleId: cellule.id,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// CALENDRIER DE CELLULE
+//   Tri par date côté client (aucun index composite).
+// ─────────────────────────────────────────────────────────────
+export function subscribeEvenements(
+  celluleId: string,
+  onData: (liste: EvenementCellule[]) => void
+): () => void {
+  return onSnapshot(
+    sousCol(celluleId, 'evenements'),
+    snap => onData(
+      snap.docs.map(d => ({ id: d.id, ...d.data() } as EvenementCellule))
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.heure || '').localeCompare(b.heure || ''))
+    ),
+    () => onData([])
+  );
+}
+
+export async function enregistrerEvenement(
+  cellule: Pick<Cellule, 'id' | 'membreIds'>,
+  auteur: Auteur,
+  form: EvenementFormData,
+  options: { evenementId?: string; prevenir: boolean }
+): Promise<void> {
+  const now = Timestamp.now();
+  const payload = {
+    type: form.type,
+    titre: form.titre.trim(),
+    date: form.date,
+    heure: form.heure,
+    duree: form.heure ? Math.max(0, Number(form.duree) || 0) : 0,
+    lieu: form.lieu.trim(),
+    classe: form.classe,
+    description: form.description.trim(),
+    auteurId: auteur.uid,
+    auteurNom: auteur.nom,
+    updatedAt: now,
+  };
+  if (options.evenementId) {
+    await updateDoc(doc(db, COL_CELLULES, cellule.id, 'evenements', options.evenementId), payload);
+  } else {
+    await addDoc(sousCol(cellule.id, 'evenements'), { ...payload, createdAt: now });
+  }
+  if (options.prevenir) {
+    const cfg = TYPE_EVENEMENT_CONFIG[form.type];
+    await notifierMembres(cellule, auteur, {
+      titre: `${cfg.emoji} ${options.evenementId ? 'Événement modifié' : cfg.label}`,
+      message: `${form.titre.trim()} — ${dateLongue(form.date)}${form.heure ? ` à ${form.heure}` : ''}${form.classe ? ` (${form.classe})` : ''}`,
+      onglet: 'calendrier',
+    });
+  }
+}
+
+export async function supprimerEvenement(celluleId: string, evenementId: string): Promise<void> {
+  await deleteDoc(doc(db, COL_CELLULES, celluleId, 'evenements', evenementId));
+}
+
+// ─────────────────────────────────────────────────────────────
+// COMPTES RENDUS DE RÉUNION + COMMENTAIRES
+// ─────────────────────────────────────────────────────────────
+export function subscribeComptesRendus(
+  celluleId: string,
+  onData: (liste: CompteRenduCellule[]) => void
+): () => void {
+  return onSnapshot(
+    sousCol(celluleId, 'comptesRendus'),
+    snap => onData(
+      snap.docs.map(d => ({ id: d.id, ...d.data() } as CompteRenduCellule))
+        .sort((a, b) => b.dateReunion.localeCompare(a.dateReunion))
+    ),
+    () => onData([])
+  );
+}
+
+export async function enregistrerCompteRendu(
+  cellule: Pick<Cellule, 'id' | 'membreIds'>,
+  auteur: Auteur,
+  form: CompteRenduFormData,
+  options: { compteRenduId?: string; prevenir: boolean }
+): Promise<void> {
+  const now = Timestamp.now();
+  const payload = {
+    titre: form.titre.trim(),
+    dateReunion: form.dateReunion,
+    lieu: form.lieu.trim(),
+    presentsIds: form.presentsIds,
+    presentsNoms: form.presentsNoms,
+    ordreDuJour: form.ordreDuJour.trim(),
+    deliberations: form.deliberations.trim(),
+    decisions: form.decisions.trim(),
+    prochaineReunion: form.prochaineReunion,
+    auteurId: auteur.uid,
+    auteurNom: auteur.nom,
+    updatedAt: now,
+  };
+  if (options.compteRenduId) {
+    await updateDoc(doc(db, COL_CELLULES, cellule.id, 'comptesRendus', options.compteRenduId), payload);
+  } else {
+    await addDoc(sousCol(cellule.id, 'comptesRendus'), { ...payload, createdAt: now });
+  }
+  if (options.prevenir) {
+    await notifierMembres(cellule, auteur, {
+      titre: options.compteRenduId ? '📝 Compte rendu mis à jour' : '📝 Nouveau compte rendu',
+      message: `${form.titre.trim()} — réunion du ${dateLongue(form.dateReunion)}`,
+      onglet: 'comptes-rendus',
+    });
+  }
+}
+
+export async function supprimerCompteRendu(celluleId: string, compteRenduId: string): Promise<void> {
+  await deleteDoc(doc(db, COL_CELLULES, celluleId, 'comptesRendus', compteRenduId));
+}
+
+export function subscribeCommentaires(
+  celluleId: string,
+  compteRenduId: string,
+  onData: (liste: CommentaireCR[]) => void
+): () => void {
+  return onSnapshot(
+    query(collection(db, COL_CELLULES, celluleId, 'comptesRendus', compteRenduId, 'commentaires'), orderBy('createdAt', 'asc')),
+    snap => onData(snap.docs.map(d => ({ id: d.id, ...d.data() } as CommentaireCR))),
+    () => onData([])
+  );
+}
+
+export async function ajouterCommentaire(
+  celluleId: string,
+  compteRenduId: string,
+  auteur: Auteur,
+  texte: string
+): Promise<void> {
+  await addDoc(collection(db, COL_CELLULES, celluleId, 'comptesRendus', compteRenduId, 'commentaires'), {
+    texte: texte.trim().slice(0, 2000),
+    auteurId: auteur.uid,
+    auteurNom: auteur.nom,
+    createdAt: Timestamp.now(),
+  });
+}
+
+export async function supprimerCommentaire(celluleId: string, compteRenduId: string, commentaireId: string): Promise<void> {
+  await deleteDoc(doc(db, COL_CELLULES, celluleId, 'comptesRendus', compteRenduId, 'commentaires', commentaireId));
 }

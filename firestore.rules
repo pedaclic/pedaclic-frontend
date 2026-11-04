@@ -998,6 +998,33 @@ service cloud.firestore {
         allow delete: if isSignedIn() &&
                          (request.auth.uid == uid || estAnimateurCellule(cid));
       }
+
+      // ── PHASE 50 — Calendrier : lu par les membres, géré par l'animateur
+      match /evenements/{eid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+      }
+
+      // ── PHASE 50 — Comptes rendus : lus par les membres, rédigés par l'animateur
+      match /comptesRendus/{crId} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+
+        // Commentaires : tout membre commente ; auteur ou animateur supprime
+        match /commentaires/{comId} {
+          allow read: if estMembreCellule(cid);
+          allow create: if estMembreCellule(cid) &&
+                           request.resource.data.auteurId == request.auth.uid &&
+                           request.resource.data.texte is string &&
+                           request.resource.data.texte.size() > 0 &&
+                           request.resource.data.texte.size() <= 2000;
+          allow update: if false;
+          allow delete: if isSignedIn() && (
+                           resource.data.auteurId == request.auth.uid ||
+                           estAnimateurCellule(cid)
+                         );
+        }
+      }
     }
 
     match /cellules_codes/{code} {

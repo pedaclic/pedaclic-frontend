@@ -7,6 +7,10 @@
 //   📚 Bibliothèque  — séances partagées, copie dans MON cahier
 //   📈 Avancement    — avancement publié volontairement par chacun
 //   👥 Membres       — code, demandes, membres (animateur) / quitter
+// Phase 50 (lot 2) :
+//   📅 Calendrier    — devoirs harmonisés, compositions, réunions
+//   📝 Comptes rendus — réunions, commentaires, export PDF
+//   🔔 Notifications — membres prévenus (cloche de l'en-tête)
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -20,11 +24,17 @@ import {
   enregistrerProgression, supprimerProgression, importerProgressionDansCahier,
   partagerSeance, supprimerRessource, dupliquerRessourceDansCahier,
   publierAvancement, retirerAvancement,
+  // Phase 50
+  subscribeEvenements, subscribeComptesRendus, notifierMembres,
 } from '../services/cellulesService';
 import { getCahiersByProf } from '../services/cahierTextesService';
 import type {
   Cellule, DemandeAdhesion, ProgressionCellule, RessourceCellule, AvancementMembre, CelluleFormData,
+  EvenementCellule, CompteRenduCellule,
 } from '../types/cellule.types';
+import { joursAvant } from '../types/cellule.types';
+import OngletCalendrier from '../components/cellules/OngletCalendrier';
+import OngletComptesRendus from '../components/cellules/OngletComptesRendus';
 import { PORTEES_CELLULE } from '../types/cellule.types';
 import type { CahierTextes } from '../types/cahierTextes.types';
 import { TYPE_CONTENU_CONFIG } from '../types/cahierTextes.types';
@@ -36,7 +46,8 @@ import PartagerSeanceModal from '../components/cellules/PartagerSeanceModal';
 import '../styles/CahierTextes.css';
 import '../styles/Cellules.css';
 
-type Onglet = 'progressions' | 'bibliotheque' | 'avancement' | 'membres';
+type Onglet = 'calendrier' | 'progressions' | 'bibliotheque' | 'avancement' | 'comptes-rendus' | 'membres';
+const ONGLETS_VALIDES: Onglet[] = ['calendrier', 'progressions', 'bibliotheque', 'avancement', 'comptes-rendus', 'membres'];
 
 /** Texte brut d'un contenu HTML (aperçu sûr : aucun HTML d'un collègue n'est injecté) */
 function texteBrut(html: string, max = 220): string {
@@ -68,11 +79,20 @@ const CelluleDetailPage: React.FC = () => {
   const [ressources, setRessources] = useState<RessourceCellule[]>([]);
   const [avancements, setAvancements] = useState<AvancementMembre[]>([]);
   const [mesCahiers, setMesCahiers] = useState<CahierTextes[]>([]);
+  // Phase 50
+  const [evenements, setEvenements] = useState<EvenementCellule[]>([]);
+  const [comptesRendus, setComptesRendus] = useState<CompteRenduCellule[]>([]);
 
   // ── Interface ─────────────────────────────────────────────
+  // Phase 50 : onglet par défaut = calendrier ; suit le paramètre ?onglet=
+  // (lien d'une notification ouvert alors que la page est déjà affichée)
+  const ongletUrl = searchParams.get('onglet') as Onglet | null;
   const [onglet, setOnglet] = useState<Onglet>(
-    (searchParams.get('onglet') as Onglet) || 'progressions'
+    ongletUrl && ONGLETS_VALIDES.includes(ongletUrl) ? ongletUrl : 'calendrier'
   );
+  useEffect(() => {
+    if (ongletUrl && ONGLETS_VALIDES.includes(ongletUrl)) setOnglet(ongletUrl);
+  }, [ongletUrl]);
   const [filtreClasse, setFiltreClasse] = useState('');
   const [showModifier, setShowModifier] = useState(false);
   const [progEditee, setProgEditee] = useState<ProgressionCellule | 'nouvelle' | null>(null);
@@ -100,7 +120,9 @@ const CelluleDetailPage: React.FC = () => {
     const u1 = subscribeProgressions(celluleId, setProgressions);
     const u2 = subscribeRessources(celluleId, setRessources);
     const u3 = subscribeAvancements(celluleId, setAvancements);
-    return () => { u1(); u2(); u3(); };
+    const u4 = subscribeEvenements(celluleId, setEvenements);        // Phase 50
+    const u5 = subscribeComptesRendus(celluleId, setComptesRendus);  // Phase 50
+    return () => { u1(); u2(); u3(); u4(); u5(); };
   }, [celluleId, estMembre]);
 
   useEffect(() => {
@@ -187,9 +209,11 @@ const CelluleDetailPage: React.FC = () => {
       {/* ── Onglets ── */}
       <div className="cel-onglets" role="tablist">
         {([
+          ['calendrier', '📅 Calendrier', evenements.filter(e => joursAvant(e.date) >= 0).length],
           ['progressions', '🧭 Progressions', progressions.length],
           ['bibliotheque', '📚 Bibliothèque', ressources.length],
           ['avancement', '📈 Avancement', avancements.length],
+          ['comptes-rendus', '📝 Comptes rendus', comptesRendus.length],
           ['membres', '👥 Membres', membres.length],
         ] as const).map(([id, label, nb]) => (
           <button key={id} type="button" role="tab" aria-selected={onglet === id}
@@ -201,6 +225,20 @@ const CelluleDetailPage: React.FC = () => {
           </button>
         ))}
       </div>
+
+      {/* ── Phase 50 — Calendrier et comptes rendus (composants dédiés) ── */}
+      {onglet === 'calendrier' && (
+        <OngletCalendrier cellule={cellule} evenements={evenements} auteur={auteur} estAnimateur={estAnimateur} />
+      )}
+      {onglet === 'comptes-rendus' && (
+        <OngletComptesRendus
+          cellule={cellule}
+          comptesRendus={comptesRendus}
+          auteur={auteur}
+          estAnimateur={estAnimateur}
+          membres={membres.map(m => ({ id: m.id, nom: m.nom }))}
+        />
+      )}
 
       {/* ════════════════════════════════════════════════════════
           ONGLET 1 — PROGRESSIONS COMMUNES
@@ -423,7 +461,7 @@ const CelluleDetailPage: React.FC = () => {
                     <span>🙋 <strong>{d.nom}</strong> <span className="cel-bloc-meta">· {dateCourte(d.createdAt)}</span></span>
                     <span className="cel-bloc-actions">
                       <button className="btn-primary" onClick={() =>
-                        executer(() => accepterDemande(cellule.id, d), `${d.nom} a rejoint la cellule.`, 'Acceptation').catch(() => {})
+                        executer(() => accepterDemande(cellule.id, d, auteur, cellule.nom), `${d.nom} a rejoint la cellule.`, 'Acceptation').catch(() => {})
                       }>Accepter</button>
                       <button className="btn-secondary" onClick={() =>
                         executer(() => refuserDemande(cellule.id, d.id), 'Demande refusée.', 'Refus').catch(() => {})
@@ -493,6 +531,12 @@ const CelluleDetailPage: React.FC = () => {
           onValider={async donnees => {
             await enregistrerProgression(cellule.id, auteur, donnees, progEditee === 'nouvelle' ? undefined : progEditee.id);
             toast.success('Progression enregistrée.');
+            // Phase 50 — membres prévenus (non bloquant)
+            notifierMembres(cellule, auteur, {
+              titre: progEditee === 'nouvelle' ? '🧭 Nouvelle progression commune' : '🧭 Progression mise à jour',
+              message: `${donnees.titre} (${donnees.classe}) — à importer dans votre cahier.`,
+              onglet: 'progressions',
+            }).catch(() => {});
             setProgEditee(null);
           }}
           onClose={() => setProgEditee(null)}
@@ -538,6 +582,11 @@ const CelluleDetailPage: React.FC = () => {
           onValider={async (entree, cahier) => {
             await partagerSeance(cellule.id, auteur, entree, cahier);
             toast.success('Séance partagée avec la cellule.');
+            notifierMembres(cellule, auteur, {
+              titre: '📚 Nouvelle séance partagée',
+              message: `${auteur.nom} a partagé « ${entree.chapitre || 'une séance'} » (${cahier.classe}).`,
+              onglet: 'bibliotheque',
+            }).catch(() => {});
             setShowPartager(false);
           }}
           onClose={() => setShowPartager(false)}
