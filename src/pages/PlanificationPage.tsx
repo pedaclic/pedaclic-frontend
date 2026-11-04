@@ -66,7 +66,9 @@ const PlanificationPage: React.FC = () => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    Promise.all([getCahierById(cahierId), getEntreesCahier(cahierId)])
+    // Phase 47 : le cahier d'abord (son profId filtre la requête des séances)
+    getCahierById(cahierId)
+      .then(async (c) => [c, c ? await getEntreesCahier(cahierId, c.profId) : []] as const)
       .then(([c, list]) => {
         if (cancelled) return;
         if (!c) {

@@ -19,8 +19,19 @@ import {
   Timestamp,
   arrayUnion,
   arrayRemove,
+  writeBatch,
+  deleteField,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+// Phase 47 — notes privées hors du document de séance
+import {
+  enregistrerNotePrivee,
+  lireNotePrivee,
+  supprimerNotePrivee,
+  lireNotesPriveesCahier,
+  subscribeNotesPriveesCahier,
+  fusionnerNotesPrivees,
+} from './notesPriveesService';
 import type {
   CahierTextes,
   CahierFormData,
@@ -161,15 +172,19 @@ export async function getCahierById(cahierId: string): Promise<CahierTextes | nu
 /**
  * Alias de getEntreesCahier (Phase 21 — CahierDetailPage)
  */
-export const getEntreesByCahier = (cahierId: string) => getEntreesCahier(cahierId);
+export const getEntreesByCahier = (cahierId: string, profId: string) => getEntreesCahier(cahierId, profId);
 
 /**
  * Récupère une entrée par son ID (Phase 21 — EntreeEditorPage)
+ * Phase 47 : la note privée est relue depuis entrees_cahier_privees
+ * (repli sur l'ancien champ pour une séance non encore migrée).
  */
 export async function getEntreeById(entreeId: string): Promise<EntreeCahier | null> {
   const snap = await getDoc(doc(db, COL_ENTREES, entreeId));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as EntreeCahier;
+  const entree = { id: snap.id, ...snap.data() } as EntreeCahier;
+  const note = await lireNotePrivee(entreeId);
+  return note !== null ? { ...entree, notesPrivees: note } : entree;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -395,10 +410,66 @@ export async function updateCahier(
       payload.titre = `${f.matiere} ${f.classe} ${f.anneeScolaire}`;
     }
   }
+
+  // Phase 47 — si la visibilité élèves change, les séances doivent suivre
+  const partageDemande = typeof payload.isPartage === 'boolean' ? payload.isPartage : undefined;
+  let avant: { isPartage: boolean; profId: string } | null = null;
+  if (partageDemande !== undefined) {
+    const snap = await getDoc(doc(db, COL_CAHIERS, cahierId));
+    if (snap.exists()) {
+      avant = { isPartage: snap.data().isPartage === true, profId: String(snap.data().profId ?? '') };
+    }
+  }
+
   await updateDoc(doc(db, COL_CAHIERS, cahierId), {
     ...payload,
     updatedAt: Timestamp.now(),
   });
+
+  if (partageDemande !== undefined && avant && avant.isPartage !== partageDemande) {
+    await synchroniserVisibiliteEntrees(cahierId, avant.profId, partageDemande);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 47 — VISIBILITÉ DES SÉANCES POUR LES ÉLÈVES
+// ─────────────────────────────────────────────────────────────
+// Chaque séance porte `visibleEleves` (copie de cahier.isPartage).
+// La règle Firestore n'autorise un élève à lire une séance QUE si
+// ce champ vaut true — vérifiable directement, sans lire le cahier.
+// ─────────────────────────────────────────────────────────────
+
+/** Le cahier est-il partagé avec les élèves ? (false si illisible) */
+async function cahierEstPartage(cahierId: string): Promise<boolean> {
+  try {
+    const snap = await getDoc(doc(db, COL_CAHIERS, cahierId));
+    return snap.exists() && snap.data().isPartage === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Aligne `visibleEleves` de toutes les séances d'un cahier.
+ * Seules les séances à corriger sont écrites (lots de 450).
+ */
+export async function synchroniserVisibiliteEntrees(
+  cahierId: string,
+  profId: string,
+  visible: boolean
+): Promise<number> {
+  const snap = await getDocs(query(
+    collection(db, COL_ENTREES),
+    where('cahierId', '==', cahierId),
+    where('profId', '==', profId)
+  ));
+  const aCorriger = snap.docs.filter(d => d.data().visibleEleves !== visible);
+  for (let i = 0; i < aCorriger.length; i += 450) {
+    const batch = writeBatch(db);
+    aCorriger.slice(i, i + 450).forEach(d => batch.update(d.ref, { visibleEleves: visible }));
+    await batch.commit();
+  }
+  return aCorriger.length;
 }
 
 /**
@@ -450,10 +521,8 @@ export async function delierGroupeDuCahier(
 }
 
 export async function setPartage(cahierId: string, isPartage: boolean): Promise<void> {
-  await updateDoc(doc(db, COL_CAHIERS, cahierId), {
-    isPartage,
-    updatedAt: Timestamp.now(),
-  });
+  // Phase 47 — passe par updateCahier pour synchroniser les séances
+  await updateCahier(cahierId, { isPartage });
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -803,38 +872,60 @@ export async function getEbooksApercu(): Promise<EbookApercu[]> {
 // ENTRÉES — CRUD
 // ─────────────────────────────────────────────────────────────
 
-export async function getEntreesCahier(cahierId: string): Promise<EntreeCahier[]> {
+// ─────────────────────────────────────────────────────────────
+// PHASE 47 — Lectures CÔTÉ PROFESSEUR
+//   `profId` = propriétaire du CAHIER (cahier.profId), pas forcément
+//   l'utilisateur connecté (un admin consulte le cahier d'un autre).
+//   Le filtre where('profId') permet à Firestore de PROUVER que la
+//   requête respecte la règle « resource.data.profId == uid ».
+//   Index composites : (cahierId, profId, ordre) et (cahierId, profId, date).
+// ─────────────────────────────────────────────────────────────
+
+export async function getEntreesCahier(cahierId: string, profId: string): Promise<EntreeCahier[]> {
   const q = query(
     collection(db, COL_ENTREES),
     where('cahierId', '==', cahierId),
+    where('profId', '==', profId),
     orderBy('ordre', 'asc')
   );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+  const [snap, notes] = await Promise.all([getDocs(q), lireNotesPriveesCahier(cahierId, profId)]);
+  return fusionnerNotesPrivees(snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier)), notes);
 }
 
 /**
  * Abonnement temps réel aux entrées d'un cahier.
  * Évite les incohérences de cache (IndexedDB) entre la liste des cahiers
  * et la page détail — garantit que les séances s'affichent correctement.
+ * Phase 47 : deux abonnements (séances + notes privées) fusionnés.
  */
 export function subscribeToEntreesCahier(
   cahierId: string,
+  profId: string,
   onData: (entrees: EntreeCahier[]) => void,
   onError?: (err: Error) => void
 ): () => void {
   const q = query(
     collection(db, COL_ENTREES),
     where('cahierId', '==', cahierId),
+    where('profId', '==', profId),
     orderBy('ordre', 'asc')
   );
-  return onSnapshot(
+  // Derniers états reçus : on réémet la fusion à chaque changement
+  let entrees: EntreeCahier[] | null = null;
+  let notes = new Map<string, string>();
+  const emettre = () => { if (entrees) onData(fusionnerNotesPrivees(entrees, notes)); };
+
+  const unsubEntrees = onSnapshot(
     q,
     (snap) => {
-      onData(snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier)));
+      entrees = snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+      emettre();
     },
     onError
   );
+  const unsubNotes = subscribeNotesPriveesCahier(cahierId, profId, (n) => { notes = n; emettre(); });
+
+  return () => { unsubEntrees(); unsubNotes(); };
 }
 
 /**
@@ -842,6 +933,7 @@ export function subscribeToEntreesCahier(
  */
 export const getEntreesByMois = async (
   cahierId: string,
+  profId: string, // Phase 47 — propriétaire du cahier
   annee: number,
   mois: number  // 0-indexed
 ): Promise<EntreeCahier[]> => {
@@ -850,6 +942,7 @@ export const getEntreesByMois = async (
   const q = query(
     collection(db, COL_ENTREES),
     where('cahierId', '==', cahierId),
+    where('profId', '==', profId),
     where('date', '>=', debut),
     where('date', '<=', fin),
     orderBy('date', 'asc')
@@ -916,9 +1009,14 @@ export function subscribeToEntreesMarqueesEvaluation(
 /**
  * Statistiques d'un cahier — Phase 21 (CahierStats)
  */
-export const getStatsCahier = async (cahierId: string): Promise<StatsCahier> => {
+export const getStatsCahier = async (cahierId: string, profId: string): Promise<StatsCahier> => {
+  // Phase 47 — filtre profId (2 égalités → aucun index composite)
   const snap = await getDocs(
-    query(collection(db, COL_ENTREES), where('cahierId', '==', cahierId))
+    query(
+      collection(db, COL_ENTREES),
+      where('cahierId', '==', cahierId),
+      where('profId', '==', profId)
+    )
   );
   const entrees = snap.docs.map(d => d.data() as EntreeCahier);
   const total = entrees.length;
@@ -945,10 +1043,14 @@ export const getStatsCahier = async (cahierId: string): Promise<StatsCahier> => 
  * Entrées réalisées uniquement — Phase 22 (vue élève)
  */
 export async function getEntreesRealisees(cahierId: string): Promise<EntreeCahier[]> {
+  // Phase 47 — VUE ÉLÈVE : le filtre visibleEleves == true permet à
+  // Firestore de prouver que chaque résultat est autorisé.
+  // Index composite : (cahierId, statut, visibleEleves, date DESC)
   const q = query(
     collection(db, COL_ENTREES),
     where('cahierId', '==', cahierId),
     where('statut', '==', 'realise'),
+    where('visibleEleves', '==', true),
     orderBy('date', 'desc')
   );
   const snap = await getDocs(q);
@@ -975,6 +1077,7 @@ export async function getEntreesEvaluationCahier(cahierId: string): Promise<Entr
       collection(db, COL_ENTREES),
       where('cahierId', '==', cahierId),
       where('isMarqueEvaluation', '==', true),
+      where('visibleEleves', '==', true), // Phase 47 — vue élève
     );
     const snap = await getDocs(q);
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
@@ -1050,11 +1153,21 @@ export async function createEntree(
     };
   }
 
+  // ── Phase 47 — notes privées → document séparé ; visibilité élèves ──
+  const notes = typeof payload.notesPrivees === 'string' ? payload.notesPrivees.trim() : '';
+  delete payload.notesPrivees;
+  const cahierIdFinal = String(payload.cahierId);
+  const profIdFinal   = String(payload.profId);
+  payload.visibleEleves = await cahierEstPartage(cahierIdFinal);
+
   const ref = await addDoc(collection(db, COL_ENTREES), {
     ...payload,
     createdAt: now,
     updatedAt: now,
   });
+  if (notes) {
+    await enregistrerNotePrivee(ref.id, { profId: profIdFinal, cahierId: cahierIdFinal }, notes);
+  }
   return ref.id;
 }
 
@@ -1101,6 +1214,19 @@ export async function updateEntree(
     payload = { ...cahierIdOrData as object };
   }
 
+  // ── Phase 47 — les notes privées vont dans entrees_cahier_privees ──
+  // Le document privé est écrit AVANT la séance : en cas d'échec, rien
+  // n'est perdu (l'ancien champ reste en place).
+  if ('notesPrivees' in payload) {
+    const notes = String(payload.notesPrivees ?? '');
+    const snap = await getDoc(doc(db, COL_ENTREES, entreeId));
+    if (snap.exists()) {
+      const d = snap.data();
+      await enregistrerNotePrivee(entreeId, { profId: String(d.profId), cahierId: String(d.cahierId) }, notes);
+    }
+    payload.notesPrivees = deleteField(); // retire l'ancien champ public
+  }
+
   await updateDoc(doc(db, COL_ENTREES, entreeId), {
     ...payload,
     updatedAt: Timestamp.now(),
@@ -1109,6 +1235,7 @@ export async function updateEntree(
 
 export async function deleteEntree(entreeId: string): Promise<void> {
   await deleteDoc(doc(db, COL_ENTREES, entreeId));
+  await supprimerNotePrivee(entreeId); // Phase 47 (silencieux si absente)
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1145,7 +1272,10 @@ export async function duplicateEntree(
     motifAnnulation:      '',
     dateReport:           null,
     heureReport:          '',
-    notesPrivees:         entreeSource.notesPrivees ?? '',
+    // Phase 47 — notes privées copiées dans le document privé (plus bas)
+    visibleEleves:        typeof entreeSource.visibleEleves === 'boolean'
+                            ? entreeSource.visibleEleves
+                            : await cahierEstPartage(entreeSource.cahierId),
     isMarqueEvaluation:   Boolean(entreeSource.isMarqueEvaluation),
     typeEvaluation:       entreeSource.typeEvaluation ?? null,
     dateEvaluationPrevue: null,
@@ -1164,6 +1294,10 @@ export async function duplicateEntree(
   };
 
   const ref = await addDoc(collection(db, COL_ENTREES), clone);
+  const notes = (entreeSource.notesPrivees ?? '').trim();
+  if (notes) {
+    await enregistrerNotePrivee(ref.id, { profId: entreeSource.profId, cahierId: entreeSource.cahierId }, notes);
+  }
   return ref.id;
 }
 

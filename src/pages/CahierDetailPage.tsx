@@ -257,11 +257,15 @@ const CahierDetailPage: React.FC = () => {
   // ── Abonnement temps réel aux entrées ──────────────────────
   // Utilise onSnapshot pour éviter les incohérences de cache (IndexedDB)
   // entre la carte (subscribeToCahiers) et la page détail.
+  // Phase 47 : on attend le cahier pour filtrer sur son propriétaire
+  // (cahier.profId) — condition exigée par les règles Firestore.
+  const profIdCahier = cahier?.profId;
   useEffect(() => {
-    if (!cahierId) return;
+    if (!cahierId || !profIdCahier) return;
     setLoadingEntrees(true);
     const unsub = subscribeToEntreesCahier(
       cahierId,
+      profIdCahier,
       (data) => {
         setEntrees(data);
         setLoadingEntrees(false);
@@ -273,7 +277,7 @@ const CahierDetailPage: React.FC = () => {
       }
     );
     return () => unsub();
-  }, [cahierId]);
+  }, [cahierId, profIdCahier]);
 
   // ── Charger les travaux liés au cahier (via groupeIds) ──
   useEffect(() => {
@@ -1470,7 +1474,7 @@ const CahierDetailPage: React.FC = () => {
       {/* ── Vue Calendrier ── */}
       {vue === 'calendrier' && (
         <div className="cahier-detail-layout">
-          <div><CahierCalendar cahierId={cahier.id} /></div>
+          <div><CahierCalendar cahierId={cahier.id} profId={cahier.profId} /></div>
           <div><RappelWidget profId={currentUser!.uid} cahierId={cahier.id} /></div>
         </div>
       )}

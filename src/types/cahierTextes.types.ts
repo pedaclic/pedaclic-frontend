@@ -362,7 +362,17 @@ export interface EntreeCahier {
    */
   heureReport?: string;
   piecesJointes?: PieceJointe[];
+  /**
+   * Phase 47 — n'est PLUS stocké dans la séance mais dans
+   * `entrees_cahier_privees/{id}` ; les services le refusionnent ici
+   * côté professeur. Peut subsister sur une séance non migrée.
+   */
   notesPrivees?: string;
+  /**
+   * Phase 47 — copie de `cahier.isPartage` : seule une séance avec
+   * visibleEleves == true est lisible par les élèves (règles Firestore).
+   */
+  visibleEleves?: boolean;
   // Signets évaluation (Phase 21)
   isMarqueEvaluation: boolean;
   typeEvaluation?: TypeEvaluation;

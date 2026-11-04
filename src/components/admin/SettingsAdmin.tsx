@@ -25,6 +25,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useConfirm } from '../../contexts/ConfirmContext';
+// Phase 47 — migration des séances (visibilité élèves + notes privées)
+import MigrationSeancesPhase47 from './MigrationSeancesPhase47';
 
 // ==================== INTERFACES ====================
 
@@ -475,6 +477,9 @@ const SettingsAdmin: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ==================== SECTION : SÉCURITÉ DES SÉANCES (Phase 47) ==================== */}
+      <MigrationSeancesPhase47 />
 
       {/* ==================== SECTION : MODE MAINTENANCE ==================== */}
       <div className="settings-section">

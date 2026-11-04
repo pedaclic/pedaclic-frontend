@@ -382,12 +382,66 @@ service cloud.firestore {
                        (resource.data.profId == request.auth.uid || isAdmin());
     }
 
+    // ══════════════════════════════════════════════════════════
+    // SÉANCES DU CAHIER DE TEXTES — PHASE 47 (lecture restreinte)
+    //   AVANT : toute personne connectée lisait TOUTES les séances
+    //           (y compris celles des cahiers non partagés).
+    //   APRÈS : lecture autorisée seulement
+    //     • au professeur propriétaire (profId),
+    //     • aux élèves si la séance est marquée visibleEleves == true
+    //       (copie de cahier.isPartage, tenue à jour par l'appli),
+    //     • aux administrateurs.
+    //   Les requêtes filtrent sur profId OU visibleEleves : Firestore
+    //   peut ainsi PROUVER qu'elles respectent la règle.
+    //   Les notes privées vivent dans entrees_cahier_privees (ci-dessous).
+    // ══════════════════════════════════════════════════════════
     match /entrees_cahier/{entreeId} {
+      // ⚠️ PHASE 47 — RÈGLE TRANSITOIRE (le temps de la migration) :
+      //    lecture inchangée pour ne pas casser le site en ligne.
+      //    À REMPLACER avant `npm run deploy:prod` par la règle finale :
+      //      allow read: if isSignedIn() && (
+      //                     resource.data.profId == request.auth.uid ||
+      //                     resource.data.visibleEleves == true ||
+      //                     isAdmin()
+      //                   );
       allow read: if isSignedIn();
       allow create: if isSignedIn() &&
                        request.resource.data.profId == request.auth.uid;
-      allow update, delete: if isAdmin() ||
-                               (isSignedIn() && resource.data.profId == request.auth.uid);
+      // Le propriétaire ne peut pas réattribuer sa séance à un autre profId
+      allow update: if isAdmin() ||
+                       (isSignedIn() &&
+                        resource.data.profId == request.auth.uid &&
+                        request.resource.data.profId == request.auth.uid);
+      allow delete: if isAdmin() ||
+                       (isSignedIn() && resource.data.profId == request.auth.uid);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 47 — NOTES PRIVÉES DES SÉANCES (propriétaire seul)
+    //   ID du document = ID de la séance.
+    //   `resource == null` : lire / supprimer une note inexistante
+    //   ne doit pas échouer (aucune donnée exposée).
+    // ══════════════════════════════════════════════════════════
+    match /entrees_cahier_privees/{entreeId} {
+      allow read: if isSignedIn() && (
+                     resource == null ||
+                     resource.data.profId == request.auth.uid ||
+                     isAdmin()
+                   );
+      allow create: if isSignedIn() && (
+                       request.resource.data.profId == request.auth.uid ||
+                       isAdmin()
+                     );
+      allow update: if isSignedIn() && (
+                       (resource.data.profId == request.auth.uid &&
+                        request.resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      allow delete: if isSignedIn() && (
+                       resource == null ||
+                       resource.data.profId == request.auth.uid ||
+                       isAdmin()
+                     );
     }
 
     match /rappels_cahier/{rappelId} {

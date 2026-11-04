@@ -292,9 +292,11 @@ const EntreeEditorPage: React.FC = () => {
   }, [cahierId, entreeId]);
 
   // ── Feature 3 : Charger les séances existantes du cahier ──
+  // Phase 47 : attend le cahier (son profId filtre la requête des séances)
+  const profIdCahier = cahier?.profId;
   useEffect(() => {
-    if (!cahierId) return;
-    getEntreesByCahier(cahierId).then(entries => {
+    if (!cahierId || !profIdCahier) return;
+    getEntreesByCahier(cahierId, profIdCahier).then(entries => {
       // Trier par date décroissante
       const sorted = [...entries].sort((a, b) => {
         const da = a.date?.toDate?.() ?? new Date(0);
@@ -303,7 +305,7 @@ const EntreeEditorPage: React.FC = () => {
       });
       setAutresEntrees(sorted);
     }).catch(() => setAutresEntrees([]));
-  }, [cahierId]);
+  }, [cahierId, profIdCahier]);
 
   // ── Feature 1 : Données de l'aperçu (mémoïsées) ──
   const previewData = useMemo(() => {
@@ -412,7 +414,7 @@ const EntreeEditorPage: React.FC = () => {
       }
 
       // Recalcule le compteur de séances réalisées sur le cahier
-      const toutesEntrees = await getEntreesByCahier(cahierId);
+      const toutesEntrees = await getEntreesByCahier(cahierId, cahier.profId); // Phase 47
       const nbRealise = toutesEntrees.filter(e => e.statut === 'realise').length;
       await updateCahier(cahierId, { nombreSeancesRealise: nbRealise });
 

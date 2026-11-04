@@ -1033,8 +1033,9 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
 
   /** Charge les entrées du cahier sélectionné pour l'appel (filtrées par date) */
   useEffect(() => {
-    if (!appelCahierId) { setAppelEntrees([]); setAppelEntreeIds([]); return; }
-    getEntreesCahier(appelCahierId).then(entries => {
+    if (!appelCahierId || !currentUser?.uid) { setAppelEntrees([]); setAppelEntreeIds([]); return; }
+    // Phase 47 : cahiers issus de getCahiersForGroupe(…, uid) → le prof connecté en est propriétaire
+    getEntreesCahier(appelCahierId, currentUser.uid).then(entries => {
       const filtered = entries.filter(e => {
         const d = e.date?.toDate?.();
         return d && d.toISOString().slice(0, 10) === dateAppel;
@@ -1071,7 +1072,7 @@ const GroupeDetail: React.FC<GroupeDetailProps> = ({ groupe, onRetour, initialOn
         if (cahiers.length > 0) {
           const idx = Math.min(planifCahierIdx, cahiers.length - 1);
           setPlanifCahierIdx(idx);
-          const entries = await getEntreesCahier(cahiers[idx].id);
+          const entries = await getEntreesCahier(cahiers[idx].id, cahiers[idx].profId); // Phase 47
           if (!cancelled) setPlanifEntrees(entries);
         } else {
           setPlanifEntrees([]);

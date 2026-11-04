@@ -23,7 +23,7 @@ const CahierStats: React.FC<CahierStatsProps> = ({ cahier }) => {
   useEffect(() => {
     const fetch = async () => {
       try {
-        const data = await getStatsCahier(cahier.id);
+        const data = await getStatsCahier(cahier.id, cahier.profId); // Phase 47
         setStats(data);
       } catch {
         // Silencieux
@@ -32,7 +32,7 @@ const CahierStats: React.FC<CahierStatsProps> = ({ cahier }) => {
       }
     };
     fetch();
-  }, [cahier.id]);
+  }, [cahier.id, cahier.profId]);
 
   // Calculé depuis la prop cahier : le parent (CahierDetailPage) passe
   // un nombreSeancesRealise dérivé en temps réel du tableau entrees.

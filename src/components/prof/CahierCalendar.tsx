@@ -14,6 +14,8 @@ import '../../styles/CahierCalendar.css';
 // ─── Types ───────────────────────────────────────────────────
 interface CahierCalendarProps {
   cahierId: string;
+  /** Phase 47 — propriétaire du cahier (filtre exigé par les règles) */
+  profId: string;
 }
 
 // ─── Utilitaires date ────────────────────────────────────────
@@ -75,7 +77,7 @@ const buildCalendarGrid = (year: number, month: number, entrees: EntreeCahier[])
 };
 
 // ─── Composant principal ─────────────────────────────────────
-const CahierCalendar: React.FC<CahierCalendarProps> = ({ cahierId }) => {
+const CahierCalendar: React.FC<CahierCalendarProps> = ({ cahierId, profId }) => {
   const navigate = useNavigate();
   const today = new Date();
 
@@ -91,7 +93,7 @@ const CahierCalendar: React.FC<CahierCalendarProps> = ({ cahierId }) => {
     const fetchEntrees = async () => {
       setLoading(true);
       try {
-        const data = await getEntreesByMois(cahierId, currentYear, currentMonth);
+        const data = await getEntreesByMois(cahierId, profId, currentYear, currentMonth);
         setEntrees(data);
       } catch (err) {
         console.error('Erreur chargement entrées calendrier:', err);
@@ -100,7 +102,7 @@ const CahierCalendar: React.FC<CahierCalendarProps> = ({ cahierId }) => {
       }
     };
     fetchEntrees();
-  }, [cahierId, currentYear, currentMonth]);
+  }, [cahierId, profId, currentYear, currentMonth]);
 
   const grid = buildCalendarGrid(currentYear, currentMonth, entrees);
 

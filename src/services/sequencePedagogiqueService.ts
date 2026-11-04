@@ -23,6 +23,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+// Phase 47 — notes privées hors du document de séance
+import { enregistrerNotePrivee } from './notesPriveesService';
 import type {
   SequencePedagogique,
   SequenceFormData,
@@ -367,6 +369,13 @@ export async function exporterVersCahier(
   // IDs des séances à exporter (celles présentes dans datesParSeance)
   const idsAExporter = Object.keys(datesParSeance);
 
+  // Phase 47 — visibilité élèves des séances = partage du cahier cible
+  let visibleEleves = false;
+  try {
+    const cahierSnap = await getDoc(doc(db, 'cahiers_textes', cahierDeTextesId));
+    visibleEleves = cahierSnap.exists() && cahierSnap.data().isPartage === true;
+  } catch { /* par défaut : non visible */ }
+
   // 2. Copie des séances pour mise à jour
   const seancesMaj = [...sequence.seances];
 
@@ -405,10 +414,8 @@ export async function exporterVersCahier(
         // Statut initial → planifié
         statut:             'planifie' as EntreeCahier['statut'],
 
-        // Notes privées du prof : ressources de la séance
-        notesPrivees:       seance.ressources.length > 0
-          ? `Ressources : ${seance.ressources.join(' | ')}`
-          : undefined,
+        // Phase 47 — les notes privées (ressources) sont écrites à part, plus bas
+        visibleEleves,
 
         // Champ requis par l'interface (pas d'évaluation par défaut)
         isMarqueEvaluation: false,
@@ -430,6 +437,15 @@ export async function exporterVersCahier(
       }));
 
       idsEntrees.push(ref.id);
+
+      // Phase 47 — notes privées du prof : ressources de la séance
+      if (seance.ressources.length > 0) {
+        await enregistrerNotePrivee(
+          ref.id,
+          { profId, cahierId: cahierDeTextesId },
+          `Ressources : ${seance.ressources.join(' | ')}`
+        );
+      }
 
       // 5. Mettre à jour la séance dans le tableau local
       seancesMaj[idx] = {

@@ -228,6 +228,64 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "profId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "ordre",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entrees_cahier",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cahierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "profId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entrees_cahier",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cahierId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "statut",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "visibleEleves",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "entrees_cahier",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "cahierId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "ordre",
           "order": "ASCENDING"
         }
