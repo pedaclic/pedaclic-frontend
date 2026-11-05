@@ -10,7 +10,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   createEntree,
@@ -141,6 +141,10 @@ const EntreeEditorPage: React.FC = () => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  // Phase 52 — paramètres de pré-remplissage d'une NOUVELLE séance
+  //   ?date=YYYY-MM-DD&debut=HH:mm&fin=HH:mm  (bandeau « Aujourd'hui »)
+  //   ?rubriqueId=…&titreId=…                 (titre cliqué dans une rubrique)
+  const [searchParams] = useSearchParams();
 
   // États Phase 21
   const [cahier, setCahier]                   = useState<CahierTextes | null>(null);
@@ -282,6 +286,35 @@ const EntreeEditorPage: React.FC = () => {
               // Phase 35 — échéance existante si persistée (null sinon)
               echeanceDomicile: entreeData.echeanceDomicile ?? null,
             });
+          }
+        } else {
+          // ── Phase 52 — Pré-remplissage d'une nouvelle séance ──────────
+          //   Chaque paramètre est VALIDÉ avant usage : une URL modifiée
+          //   à la main ne peut pas injecter de valeur incohérente.
+          const reDate  = /^\d{4}-\d{2}-\d{2}$/;
+          const reHeure = /^\d{2}:\d{2}$/;
+          const pDate  = searchParams.get('date') ?? '';
+          const pDebut = searchParams.get('debut') ?? '';
+          const pFin   = searchParams.get('fin') ?? '';
+          const pRub   = searchParams.get('rubriqueId') ?? '';
+          const pTitre = searchParams.get('titreId') ?? '';
+
+          const rubrique = (cahierData.rubriques ?? []).find(r => r.id === pRub);
+          const titre    = rubrique?.titres?.find(t => t.id === pTitre);
+          if (rubrique) setRubriqueId(rubrique.id);
+          if (titre) setTitreId(titre.id); // → le statut du titre sera mis à jour à l'enregistrement (Phase 33)
+
+          if (reDate.test(pDate) || reHeure.test(pDebut) || titre) {
+            // Séance future → statut « planifiée » plutôt que « réalisée »
+            const aujourdHui = new Date().toISOString().slice(0, 10);
+            setForm(f => ({
+              ...f,
+              ...(reDate.test(pDate)  ? { date: pDate } : {}),
+              ...(reHeure.test(pDebut) ? { heureDebut: pDebut } : {}),
+              ...(reHeure.test(pFin)   ? { heureFin: pFin } : {}),
+              ...(titre ? { chapitre: titre.nom } : {}),
+              ...(reDate.test(pDate) && pDate > aujourdHui ? { statut: 'planifie' as const } : {}),
+            }));
           }
         }
       } finally {

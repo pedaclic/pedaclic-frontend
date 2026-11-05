@@ -7,7 +7,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -58,6 +58,8 @@ import type { TravailAFaire } from '../types/groupeAbsences.types';
 import CorrigeTravailCell from '../components/prof/CorrigeTravailCell';
 // Phase 41 — glisser-déposer (souris, tactile, clavier) des rubriques et titres
 import { useDragReorder, deplacerElement } from '../hooks/useDragReorder';
+// Phase 52 — titres de rubrique cliquables (lien vers la séance correspondante)
+import { indexerSeancesParTitre, seancesDuTitre } from '../utils/liensSeances';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -575,6 +577,15 @@ const CahierDetailPage: React.FC = () => {
   // afin d'utiliser un seul hook pour toutes les rubriques.
   const SEP_TITRE = '::';
   const cleTitre = (rubriqueId: string, titreId: string) => `${rubriqueId}${SEP_TITRE}${titreId}`;
+
+  /* ── Phase 52 — Index « titre de rubrique → séances » ──────────
+     Recalculé seulement quand les séances ou les rubriques changent
+     (abonnement temps réel) : le lien d'un titre pointe toujours vers
+     la séance la plus récente portant ce titre. */
+  const seancesParTitre = useMemo(
+    () => indexerSeancesParTitre(entrees, rubriques),
+    [entrees, rubriques],
+  );
   const lireCleTitre = (cle: string) => {
     const [rubriqueId, titreId] = cle.split(SEP_TITRE);
     return { rubriqueId, titreId };
@@ -1269,7 +1280,38 @@ const CahierDetailPage: React.FC = () => {
                                     </button>
                                   )}
                                   <span className="cahier-titre-num">{tIdx + 1}.</span>
-                                  <span className="cahier-titre-nom">{t.nom}</span>
+                                  {/* Phase 52 — Le titre devient un lien :
+                                       • séance existante (en cours / achevée) → ouverture de la séance ;
+                                       • aucune séance → nouvelle séance pré-remplie (module + titre).
+                                     <Link> = vrai lien : clic molette / Ctrl+clic ouvre un nouvel onglet. */}
+                                  {(() => {
+                                    const seances = seancesDuTitre(seancesParTitre, r.id, t.nom);
+                                    const derniere = seances[0];
+                                    const href = derniere
+                                      ? `/prof/cahiers/${cahierId}/modifier/${derniere.id}`
+                                      : `/prof/cahiers/${cahierId}/nouvelle?rubriqueId=${encodeURIComponent(r.id)}&titreId=${encodeURIComponent(t.id)}`;
+                                    const dateTxt = derniere?.date?.toDate?.().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
+                                    const infobulle = derniere
+                                      ? `Ouvrir la séance du ${dateTxt}${seances.length > 1 ? ` (${seances.length} séances sur ce titre — la plus récente)` : ''}`
+                                      : 'Aucune séance saisie — créer la séance pour ce titre';
+                                    return (
+                                      <Link
+                                        to={href}
+                                        className={`cahier-titre-nom cahier-titre-lien${derniere ? '' : ' cahier-titre-lien--a-saisir'}`}
+                                        title={infobulle}
+                                        aria-label={`${t.nom} — ${infobulle}`}
+                                      >
+                                        <span className="cahier-titre-lien-texte">{t.nom}</span>
+                                        {derniere ? (
+                                          <span className="cahier-titre-lien-meta" aria-hidden="true">
+                                            📅 {dateTxt}{seances.length > 1 ? ` · ${seances.length}` : ''}
+                                          </span>
+                                        ) : (
+                                          <span className="cahier-titre-lien-meta cahier-titre-lien-meta--plus" aria-hidden="true">＋ Saisir</span>
+                                        )}
+                                      </Link>
+                                    );
+                                  })()}
                                   <select
                                     className="cahier-titre-statut-select"
                                     value={t.statut}

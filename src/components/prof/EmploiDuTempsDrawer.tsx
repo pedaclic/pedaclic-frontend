@@ -63,6 +63,17 @@ export interface OuvrirCahierInfo {
   groupeNom?: string;
   /** Phase 48 — établissement du créneau (cahier du bon établissement) */
   etablissementId?: string | null;
+  // ── Phase 52 — champs optionnels envoyés par le bandeau « Aujourd'hui » ──
+  //    (le tiroir de l'emploi du temps ne les fournit pas → comportement inchangé)
+  /** Date précise du cours « YYYY-MM-DD » (pré-remplit la nouvelle séance) */
+  date?: string;
+  /** Horaires du créneau « HH:mm » (pré-remplissent la nouvelle séance) */
+  heureDebut?: string;
+  heureFin?: string;
+  /** Cahier déjà résolu par le bandeau (évite une seconde recherche) */
+  cahierId?: string;
+  /** Séance déjà saisie pour ce créneau → ouverture directe de la séance */
+  entreeId?: string;
 }
 
 interface Props {

@@ -63,6 +63,8 @@ import {
 import { emploiPersonnelExiste } from '../services/emploiDuTempsService';
 import EmploiDuTempsDrawer, { type OuvrirCahierInfo, type VueEmploi } from '../components/prof/EmploiDuTempsDrawer';
 import EdtAujourdhui from '../components/prof/EdtAujourdhui';
+// Phase 52 — résolution « créneau → cahier » partagée avec le bandeau Aujourd'hui
+import { trouverCahierPourCreneau } from '../utils/liensSeances';
 
 import {
   COULEURS_CAHIER,
@@ -333,20 +335,23 @@ const CahierTextesPage: React.FC = () => {
 
   // ── Clic sur un créneau de l'emploi du temps → saisie du cahier (point 4) ──
   const handleOuvrirCahierDepuisCreneau = (info: OuvrirCahierInfo) => {
-    // Liaison rigoureuse (bug 2) : on cible d'abord le cahier du GROUPE exact
-    // (ex. 4PFA via groupeIds), puis à défaut on retombe sur (classe + matière).
-    let found = info.groupeId
-      ? cahiers.find(c => (c.groupeIds ?? []).includes(info.groupeId as string))
-      : undefined;
-    if (!found && info.matiere) {
-      // Phase 48 — priorité au cahier du MÊME établissement que le créneau
-      const candidats = cahiers.filter(c => c.classe === info.classe && c.matiere === info.matiere);
-      found = candidats.find(c => (c.etablissementId ?? null) === (info.etablissementId ?? null))
-           ?? candidats[0];
-    }
+    // Liaison rigoureuse (bug 2) : cahier du GROUPE exact, puis (classe + matière)
+    // du même établissement. Phase 52 : logique déplacée dans utils/liensSeances
+    // (partagée avec le bandeau « Aujourd'hui »), comportement identique.
+    const found = (info.cahierId ? cahiers.find(c => c.id === info.cahierId) : undefined)
+               ?? trouverCahierPourCreneau(cahiers, info);
     setEdtOpen(false);
-    if (found) {
-      navigate(`/prof/cahiers/${found.id}/nouvelle`);
+    if (found && info.entreeId) {
+      // Phase 52 — séance déjà saisie pour ce cours → on l'ouvre directement
+      navigate(`/prof/cahiers/${found.id}/modifier/${info.entreeId}`);
+    } else if (found) {
+      // Nouvelle séance ; Phase 52 : date + horaires du créneau pré-remplis si connus
+      const params = new URLSearchParams();
+      if (info.date)       params.set('date', info.date);
+      if (info.heureDebut) params.set('debut', info.heureDebut);
+      if (info.heureFin)   params.set('fin', info.heureFin);
+      const qs = params.toString();
+      navigate(`/prof/cahiers/${found.id}/nouvelle${qs ? `?${qs}` : ''}`);
     } else {
       // Pas encore de cahier : pré-remplit la modale de création (classe + groupe + matière)
       setEditCahier(null);
@@ -582,6 +587,7 @@ const CahierTextesPage: React.FC = () => {
           profId={currentUser.uid}
           annee={anneeCourante}
           etablissements={etablissements}
+          cahiers={cahiers} /* Phase 52 — séance saisie ou à saisir */
           onOuvrirCahier={handleOuvrirCahierDepuisCreneau}
           onVoirSemaine={() => { setEdtClasse(undefined); setEdtEtab(undefined); setEdtVue('ma-semaine'); setEdtOpen(true); }}
         />

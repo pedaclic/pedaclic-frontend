@@ -952,6 +952,29 @@ export const getEntreesByMois = async (
 };
 
 /**
+ * Phase 52 — Entrées d'un cahier sur une période quelconque (ex. une semaine).
+ * Même forme de requête que getEntreesByMois → réutilise l'index existant
+ * (cahierId ASC, profId ASC, date ASC). Utilisé par le bandeau « Aujourd'hui ».
+ */
+export const getEntreesCahierPeriode = async (
+  cahierId: string,
+  profId: string, // propriétaire du cahier (règles Firestore Phase 47)
+  debut: Date,
+  fin: Date
+): Promise<EntreeCahier[]> => {
+  const q = query(
+    collection(db, COL_ENTREES),
+    where('cahierId', '==', cahierId),
+    where('profId', '==', profId),
+    where('date', '>=', Timestamp.fromDate(debut)),
+    where('date', '<=', Timestamp.fromDate(fin)),
+    orderBy('date', 'asc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() } as EntreeCahier));
+};
+
+/**
  * Entrées marquées évaluation — Phase 21 (SignetFilter)
  */
 export const getEntreesMarqueesEvaluation = async (

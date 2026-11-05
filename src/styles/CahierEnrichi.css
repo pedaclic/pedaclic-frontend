@@ -3536,3 +3536,68 @@ body.pc-drag-en-cours * {
 @media print {
   .pc-reorder-handle { display: none !important; }
 }
+
+/* ============================================================
+   Phase 52 — Titres de rubrique cliquables
+   ------------------------------------------------------------
+   Le libellé d'un titre (leçon) devient un lien <a> :
+     • .cahier-titre-lien              → séance existante (ouvre la séance)
+     • .cahier-titre-lien--a-saisir    → aucune séance (crée la séance)
+   La classe .cahier-titre-nom est CONSERVÉE (flex: 1 + ellipsis) pour
+   ne rien changer à la mise en page de la ligne (poignée, n°, statut).
+   ============================================================ */
+.cahier-titre-lien {
+  display: flex;                 /* texte + méta sur une seule ligne */
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2px 6px;
+  margin-left: -6px;             /* compense le padding : alignement inchangé */
+  border-radius: 6px;
+  color: #1f2937;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+/* Le texte du titre garde l'ellipse en cas de titre très long */
+.cahier-titre-lien-texte {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Survol / focus clavier : soulignement + fond léger = affordance de lien */
+.cahier-titre-lien:hover,
+.cahier-titre-lien:focus-visible {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.cahier-titre-lien:hover .cahier-titre-lien-texte { text-decoration: underline; text-underline-offset: 2px; }
+.cahier-titre-lien:focus-visible { outline: 2px solid #3b82f6; outline-offset: 1px; }
+
+/* Méta discrète à droite du titre : date de la séance ou « ＋ Saisir » */
+.cahier-titre-lien-meta {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+}
+/* « ＋ Saisir » n'apparaît qu'au survol pour ne pas surcharger la liste */
+.cahier-titre-lien-meta--plus { color: #2563eb; opacity: 0; transition: opacity 0.15s; }
+.cahier-titre-lien:hover .cahier-titre-lien-meta--plus,
+.cahier-titre-lien:focus-visible .cahier-titre-lien-meta--plus { opacity: 1; }
+
+/* Titre sans séance : couleur légèrement atténuée */
+.cahier-titre-lien--a-saisir { color: #4b5563; }
+
+/* Impression : le lien redevient du texte simple */
+@media print {
+  .cahier-titre-lien-meta { display: none; }
+  .cahier-titre-lien { padding: 0; margin: 0; color: inherit; }
+}
+
+/* Mode sombre */
+[data-theme="dark"] .cahier-titre-lien { color: var(--color-text, #e5e7eb); }
+[data-theme="dark"] .cahier-titre-lien--a-saisir { color: #9ca3af; }
+[data-theme="dark"] .cahier-titre-lien:hover,
+[data-theme="dark"] .cahier-titre-lien:focus-visible { background: #1e3a8a55; color: #93c5fd; }
+[data-theme="dark"] .cahier-titre-lien-meta { color: #94a3b8; }
