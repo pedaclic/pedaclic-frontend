@@ -1,0 +1,167 @@
+/* ============================================================
+   PedaClic — Phase 53 : fenêtre « Copier des rubriques »
+   ------------------------------------------------------------
+   S'appuie sur les classes génériques déjà définies dans
+   CahierTextes.css (.modal-overlay, .modal-content, .modal-title,
+   .modal-footer, .btn-primary, .btn-secondary). Ce fichier ne
+   contient QUE des classes préfixées « crm- » (Copier Rubriques
+   Modal) : aucun risque de modifier l'apparence existante.
+   ============================================================ */
+
+/* Au-dessus des autres fenêtres de la page (PDF, formulaires) */
+.crm-overlay { z-index: 1100; }
+
+/* Un peu plus large que la fenêtre standard (620px) pour les méta-infos */
+.crm-modal { max-width: 680px; }
+
+/* Texte d'explication sous le titre */
+.crm-aide {
+  margin: -0.75rem 0 1rem;
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.45;
+}
+
+/* Message d'erreur de chargement */
+.crm-alerte {
+  padding: 0.6rem 0.8rem;
+  border-radius: 6px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+}
+
+/* ─── Blocs numérotés 1 / 2 / 3 ─────────────────────────────── */
+.crm-bloc {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem 0.85rem;
+  margin: 0 0 1rem;
+}
+.crm-legende {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 0.35rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+/* Liens « Tout / Aucun » à droite de la légende */
+.crm-liens { display: inline-flex; gap: 0.5rem; }
+.crm-liens button {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #2563eb;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* Filtres de la liste des cahiers */
+.crm-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.82rem;
+  color: #334155;
+}
+.crm-filtres label { display: inline-flex; align-items: center; gap: 0.35rem; cursor: pointer; }
+
+/* ─── Listes à cocher (rubriques et cahiers) ─────────────────── */
+.crm-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 220px;          /* défilement interne si la liste est longue */
+  overflow-y: auto;
+}
+.crm-liste li + li { border-top: 1px solid #f1f5f9; }
+.crm-liste label {
+  display: flex;
+  flex-wrap: wrap;            /* mobile : la méta passe à la ligne */
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.crm-liste label:hover { background: #f8fafc; }
+
+/* Pastille de couleur (rubrique ou cahier) */
+.crm-pastille {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.crm-nom  { font-size: 0.88rem; font-weight: 600; color: #1e293b; }
+.crm-meta { font-size: 0.78rem; color: #64748b; }
+
+/* Avertissement : rubriques de même nom déjà présentes */
+.crm-badge-doublon {
+  margin-left: auto;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ─── Options ───────────────────────────────────────────────── */
+.crm-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+  color: #334155;
+}
+.crm-options label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+.crm-option-titre { font-weight: 600; }
+.crm-option-separee { margin-top: 0.4rem; padding-top: 0.5rem; border-top: 1px dashed #e2e8f0; }
+
+/* ─── Bilan après copie ─────────────────────────────────────── */
+.crm-bilan { list-style: none; margin: 0; padding: 0; }
+.crm-bilan li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-left: 3px solid #059669;
+  background: #f0fdf4;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+.crm-bilan li.crm-bilan-erreur { border-left-color: #dc2626; background: #fef2f2; }
+.crm-bilan-titre  { font-weight: 600; font-size: 0.88rem; color: #1e293b; }
+.crm-bilan-detail { font-size: 0.8rem; color: #475569; }
+
+/* ─── Bouton d'en-tête dans CahierDetailPage (section Rubriques) ─
+   Variante « contour » du bouton + Ajouter, pour rester secondaire. */
+.cahier-btn-copier-rubriques {
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cahier-btn-copier-rubriques:hover { background: #eff6ff; }
+
+/* Regroupe « Copier vers… » et « + Ajouter » dans l'en-tête */
+.cahier-rubriques-header-actions { display: inline-flex; gap: 0.5rem; }
+
+/* Petit écran : fenêtre pleine largeur, boutons empilés */
+@media (max-width: 520px) {
+  .crm-modal { padding: 1.25rem; }
+  .crm-modal .modal-footer { flex-direction: column-reverse; }
+  .crm-modal .modal-footer button { width: 100%; }
+}

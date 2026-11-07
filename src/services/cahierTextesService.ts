@@ -21,6 +21,8 @@ import {
   arrayRemove,
   writeBatch,
   deleteField,
+  // Phase 53 — copie de rubriques (lecture + écriture atomiques)
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 // Phase 47 — notes privées hors du document de séance
@@ -791,6 +793,153 @@ export async function reordonnerRubriques(
 ): Promise<void> {
   const listeReindexee = nouvelleListe.map((r, idx) => ({ ...r, ordre: idx }));
   await updateCahier(cahierId, { rubriques: listeReindexee });
+}
+
+// ─────────────────────────────────────────────────────────────
+// PHASE 53 — COPIE DE RUBRIQUES VERS D'AUTRES CAHIERS
+// ─────────────────────────────────────────────────────────────
+// Cas d'usage : un même prof tient plusieurs classes de même
+// niveau (4ème A, 4ème B…). Il saisit ses rubriques une seule
+// fois puis les recopie dans les autres cahiers.
+//
+// Garanties « sans perturber l'existant » :
+//  • Le cahier SOURCE n'est jamais écrit (lecture seule).
+//  • Dans le cahier CIBLE, on AJOUTE à la fin : les rubriques
+//    déjà présentes ne sont ni modifiées, ni réordonnées, ni
+//    supprimées. Les séances (entrees_cahier) ne sont pas touchées.
+//  • Chaque copie reçoit de NOUVEAUX identifiants (rubrique +
+//    titres) : aucun lien caché entre les deux cahiers, modifier
+//    l'un n'affecte jamais l'autre.
+//  • Écriture en TRANSACTION par cahier cible : on relit le cahier
+//    au moment d'écrire, donc une modification faite entre-temps
+//    (autre onglet, autre appareil) n'est pas écrasée.
+//  • Aucune valeur `undefined` n'est écrite dans le tableau
+//    (Firestore la refuse — cf. FIX de modifierRubrique).
+// ─────────────────────────────────────────────────────────────
+
+/** Que faire si le cahier cible possède déjà une rubrique du même nom ? */
+export type ModeConflitRubrique = 'ignorer' | 'dupliquer';
+
+export interface OptionsCopieRubriques {
+  /** 'ignorer' (défaut) : ne copie pas la rubrique en double.
+   *  'dupliquer' : la copie sous le nom « Nom (copie) ». */
+  conflit?: ModeConflitRubrique;
+  /** false (défaut) : les titres repartent à « Non commencé »,
+   *  car l'avancement est propre à chaque classe. */
+  conserverStatuts?: boolean;
+}
+
+export interface ResultatCopieCahier {
+  cahierId: string;
+  titre: string;
+  /** Nombre de rubriques effectivement ajoutées */
+  copiees: number;
+  /** Noms des rubriques non copiées (déjà présentes) */
+  ignorees: string[];
+  /** Message d'erreur si ce cahier n'a pas pu être mis à jour */
+  erreur?: string;
+}
+
+/** Identifiant court, unique même pour des appels dans la même milliseconde */
+function nouvelIdCopie(): string {
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** « Nom (copie) », puis « Nom (copie 2) »… jusqu'à trouver un nom libre */
+function nomCopieDisponible(nom: string, nomsPris: Set<string>): string {
+  let candidat = `${nom} (copie)`;
+  let n = 2;
+  while (nomsPris.has(normaliserLibelleRubrique(candidat))) {
+    candidat = `${nom} (copie ${n})`;
+    n += 1;
+  }
+  return candidat;
+}
+
+/** Clone « propre » d'une rubrique : nouveaux IDs, aucune clé undefined */
+function clonerRubrique(
+  src: RubriqueCahier,
+  ordre: number,
+  nom: string,
+  conserverStatuts: boolean,
+): RubriqueCahier {
+  const copie: RubriqueCahier = { id: nouvelIdCopie(), nom, ordre };
+  if (src.couleur) copie.couleur = src.couleur;
+  // On unifie l'alias historique `seancesPrevues` dans le champ officiel
+  const nbPrevu = src.nombreSeancesPrevu ?? src.seancesPrevues;
+  if (typeof nbPrevu === 'number' && nbPrevu > 0) copie.nombreSeancesPrevu = nbPrevu;
+  const titres = [...(src.titres ?? [])].sort((a, b) => a.ordre - b.ordre);
+  if (titres.length > 0) {
+    copie.titres = titres.map((t, idx) => ({
+      id: nouvelIdCopie(),
+      nom: t.nom,
+      ordre: idx,
+      statut: conserverStatuts ? t.statut : 'non_commence',
+    }));
+  }
+  return copie;
+}
+
+/**
+ * Copie une sélection de rubriques vers un ou plusieurs cahiers
+ * appartenant au même professeur. Chaque cahier cible est traité
+ * indépendamment : l'échec de l'un n'empêche pas les autres.
+ */
+export async function copierRubriquesVersCahiers(
+  rubriquesSource: RubriqueCahier[],
+  cahierCibleIds: string[],
+  profId: string,
+  options: OptionsCopieRubriques = {},
+): Promise<ResultatCopieCahier[]> {
+  const conflit = options.conflit ?? 'ignorer';
+  const conserverStatuts = options.conserverStatuts === true;
+  // On respecte l'ordre d'affichage du cahier source
+  const sources = [...rubriquesSource].sort((a, b) => a.ordre - b.ordre);
+  const resultats: ResultatCopieCahier[] = [];
+
+  for (const cibleId of [...new Set(cahierCibleIds)]) {
+    try {
+      const res = await runTransaction(db, async (tx) => {
+        const ref = doc(db, COL_CAHIERS, cibleId);
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error('Cahier introuvable.');
+        const data = snap.data();
+        // Garde-fou applicatif (la règle Firestore le vérifie aussi)
+        if (data.profId !== profId) throw new Error("Ce cahier ne vous appartient pas.");
+
+        const existantes: RubriqueCahier[] = Array.isArray(data.rubriques) ? data.rubriques : [];
+        const nomsPris = new Set(existantes.map(r => normaliserLibelleRubrique(r.nom)));
+        const ajouts: RubriqueCahier[] = [];
+        const ignorees: string[] = [];
+
+        for (const src of sources) {
+          const nomSrc = src.nom.trim();
+          let nomFinal = nomSrc;
+          if (nomsPris.has(normaliserLibelleRubrique(nomSrc))) {
+            if (conflit === 'ignorer') { ignorees.push(nomSrc); continue; }
+            nomFinal = nomCopieDisponible(nomSrc, nomsPris);
+          }
+          nomsPris.add(normaliserLibelleRubrique(nomFinal));
+          // Les copies se placent APRÈS les rubriques existantes
+          ajouts.push(clonerRubrique(src, existantes.length + ajouts.length, nomFinal, conserverStatuts));
+        }
+
+        if (ajouts.length > 0) {
+          // Seuls `rubriques` et `updatedAt` sont écrits : le reste du cahier est intact
+          tx.update(ref, { rubriques: [...existantes, ...ajouts], updatedAt: Timestamp.now() });
+        }
+        return { cahierId: cibleId, titre: String(data.titre ?? ''), copiees: ajouts.length, ignorees };
+      });
+      resultats.push(res);
+    } catch (err) {
+      console.error('[copierRubriquesVersCahiers] Échec pour', cibleId, err);
+      resultats.push({
+        cahierId: cibleId, titre: '', copiees: 0, ignorees: [],
+        erreur: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  return resultats;
 }
 
 // ─────────────────────────────────────────────────────────────

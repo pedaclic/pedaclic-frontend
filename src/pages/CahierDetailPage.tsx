@@ -60,6 +60,8 @@ import CorrigeTravailCell from '../components/prof/CorrigeTravailCell';
 import { useDragReorder, deplacerElement } from '../hooks/useDragReorder';
 // Phase 52 — titres de rubrique cliquables (lien vers la séance correspondante)
 import { indexerSeancesParTitre, seancesDuTitre } from '../utils/liensSeances';
+// Phase 53 — copie de rubriques vers d'autres cahiers (classes de même niveau)
+import CopierRubriquesModal from '../components/prof/CopierRubriquesModal';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 
@@ -150,6 +152,8 @@ const CahierDetailPage: React.FC = () => {
   const [rubriquesRepliees, setRubriquesRepliees] = useState(true);
   const [formTitres, setFormTitres] = useState<TitreRubrique[]>([]);
   const [rubriqueOuverteId, setRubriqueOuverteId] = useState<string | null>(null);
+  // Phase 53 — fenêtre de copie : null = fermée, [] = toutes précochées, [id] = une seule
+  const [copieRubriquesIds, setCopieRubriquesIds] = useState<string[] | null>(null);
   const [loadingCahier, setLoadingCahier] = useState(true);
   const [loadingEntrees, setLoadingEntrees] = useState(true);
   const [vue, setVue] = useState<VueActive>('liste');
@@ -1149,13 +1153,25 @@ const CahierDetailPage: React.FC = () => {
               </h3>
             </button>
             {!rubriquesRepliees && (
-              <button
-                className="cahier-btn-add-rubrique"
-                onClick={ouvrirAjoutRubrique}
-                title="Ajouter une rubrique"
-              >
-                + Ajouter
-              </button>
+              <div className="cahier-rubriques-header-actions">
+                {/* Phase 53 — copier les rubriques dans un autre cahier (visible s'il y en a) */}
+                {rubriques.length > 0 && (
+                  <button
+                    className="cahier-btn-copier-rubriques"
+                    onClick={() => setCopieRubriquesIds([])}
+                    title="Copier ces rubriques dans un autre cahier de textes"
+                  >
+                    ⧉ Copier vers…
+                  </button>
+                )}
+                <button
+                  className="cahier-btn-add-rubrique"
+                  onClick={ouvrirAjoutRubrique}
+                  title="Ajouter une rubrique"
+                >
+                  + Ajouter
+                </button>
+              </div>
             )}
           </div>
 
@@ -1233,6 +1249,15 @@ const CahierDetailPage: React.FC = () => {
                                 {isOpen ? '▾' : '▸'}
                               </button>
                             )}
+                            {/* Phase 53 — copier cette seule rubrique vers un autre cahier */}
+                            <button
+                              className="cahier-rubrique-btn-edit"
+                              onClick={() => setCopieRubriquesIds([r.id])}
+                              title="Copier vers un autre cahier"
+                              aria-label={`Copier la rubrique "${r.nom}" vers un autre cahier`}
+                            >
+                              ⧉
+                            </button>
                             <button
                               className="cahier-rubrique-btn-edit"
                               onClick={() => ouvrirEditionRubrique(r)}
@@ -1333,6 +1358,17 @@ const CahierDetailPage: React.FC = () => {
                 </div>
               )}
             </>
+          )}
+
+          {/* Phase 53 — fenêtre de copie (le cahier courant n'est jamais modifié) */}
+          {copieRubriquesIds !== null && currentUser && (
+            <CopierRubriquesModal
+              cahierSource={cahier}
+              rubriques={rubriques}
+              profId={currentUser.uid}
+              rubriqueIdsInitiales={copieRubriquesIds}
+              onClose={() => setCopieRubriquesIds(null)}
+            />
           )}
 
           {afficherFormRubrique && (
