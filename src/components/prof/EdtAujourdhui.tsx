@@ -12,6 +12,9 @@
 //       - non saisie  → un clic ouvre une NOUVELLE séance pré-remplie
 //                       (date du jour choisi + horaires du créneau).
 // Rien n'est affiché si le professeur n'a aucun créneau.
+//
+// Phase 54 : code couleur du statut — bleu (à venir / en cours),
+//   rouge (passée non saisie), orange (planifiée à l'avance).
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -231,14 +234,23 @@ const EdtAujourdhui: React.FC<EdtAujourdhuiProps> = ({
               : (estPasse ? 'passe' : 'avenir');
             const seance = seanceParCreneau.get(c.cle);
 
-            // Libellé de statut de la séance (Phase 52)
+            // Libellé de statut de la séance (Phase 52 + Phase 54)
+            //   Phase 54 — code couleur :
+            //     • bleu   (a-saisir)   : séance non saisie, en cours ou à venir ;
+            //     • rouge  (en-retard)  : séance non saisie dont l'horaire est PASSÉ ;
+            //     • orange (planifiee)  : séance saisie à l'avance (statut « planifié ») ;
+            //     • vert   (saisie)     : séance saisie (réalisée, annulée, reportée).
             const statut = !cahier
               ? { cls: 'sans-cahier', txt: '＋ Créer le cahier', aide: 'Aucun cahier pour cette classe — créer le cahier' }
               : seancesSemaine === null
                 ? { cls: 'chargement', txt: '…', aide: 'Vérification de la séance' }
                 : seance
-                  ? { cls: 'saisie', txt: `✓ ${seance.chapitre || 'Séance saisie'}`, aide: `Ouvrir la séance « ${seance.chapitre} »` }
-                  : { cls: 'a-saisir', txt: '＋ Séance à saisir', aide: 'Créer la séance de ce cours' };
+                  ? seance.statut === 'planifie'
+                    ? { cls: 'planifiee', txt: `🕒 ${seance.chapitre || 'Séance planifiée'}`, aide: `Séance planifiée « ${seance.chapitre} » — l'ouvrir pour la valider` }
+                    : { cls: 'saisie', txt: `✓ ${seance.chapitre || 'Séance saisie'}`, aide: `Ouvrir la séance « ${seance.chapitre} »` }
+                  : etat === 'passe'
+                    ? { cls: 'en-retard', txt: '＋ Séance à saisir', aide: 'Séance passée non saisie — la saisir maintenant' }
+                    : { cls: 'a-saisir', txt: '＋ Séance à saisir', aide: 'Créer la séance de ce cours' };
 
             return (
               <button

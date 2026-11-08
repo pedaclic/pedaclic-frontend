@@ -527,6 +527,9 @@
 .edt-aujourdhui-seance--a-saisir    { color: #2563eb; }   /* nouvelle séance   */
 .edt-aujourdhui-seance--sans-cahier { color: #b45309; }   /* pas encore de cahier */
 .edt-aujourdhui-seance--chargement  { color: #9ca3af; }
+/* Phase 54 — séance passée NON saisie (rouge) et séance planifiée (orange) */
+.edt-aujourdhui-seance--en-retard   { color: #dc2626; }   /* à rattraper        */
+.edt-aujourdhui-seance--planifiee   { color: #d97706; }   /* saisie à l'avance  */
 
 /* --- Petits écrans --- */
 @media (max-width: 640px) {
@@ -561,3 +564,5 @@
 [data-theme="dark"] .edt-semaine-jour-nb { background: #312e81; color: #c7d2fe; }
 [data-theme="dark"] .edt-aujourdhui-seance--saisie { color: #34d399; }
 [data-theme="dark"] .edt-aujourdhui-seance--a-saisir { color: #60a5fa; }
+[data-theme="dark"] .edt-aujourdhui-seance--en-retard { color: #f87171; }   /* Phase 54 */
+[data-theme="dark"] .edt-aujourdhui-seance--planifiee { color: #fbbf24; }   /* Phase 54 */

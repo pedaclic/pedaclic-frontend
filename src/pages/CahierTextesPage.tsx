@@ -575,6 +575,14 @@ const CahierTextesPage: React.FC = () => {
           >
             📅 Emploi du temps
           </button>
+          {/* Phase 54 — Espace classe : annonces, forum, messages privés */}
+          <button
+            className="btn-secondary"
+            onClick={() => navigate('/prof/communication')}
+            title="Communiquer avec vos élèves (annonces, forum, messages privés)"
+          >
+            💬 Espace classe
+          </button>
           <button className="btn-primary" onClick={handleNouveauCahier}>
             + Nouveau cahier
           </button>

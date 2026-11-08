@@ -457,6 +457,71 @@ service cloud.firestore {
     }
 
     // ══════════════════════════════════════════════════════════
+    // PHASE 54 — ESPACE CLASSE (annonces, messages privés, forum)
+    //   • portee 'groupe'     : annonces + forum, lisibles par les
+    //                           utilisateurs connectés qui ciblent le
+    //                           groupe (même niveau que groupes_prof) ;
+    //   • portee 'individuel' : message privé prof → élève, lisible
+    //                           UNIQUEMENT par le prof et l'élève visé.
+    //   Le professeur publie dans SES groupes (vérifié sur groupes_prof).
+    //   L'élève publie SEULEMENT dans le forum, et doit prouver son
+    //   inscription active (inscriptionId → inscriptions_groupe).
+    // ══════════════════════════════════════════════════════════
+    match /messages_classe/{messageId} {
+
+      function groupeDe(gid) {
+        return get(/databases/$(database)/documents/groupes_prof/$(gid)).data;
+      }
+      function inscriptionValide(insId, gid) {
+        let ins = get(/databases/$(database)/documents/inscriptions_groupe/$(insId)).data;
+        return ins.eleveId == request.auth.uid && ins.groupeId == gid && ins.statut == 'actif';
+      }
+      function contenuValide(d) {
+        return d.contenu is string && d.contenu.size() > 0 && d.contenu.size() <= 4000 &&
+               d.get('titre', '') is string && d.get('titre', '').size() <= 120 &&
+               d.nature in ['annonce', 'prive', 'forum'] &&
+               ((d.nature == 'prive') == (d.portee == 'individuel')) &&
+               d.portee in ['groupe', 'individuel'];
+      }
+
+      allow read: if isSignedIn() && (
+        resource.data.portee == 'groupe'
+        || resource.data.profId == request.auth.uid
+        || resource.data.destinataireId == request.auth.uid
+        || resource.data.auteurId == request.auth.uid
+        || isAdmin()
+      );
+
+      allow create: if isSignedIn() && contenuValide(request.resource.data) &&
+        request.resource.data.auteurId == request.auth.uid && (
+          // Professeur propriétaire du groupe : toutes natures
+          (request.resource.data.auteurRole == 'prof' &&
+           request.resource.data.profId == request.auth.uid &&
+           groupeDe(request.resource.data.groupeId).profId == request.auth.uid)
+          ||
+          // Élève inscrit : forum uniquement, jamais épinglé / important
+          (request.resource.data.auteurRole == 'eleve' &&
+           request.resource.data.nature == 'forum' &&
+           request.resource.data.get('epingle', false) == false &&
+           request.resource.data.get('important', false) == false &&
+           request.resource.data.profId == groupeDe(request.resource.data.groupeId).profId &&
+           inscriptionValide(request.resource.data.inscriptionId, request.resource.data.groupeId))
+        );
+
+      // Seul le professeur du groupe épingle / désépingle (aucun autre champ)
+      allow update: if isSignedIn() &&
+        resource.data.profId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['epingle', 'updatedAt']);
+
+      // Suppression : l'auteur, le professeur du groupe (modération), l'admin
+      allow delete: if isSignedIn() && (
+        resource.data.auteurId == request.auth.uid ||
+        resource.data.profId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════
     // CORRECTIF 1 — notifications (PRIORITÉ MAXIMALE)
     //
     // AVANT (problème) :
@@ -492,7 +557,16 @@ service cloud.firestore {
         // Le filtrage par rôle est délégué à notificationService.ts.
       );
 
-      allow create: if isProf() || isAdmin();
+      allow create: if isProf() || isAdmin()
+                    // Phase 54 — un élève qui écrit dans le forum de classe
+                    // prévient UNIQUEMENT le professeur propriétaire du groupe
+                    // (entiteId = groupeId). Aucune autre notification élève.
+                    || (isSignedIn()
+                        && request.resource.data.type == 'message_forum'
+                        && request.resource.data.emetteurId == request.auth.uid
+                        && request.resource.data.destinataireRole == 'prof'
+                        && request.resource.data.destinataireId ==
+                           get(/databases/$(database)/documents/groupes_prof/$(request.resource.data.entiteId)).data.profId);
 
       allow update: if isAdmin()
                     || (isSignedIn() && resource.data.emetteurId == request.auth.uid)

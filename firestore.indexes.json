@@ -461,6 +461,33 @@
         { "fieldPath": "isActive", "order": "ASCENDING" },
         { "fieldPath": "ordre", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "messages_classe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "portee", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages_classe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "profId", "order": "ASCENDING" },
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "portee", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages_classe",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinataireId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

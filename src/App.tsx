@@ -84,6 +84,10 @@ import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 import ElveCahiersListePage from './pages/ElveCahiersListePage';
 import ElveCahierPage from './pages/ElveCahierPage';
 
+// Phase 54 — Espace classe (annonces, forum, messages privés)
+import ProfCommunicationPage from './pages/ProfCommunicationPage';
+import EleveCommunicationPage from './pages/EleveCommunicationPage';
+
 /* ==================== JEU DE PLATEAU PÉDAGOGIQUE (élève) ==================== */
 import JeuPlateauPage from './pages/JeuPlateauPage';
 
@@ -259,6 +263,10 @@ const App: React.FC = () => {
         <Route path="/eleve/cahiers/:cahierId" element={
           <EleveRoute><Layout><ElveCahierPage /></Layout></EleveRoute>
         } />
+        {/* Phase 54 — Espace classe élève (annonces, forum, messages du prof) */}
+        <Route path="/eleve/communication" element={
+          <EleveRoute><Layout><EleveCommunicationPage /></Layout></EleveRoute>
+        } />
 
         {/* ========== ESPACE PARENT ========== */}
         <Route path="/parent/dashboard" element={
@@ -278,6 +286,10 @@ const App: React.FC = () => {
         } />
         <Route path="/prof/cahiers/:cahierId" element={
           <ProfRoute><Layout><CahierDetailPage /></Layout></ProfRoute>
+        } />
+        {/* Phase 54 — Espace classe prof (déclarée avant les routes paramétrées voisines) */}
+        <Route path="/prof/communication" element={
+          <ProfRoute><Layout><ProfCommunicationPage /></Layout></ProfRoute>
         } />
         <Route path="/prof/cahiers/:cahierId/nouvelle" element={
           <ProfRoute><Layout><EntreeEditorPage /></Layout></ProfRoute>

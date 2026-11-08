@@ -64,6 +64,7 @@ import { indexerSeancesParTitre, seancesDuTitre } from '../utils/liensSeances';
 import CopierRubriquesModal from '../components/prof/CopierRubriquesModal';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
+import { notifierElevesSeance } from '../services/communicationService'; // Phase 54
 
 /* ─────────────────────────────────────────────────────────────
    PHASE 40 — Persistance « dernière activité »
@@ -345,6 +346,15 @@ const CahierDetailPage: React.FC = () => {
   const handleStatutChange = async (entree: EntreeCahier, statut: StatutSeance) => {
     try {
       await updateEntree(entree.id, { statut });
+      // Phase 54 — prévenir les élèves du changement de statut (non bloquant)
+      void notifierElevesSeance({
+        entreeId: entree.id,
+        cahierId: entree.cahierId,
+        chapitre: entree.chapitre,
+        statut,
+        date:     entree.date?.toDate?.() ?? null,
+        nature:   'mise_a_jour',
+      });
       const nouvellesEntrees = entrees.map(e =>
         e.id === entree.id ? { ...e, statut } : e
       );

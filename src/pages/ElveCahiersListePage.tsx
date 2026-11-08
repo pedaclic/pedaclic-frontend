@@ -110,6 +110,10 @@ const ElveCahiersListePage: React.FC = () => {
       <header className="eleve-cahiers-liste-hero">
         <h1>📖 Cahiers de textes</h1>
         <p>Retrouvez ici les séances réalisées par vos professeurs.</p>
+        {/* Phase 54 — accès à l'espace classe (annonces, forum, messages) */}
+        <Link to="/eleve/communication" className="btn-pedaclic" style={{ marginTop: 12, display: 'inline-block' }}>
+          💬 Espace classe : annonces & forum
+        </Link>
       </header>
 
       {cahiers.length === 0 ? (

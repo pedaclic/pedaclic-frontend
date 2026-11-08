@@ -18,7 +18,9 @@ export type TypeNotification =
   | 'message_prof'        // Message direct du prof à ses élèves
   | 'annonce'             // Devoir, information, événement
   | 'nouveau_abonnement'  // Confirmation d'abonnement Premium
-  | 'bienvenue';          // Message d'accueil à l'inscription
+  | 'bienvenue'           // Message d'accueil à l'inscription
+  | 'seance_cahier'       // Phase 54 — séance saisie / planifiée / mise à jour
+  | 'message_forum';      // Phase 54 — nouveau message dans le forum de classe
 
 /**
  * Rôles destinataires possibles
@@ -200,6 +202,19 @@ export const TEMPLATES_NOTIFICATION: Record<TypeNotification, {
     icone: '🎓',
     couleur: '#10b981',
   },
+  // ── Phase 54 — Espace classe & cahier de textes ──
+  seance_cahier: {
+    titreDefaut: 'Cahier de textes mis à jour',
+    messageDefaut: 'Une séance vient d\'être saisie dans votre cahier de textes.',
+    icone: '📒',
+    couleur: '#0ea5e9',
+  },
+  message_forum: {
+    titreDefaut: 'Nouveau message dans le forum',
+    messageDefaut: '',
+    icone: '💬',
+    couleur: '#047857',
+  },
 };
 
 // ─── Labels affichés dans l'interface ───────────────────────
@@ -212,6 +227,8 @@ export const LABELS_TYPE_NOTIFICATION: Record<TypeNotification, string> = {
   annonce:            '📢 Annonce',
   nouveau_abonnement: '⭐ Abonnement',
   bienvenue:          '🎓 Bienvenue',
+  seance_cahier:      '📒 Cahier de textes',   // Phase 54
+  message_forum:      '💬 Forum de classe',    // Phase 54
 };
 
 export const LABELS_ROLE: Record<RoleDestinataire, string> = {

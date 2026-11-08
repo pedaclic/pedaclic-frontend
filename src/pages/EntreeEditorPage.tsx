@@ -52,6 +52,7 @@ import OngletQuizSeance from '../components/prof/OngletQuizSeance';
 import EcheanceDomicilePicker from '../components/prof/EcheanceDomicilePicker';
 import { upsertTravailDepuisExerciceDomicile } from '../services/travauxAFaireService';
 import { useToast } from '../contexts/ToastContext';
+import { notifierElevesSeance } from '../services/communicationService'; // Phase 54
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 import '../styles/Phase32.css';
@@ -418,6 +419,9 @@ const EntreeEditorPage: React.FC = () => {
         cahier.rubriques ?? []
       );
 
+      // Phase 54 — ID de la séance enregistrée (pour notifier les élèves)
+      let idSeanceNotif: string | null = isEdit && entreeId ? entreeId : null;
+
       if (isEdit && entreeId) {
         // Phase 21 — mise à jour base + Phase 22 — médias enrichis
         await updateEntree(entreeId, cahierId, form);
@@ -430,6 +434,7 @@ const EntreeEditorPage: React.FC = () => {
         });
       } else {
         const newId = await createEntree(cahierId, currentUser.uid, form);
+        idSeanceNotif = newId; // Phase 54 — séance à signaler aux élèves
         // Pièces jointes uploadées avant création (Phase 21)
         if (piecesJointes.length > 0) {
           await addPiecesJointes(newId, [], piecesJointes);
@@ -444,6 +449,19 @@ const EntreeEditorPage: React.FC = () => {
         if (hasExtras) {
           await updateEntree(newId, extras);
         }
+      }
+
+      // Phase 54 — Notification des élèves (cahier partagé uniquement).
+      // Lancée sans « await » : elle ne retarde ni ne bloque jamais l'enregistrement.
+      if (idSeanceNotif) {
+        void notifierElevesSeance({
+          entreeId: idSeanceNotif,
+          cahierId,
+          chapitre: form.chapitre,
+          statut:   form.statut,
+          date:     form.date ? new Date(`${form.date}T00:00:00`) : null,
+          nature:   isEdit ? 'mise_a_jour' : 'creation',
+        });
       }
 
       // Recalcule le compteur de séances réalisées sur le cahier

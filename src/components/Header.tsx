@@ -36,6 +36,7 @@ import {
   Moon,
   Sun,
   Dices,
+  MessageCircle,   // Phase 54 — Espace classe
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
@@ -685,6 +686,13 @@ const Header: React.FC = () => {
 		      <Link to="/eleve/cahiers" className="header__dropdown-link">
 		        <BookOpen size={18} />
 		        <span>Cahier de textes</span>
+		      </Link>
+		    )}
+		    {/* Phase 54 — Espace classe (élèves) */}
+		    {currentUser.role === 'eleve' && (
+		      <Link to="/eleve/communication" className="header__dropdown-link">
+		        <MessageCircle size={18} />
+		        <span>Espace classe</span>
 		      </Link>
 		    )}
 
