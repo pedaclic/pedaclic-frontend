@@ -45,6 +45,15 @@ export interface Creneau {
   groupeNom?: string;   // optionnel — libellé du groupe (ex. "4PFA - LCB")
   profId?: string;      // optionnel — prof responsable du créneau
   profNom?: string;     // optionnel — nom affiché
+  // ── Phase 55 — période de validité (créneaux datés) ──────────
+  //   Les deux bornes sont INCLUSIVES, au format « YYYY-MM-DD ».
+  //   Absentes = créneau valable toute l'année (créneaux d'avant la
+  //   Phase 55 : aucune migration nécessaire).
+  //   Un changement d'horaire clôt l'ancien créneau (valideJusquAu)
+  //   et en ouvre un nouveau (valideDu) : les semaines passées
+  //   gardent ainsi l'ancien horaire et leurs séances.
+  valideDu?: string;      // premier jour d'application
+  valideJusquAu?: string; // dernier jour d'application
 }
 
 // ─────────────────────────────────────────────────────────────

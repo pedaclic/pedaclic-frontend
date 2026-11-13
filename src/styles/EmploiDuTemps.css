@@ -566,3 +566,104 @@
 [data-theme="dark"] .edt-aujourdhui-seance--a-saisir { color: #60a5fa; }
 [data-theme="dark"] .edt-aujourdhui-seance--en-retard { color: #f87171; }   /* Phase 54 */
 [data-theme="dark"] .edt-aujourdhui-seance--planifiee { color: #fbbf24; }   /* Phase 54 */
+
+/* ============================================================
+   PHASE 55 — CRÉNEAUX DATÉS (emploi du temps évolutif)
+   ------------------------------------------------------------
+   • boutons ✏️ / 🗑 d'une carte créneau ;
+   • badges de période (« dès le… », « jusqu'au… ») ;
+   • carte d'un ANCIEN créneau (grisée) ou À VENIR (pointillés) ;
+   • formulaire en mode « modification ».
+   ============================================================ */
+
+/* --- Actions d'une carte créneau (modifier + supprimer) --- */
+.edt-creneau-actions { display: inline-flex; align-items: center; gap: 0.1rem; }
+.edt-creneau-edit {
+  background: transparent; border: none; cursor: pointer;
+  font-size: 0.8rem; padding: 0 0.15rem; line-height: 1;
+  opacity: 0.6;                       /* discret au repos, comme la corbeille */
+}
+.edt-creneau-edit:hover { opacity: 1; }
+.edt-creneau-edit:disabled,
+.edt-creneau-del:disabled { cursor: not-allowed; opacity: 0.35; }
+
+/* --- Badge de période sous l'horaire --- */
+.edt-validite {
+  display: inline-block;
+  margin: 0.15rem 0;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+.edt-validite--a-venir { background: #dbeafe; color: #1d4ed8; }   /* bleu : pas encore appliqué */
+.edt-validite--fin     { background: #fef3c7; color: #92400e; }   /* ambre : arrêt programmé */
+.edt-validite--ancien  { background: #e5e7eb; color: #4b5563; }   /* gris : période terminée */
+
+/* --- États de la carte --- */
+.edt-creneau--ancien {                 /* période terminée : conservé pour l'historique */
+  background: #f3f4f6;
+  border-style: dashed;
+  opacity: 0.75;
+}
+.edt-creneau--a-venir { border-style: dashed; }                   /* changement programmé */
+.edt-creneau--edition {                /* créneau ouvert dans le formulaire */
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+/* --- Case « Afficher les anciens créneaux » --- */
+.edt-anciens-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+/* --- Formulaire en mode « modification » --- */
+.edt-add--edition {
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  padding: 0.9rem;
+}
+.edt-add-date small {                  /* phrase d'aide sous le champ date */
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: #6b7280;
+  line-height: 1.35;
+}
+.edt-add-actions { gap: 0.5rem; flex-wrap: wrap; }                 /* plusieurs boutons en modification */
+.edt-btn-secondaire {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0.45rem 0.8rem;
+  font-size: 0.85rem;
+  color: #374151;
+  cursor: pointer;
+}
+.edt-btn-secondaire:hover { background: #f9fafb; }
+.edt-btn-secondaire:disabled { cursor: not-allowed; opacity: 0.5; }
+.edt-btn-secondaire--arret { border-color: #fcd34d; color: #92400e; }   /* « Arrêter à cette date » */
+.edt-btn-secondaire--arret:hover { background: #fffbeb; }
+
+/* --- Mobile : boutons du formulaire en pleine largeur --- */
+@media (max-width: 640px) {
+  .edt-add--edition .edt-add-actions > button { flex: 1 1 100%; }
+}
+
+/* --- Mode sombre --- */
+[data-theme="dark"] .edt-creneau--ancien { background: var(--color-bg); }
+[data-theme="dark"] .edt-validite--a-venir { background: #1e3a8a; color: #bfdbfe; }
+[data-theme="dark"] .edt-validite--fin     { background: #78350f; color: #fde68a; }
+[data-theme="dark"] .edt-validite--ancien  { background: #374151; color: #d1d5db; }
+[data-theme="dark"] .edt-add--edition { background: var(--color-bg); border-color: #1e40af; }
+[data-theme="dark"] .edt-btn-secondaire {
+  background: var(--color-bg-secondary); color: var(--color-text); border-color: var(--color-border);
+}
+[data-theme="dark"] .edt-anciens-toggle,
+[data-theme="dark"] .edt-add-date small { color: #94a3b8; }

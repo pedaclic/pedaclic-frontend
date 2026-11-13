@@ -11,6 +11,14 @@
 //
 // Inchangé : matières issues de `disciplines`, liaison rigoureuse
 // au cahier par groupe (4PFA…), clic créneau → saisie du cahier.
+//
+// PHASE 55 — Créneaux DATÉS (l'emploi du temps peut évoluer) :
+//   • ✏️ « Modifier » un créneau À PARTIR D'UNE DATE : l'ancien
+//     horaire est conservé pour les semaines passées (les séances
+//     déjà saisies ne sont jamais touchées) ;
+//   • « Arrêter » un créneau à partir d'une date ;
+//   • les anciens créneaux sont masqués par défaut (case à cocher
+//     « Afficher les anciens créneaux »).
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -43,6 +51,13 @@ import {
   trierCreneaux,
   enMinutes,
   jourCourant,
+  // Phase 55 — créneaux datés
+  cleDate,
+  formaterCleDate,
+  creneauValideLe,
+  situationCreneau,
+  modifierCreneauAPartirDu,
+  arreterCreneauAPartirDu,
   type AlerteCreneau,
 } from '../../utils/emploiDuTempsUtils';
 import type { EtablissementProf } from '../../types/etablissement.types';
@@ -111,6 +126,18 @@ interface NouveauCreneau {
   salle: string;
   matiere: string;     // valeur issue de `disciplines` ('' = aucune)
   groupeId: string;    // id du groupe sélectionné ('' = aucun)
+  /** Phase 55 — « YYYY-MM-DD » ('' = valable toute l'année) */
+  valideDu: string;
+}
+
+/**
+ * Phase 55 — créneau en cours de MODIFICATION.
+ * `dateEffet` : date à partir de laquelle le changement s'applique
+ * ('' = simple correction, valable sur toute la période du créneau).
+ */
+interface EditionCreneau extends NouveauCreneau {
+  id: string;
+  dateEffet: string;
 }
 
 const creneauVide: NouveauCreneau = {
@@ -121,6 +148,7 @@ const creneauVide: NouveauCreneau = {
   salle: '',
   matiere: '',
   groupeId: '',
+  valideDu: '',
 };
 
 /** Durée totale d'une liste de créneaux, au format « 12 h 30 » */
@@ -163,6 +191,14 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   const [jourFiltre, setJourFiltre] = useState<JourSemaine>(jourCourant());
   /** Filtre des vues agrégées : 'tous' | id d'établissement | '' (sans) */
   const [filtreEtab, setFiltreEtab] = useState<string>('tous');
+
+  // ── Phase 55 — créneaux datés ──
+  /** Créneau en cours de modification (null = formulaire d'ajout) */
+  const [edition, setEdition] = useState<EditionCreneau | null>(null);
+  /** Afficher aussi les créneaux dont la période est terminée */
+  const [afficherAnciens, setAfficherAnciens] = useState(false);
+  /** Date du jour « YYYY-MM-DD » : repère ancien / actuel / à venir */
+  const aujourdhui = cleDate();
 
   // Matières issues de la MÊME source que le Cahier de textes
   const { matieres: matieresDispos, loading: loadingMatieres } = useDisciplinesOptions();
@@ -218,9 +254,17 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     return () => { actif = false; };
   }, [open, profId, classe, annee, vue]);
 
+  // Phase 55 — on quitte le mode « modification » dès que le contexte change
+  useEffect(() => { setEdition(null); }, [open, classe, etabId, annee, vue]);
+
   // ── Données dérivées (calculées AVANT le retour anticipé) ──
   const tousCreneaux: CreneauContexte[] = useMemo(() => aplatirCreneaux(tousMesEmplois), [tousMesEmplois]);
-  const alertes = useMemo(() => detecterAlertes(tousCreneaux), [tousCreneaux]);
+  // Phase 55 — créneaux en vigueur ou à venir (les anciens ne servent qu'à l'historique)
+  const creneauxEnCours: CreneauContexte[] = useMemo(
+    () => tousCreneaux.filter(c => situationCreneau(c, aujourdhui) !== 'ancien'),
+    [tousCreneaux, aujourdhui]
+  );
+  const alertes = useMemo(() => detecterAlertes(creneauxEnCours), [creneauxEnCours]);
   const nbConflits = useMemo(
     () => Array.from(alertes.values()).filter(l => l.some(a => a.type === 'chevauchement')).length,
     [alertes]
@@ -229,6 +273,11 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   if (!open) return null;
 
   const creneaux: Creneau[] = emploi?.creneaux ?? [];
+  // Phase 55 — grille « Par classe » : anciens créneaux masqués par défaut
+  const nbAnciens = creneaux.filter(c => situationCreneau(c, aujourdhui) === 'ancien').length;
+  const creneauxVisibles = afficherAnciens
+    ? creneaux
+    : creneaux.filter(c => situationCreneau(c, aujourdhui) !== 'ancien');
   const emploiIdCourant = emploiProfId(profId, etabId, classe, annee);
 
   // Créneaux hérités pas encore repris dans AUCUN de mes emplois du temps
@@ -263,7 +312,11 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
       return;
     }
     // Phase 48 — contrôle des chevauchements avec TOUS mes créneaux
-    const conflits = chevauchementsAvec(nouveau, tousCreneaux);
+    //   (Phase 55 : uniquement ceux dont la période croise celle du nouveau)
+    const conflits = chevauchementsAvec(
+      { ...nouveau, valideDu: nouveau.valideDu || undefined },
+      creneauxEnCours
+    );
     if (conflits.length) {
       const ok = await confirmDialog({
         title: 'Chevauchement d\'horaires',
@@ -285,6 +338,8 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
       salle: nouveau.salle.trim(),
       ...(nouveau.matiere ? { matiere: nouveau.matiere } : {}),
       ...(groupeSel ? { groupeId: groupeSel.id, groupeNom: groupeSel.nom } : {}),
+      // Phase 55 — créneau ajouté en cours d'année : pas d'effet rétroactif
+      ...(nouveau.valideDu ? { valideDu: nouveau.valideDu } : {}),
       profId,
       profNom,
     };
@@ -301,7 +356,19 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   };
 
   // ── Supprimer un créneau ──────────────────────────────────
+  //   Phase 55 : confirmation, car la suppression est RÉTROACTIVE (le
+  //   créneau disparaît aussi des semaines passées). Pour un changement
+  //   d'horaire, on utilise ✏️ « Modifier » ou « Arrêter ».
   const handleSupprimer = async (id: string) => {
+    const ok = await confirmDialog({
+      title: 'Supprimer définitivement ce créneau ?',
+      message: 'Il disparaîtra aussi des semaines passées (les séances déjà saisies restent dans le cahier). '
+        + 'Pour un simple changement d\'horaire, utilisez plutôt ✏️ Modifier.',
+      confirmLabel: 'Supprimer',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    if (edition?.id === id) setEdition(null);
     setBusy(true);
     setErreur('');
     try {
@@ -311,6 +378,129 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     } finally {
       setBusy(false);
     }
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // PHASE 55 — MODIFIER / ARRÊTER un créneau à partir d'une date
+  // ═══════════════════════════════════════════════════════════
+
+  /** Ouvre le formulaire en mode « modification », pré-rempli */
+  const handleEditer = (c: Creneau) => {
+    setErreur('');
+    setEdition({
+      id: c.id,
+      jour: c.jour,
+      heureDebut: c.heureDebut,
+      heureFin: c.heureFin,
+      activite: c.activite,
+      salle: c.salle,
+      matiere: c.matiere ?? '',
+      groupeId: c.groupeId ?? '',
+      valideDu: c.valideDu ?? '',
+      // Par défaut : le changement s'applique dès aujourd'hui (ou dès le
+      // début du créneau s'il n'a pas encore commencé)
+      dateEffet: c.valideDu && c.valideDu > aujourdhui ? c.valideDu : aujourdhui,
+    });
+  };
+
+  /** Enregistre la modification (datée, ou simple correction si date vide) */
+  const handleModifier = async () => {
+    if (!edition) return;
+    const ancien = creneaux.find(c => c.id === edition.id);
+    if (!ancien) { setEdition(null); return; }
+    setErreur('');
+    if (!edition.activite.trim() || !edition.salle.trim()) {
+      setErreur('Activité et salle sont requises.');
+      return;
+    }
+    if (edition.heureFin <= edition.heureDebut) {
+      setErreur('L\'heure de fin doit suivre l\'heure de début.');
+      return;
+    }
+    if (edition.dateEffet && ancien.valideJusquAu && edition.dateEffet > ancien.valideJusquAu) {
+      setErreur(`Ce créneau s'arrête déjà le ${formaterCleDate(ancien.valideJusquAu)} : choisissez une date antérieure.`);
+      return;
+    }
+    // Chevauchements du NOUVEL horaire, sur sa période d'application
+    const debutNouveau = edition.dateEffet && (!ancien.valideDu || edition.dateEffet > ancien.valideDu)
+      ? edition.dateEffet
+      : ancien.valideDu;
+    const conflits = chevauchementsAvec(
+      { jour: edition.jour, heureDebut: edition.heureDebut, heureFin: edition.heureFin,
+        valideDu: debutNouveau, valideJusquAu: ancien.valideJusquAu },
+      creneauxEnCours,
+      `${emploiIdCourant}:${ancien.id}`
+    );
+    if (conflits.length) {
+      const ok = await confirmDialog({
+        title: 'Chevauchement d\'horaires',
+        message: `Le nouvel horaire chevauche : ${conflits
+          .map(c => `${c.classe}${c.etablissementNom ? ` (${c.etablissementNom})` : ''} ${c.heureDebut}–${c.heureFin}`)
+          .join(' ; ')}. Enregistrer quand même ?`,
+        confirmLabel: 'Enregistrer quand même',
+        variant: 'warning',
+      });
+      if (!ok) return;
+    }
+    const groupeSel = groupes.find((g) => g.id === edition.groupeId);
+    setBusy(true);
+    try {
+      await enregistrer(modifierCreneauAPartirDu(
+        creneaux,
+        ancien.id,
+        {
+          jour: edition.jour,
+          heureDebut: edition.heureDebut,
+          heureFin: edition.heureFin,
+          activite: edition.activite.trim(),
+          salle: edition.salle.trim(),
+          matiere: edition.matiere || undefined,
+          // Groupe introuvable dans la liste (ex. archivé) → on garde le lien d'origine
+          groupeId: groupeSel?.id ?? (edition.groupeId || undefined),
+          groupeNom: groupeSel?.nom ?? ancien.groupeNom,
+        },
+        edition.dateEffet || undefined
+      ));
+      setEdition(null);
+    } catch (err) {
+      setErreur(messageErreurFirestore(err, 'Modification'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Arrête le créneau à la date choisie (l'historique est conservé) */
+  const handleArreter = async () => {
+    if (!edition) return;
+    setErreur('');
+    if (!edition.dateEffet) {
+      setErreur('Indiquez la date à partir de laquelle ce cours n\'a plus lieu.');
+      return;
+    }
+    const ok = await confirmDialog({
+      title: 'Arrêter ce créneau ?',
+      message: `Ce cours n'apparaîtra plus à partir du ${formaterCleDate(edition.dateEffet)}. `
+        + 'Les semaines précédentes et les séances déjà saisies sont conservées.',
+      confirmLabel: 'Arrêter le créneau',
+      variant: 'warning',
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      await enregistrer(arreterCreneauAPartirDu(creneaux, edition.id, edition.dateEffet));
+      setEdition(null);
+    } catch (err) {
+      setErreur(messageErreurFirestore(err, 'Arrêt du créneau'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── Formulaire partagé « Ajouter » / « Modifier » (Phase 55) ──
+  const form: NouveauCreneau = edition ?? nouveau;
+  const majForm = (patch: Partial<EditionCreneau>) => {
+    if (edition) setEdition(e => (e ? { ...e, ...patch } : e));
+    else setNouveau(n => ({ ...n, ...patch }));
   };
 
   // ── Reprise des anciens créneaux ──────────────────────────
@@ -352,10 +542,13 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
     const etab = ctx.etablissementId ? etabsParId.get(ctx.etablissementId) : undefined;
     const sesAlertes: AlerteCreneau[] = alertes.get(ctx.cle) ?? [];
     const enConflit = sesAlertes.some(a => a.type === 'chevauchement');
+    // Phase 55 — situation du créneau (ancien / actuel / à venir)
+    const situation = situationCreneau(c, aujourdhui);
+    const enEdition = !lectureSeule && edition?.id === c.id;
     return (
       <div
         key={ctx.cle}
-        className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}${enConflit ? ' edt-creneau--conflit' : ''}`}
+        className={`edt-creneau${estLie(c) ? ' edt-creneau--link' : ''}${enConflit ? ' edt-creneau--conflit' : ''}${situation !== 'actuel' ? ` edt-creneau--${situation}` : ''}${enEdition ? ' edt-creneau--edition' : ''}`}
         // Liseré gauche = couleur de l'établissement (Phase 48)
         style={etab ? { borderLeftColor: etab.couleur } : undefined}
         onClick={() => handleClickCreneau(c, ctx.classe, ctx.etablissementId)}
@@ -364,14 +557,37 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
         <div className="edt-creneau-head">
           <span className="edt-creneau-heure">{c.heureDebut}–{c.heureFin}</span>
           {!lectureSeule && (
-            <button
-              className="edt-creneau-del"
-              onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
-              disabled={busy}
-              aria-label="Supprimer le créneau"
-            >🗑</button>
+            <span className="edt-creneau-actions">
+              {/* Phase 55 — modifier à partir d'une date (pas sur un ancien créneau) */}
+              {situation !== 'ancien' && (
+                <button
+                  className="edt-creneau-edit"
+                  onClick={(e) => { e.stopPropagation(); handleEditer(c); }}
+                  disabled={busy}
+                  title="Modifier ce créneau à partir d'une date"
+                  aria-label="Modifier le créneau"
+                >✏️</button>
+              )}
+              <button
+                className="edt-creneau-del"
+                onClick={(e) => { e.stopPropagation(); handleSupprimer(c.id); }}
+                disabled={busy}
+                title="Supprimer définitivement"
+                aria-label="Supprimer le créneau"
+              >🗑</button>
+            </span>
           )}
         </div>
+        {/* Phase 55 — période d'application du créneau */}
+        {(c.valideDu && situation === 'a-venir') && (
+          <div className="edt-validite edt-validite--a-venir">⏳ dès le {formaterCleDate(c.valideDu)}</div>
+        )}
+        {c.valideJusquAu && (
+          <div className={`edt-validite edt-validite--${situation === 'ancien' ? 'ancien' : 'fin'}`}>
+            {situation === 'ancien' && c.valideDu ? `du ${formaterCleDate(c.valideDu)} ` : ''}
+            jusqu'au {formaterCleDate(c.valideJusquAu)}
+          </div>
+        )}
         {/* Vues agrégées : classe + établissement en tête de carte */}
         {afficherContexte && (
           <div className="edt-creneau-ctx">
@@ -400,7 +616,8 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   };
 
   // Créneaux des vues agrégées, filtrés par établissement
-  const creneauxAgreges = tousCreneaux.filter(c =>
+  //   (Phase 55 : créneaux en vigueur ou à venir ; les anciens sont exclus)
+  const creneauxAgreges = creneauxEnCours.filter(c =>
     filtreEtab === 'tous' ? true : (c.etablissementId ?? OPTION_SANS_ETAB) === filtreEtab
   );
   const ctxDe = (c: CreneauContexte) => ({
@@ -408,7 +625,11 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
   });
 
   // Établissements présents dans mes emplois du temps (légende)
-  const etabsPresents = Array.from(new Set(tousCreneaux.map(c => c.etablissementId ?? OPTION_SANS_ETAB)));
+  // Phase 55 — la synthèse hebdomadaire ne compte que les créneaux valables aujourd'hui
+  const creneauxDuMoment = creneauxAgreges.filter(c => creneauValideLe(c, aujourdhui));
+  const nbAVenir = creneauxAgreges.length - creneauxDuMoment.length;
+
+  const etabsPresents = Array.from(new Set(creneauxEnCours.map(c => c.etablissementId ?? OPTION_SANS_ETAB)));
 
   return (
     <div className="edt-overlay" onClick={onClose}>
@@ -514,11 +735,23 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                 </div>
               )}
 
+              {/* Phase 55 — anciens créneaux (périodes terminées), masqués par défaut */}
+              {nbAnciens > 0 && (
+                <label className="edt-anciens-toggle">
+                  <input
+                    type="checkbox"
+                    checked={afficherAnciens}
+                    onChange={(e) => setAfficherAnciens(e.target.checked)}
+                  />
+                  Afficher les anciens créneaux ({nbAnciens})
+                </label>
+              )}
+
               <div className="edt-grid">
                 {JOURS_SEMAINE.map((j) => (
                   <div className="edt-day-col" key={j.valeur}>
                     <div className="edt-day-head">{j.court}</div>
-                    {trierCreneaux(creneaux.filter((c) => c.jour === j.valeur)).map((c) =>
+                    {trierCreneaux(creneauxVisibles.filter((c) => c.jour === j.valeur)).map((c) =>
                       renderCreneau(
                         c,
                         { classe, etablissementId: etabId, etablissementNom: etabCourant?.nom ?? '', cle: `${emploiIdCourant}:${c.id}` },
@@ -530,7 +763,7 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                 ))}
               </div>
 
-              {creneaux.length === 0 && (
+              {creneauxVisibles.length === 0 && (
                 <div className="edt-empty">
                   Aucun créneau pour la {classe}{etabCourant ? ` — ${etabCourant.nom}` : ''}. Ajoutez-en ci-dessous.
                 </div>
@@ -546,8 +779,10 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               {/* Synthèse + légende des établissements */}
               <div className="edt-synthese">
                 <span>
-                  <strong>{creneauxAgreges.length}</strong> créneau(x) ·{' '}
-                  <strong>{dureeTotale(creneauxAgreges)}</strong> par semaine
+                  <strong>{creneauxDuMoment.length}</strong> créneau(x) ·{' '}
+                  <strong>{dureeTotale(creneauxDuMoment)}</strong> par semaine
+                  {/* Phase 55 — changements d'horaire déjà programmés */}
+                  {nbAVenir > 0 && <> · ⏳ {nbAVenir} à venir</>}
                 </span>
                 {nbConflits > 0 && <span className="edt-synthese-alerte">⚠️ {nbConflits} créneau(x) en chevauchement</span>}
               </div>
@@ -602,16 +837,16 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               ÉDITION — Ajout d'un créneau (onglet « Par classe »)
               ════════════════════════════════════════════════════════ */}
           {vue === 'classe' && (
-          <div className="edt-add">
+          <div className={`edt-add${edition ? ' edt-add--edition' : ''}`}>
             <div className="edt-add-title">
-              Ajouter un créneau — {classe}{etabCourant ? ` · ${etabCourant.nom}` : ''}
+              {edition ? '✏️ Modifier le créneau' : 'Ajouter un créneau'} — {classe}{etabCourant ? ` · ${etabCourant.nom}` : ''}
             </div>
             <div className="edt-add-grid">
               <label>
                 Jour
                 <select
-                  value={nouveau.jour}
-                  onChange={(e) => setNouveau((n) => ({ ...n, jour: e.target.value as JourSemaine }))}
+                  value={form.jour}
+                  onChange={(e) => majForm({ jour: e.target.value as JourSemaine })}
                 >
                   {JOURS_SEMAINE.map((j) => <option key={j.valeur} value={j.valeur}>{j.label}</option>)}
                 </select>
@@ -620,42 +855,42 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
                 Salle
                 <input
                   type="text"
-                  value={nouveau.salle}
+                  value={form.salle}
                   placeholder="Ex : Salle 12"
-                  onChange={(e) => setNouveau((n) => ({ ...n, salle: e.target.value }))}
+                  onChange={(e) => majForm({ salle: e.target.value })}
                 />
               </label>
               <label>
                 Heure de début
                 <input
                   type="time"
-                  value={nouveau.heureDebut}
-                  onChange={(e) => setNouveau((n) => ({ ...n, heureDebut: e.target.value }))}
+                  value={form.heureDebut}
+                  onChange={(e) => majForm({ heureDebut: e.target.value })}
                 />
               </label>
               <label>
                 Heure de fin
                 <input
                   type="time"
-                  value={nouveau.heureFin}
-                  onChange={(e) => setNouveau((n) => ({ ...n, heureFin: e.target.value }))}
+                  value={form.heureFin}
+                  onChange={(e) => majForm({ heureFin: e.target.value })}
                 />
               </label>
               <label>
                 Activité
                 <input
                   type="text"
-                  value={nouveau.activite}
+                  value={form.activite}
                   placeholder="Ex : Cours, TP…"
-                  onChange={(e) => setNouveau((n) => ({ ...n, activite: e.target.value }))}
+                  onChange={(e) => majForm({ activite: e.target.value })}
                 />
               </label>
               <label>
                 Matière (optionnel)
                 <select
-                  value={nouveau.matiere}
+                  value={form.matiere}
                   disabled={loadingMatieres}
-                  onChange={(e) => setNouveau((n) => ({ ...n, matiere: e.target.value }))}
+                  onChange={(e) => majForm({ matiere: e.target.value })}
                 >
                   <option value="">— Aucune —</option>
                   {matieresDispos.map((m) => <option key={m.valeur} value={m.valeur}>{m.label}</option>)}
@@ -665,19 +900,61 @@ const EmploiDuTempsDrawer: React.FC<Props> = ({
               <label style={{ gridColumn: '1 / -1' }}>
                 Classe / groupe (recommandé pour le lien au cahier)
                 <select
-                  value={nouveau.groupeId}
-                  onChange={(e) => setNouveau((n) => ({ ...n, groupeId: e.target.value }))}
+                  value={form.groupeId}
+                  onChange={(e) => majForm({ groupeId: e.target.value })}
                 >
                   <option value="">— Aucun —</option>
                   {groupesProposes.map((g) => <option key={g.id} value={g.id}>{g.nom}</option>)}
                 </select>
               </label>
+              {/* Phase 55 — date d'application (pleine largeur) */}
+              {edition ? (
+                <label className="edt-add-date" style={{ gridColumn: '1 / -1' }}>
+                  Applicable à partir du
+                  <input
+                    type="date"
+                    value={edition.dateEffet}
+                    onChange={(e) => majForm({ dateEffet: e.target.value })}
+                  />
+                  <small>
+                    {edition.dateEffet
+                      ? `Avant le ${formaterCleDate(edition.dateEffet)}, l'ancien horaire est conservé : les séances déjà saisies ne changent pas.`
+                      : 'Sans date : simple correction d\'une erreur de saisie, appliquée aussi aux semaines passées.'}
+                  </small>
+                </label>
+              ) : (
+                <label className="edt-add-date" style={{ gridColumn: '1 / -1' }}>
+                  Valable à partir du (optionnel)
+                  <input
+                    type="date"
+                    value={nouveau.valideDu}
+                    onChange={(e) => majForm({ valideDu: e.target.value })}
+                  />
+                  <small>À renseigner pour un cours ajouté en cours d'année ; vide = toute l'année.</small>
+                </label>
+              )}
             </div>
 
             <div className="edt-add-actions">
-              <button className="btn-primary" onClick={handleAjouter} disabled={busy}>
-                {busy ? 'Enregistrement…' : '+ Ajouter le créneau'}
-              </button>
+              {edition ? (
+                <>
+                  {/* Phase 55 — actions du mode « modification » */}
+                  <button type="button" className="edt-btn-secondaire" onClick={() => { setEdition(null); setErreur(''); }} disabled={busy}>
+                    Annuler
+                  </button>
+                  <button type="button" className="edt-btn-secondaire edt-btn-secondaire--arret" onClick={handleArreter} disabled={busy}
+                    title="Le cours n'a plus lieu à partir de cette date (historique conservé)">
+                    ⏹ Arrêter à cette date
+                  </button>
+                  <button type="button" className="btn-primary" onClick={handleModifier} disabled={busy}>
+                    {busy ? 'Enregistrement…' : 'Enregistrer la modification'}
+                  </button>
+                </>
+              ) : (
+                <button className="btn-primary" onClick={handleAjouter} disabled={busy}>
+                  {busy ? 'Enregistrement…' : '+ Ajouter le créneau'}
+                </button>
+              )}
             </div>
             <p style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '0.6rem' }}>
               Renseigner le groupe (ex. 4PFA) rend le créneau cliquable et ouvre exactement le Cahier de textes

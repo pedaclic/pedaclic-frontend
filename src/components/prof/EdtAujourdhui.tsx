@@ -15,6 +15,11 @@
 //
 // Phase 54 : code couleur du statut — bleu (à venir / en cours),
 //   rouge (passée non saisie), orange (planifiée à l'avance).
+//
+// Phase 55 : créneaux DATÉS — chaque jour n'affiche que les créneaux
+//   valables à CETTE date. Après un changement d'horaire, les semaines
+//   passées gardent donc l'ancien emploi du temps (et leurs séances),
+//   sans fausse alerte « séance à saisir ».
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -25,7 +30,7 @@ import { JOURS_SEMAINE } from '../../types/emploiDuTemps.types';
 import type { EtablissementProf } from '../../types/etablissement.types';
 import { libelleCourtEtablissement } from '../../types/etablissement.types';
 import type { CahierTextes, EntreeCahier } from '../../types/cahierTextes.types';
-import { aplatirCreneaux, trierCreneaux, enMinutes, jourCourant } from '../../utils/emploiDuTempsUtils';
+import { aplatirCreneaux, trierCreneaux, enMinutes, jourCourant, creneauValideLe } from '../../utils/emploiDuTempsUtils';
 import {
   lundiDeSemaine, dateDuJour, cleJourLocal, cleJourEntree,
   trouverCahierPourCreneau, associerSeancesAuxCreneaux,
@@ -78,22 +83,26 @@ const EdtAujourdhui: React.FC<EdtAujourdhuiProps> = ({
   const estAujourdhui = cleSel === cleAujourdhui;
 
   // ── Cours du jour choisi + cahier correspondant à chaque cours ──
+  //    Phase 55 : uniquement les créneaux valables à la date affichée
   const coursDuJour = useMemo(
-    () => trierCreneaux(tousCreneaux.filter(c => c.jour === jourSel)).map(c => ({
+    () => trierCreneaux(tousCreneaux.filter(c => c.jour === jourSel && creneauValideLe(c, cleSel))).map(c => ({
       creneau: c,
       cahier: trouverCahierPourCreneau(cahiers, {
         classe: c.classe, matiere: c.matiere, groupeId: c.groupeId, etablissementId: c.etablissementId,
       }),
     })),
-    [tousCreneaux, jourSel, cahiers]
+    [tousCreneaux, jourSel, cleSel, cahiers]
   );
 
   // Nombre de cours par jour (pastilles des onglets)
+  //    Phase 55 : compté à la date de chaque jour de la semaine affichée
   const nbParJour = useMemo(() => {
     const m = new Map<JourSemaine, number>();
-    tousCreneaux.forEach(c => m.set(c.jour, (m.get(c.jour) ?? 0) + 1));
+    tousCreneaux.forEach(c => {
+      if (creneauValideLe(c, cleJourLocal(dateDuJour(lundi, c.jour)))) m.set(c.jour, (m.get(c.jour) ?? 0) + 1);
+    });
     return m;
-  }, [tousCreneaux]);
+  }, [tousCreneaux, lundi]);
 
   // ── Phase 52 — Chargement des séances de la semaine (cahiers concernés uniquement) ──
   //    Requête par cahier (cahierId + profId + date) : index Firestore déjà présent.
