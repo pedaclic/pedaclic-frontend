@@ -10,6 +10,8 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+// Phase 56 — redirection directe vers la page de connexion (ProtectedRoute)
+import { Navigate, useLocation } from 'react-router-dom';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -368,6 +370,10 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   requirePremium = false
 }) => {
   const { currentUser, loading } = useAuth();
+  // Phase 56 — page demandée, transmise à /connexion pour y revenir
+  // automatiquement après une connexion réussie (LoginPage lit `state.from`).
+  const location = useLocation();
+  const from = `${location.pathname}${location.search}${location.hash}`;
 
   // Afficher un loader pendant la vérification
   if (loading) {
@@ -379,26 +385,20 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // Redirection si non connecté
+  // Non connecté → page de connexion, directement
+  //   Phase 56 : remplace l'écran intermédiaire « Accès refusé ».
+  //   `replace` : la page protégée ne reste pas dans l'historique
+  //   (le bouton « Précédent » ne ramène pas sur une page interdite).
   if (!currentUser) {
-    return (
-      <div className="error-container">
-        <h2>Accès refusé</h2>
-        <p>Vous devez être connecté pour accéder à cette page.</p>
-        <a href="/connexion" className="btn btn-primary">Se connecter</a>
-      </div>
-    );
+    return <Navigate to="/connexion" replace state={{ from }} />;
   }
 
-  // Vérification des rôles autorisés
+  // Connecté, mais avec un rôle qui n'ouvre pas cette page
+  //   Phase 56 : remplace l'écran « Accès non autorisé ». La protection est
+  //   inchangée (la page n'est jamais rendue) ; on affiche la page de
+  //   connexion avec un message (`motif: 'role'`) pour changer de compte.
   if (allowedRoles && !allowedRoles.includes(currentUser.role)) {
-    return (
-      <div className="error-container">
-        <h2>Accès non autorisé</h2>
-        <p>Vous n'avez pas les permissions nécessaires pour accéder à cette page.</p>
-        <a href="/" className="btn btn-primary">Retour à l'accueil</a>
-      </div>
-    );
+    return <Navigate to="/connexion" replace state={{ from, motif: 'role' }} />;
   }
 
   // Vérification du statut Premium

@@ -29,6 +29,8 @@ interface FormState {
  */
 interface LocationState {
   from?: string;
+  /** Phase 56 — 'role' : page réservée à un autre type de compte (ProtectedRoute) */
+  motif?: 'role';
 }
 
 /**
@@ -43,6 +45,8 @@ const LoginPage: React.FC = () => {
   // Récupérer l'URL de redirection (état ou paramètre ?redirect=)
   const redirectParam = new URLSearchParams(location.search).get('redirect');
   const from = (location.state as LocationState)?.from || redirectParam || '/';
+  // Phase 56 — arrivée depuis une page réservée à un autre type de compte
+  const motifRole = (location.state as LocationState)?.motif === 'role';
 
   // ==================== ÉTATS ====================
   
@@ -171,6 +175,20 @@ const LoginPage: React.FC = () => {
               Accédez à votre espace d'apprentissage
             </p>
           </div>
+
+          {/* <!-- Phase 56 : message d'information (page réservée à un autre compte) --> */}
+          {motifRole && !error && (
+            <div className="auth-info" role="status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M12 16v-4M12 8h.01"/>
+              </svg>
+              <span>
+                Cette page est réservée à un autre type de compte.
+                Connectez-vous avec le compte correspondant pour y accéder.
+              </span>
+            </div>
+          )}
 
           {/* <!-- Message d'erreur --> */}
           {error && (
