@@ -6146,3 +6146,204 @@
   color: #9ca3af;
   margin-top: 4px;
 }
+
+/* ==========================================================================
+   PHASE 57 — GESTION DES UTILISATEURS
+   Élèves sans compte, colonnes Classe(s) / Inscription, historique,
+   création et suppression de comptes.
+   ========================================================================== */
+
+/* ── En-tête : boutons « Inscrire » + « Actualiser » côte à côte ── */
+.user-header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;               /* passe à la ligne sur mobile */
+}
+
+/* ── Ligne « élève sans compte » : liseré orange discret à gauche ── */
+.user-row-offline td:first-child {
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
+/* Avatar orangé pour distinguer visuellement les élèves sans compte */
+.user-avatar-offline {
+  background: linear-gradient(135deg, #f59e0b, #fbbf24) !important;
+}
+
+/* Badge « Sans compte » */
+.user-badge-offline {
+  background: #fffbeb;
+  color: #b45309;
+  border: 1px dashed #f59e0b;
+}
+
+/* ── Colonne Classe(s) : pastilles compactes ── */
+.user-classes-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  max-width: 220px;
+}
+
+.user-classe-chip {
+  display: inline-block;
+  max-width: 160px;
+  padding: 0.125rem 0.5rem;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;        /* nom de classe long tronqué (titre complet au survol) */
+}
+
+.user-classe-chip.is-suspendu {
+  background: #f1f5f9;
+  color: #94a3b8;
+  text-decoration: line-through;
+}
+
+.user-classe-chip.is-more {
+  background: #e2e8f0;
+  color: #475569;
+  cursor: help;
+}
+
+/* ── Colonne Inscription (date) ── */
+.user-cell-date {
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+/* Texte secondaire (tirets, remarques) */
+.user-cell-muted {
+  color: #94a3b8;
+}
+
+/* ── Cellule Actions : Détail + Supprimer alignés ── */
+.user-actions-cell {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+/* ── Historique (panneau Détail) ── */
+.user-detail-history {
+  margin: 1rem 0;
+}
+
+.user-detail-history h4 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+}
+
+.user-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 0.75rem;
+  border-left: 2px solid #e2e8f0;  /* frise chronologique */
+}
+
+.user-history-list li {
+  position: relative;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.375rem 0;
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+/* Puce de la frise */
+.user-history-list li::before {
+  content: '';
+  position: absolute;
+  left: calc(-0.75rem - 5px);
+  top: 0.75rem;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+}
+
+.user-history-date {
+  flex-shrink: 0;
+  min-width: 92px;
+  font-weight: 600;
+  color: #2563eb;
+}
+
+/* ── Modale de création ── */
+.user-create-form .admin-filter-group {
+  margin-bottom: 0.75rem;
+}
+
+.user-create-input {
+  padding-left: 0.75rem !important;  /* pas d'icône loupe dans ces champs */
+  width: 100%;
+}
+
+.user-create-password {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.user-create-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.user-create-success {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  margin-bottom: 1rem;
+}
+
+.user-create-credentials {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.user-create-credentials div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.user-create-credentials code {
+  font-weight: 600;
+  user-select: all;               /* sélection en un clic pour copier */
+}
+
+/* ── Modale de suppression ── */
+.user-delete-list {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .user-create-row {
+    grid-template-columns: 1fr;
+  }
+  .user-history-date {
+    min-width: 80px;
+  }
+}

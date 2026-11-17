@@ -135,6 +135,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const userDoc = await getDoc(userRef);
 
     if (!userDoc.exists()) {
+      // ── Phase 57 : compte supprimé par l'admin ? ──────────────────
+      //    Sans ce garde-fou, le profil serait recréé automatiquement à la
+      //    reconnexion. Lecture tolérante : en cas d'erreur (règles non
+      //    encore déployées, réseau), on ne bloque pas l'inscription.
+      let compteSupprime = false;
+      try {
+        const tombe = await getDoc(doc(db, 'comptes_supprimes', user.uid));
+        compteSupprime = tombe.exists();
+      } catch {
+        compteSupprime = false;
+      }
+      if (compteSupprime) {
+        await signOut(auth);
+        // Code reconnu par getErrorMessage → « Ce compte a été désactivé. »
+        throw Object.assign(new Error('Ce compte a été supprimé par l\'administrateur.'), {
+          code: 'auth/user-disabled',
+        });
+      }
+
       // Création du document utilisateur
       const baseData: Record<string, unknown> = {
         email: user.email,

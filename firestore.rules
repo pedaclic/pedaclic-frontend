@@ -88,11 +88,27 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin() || isParent() || isProf();
       allow list: if isAdmin() || isProf();
-      allow create: if isSignedIn() &&
-                       request.auth.uid == userId &&
-                       request.resource.data.keys().hasAll(['email', 'role', 'isPremium']);
+      // Phase 57 : l'admin peut aussi créer le profil d'un compte qu'il inscrit
+      allow create: if (isSignedIn() &&
+                        request.auth.uid == userId &&
+                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium'])) ||
+                       (isAdmin() &&
+                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']));
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Phase 57 — COMPTES SUPPRIMÉS PAR L'ADMIN (« pierres tombales »)
+    // Lu à la connexion par l'utilisateur lui-même (uid == docId) pour
+    // empêcher la recréation automatique de son profil. Écriture : admin.
+    // L'ordre du « || » évite d'appeler isAdmin() (getUserData) pour un
+    // utilisateur dont le profil n'existe plus.
+    // ──────────────────────────────────────────────────────────
+    match /comptes_supprimes/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
     }
 
     // ──────────────────────────────────────────────────────────

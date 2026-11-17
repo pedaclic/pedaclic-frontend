@@ -17,7 +17,6 @@ import {
   updateDoc,
   query,
   where,
-  orderBy,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -41,6 +40,12 @@ export interface User {
   isActive?: boolean;
   createdAt?: any;
   updatedAt?: any;
+  /** Phase 57 : dernière connexion (écrit par AuthContext) — historique admin */
+  lastLogin?: any;
+  /** Phase 57 : sexe déclaré (optionnel) */
+  sexe?: 'M' | 'F' | 'autre';
+  /** Phase 57 : 'admin' si le compte a été créé depuis la page admin */
+  sourceCreation?: string;
 }
 
 export interface QuizResult {
@@ -86,17 +91,31 @@ export interface UserStats {
 
 export const getUsers = async (filters?: UserFilters): Promise<User[]> => {
   try {
-    let q = query(usersRef, orderBy('displayName', 'asc'));
-
-    if (filters?.role) {
-      q = query(usersRef, where('role', '==', filters.role), orderBy('displayName', 'asc'));
-    }
+    // ⚠️ CORRECTIF Phase 57 : on N'UTILISE PLUS orderBy('displayName').
+    //    Firestore exclut silencieusement d'une requête triée tout document
+    //    qui ne possède pas le champ de tri : les comptes créés sans
+    //    `displayName` (inscription incomplète, certains flux Google ou
+    //    création par lot) n'apparaissaient donc jamais dans la liste admin
+    //    (écart « 187 comptes » vs « 185 affichés »).
+    //    → lecture complète, puis tri alphabétique côté client.
+    const q = filters?.role
+      ? query(usersRef, where('role', '==', filters.role))
+      : usersRef;
 
     const snapshot = await getDocs(q);
     let users: User[] = snapshot.docs.map((docSnap) => ({
       uid: docSnap.id,
       ...docSnap.data(),
     })) as User[];
+
+    // Tri alphabétique robuste (nom, à défaut email), insensible aux accents
+    users.sort((a, b) =>
+      (a.displayName || a.email || '').localeCompare(
+        b.displayName || b.email || '',
+        'fr',
+        { sensitivity: 'base' }
+      )
+    );
 
     if (filters?.isPremium !== undefined) {
       users = users.filter((user) => user.isPremium === filters.isPremium);

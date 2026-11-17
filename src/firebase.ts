@@ -15,7 +15,9 @@ import { getStorage } from 'firebase/storage';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 // --- Configuration Firebase (variables d'environnement) ---
-const firebaseConfig = {
+// Exporté (Phase 57) : réutilisé par adminUsersService pour une instance
+// Firebase SECONDAIRE dédiée à la création de comptes par l'admin.
+export const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
