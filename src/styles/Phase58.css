@@ -1,0 +1,407 @@
+/* ============================================================
+   PedaClic — Phase 58 : Lien de séance & Médias partagés
+   ------------------------------------------------------------
+   Toutes les classes sont NOUVELLES et préfixées
+   (lien-seance-, seance-lien-, medias-, seance-cible-) :
+   aucun style existant n'est redéfini, sauf l'ajout du halo
+   `.entree-focus` sur les cartes élève (sélecteur nouveau).
+   Couleurs : variables --ct-* de CahierTextes.css avec repli.
+   ============================================================ */
+
+/* ─── 1. Bouton 🔗 dans les actions d'une carte (prof) ─────── */
+.lien-seance {
+  position: relative;            /* ancre de la fenêtre */
+  display: inline-flex;
+}
+.lien-seance-declencheur {
+  color: var(--ct-blue, #2563eb); /* se distingue des autres icônes grises */
+}
+.lien-seance-declencheur.is-actif,
+.lien-seance-declencheur:hover {
+  background: var(--ct-blue-xlight, #eff6ff);
+}
+
+/* Fenêtre flottante sous le bouton, alignée à droite */
+.lien-seance-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;                   /* au-dessus des cartes voisines */
+  width: min(380px, 86vw);
+  background: #fff;
+  border: 1px solid var(--ct-gray-200, #e5e7eb);
+  border-radius: var(--ct-radius, 12px);
+  box-shadow: var(--ct-shadow-lg, 0 8px 30px rgba(0,0,0,.14));
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  cursor: default;
+}
+.lien-seance-pop__tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.lien-seance-pop__fermer {
+  border: none;
+  background: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ct-gray-500, #6b7280);
+  width: 32px;
+  height: 32px;
+}
+.lien-seance-pop__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ct-gray-600, #4b5563);
+}
+.lien-seance-pop__ligne { display: flex; gap: 6px; }
+.lien-seance-pop__ligne input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  font-family: inherit;
+}
+.lien-seance-pop__copier {
+  border: none;
+  border-radius: 8px;
+  background: var(--ct-blue, #2563eb);
+  color: #fff;
+  font-weight: 600;
+  padding: 0 14px;
+  cursor: pointer;
+  min-height: 38px;
+}
+.lien-seance-pop__whatsapp {
+  display: block;
+  text-align: center;
+  border: 1px solid #16a34a;
+  color: #15803d;
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.lien-seance-pop__note {
+  margin: 0;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #78350f;
+}
+
+/* ─── 2. Bouton texte dans l'éditeur de séance ─────────────── */
+.lien-seance-btn-texte {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1.5px solid var(--ct-blue, #2563eb);
+  background: var(--ct-blue-xlight, #eff6ff);
+  color: var(--ct-blue-dark, #1d4ed8);
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+/* ─── 3. Page /seance/:id (cas « indisponible ») ───────────── */
+.seance-lien-page {
+  display: flex;
+  justify-content: center;
+  padding: 48px 16px;
+}
+.seance-lien-page__carte {
+  max-width: 460px;
+  background: #fff;
+  border: 1px solid var(--ct-gray-200, #e5e7eb);
+  border-radius: var(--ct-radius, 12px);
+  padding: 28px;
+  text-align: center;
+}
+.seance-lien-page__carte h1 { font-size: 1.3rem; margin: 0 0 8px; }
+.seance-lien-page__carte p  { color: var(--ct-gray-600, #4b5563); margin: 0 0 18px; }
+.seance-lien-page__btn {
+  display: inline-block;
+  background: var(--ct-blue, #2563eb);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* ─── 4. Élève : séance ciblée par un lien ─────────────────── */
+/* Halo identique à la Phase 40, appliqué aux cartes élève */
+.seance-card-eleve.entree-focus {
+  animation: entree-pulse 1.5s ease-out 2;
+  border-color: rgba(37, 99, 235, 0.55);
+}
+.seance-cible-bandeau {
+  background: var(--ct-blue-xlight, #eff6ff);
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #1e3a8a;
+}
+.seance-cible-bandeau--alerte {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #78350f;
+}
+.seance-cible-bandeau button {
+  border: none;
+  background: none;
+  color: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+/* Bascule « Séances / Médias » côté élève */
+.eleve-bascule-vue {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.eleve-bascule-vue button {
+  flex: 1;
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  background: #fff;
+  border-radius: 10px;
+  padding: 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--ct-gray-700, #374151);
+  min-height: 44px;
+}
+.eleve-bascule-vue button.is-actif {
+  background: var(--ct-blue, #2563eb);
+  border-color: var(--ct-blue, #2563eb);
+  color: #fff;
+}
+
+/* ─── 5. Onglet Médias partagés ────────────────────────────── */
+.medias-cahier {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  flex-wrap: wrap;               /* empile la colonne sur mobile */
+}
+.medias-types {
+  flex: 0 1 230px;
+  background: #fff;
+  border: 1px solid var(--ct-gray-200, #e5e7eb);
+  border-radius: var(--ct-radius, 12px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.medias-type {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  border-bottom: 1px solid var(--ct-gray-100, #f3f4f6);
+  background: #fff;
+  padding: 11px 16px;
+  font-size: 0.88rem;
+  color: var(--ct-gray-700, #374151);
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+.medias-type.is-actif {
+  background: var(--ct-blue-xlight, #eff6ff);
+  color: var(--ct-blue-dark, #1d4ed8);
+  font-weight: 600;
+}
+.medias-type__n {
+  background: var(--ct-blue, #2563eb);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+}
+.medias-liste {
+  flex: 999 1 480px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.medias-outils { display: flex; gap: 8px; flex-wrap: wrap; }
+.medias-outils input {
+  flex: 1 1 220px;
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  font-family: inherit;
+}
+.medias-outils select {
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  background: #fff;
+}
+/* Texte réservé aux lecteurs d'écran */
+.medias-sr {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.medias-item {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--ct-gray-200, #e5e7eb);
+  border-radius: 12px;
+  padding: 12px 16px;
+  flex-wrap: wrap;
+}
+.medias-item__code {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.68rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+/* Teinte par famille (texte foncé sur fond clair : contraste ≥ 4.5:1) */
+.medias-code--pdf      { background: #fee2e2; color: #991b1b; }
+.medias-code--document { background: #f3f4f6; color: #374151; }
+.medias-code--image    { background: #dcfce7; color: #166534; }
+.medias-code--audio    { background: #fef3c7; color: #92400e; }
+.medias-code--video    { background: #ede9fe; color: #5b21b6; }
+.medias-code--lien     { background: #dbeafe; color: #1e40af; }
+.medias-code--ebook    { background: #e0f2fe; color: #075985; }
+
+.medias-item__corps {
+  flex: 1 1 260px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.medias-item__nom { font-size: 0.95rem; overflow-wrap: anywhere; }
+.medias-item__seances {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.medias-item__meta { font-size: 0.75rem; color: var(--ct-gray-600, #4b5563); }
+.medias-seance {
+  border: 1px solid #bfdbfe;
+  background: var(--ct-blue-xlight, #eff6ff);
+  color: var(--ct-blue-dark, #1d4ed8);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.medias-item__actions { display: flex; gap: 6px; }
+.medias-btn {
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  background: #fff;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ct-gray-700, #374151);
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.medias-btn:hover { border-color: var(--ct-blue, #2563eb); color: var(--ct-blue-dark, #1d4ed8); }
+.medias-aucun, .medias-vide__sub { color: var(--ct-gray-600, #4b5563); font-size: 0.9rem; }
+.medias-vide {
+  background: #fff;
+  border: 1px dashed var(--ct-gray-300, #d1d5db);
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+}
+.medias-vide__titre { font-weight: 600; margin: 0 0 6px; }
+
+/* Côté élève (colonne étroite ~760 px) : types en barre horizontale */
+.medias-cahier--eleve .medias-types {
+  flex: 1 1 100%;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 6px;
+  background: none;
+  border: none;
+}
+.medias-cahier--eleve .medias-type {
+  border: 1px solid var(--ct-gray-300, #d1d5db);
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 36px;
+}
+
+/* ─── 6. Mode sombre ───────────────────────────────────────── */
+[data-theme="dark"] .lien-seance-pop,
+[data-theme="dark"] .seance-lien-page__carte,
+[data-theme="dark"] .medias-types,
+[data-theme="dark"] .medias-type,
+[data-theme="dark"] .medias-item,
+[data-theme="dark"] .medias-vide,
+[data-theme="dark"] .medias-btn,
+[data-theme="dark"] .medias-outils input,
+[data-theme="dark"] .medias-outils select,
+[data-theme="dark"] .eleve-bascule-vue button:not(.is-actif) {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .lien-seance-pop__ligne input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+[data-theme="dark"] .medias-type.is-actif,
+[data-theme="dark"] .medias-seance,
+[data-theme="dark"] .seance-cible-bandeau {
+  background: #1e3a8a;
+  border-color: #1d4ed8;
+  color: #dbeafe;
+}
+[data-theme="dark"] .medias-item__meta,
+[data-theme="dark"] .medias-aucun,
+[data-theme="dark"] .medias-vide__sub,
+[data-theme="dark"] .seance-lien-page__carte p { color: #94a3b8; }

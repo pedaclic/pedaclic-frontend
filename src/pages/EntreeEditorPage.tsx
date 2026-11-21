@@ -56,6 +56,8 @@ import { notifierElevesSeance } from '../services/communicationService'; // Phas
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
 import '../styles/Phase32.css';
+// Phase 58 — bouton « Copier le lien » de la séance (mode saisie)
+import BoutonLienSeance from '../components/prof/BoutonLienSeance';
 
 // ─── Formulaire vide ─────────────────────────────────────────
 const emptyForm = (): EntreeFormData => ({
@@ -550,6 +552,13 @@ const EntreeEditorPage: React.FC = () => {
             {cahier.titre} • {cahier.classe} • {cahier.matiere}
           </div>
         </div>
+        {/* Phase 58 — lien direct : uniquement pour une séance déjà
+            enregistrée (une nouvelle séance n'a pas encore d'ID). */}
+        {isEdit && entreeId && (
+          <div style={{ marginLeft: 'auto' }}>
+            <BoutonLienSeance entreeId={entreeId} variante="bouton" />
+          </div>
+        )}
       </div>
 
       <div className="editor-layout">

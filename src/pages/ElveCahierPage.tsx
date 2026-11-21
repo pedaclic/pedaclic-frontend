@@ -7,7 +7,7 @@
 // ============================================================
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import type { CahierTextes, EntreeCahier, RubriqueCahier } from '../types/cahierTextes.types';
 import { TYPE_EVAL_LABELS } from '../types/cahierTextes.types';
 import {
@@ -28,6 +28,10 @@ import ElveCahierFiltres, {
 import QuizsDeSeance from '../components/eleve/QuizsDeSeance';
 
 import '../styles/CahierEnrichi.css';
+// Phase 58 — lien de séance (?seance=) + onglet Médias (lecture seule)
+import OngletMediasCahier from '../components/cahier/OngletMediasCahier';
+import { PARAM_SEANCE, defilerVersSeance } from '../utils/lienSeance';
+import '../styles/Phase58.css';
 import '../styles/ElveCahierFiltres.css';
 import '../styles/Phase32.css';
 
@@ -236,6 +240,47 @@ const ElveCahierPage: React.FC = () => {
 
   const groupes = useMemo(() => grouperParMois(entreesFiltrees), [entreesFiltrees]);
 
+  /* ─────────────────────────────────────────────────────────────
+     PHASE 58 — Lien de séance & Médias partagés (lecture seule)
+       • vueEleve     : bascule « Séances / Médias »
+       • ?seance=<id> : filtres effacés, séance ouverte, défilement
+                        + halo ; si la séance n'est pas visible par
+                        l'élève → bandeau « pas encore disponible ».
+     ───────────────────────────────────────────────────────────── */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seanceParam = searchParams.get(PARAM_SEANCE);
+  const [vueEleve, setVueEleve] = useState<'seances' | 'medias'>('seances');
+  const [seanceCiblee, setSeanceCiblee] = useState<string | null>(null);
+  const [bandeauLien, setBandeauLien] = useState<'ok' | 'indisponible' | null>(null);
+
+  // Étape 1 : traiter le paramètre une fois les séances chargées
+  useEffect(() => {
+    if (!seanceParam || chargement) return;
+    setSearchParams(prev => { prev.delete(PARAM_SEANCE); return prev; }, { replace: true });
+    if (!entrees.some(e => e.id === seanceParam)) {
+      setBandeauLien('indisponible'); // planifiée, non partagée ou supprimée
+      return;
+    }
+    setVueEleve('seances');
+    setFiltres(FILTRES_DEFAUT);
+    setEntreeOuverte(seanceParam);
+    setSeanceCiblee(seanceParam);
+    setBandeauLien('ok');
+  }, [seanceParam, chargement, entrees, setSearchParams]);
+
+  // Étape 2 : défiler une fois la carte rendue (jusqu'à ~1 s d'attente)
+  useEffect(() => {
+    if (!seanceCiblee || vueEleve !== 'seances') return;
+    let essais = 0;
+    let rafId = 0;
+    const tenter = () => {
+      if (defilerVersSeance(seanceCiblee) || ++essais > 60) { setSeanceCiblee(null); return; }
+      rafId = requestAnimationFrame(tenter);
+    };
+    rafId = requestAnimationFrame(tenter);
+    return () => cancelAnimationFrame(rafId);
+  }, [seanceCiblee, vueEleve]);
+
   // ─── Signets d'évaluation triés (date d'évaluation prévue croissante) ───
   //   Les leçons à venir (date >= aujourd'hui) sont placées en premier ;
   //   celles sans date passent en fin de liste.
@@ -282,7 +327,7 @@ const ElveCahierPage: React.FC = () => {
         : '');
 
     return (
-      <article key={entree.id} className="seance-card-eleve">
+      <article key={entree.id} className="seance-card-eleve" data-entree-id={entree.id /* Phase 58 : ancre du lien */}>
         <button
           type="button"
           onClick={() => toggleEntree(entree.id)}
@@ -684,6 +729,45 @@ const ElveCahierPage: React.FC = () => {
         </section>
       )}
 
+      {/* Phase 58 — bandeau d'arrivée par un lien de séance */}
+      {bandeauLien && (
+        <div className={`seance-cible-bandeau${bandeauLien === 'indisponible' ? ' seance-cible-bandeau--alerte' : ''}`} role="status">
+          <span>
+            {bandeauLien === 'ok'
+              ? 'Votre professeur vous a envoyé cette séance. Les filtres ont été effacés pour l\u2019afficher.'
+              : 'Cette séance n\u2019est pas encore disponible. Voici les séances déjà réalisées.'}
+          </span>
+          <button type="button" onClick={() => setBandeauLien(null)}>Fermer</button>
+        </div>
+      )}
+
+      {/* Phase 58 — bascule Séances / Médias */}
+      {entrees.length > 0 && (
+        <div className="eleve-bascule-vue" role="group" aria-label="Affichage">
+          <button type="button" className={vueEleve === 'seances' ? 'is-actif' : ''}
+                  aria-pressed={vueEleve === 'seances'} onClick={() => setVueEleve('seances')}>
+            Séances
+          </button>
+          <button type="button" className={vueEleve === 'medias' ? 'is-actif' : ''}
+                  aria-pressed={vueEleve === 'medias'} onClick={() => setVueEleve('medias')}>
+            Médias
+          </button>
+        </div>
+      )}
+
+      {vueEleve === 'medias' ? (
+        <OngletMediasCahier
+          entrees={entrees}
+          mode="eleve"
+          onOuvrirSeance={id => {
+            // Retour à la liste : filtres effacés, séance ouverte puis ciblée
+            setVueEleve('seances');
+            setFiltres(FILTRES_DEFAUT);
+            setEntreeOuverte(id);
+            setSeanceCiblee(id);
+          }}
+        />
+      ) : (<>
       {entrees.length > 0 && (
         <ElveCahierFiltres
           filtres={filtres}
@@ -740,6 +824,7 @@ const ElveCahierPage: React.FC = () => {
           ))}
         </>
       )}
+      </>)}
     </main>
   );
 };

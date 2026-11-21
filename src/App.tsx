@@ -83,6 +83,8 @@ import FeuilleNotesEditorPage from './pages/FeuilleNotesEditorPage';
 /* ==================== PHASE 22 — VUE ÉLÈVE CAHIER ==================== */
 import ElveCahiersListePage from './pages/ElveCahiersListePage';
 import ElveCahierPage from './pages/ElveCahierPage';
+// Phase 58 — lien direct vers une séance (/seance/:entreeId)
+import SeanceLienPage from './pages/SeanceLienPage';
 
 // Phase 54 — Espace classe (annonces, forum, messages privés)
 import ProfCommunicationPage from './pages/ProfCommunicationPage';
@@ -255,6 +257,15 @@ const App: React.FC = () => {
         {/* Jeu de plateau pédagogique (outil ludique, accessible à tous les
             utilisateurs connectés ; conçu pour les élèves). */}
         <Route path="/eleve/jeu" element={<Layout><JeuPlateauPage /></Layout>} />
+
+        {/* ========== PHASE 58 — LIEN DE SÉANCE ==========
+            Lien unique partagé par le prof ; la page redirige vers
+            la vue prof (propriétaire / admin) ou élève. */}
+        <Route path="/seance/:entreeId" element={
+          <ProtectedRoute allowedRoles={['prof', 'eleve', 'admin']}>
+            <Layout><SeanceLienPage /></Layout>
+          </ProtectedRoute>
+        } />
 
         {/* ========== CAHIER ÉLÈVE (lecture seule) ========== */}
         <Route path="/eleve/cahiers" element={

@@ -7,7 +7,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../hooks/useAuth';
@@ -64,6 +64,11 @@ import { indexerSeancesParTitre, seancesDuTitre } from '../utils/liensSeances';
 import CopierRubriquesModal from '../components/prof/CopierRubriquesModal';
 import '../styles/CahierTextes.css';
 import '../styles/CahierEnrichi.css';
+// Phase 58 — lien de séance + onglet Médias partagés
+import BoutonLienSeance from '../components/prof/BoutonLienSeance';
+import OngletMediasCahier from '../components/cahier/OngletMediasCahier';
+import { PARAM_SEANCE, defilerVersSeance } from '../utils/lienSeance';
+import { indexerMediasCahier } from '../utils/mediasCahier';
 import { notifierElevesSeance } from '../services/communicationService'; // Phase 54
 
 /* ─────────────────────────────────────────────────────────────
@@ -100,7 +105,7 @@ function lireEntreeIdMemorisee(cahierId: string): string | undefined {
 }
 
 // ─── Types ───────────────────────────────────────────────────
-type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats' | 'travaux';
+type VueActive = 'liste' | 'calendrier' | 'signets' | 'stats' | 'travaux' | 'medias'; // Phase 58 : + medias
 type SortDirection = 'asc' | 'desc';
 
 // ─── Utilitaires semaine ──────────────────────────────────────
@@ -235,9 +240,15 @@ const CahierDetailPage: React.FC = () => {
      pour ne pas perturber le scroll quand l'utilisateur défile
      manuellement.
      ─────────────────────────────────────────────────────────── */
+  // Phase 58 — séance ciblée par un lien (?seance=<id>) : prioritaire
+  // sur la « dernière activité » de la Phase 40 ci-dessous.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const seanceParam = searchParams.get(PARAM_SEANCE);
+  const [seanceCiblee, setSeanceCiblee] = useState<string | null>(null);
+
   const scrollFait = React.useRef(false);
   useEffect(() => {
-    if (scrollFait.current) return;
+    if (scrollFait.current || seanceParam) return; // Phase 58 : lien prioritaire
     if (!cahierId) return;
     if (loadingEntrees) return;
     if (entrees.length === 0) return;
@@ -259,7 +270,58 @@ const CahierDetailPage: React.FC = () => {
       el.classList.add('entree-focus');
       window.setTimeout(() => el.classList.remove('entree-focus'), 3000);
     }));
-  }, [cahierId, loadingEntrees, entrees]);
+  }, [cahierId, loadingEntrees, entrees, seanceParam]);
+
+  /* PHASE 58 — Arrivée par un lien de séance (ou clic dans Médias)
+     ──────────────────────────────────────────────────────────
+     1. Quand les entrées sont chargées et que ?seance= est présent :
+        vue Liste, filtres remis à « tous », jour de la séance déplié,
+        puis on retire le paramètre de l'URL (un rechargement ne
+        relance pas le défilement).
+     2. Le défilement lui-même attend le rendu de la liste (effet 2). */
+  const seanceTraitee = React.useRef<string | null>(null); // évite un double traitement
+  useEffect(() => {
+    if (!seanceParam) { seanceTraitee.current = null; return; }
+    if (loadingEntrees || seanceTraitee.current === seanceParam) return;
+    seanceTraitee.current = seanceParam;
+    const cible = entrees.find(e => e.id === seanceParam);
+    scrollFait.current = true; // la Phase 40 ne reprend pas la main
+    setSearchParams(prev => { prev.delete(PARAM_SEANCE); return prev; }, { replace: true });
+    if (!cible) {
+      toast.error('Séance introuvable : elle a peut-être été supprimée.');
+      return;
+    }
+    setVue('liste');
+    setFiltreStatut('tous');
+    setFiltreType('tous');
+    setFiltreRubrique('tous');
+    setFiltreMois('tous');
+    setFiltreSemaine(null);
+    // Même clé de jour que le groupement « Phase 31 » de la liste
+    const d = cible.date.toDate();
+    const cleJour = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setJoursReplies(prev => {
+      if (!prev.has(cleJour)) return prev;
+      const n = new Set(prev); n.delete(cleJour); return n;
+    });
+    setSeanceCiblee(cible.id);
+  }, [seanceParam, loadingEntrees, entrees, setSearchParams, toast]);
+
+  // Effet 2 : défilement une fois la carte rendue (jusqu'à ~1 s d'attente)
+  useEffect(() => {
+    if (!seanceCiblee || vue !== 'liste') return;
+    let essais = 0;
+    let rafId = 0;
+    const tenter = () => {
+      if (defilerVersSeance(seanceCiblee) || ++essais > 60) { setSeanceCiblee(null); return; }
+      rafId = requestAnimationFrame(tenter);
+    };
+    rafId = requestAnimationFrame(tenter);
+    return () => cancelAnimationFrame(rafId);
+  }, [seanceCiblee, vue]);
+
+  // Phase 58 — nombre de ressources (badge de l'onglet Médias)
+  const nbMedias = useMemo(() => indexerMediasCahier(entrees).length, [entrees]);
 
   // ── Abonnement temps réel aux entrées ──────────────────────
   // Utilise onSnapshot pour éviter les incohérences de cache (IndexedDB)
@@ -1548,6 +1610,7 @@ const CahierDetailPage: React.FC = () => {
           { id: 'travaux', label: `📝 Travaux${travauxCahier.length > 0 ? ` (${travauxCahier.length})` : ''}` },
           { id: 'signets', label: '📌 Signets' },
           { id: 'stats', label: '📊 Statistiques' },
+          { id: 'medias', label: `📎 Médias${nbMedias > 0 ? ` (${nbMedias})` : ''}` }, // Phase 58
         ] as { id: VueActive; label: string }[]).map(tab => (
           <button
             key={tab.id}
@@ -1697,6 +1760,17 @@ const CahierDetailPage: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* ── Vue Médias partagés (Phase 58) ──
+           Index calculé à partir des séances déjà chargées ;
+           un clic sur une séance réutilise le mécanisme ?seance=. */}
+      {vue === 'medias' && (
+        <OngletMediasCahier
+          entrees={entrees}
+          mode="prof"
+          onOuvrirSeance={id => setSearchParams(prev => { prev.set(PARAM_SEANCE, id); return prev; })}
+        />
+      )}
 
       {/* ── Vue Statistiques ── */}
       {vue === 'stats' && (
@@ -2024,6 +2098,8 @@ const CahierDetailPage: React.FC = () => {
                         </div>
                         <div className="entree-actions no-print">
                           <button className="btn-icon" onClick={e => { e.stopPropagation(); navigate(`/prof/cahiers/${cahierId}/modifier/${entree.id}`); }} title="Modifier la séance">✏️</button>
+                          {/* Phase 58 — lien direct vers la séance (copier / WhatsApp) */}
+                          <BoutonLienSeance entreeId={entree.id} titre={entree.chapitre} />
                           {/* Phase 34 — Dupliquer : raccourci pour créer une séance similaire */}
                           <button className="btn-icon btn-icon--duplicate" onClick={e => handleDuplicateEntree(entree, e)} title="Dupliquer la séance (raccourci de mise à jour)">🗐</button>
                           <button className="btn-icon btn-icon--danger" onClick={e => { e.stopPropagation(); handleDeleteEntree(entree); }} title="Supprimer la séance">🗑️</button>
