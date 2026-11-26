@@ -1505,6 +1505,28 @@
 }
 .piece-jointe-item a { color: var(--ct-blue); text-decoration: none; flex: 1; }
 .piece-jointe-item a:hover { text-decoration: underline; }
+
+/* ── Correctif : nom de fichier long qui débordait de la tuile ──────
+   En flexbox, un enfant a par défaut « min-width: auto » : il ne peut
+   pas devenir plus étroit que son contenu. Un nom sans espaces
+   (Fiche_Cours_Phrase_Simple_…pdf) poussait donc le lien, la taille
+   et le bouton ✕ hors du cadre. On autorise le rétrécissement et on
+   tronque le nom avec des points de suspension (…) ; le nom complet
+   reste lisible au survol (attribut title côté TSX). */
+.piece-jointe-item {
+  min-width: 0;                  /* la ligne reste dans la largeur de la tuile */
+  max-width: 100%;
+}
+.piece-jointe-item a {
+  min-width: 0;                  /* clé du correctif : le lien peut rétrécir   */
+  overflow: hidden;              /* masque la partie qui dépasse               */
+  white-space: nowrap;           /* nom sur une seule ligne                    */
+  text-overflow: ellipsis;       /* … à la place du texte coupé                */
+}
+.piece-jointe-item > span,
+.piece-jointe-item > button {
+  flex-shrink: 0;                /* icône 📄, taille (Ko) et ✕ toujours visibles */
+}
 .upload-zone {
   border: 2px dashed var(--ct-gray-200);
   border-radius: 8px;

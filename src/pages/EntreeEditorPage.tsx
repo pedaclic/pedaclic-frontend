@@ -941,7 +941,7 @@ const EntreeEditorPage: React.FC = () => {
               {piecesJointes.map(p => (
                 <div key={p.url} className="piece-jointe-item">
                   <span>📄</span>
-                  <a href={p.url} target="_blank" rel="noopener noreferrer">{p.nom}</a>
+                  <a href={p.url} target="_blank" rel="noopener noreferrer" title={p.nom}>{p.nom}</a>{/* title : nom complet au survol (le nom est tronqué en CSS) */}
                   <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
                     ({Math.round((p.taille ?? 0) / 1024)} Ko)
                   </span>
