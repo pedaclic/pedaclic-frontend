@@ -219,6 +219,18 @@ function inferContentType(file: File): string {
     docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ppt: 'application/vnd.ms-powerpoint',
     pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Audio & vidéo (ajout) — utile quand le navigateur ne fournit pas file.type
+    mp3: 'audio/mpeg',
+    m4a: 'audio/mp4',
+    aac: 'audio/aac',
+    wav: 'audio/wav',
+    ogg: 'audio/ogg',
+    oga: 'audio/ogg',
+    opus: 'audio/ogg',
+    mp4: 'video/mp4',
+    m4v: 'video/mp4',
+    webm: 'video/webm',
+    mov: 'video/quicktime',
   };
   return map[ext] || 'application/octet-stream';
 }
@@ -264,9 +276,9 @@ export async function uploadPieceJointe(
         id: nom,
         nom: fichier.name,
         url,
-        type: fichier.type,
+        type: contentType,      // type déduit (= file.type s'il existe) → lecteur audio/vidéo fiable
         taille: fichier.size,
-        mimeType: fichier.type,
+        mimeType: contentType,
         uploadedAt: new Date().toISOString(),
       };
     }
@@ -287,9 +299,9 @@ export async function uploadPieceJointe(
             id: nom,
             nom: fichier.name,
             url,
-            type: fichier.type,
+            type: contentType,  // idem branche simple
             taille: fichier.size,
-            mimeType: fichier.type,
+            mimeType: contentType,
             uploadedAt: new Date().toISOString(),
           });
         }

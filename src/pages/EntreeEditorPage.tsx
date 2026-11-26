@@ -157,6 +157,8 @@ const EntreeEditorPage: React.FC = () => {
   const [loading, setLoading]                 = useState(true);
   const [saving, setSaving]                   = useState(false);
   const [uploadingFile, setUploadingFile]     = useState(false);
+  // Progression (%) de l'envoi — utile pour les fichiers audio/vidéo plus lourds
+  const [uploadProgress, setUploadProgress]   = useState(0);
   const [error, setError]                     = useState('');
 
   // États Phase 22 — médias enrichis
@@ -365,10 +367,24 @@ const EntreeEditorPage: React.FC = () => {
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files?.length || !currentUser?.uid || !cahierId) return;
     const file = e.target.files[0];
-    if (file.size > 10 * 1024 * 1024) { toast.warning('Fichier trop volumineux (max 10 Mo)'); return; }
+    // Limites par nature de fichier :
+    //  • documents / images : 10 Mo (inchangé)
+    //  • audio / vidéo     : < 50 Mo (plafond des règles Storage « cahiers/ »)
+    const nomMin = file.name.toLowerCase();
+    const estMedia = /^(audio|video)\//.test(file.type)
+      || /\.(mp3|m4a|aac|wav|ogg|oga|opus|mp4|m4v|webm|mov)$/.test(nomMin);
+    const tailleMax = estMedia ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size >= tailleMax) {
+      toast.warning(estMedia
+        ? 'Fichier audio/vidéo trop volumineux (max 50 Mo)'
+        : 'Fichier trop volumineux (max 10 Mo)');
+      e.target.value = '';
+      return;
+    }
     setUploadingFile(true);
+    setUploadProgress(0);
     try {
-      const piece = await uploadPieceJointe(currentUser.uid, cahierId, file);
+      const piece = await uploadPieceJointe(currentUser.uid, cahierId, file, setUploadProgress);
       const newPieces = [...piecesJointes, piece];
       setPiecesJointes(newPieces);
       if (isEdit && entreeId && entreeOriginale) {
@@ -382,6 +398,7 @@ const EntreeEditorPage: React.FC = () => {
         : 'Erreur lors de l\'import du fichier. Réessayez.');
     } finally {
       setUploadingFile(false);
+      setUploadProgress(0);
       e.target.value = '';
     }
   };
@@ -938,9 +955,16 @@ const EntreeEditorPage: React.FC = () => {
           <div className="editor-section-title">📎 Pièces jointes</div>
           {piecesJointes.length > 0 && (
             <div className="pieces-jointes-list">
-              {piecesJointes.map(p => (
-                <div key={p.url} className="piece-jointe-item">
-                  <span>📄</span>
+              {piecesJointes.map(p => {
+                // Nature du fichier (MIME, MediaType 'audio'/'video' ou extension)
+                const t = (p.mimeType || p.type || '').toLowerCase();
+                const ext = (p.nom.split('.').pop() || '').toLowerCase();
+                const estAudio = t.startsWith('audio') || ['mp3','m4a','aac','wav','ogg','oga','opus'].includes(ext);
+                const estVideo = !estAudio && (t.startsWith('video') || ['mp4','m4v','webm','mov'].includes(ext));
+                return (
+                <div key={p.url} className="piece-jointe-bloc">
+                <div className="piece-jointe-item">
+                  <span>{estAudio ? '🎵' : estVideo ? '🎬' : '📄'}</span>
                   <a href={p.url} target="_blank" rel="noopener noreferrer" title={p.nom}>{p.nom}</a>{/* title : nom complet au survol (le nom est tronqué en CSS) */}
                   <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
                     ({Math.round((p.taille ?? 0) / 1024)} Ko)
@@ -950,13 +974,30 @@ const EntreeEditorPage: React.FC = () => {
                     ✕
                   </button>
                 </div>
-              ))}
+                {/* Lecteur intégré : le professeur réécoute / revoit le média sans quitter l'éditeur.
+                    preload limité pour épargner les connexions lentes. */}
+                {estAudio && (
+                  <audio className="piece-jointe-player" controls preload="metadata" src={p.url}>
+                    Votre navigateur ne lit pas ce format audio.
+                  </audio>
+                )}
+                {estVideo && (
+                  <video className="piece-jointe-player piece-jointe-player--video"
+                    controls preload="none" playsInline src={p.url}>
+                    Votre navigateur ne lit pas ce format vidéo.
+                  </video>
+                )}
+                </div>
+                );
+              })}
             </div>
           )}
           <label className="upload-zone">
-            {uploadingFile ? 'Envoi en cours...' : '📂 Cliquer pour ajouter un fichier (PDF, image — max 10 Mo)'}
+            {uploadingFile
+              ? `Envoi en cours... ${uploadProgress > 0 ? uploadProgress + ' %' : ''}`
+              : '📂 Cliquer pour ajouter un fichier (PDF, image, document — max 10 Mo ; audio, vidéo — max 50 Mo)'}
             <input type="file" style={{ display: 'none' }}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.ppt,.pptx,.mp3,.m4a,.aac,.wav,.ogg,.oga,.opus,.mp4,.m4v,.webm,.mov,audio/*,video/*"
               onChange={handleFileUpload} disabled={uploadingFile} />
           </label>
         </div>
