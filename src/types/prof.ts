@@ -23,6 +23,16 @@
 export type StatutGroupe = 'actif' | 'archive' | 'suspendu';
 
 /**
+ * ★ Phase 59 — Durée de validité du code d'invitation d'un groupe.
+ * - 'illimitee' : comportement historique, le code n'expire jamais
+ * - '24h' | '48h' | '7j' | '15j' | '30j' : durée RELATIVE, comptée depuis
+ *   l'application du réglage, puis recomptée à chaque régénération du code
+ * - 'date' : échéance FIXE choisie par le prof (fin de journée, 23:59:59)
+ * Un groupe créé avant la Phase 59 n'a aucun de ces champs → illimité.
+ */
+export type ValiditeCode = 'illimitee' | '24h' | '48h' | '7j' | '15j' | '30j' | 'date';
+
+/**
  * Interface pour un groupe-classe créé par un professeur.
  * Collection Firestore : groupes_prof
  * 
@@ -38,6 +48,8 @@ export interface GroupeProf {
   matiereNom: string;               // Nom de la matière (pour affichage rapide)
   classeNiveau: string;             // Niveau/classe (ex: "3eme", "Terminale")
   codeInvitation: string;           // Code unique (format: PROF-XXXX-XXXX)
+  codeValidite?: ValiditeCode;      // ★ Phase 59 — politique de validité (absent = illimitée)
+  codeExpireLe?: Date | null;       // ★ Phase 59 — échéance du code (null/absent = jamais)
   nombreInscrits: number;           // Compteur d'élèves inscrits (dénormalisé)
   statut: StatutGroupe;             // Statut actuel du groupe
   anneeScolaire: string;            // Année scolaire (ex: "2024-2025")

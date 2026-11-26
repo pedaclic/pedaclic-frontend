@@ -2052,3 +2052,73 @@
   margin-bottom: 1rem;
   font-size: 0.9rem;
 }
+
+
+/* ============================================================
+   ★ PHASE 59 — VALIDITÉ DES CODES D'INVITATION
+   Classes préfixées « groupe-validite- » / modificateurs « --expire ».
+   Aucune règle existante n'est modifiée.
+   ============================================================ */
+
+/* Encadré du code lorsque celui-ci a expiré : bordure rouge */
+.groupe-code-box.groupe-code-box--expire {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+/* Code expiré : barré et grisé (reste lisible pour le prof) */
+.groupe-code-value.groupe-code-value--expire {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+/* Ligne d'état sous le code (« Valide jusqu'au… » / « Expiré le… ») */
+.groupe-validite-etat {
+  margin: var(--spacing-xs) 0 0;
+  font-size: var(--text-xs);
+  color: #047857;
+}
+.groupe-validite-etat--expire {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Panneau de réglage déplié sous le code */
+.groupe-validite-panneau {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid #2563eb;
+  border-radius: var(--radius-md);
+  background: var(--color-bg-secondary, #f8fafc);
+}
+
+/* Les champs du panneau s'empilent proprement dans une carte étroite */
+.groupe-validite-panneau .groupe-validite-champs {
+  flex-wrap: wrap;
+}
+
+.groupe-validite-aide {
+  margin: var(--spacing-xs) 0 var(--spacing-sm);
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+.groupe-validite-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+/* ---------- Mode sombre ---------- */
+[data-theme="dark"] .groupe-code-box.groupe-code-box--expire {
+  background: rgba(127, 29, 29, 0.25);
+  border-color: #7f1d1d;
+}
+[data-theme="dark"] .groupe-validite-etat { color: #6ee7b7; }
+[data-theme="dark"] .groupe-validite-etat--expire { color: #fca5a5; }
+[data-theme="dark"] .groupe-validite-panneau {
+  background: rgba(30, 41, 59, 0.6);
+  border-color: #334155;
+  border-left-color: #3b82f6;
+}

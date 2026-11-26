@@ -52,7 +52,8 @@ import type {
   StatsQuizGroupe,
   QuestionRatee,
   AlerteProf,
-  LigneExportCSV
+  LigneExportCSV,
+  ValiditeCode
 } from '../types/prof';
 
 
@@ -118,14 +119,128 @@ async function genererCodeProf(): Promise<string> {
 
 
 // ============================================================
+// SECTION 1 bis : VALIDITÉ DES CODES D'INVITATION (★ Phase 59)
+// ============================================================
+//
+// Principe : aucune tâche planifiée côté serveur n'est nécessaire.
+// L'échéance est enregistrée dans `groupes_prof/{id}.codeExpireLe` et
+// vérifiée au moment où un élève saisit le code (rejoindreGroupe).
+// Passé l'échéance, le code est donc révoqué automatiquement.
+// Les groupes antérieurs (sans champ) restent illimités → aucune migration.
+
+/** Options proposées au professeur (ordre d'affichage) */
+export const OPTIONS_VALIDITE_CODE: { valeur: ValiditeCode; label: string }[] = [
+  { valeur: 'illimitee', label: '♾️ Sans limite' },
+  { valeur: '24h',       label: '24 heures' },
+  { valeur: '48h',       label: '48 heures' },
+  { valeur: '7j',        label: '7 jours' },
+  { valeur: '15j',       label: '15 jours' },
+  { valeur: '30j',       label: '30 jours' },
+  { valeur: 'date',      label: '📅 Jusqu\'à une date précise' },
+];
+
+/** Durées relatives en millisecondes */
+const HEURE_MS = 60 * 60 * 1000;
+const DUREES_VALIDITE_MS: Partial<Record<ValiditeCode, number>> = {
+  '24h': 24 * HEURE_MS,
+  '48h': 48 * HEURE_MS,
+  '7j':  7 * 24 * HEURE_MS,
+  '15j': 15 * 24 * HEURE_MS,
+  '30j': 30 * 24 * HEURE_MS,
+};
+
+/** Vrai si la validité est une durée relative (recomptée à la régénération) */
+export function estValiditeRelative(validite?: ValiditeCode | null): boolean {
+  return !!validite && DUREES_VALIDITE_MS[validite] !== undefined;
+}
+
+/**
+ * Calcule l'échéance d'un code.
+ * @param validite  politique choisie
+ * @param dateFixe  'AAAA-MM-JJ' (champ <input type="date">), requis si validite = 'date'
+ * @param depuis    point de départ des durées relatives (par défaut : maintenant)
+ * @returns la date d'échéance, ou null si le code est illimité
+ * @throws si la date fixe est absente, invalide ou déjà passée
+ */
+export function calculerExpirationCode(
+  validite: ValiditeCode,
+  dateFixe?: string | null,
+  depuis: Date = new Date()
+): Date | null {
+  if (validite === 'illimitee') return null;
+
+  if (validite === 'date') {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateFixe || '');
+    if (!m) throw new Error('Choisissez une date d\'expiration valide.');
+    // Fin de journée, heure locale (Dakar = UTC+0)
+    const echeance = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 23, 59, 59, 999);
+    if (isNaN(echeance.getTime()) || echeance.getTime() <= depuis.getTime()) {
+      throw new Error('La date d\'expiration doit être dans le futur.');
+    }
+    return echeance;
+  }
+
+  const duree = DUREES_VALIDITE_MS[validite];
+  if (duree === undefined) return null; // valeur inconnue → prudence : illimité
+  return new Date(depuis.getTime() + duree);
+}
+
+/**
+ * Vrai si le code du groupe est expiré.
+ * Accepte Date, Timestamp Firestore ou valeur absente (→ jamais expiré).
+ */
+export function estCodeExpire(
+  groupe: { codeExpireLe?: any },
+  maintenant: Date = new Date()
+): boolean {
+  if (!groupe?.codeExpireLe) return false;
+  const echeance = toDate(groupe.codeExpireLe);
+  if (isNaN(echeance.getTime())) return false;
+  return echeance.getTime() <= maintenant.getTime();
+}
+
+/**
+ * Définit (ou modifie) la validité du code d'un groupe, sans changer le code.
+ * @returns la nouvelle échéance (null = illimité)
+ */
+export async function definirValiditeCode(
+  groupeId: string,
+  validite: ValiditeCode,
+  dateFixe?: string | null
+): Promise<Date | null> {
+  // Validation AVANT le try : le message précis remonte à l'interface
+  const codeExpireLe = calculerExpirationCode(validite, dateFixe);
+  try {
+    await updateDoc(doc(db, 'groupes_prof', groupeId), {
+      codeValidite: validite,
+      codeExpireLe,
+      dateMiseAJour: new Date()
+    });
+    console.log(`✅ Validité du code du groupe ${groupeId} : ${validite}`);
+    return codeExpireLe;
+  } catch (error) {
+    console.error('❌ Erreur réglage validité code:', error);
+    throw new Error('Impossible d\'enregistrer la validité du code.');
+  }
+}
+
+
+// ============================================================
 // SECTION 2 : CRUD GROUPES-CLASSES
 // ============================================================
 
 export async function creerGroupe(
   profId: string,
   profNom: string,
-  formData: GroupeFormData
+  formData: GroupeFormData,
+  // ★ Phase 59 — optionnel : sans ce paramètre, comportement inchangé (illimité)
+  validiteCode?: { validite: ValiditeCode; dateFixe?: string | null }
 ): Promise<GroupeProf> {
+  // ★ Phase 59 — validation hors du try pour conserver le message précis
+  const codeExpireLe = validiteCode
+    ? calculerExpirationCode(validiteCode.validite, validiteCode.dateFixe)
+    : null;
+
   try {
     const codeInvitation = await genererCodeProf();
 
@@ -138,6 +253,8 @@ export async function creerGroupe(
       matiereNom: formData.matiereNom,
       classeNiveau: formData.classeNiveau,
       codeInvitation,
+      // ★ Phase 59 — champs écrits uniquement si une validité est fournie
+      ...(validiteCode ? { codeValidite: validiteCode.validite, codeExpireLe } : {}),
       nombreInscrits: 0,
       statut: 'actif' as const,
       anneeScolaire: formData.anneeScolaire,
@@ -173,7 +290,11 @@ export async function getGroupesProf(profId: string): Promise<GroupeProf[]> {
       dateCreation: toDate(docSnap.data().dateCreation),
       dateMiseAJour: docSnap.data().dateMiseAJour
         ? toDate(docSnap.data().dateMiseAJour)
-        : undefined
+        : undefined,
+      // ★ Phase 59 — échéance du code (null si absente)
+      codeExpireLe: docSnap.data().codeExpireLe
+        ? toDate(docSnap.data().codeExpireLe)
+        : null
     })) as GroupeProf[];
   } catch (error) {
     console.error('❌ Erreur récupération groupes:', error);
@@ -191,7 +312,9 @@ export async function getGroupeById(groupeId: string): Promise<GroupeProf | null
       id: docSnap.id,
       ...data,
       dateCreation: toDate(data.dateCreation),
-      dateMiseAJour: data.dateMiseAJour ? toDate(data.dateMiseAJour) : undefined
+      dateMiseAJour: data.dateMiseAJour ? toDate(data.dateMiseAJour) : undefined,
+      // ★ Phase 59 — échéance du code (null si absente)
+      codeExpireLe: data.codeExpireLe ? toDate(data.codeExpireLe) : null
     } as GroupeProf;
   } catch (error) {
     console.error('❌ Erreur récupération groupe:', error);
@@ -251,8 +374,24 @@ export async function restaurerGroupe(groupeId: string): Promise<void> {
 export async function regenererCode(groupeId: string): Promise<string> {
   try {
     const nouveauCode = await genererCodeProf();
+
+    // ★ Phase 59 — si le groupe a une validité RELATIVE (24h, 7j…), le
+    // nouveau code repart pour la même durée. Validité fixe ('date') ou
+    // illimitée : l'échéance existante est conservée telle quelle.
+    const majValidite: Record<string, any> = {};
+    try {
+      const snap = await getDoc(doc(db, 'groupes_prof', groupeId));
+      const validite = snap.exists() ? (snap.data().codeValidite as ValiditeCode | undefined) : undefined;
+      if (estValiditeRelative(validite)) {
+        majValidite.codeExpireLe = calculerExpirationCode(validite as ValiditeCode);
+      }
+    } catch (e) {
+      console.warn('Lecture validité impossible, régénération simple :', e);
+    }
+
     await updateDoc(doc(db, 'groupes_prof', groupeId), {
       codeInvitation: nouveauCode,
+      ...majValidite,
       dateMiseAJour: new Date()
     });
     console.log(`✅ Nouveau code pour groupe ${groupeId}: ${nouveauCode}`);
@@ -293,6 +432,11 @@ export async function rejoindreGroupe(
 
     if (groupeData.statut !== 'actif') {
       throw new Error('Ce groupe n\'accepte plus de nouvelles inscriptions.');
+    }
+
+    // ★ Phase 59 — révocation automatique : code arrivé à échéance
+    if (estCodeExpire(groupeData)) {
+      throw new Error('Ce code d\'invitation a expiré. Demande un nouveau code à ton professeur.');
     }
 
     const inscriptionExistante = query(

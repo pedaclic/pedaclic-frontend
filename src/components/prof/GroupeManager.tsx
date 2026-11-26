@@ -30,10 +30,14 @@ import {
   archiverGroupe,
   restaurerGroupe,
   regenererCode,
-  getStatsGroupe
+  getStatsGroupe,
+  // ★ Phase 59 — validité des codes d'invitation
+  definirValiditeCode,
+  estCodeExpire,
+  OPTIONS_VALIDITE_CODE
 } from '../../services/profGroupeService';
 import DisciplineService from '../../services/disciplineService';
-import type { GroupeProf, GroupeFormData, StatsGroupe } from '../../types/prof';
+import type { GroupeProf, GroupeFormData, StatsGroupe, ValiditeCode } from '../../types/prof';
 import { CLASSES_OPTIONS, CLASSES, normaliserClassePourComparaison } from '../../types/cahierTextes.types';
 import '../../styles/prof.css';
 
@@ -71,6 +75,31 @@ const getAnneeScolaireEnCours = (): string => {
 
 // Niveaux/classes : source unique (cahierTextes, médiathèque, premium)
 const NIVEAUX_CLASSES = CLASSES_OPTIONS.map((c) => ({ value: c.valeur, label: c.label }));
+
+// ★ Phase 59 — utilitaires d'affichage de la validité du code
+
+/** Date du jour au format AAAA-MM-JJ (attribut min des <input type="date">) */
+const aujourdhuiISO = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Convertit une échéance en AAAA-MM-JJ (pré-remplissage du formulaire) */
+const dateVersISO = (d?: Date | null): string => {
+  if (!d) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+/** Ex. « 03/12/2026 à 23:59 » */
+const formaterEcheance = (d: Date): string =>
+  `${d.toLocaleDateString('fr-FR')} à ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+
+/** État vide du réglage de validité */
+interface ValiditeFormState {
+  validite: ValiditeCode;
+  dateFixe: string;
+}
+const VALIDITE_PAR_DEFAUT: ValiditeFormState = { validite: 'illimitee', dateFixe: '' };
 
 
 // ==================== INTERFACES ====================
@@ -121,6 +150,12 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
   });
 
   const [filtreStatut, setFiltreStatut] = useState<'actif' | 'archive' | 'tous'>('actif');
+
+  // ===== ★ Phase 59 : validité des codes =====
+  const [validiteCreation, setValiditeCreation] = useState<ValiditeFormState>(VALIDITE_PAR_DEFAUT);
+  const [validiteGroupeId, setValiditeGroupeId] = useState<string | null>(null); // panneau ouvert
+  const [validiteForm, setValiditeForm] = useState<ValiditeFormState>(VALIDITE_PAR_DEFAUT);
+  const [loadingValidite, setLoadingValidite] = useState<boolean>(false);
 
 
   // ==================== CHARGEMENT DES DONNÉES ====================
@@ -206,12 +241,17 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
       await creerGroupe(
         currentUser.uid,
         currentUser.displayName || currentUser.email || 'Professeur',
-        formData
+        formData,
+        // ★ Phase 59 — « Sans limite » : aucun champ ajouté (comportement historique)
+        validiteCreation.validite !== 'illimitee'
+          ? { validite: validiteCreation.validite, dateFixe: validiteCreation.dateFixe }
+          : undefined
       );
       setFormData({
         nom: '', description: '', matiereId: '', matiereNom: '',
         classeNiveau: CLASSES[0], anneeScolaire: getAnneeScolaireEnCours()
       });
+      setValiditeCreation(VALIDITE_PAR_DEFAUT);
       setShowFormCreation(false);
       setSuccessMessage('Groupe créé avec succès !');
       setTimeout(() => setSuccessMessage(null), 3000);
@@ -315,6 +355,70 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
       await chargerGroupes();
     } catch (err: any) { setError(err.message); }
   };
+
+  // ★ Phase 59 — ouverture / fermeture du panneau « Validité » d'une carte
+  const handleOuvrirValidite = (groupe: GroupeProf) => {
+    if (validiteGroupeId === groupe.id) { setValiditeGroupeId(null); return; }
+    setValiditeForm({
+      validite: groupe.codeValidite || 'illimitee',
+      dateFixe: groupe.codeValidite === 'date' ? dateVersISO(groupe.codeExpireLe) : ''
+    });
+    setValiditeGroupeId(groupe.id);
+  };
+
+  // ★ Phase 59 — enregistrement de la validité (le code lui-même ne change pas)
+  const handleEnregistrerValidite = async (groupeId: string) => {
+    try {
+      setLoadingValidite(true);
+      const echeance = await definirValiditeCode(groupeId, validiteForm.validite, validiteForm.dateFixe);
+      setValiditeGroupeId(null);
+      setSuccessMessage(echeance
+        ? `Code valide jusqu'au ${formaterEcheance(echeance)}.`
+        : 'Code valide sans limite de durée.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      await chargerGroupes();
+    } catch (err: any) {
+      setError(err.message || 'Impossible d\'enregistrer la validité du code.');
+    } finally {
+      setLoadingValidite(false);
+    }
+  };
+
+  // ★ Phase 59 — sélecteur de validité réutilisé (création + panneau de carte)
+  const renderValiditeChamps = (
+    idPrefixe: string,
+    valeur: ValiditeFormState,
+    onChange: (v: ValiditeFormState) => void
+  ) => (
+    <div className="prof-form-row groupe-validite-champs">
+      <div className="prof-form-group">
+        <label htmlFor={`${idPrefixe}-validite`}>Validité du code d'invitation</label>
+        <select
+          id={`${idPrefixe}-validite`}
+          className="prof-select"
+          value={valeur.validite}
+          onChange={(e) => onChange({ ...valeur, validite: e.target.value as ValiditeCode })}
+        >
+          {OPTIONS_VALIDITE_CODE.map(o => <option key={o.valeur} value={o.valeur}>{o.label}</option>)}
+        </select>
+      </div>
+      {/* Champ date affiché uniquement pour une échéance fixe */}
+      {valeur.validite === 'date' && (
+        <div className="prof-form-group">
+          <label htmlFor={`${idPrefixe}-date`}>Expire le (fin de journée) *</label>
+          <input
+            id={`${idPrefixe}-date`}
+            type="date"
+            className="prof-input"
+            min={aujourdhuiISO()}
+            value={valeur.dateFixe}
+            onChange={(e) => onChange({ ...valeur, dateFixe: e.target.value })}
+            required
+          />
+        </div>
+      )}
+    </div>
+  );
 
   const handleFormChange = (field: keyof GroupeFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -455,9 +559,13 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
             {/* ★ Dropdown discipline (remplace matiereId + matiereNom manuels) */}
             {renderDisciplineSelect('groupe-discipline', formData.matiereId, (id) => handleDisciplineChange(id, false))}
 
+            {/* ★ Phase 59 — validité du code (par défaut : sans limite) */}
+            {renderValiditeChamps('groupe-creation', validiteCreation, setValiditeCreation)}
+
             <div className="prof-form-actions">
               <button type="submit" className="prof-btn prof-btn-primary"
-                disabled={loadingCreation || !formData.nom.trim() || !formData.matiereId}>
+                disabled={loadingCreation || !formData.nom.trim() || !formData.matiereId
+                  || (validiteCreation.validite === 'date' && !validiteCreation.dateFixe)}>
                 {loadingCreation ? '⏳ Création...' : '✅ Créer le groupe'}
               </button>
             </div>
@@ -594,8 +702,11 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
 
                 <div className="groupe-card-code">
                   <span className="groupe-code-label">Code d'invitation :</span>
-                  <div className="groupe-code-box">
-                    <code className="groupe-code-value">{groupe.codeInvitation}</code>
+                  {/* ★ Phase 59 — encadré rouge + code barré lorsque le code a expiré */}
+                  <div className={`groupe-code-box ${estCodeExpire(groupe) ? 'groupe-code-box--expire' : ''}`}>
+                    <code className={`groupe-code-value ${estCodeExpire(groupe) ? 'groupe-code-value--expire' : ''}`}>
+                      {groupe.codeInvitation}
+                    </code>
                     <button className="prof-btn-icon"
                       onClick={(e) => { e.stopPropagation(); handleCopierCode(groupe.codeInvitation); }}
                       title="Copier le code">
@@ -606,7 +717,48 @@ const GroupeManager: React.FC<GroupeManagerProps> = ({ onSelectGroupe }) => {
                         onClick={(e) => { e.stopPropagation(); handleRegenerCode(groupe.id); }}
                         title="Régénérer le code">🔄</button>
                     )}
+                    {/* ★ Phase 59 — réglage de la durée de validité */}
+                    {groupe.statut === 'actif' && (
+                      <button className="prof-btn-icon"
+                        onClick={(e) => { e.stopPropagation(); handleOuvrirValidite(groupe); }}
+                        title="Définir la validité du code"
+                        aria-expanded={validiteGroupeId === groupe.id}>⏱️</button>
+                    )}
                   </div>
+
+                  {/* ★ Phase 59 — état de validité (seulement si une échéance existe) */}
+                  {groupe.codeExpireLe && (
+                    estCodeExpire(groupe) ? (
+                      <p className="groupe-validite-etat groupe-validite-etat--expire">
+                        ⛔ Code expiré le {formaterEcheance(groupe.codeExpireLe)} — régénérez-le ou modifiez sa validité.
+                      </p>
+                    ) : (
+                      <p className="groupe-validite-etat">
+                        ⏱️ Valide jusqu'au {formaterEcheance(groupe.codeExpireLe)}
+                      </p>
+                    )
+                  )}
+
+                  {/* ★ Phase 59 — panneau de réglage */}
+                  {validiteGroupeId === groupe.id && (
+                    <div className="groupe-validite-panneau" onClick={(e) => e.stopPropagation()}>
+                      {renderValiditeChamps(`groupe-${groupe.id}`, validiteForm, setValiditeForm)}
+                      <p className="groupe-validite-aide">
+                        Durée relative (24 h, 7 jours…) : recomptée à chaque régénération du code.
+                        Date précise : conservée jusqu'à modification.
+                      </p>
+                      <div className="groupe-validite-actions">
+                        <button type="button" className="prof-btn prof-btn-primary prof-btn-sm"
+                          disabled={loadingValidite || (validiteForm.validite === 'date' && !validiteForm.dateFixe)}
+                          onClick={() => handleEnregistrerValidite(groupe.id)}>
+                          {loadingValidite ? '⏳ Enregistrement...' : '✅ Appliquer'}
+                        </button>
+                        <button type="button" className="prof-btn prof-btn-secondary prof-btn-sm"
+                          disabled={loadingValidite}
+                          onClick={() => setValiditeGroupeId(null)}>✕ Annuler</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {stats && stats.nombreEleves > 0 && (

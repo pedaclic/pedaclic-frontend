@@ -265,12 +265,17 @@ service cloud.firestore {
       // jour le groupe (rejoindre / quitter) MAIS ne peut plus toucher aux
       // champs sensibles de propriété / métadonnées. Étendez la liste protégée
       // si d'autres champs ne doivent pas être modifiables par un élève.
+      // ★ Phase 59 : le code d'invitation et sa validité (codeInvitation,
+      // codeValidite, codeExpireLe) sont ajoutés à la liste protégée, afin
+      // qu'un élève ne puisse ni prolonger ni remplacer un code expiré.
+      // L'inscription (nombreInscrits, dateMiseAJour) reste autorisée.
       allow update: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
                        isAdmin() ||
                        (isEleve() &&
                         !request.resource.data.diff(resource.data).affectedKeys()
-                           .hasAny(['profId', 'createdAt', 'createdBy']))
+                           .hasAny(['profId', 'createdAt', 'createdBy',
+                                    'codeInvitation', 'codeValidite', 'codeExpireLe']))
                      );
       allow delete: if isSignedIn() && (
                        (isProf() && resource.data.profId == request.auth.uid) ||
@@ -834,8 +839,17 @@ service cloud.firestore {
     }
 
     match /mediatheque_vues/{vueId} {
+      // ★ Phase 59 — CORRECTIF lecture médiathèque :
+      // le client lit `mediatheque_vues/{uid}_{mediaId}` AVANT tout premier
+      // visionnage. Ce document n'existe pas encore → `resource` vaut null,
+      // `resource.data.userId` lève une erreur et seul isAdmin() pouvait
+      // sauver la règle : prof et élève recevaient « permission-denied »
+      // et la page du média tombait en erreur. On autorise donc la lecture
+      // d'un document INEXISTANT dont l'identifiant commence par l'uid du
+      // lecteur (aucune donnée d'autrui n'est exposée).
       allow read: if request.auth != null && (
-        resource.data.userId == request.auth.uid
+        (resource == null && vueId.matches(request.auth.uid + '_.*'))
+        || (resource != null && resource.data.userId == request.auth.uid)
         || isAdmin()
       );
       allow create, update: if request.auth != null

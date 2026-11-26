@@ -193,9 +193,21 @@ function LecteurVideo({
 
         {/* Fichier direct (Firebase Storage, MP4…) */}
         {!estYoutube && !erreurVideo && (
+          /*
+            ★ Phase 59 — CORRECTIF lecture : l'URL est posée directement sur
+            <video src> au lieu d'un <source type=…>. Deux bénéfices :
+            1. un <source> dont le type MIME est jugé « non lisible »
+               (ex. video/quicktime d'un iPhone) était ignoré en silence :
+               lecteur noir, aucun message ;
+            2. les erreurs d'un <source> ne remontent pas à <video onError> ;
+               avec src, le message « Vidéo indisponible » s'affiche bien.
+            Le navigateur détecte lui-même le format réel du fichier.
+          */
           <video
             ref={videoRef}
             className="media-player__video"
+            src={url && url.trim() !== '' ? url : undefined}
+            data-mime={typeMime}
             controls
             preload="metadata"
             poster={thumbnailUrl}
@@ -204,9 +216,6 @@ function LecteurVideo({
             playsInline
             aria-label={`Lecteur vidéo : ${titre}`}
           >
-            {url && url.trim() !== '' && (
-              <source src={url} type={typeMime} />
-            )}
             <p>Votre navigateur ne supporte pas la lecture vidéo HTML5.</p>
           </video>
         )}
@@ -382,18 +391,18 @@ function LecteurAudio({
 
         <p className="media-player__audio-titre">{titre}</p>
 
+        {/* ★ Phase 59 — même correctif que la vidéo : src direct, sans
+            type « audio/mpeg » imposé (m4a, wav, ogg lisibles aussi) */}
         <audio
           ref={audioRef}
           className="media-player__audio"
+          src={url && url.trim() !== '' ? url : undefined}
           controls
           preload="metadata"
           onLoadedMetadata={handleLoaded}
           onTimeUpdate={handleTimeUpdate}
           aria-label={`Lecteur audio : ${titre}`}
         >
-          {url && url.trim() !== '' && (
-            <source src={url} type="audio/mpeg" />
-          )}
           <p>Votre navigateur ne supporte pas la lecture audio.</p>
         </audio>
       </div>
@@ -450,21 +459,40 @@ export default function MediaDetailPage() {
         }
         setMedia(mediaData);
 
-        const [sim, prog] = await Promise.all([
-          getMediasSimilaires(mediaId!, mediaData.discipline),
+        // ★ Phase 59 — CORRECTIF lecture : les données SECONDAIRES ne doivent
+        // jamais empêcher l'affichage du lecteur. Auparavant, un refus
+        // Firestore sur la progression (document encore inexistant) ou sur
+        // les contenus similaires faisait échouer tout le chargement et la
+        // page affichait « Contenu introuvable ». allSettled isole chaque appel.
+        const [simRes, progRes] = await Promise.allSettled([
+          mediaData.discipline
+            ? getMediasSimilaires(mediaId!, mediaData.discipline)
+            : Promise.resolve([] as MediaItem[]),
           currentUser
             ? getProgression(currentUser.uid, mediaId!)
             : Promise.resolve(null),
         ]);
 
-        setSimilaires(sim);
+        if (simRes.status === 'fulfilled') {
+          setSimilaires(simRes.value);
+        } else {
+          console.warn('[MediaDetail] Contenus similaires indisponibles :', simRes.reason);
+        }
+
+        const prog = progRes.status === 'fulfilled' ? progRes.value : null;
+        if (progRes.status === 'rejected') {
+          console.warn('[MediaDetail] Progression indisponible :', progRes.reason);
+        }
         setProgression(prog);
 
         if (prog?.positionReprise) {
           positionRef.current = prog.positionReprise;
         }
 
-        await incrementerVues(mediaId!);
+        // Compteur de vues : best-effort, sans impact sur la lecture
+        incrementerVues(mediaId!).catch(e =>
+          console.warn('[MediaDetail] Compteur de vues non mis à jour :', e)
+        );
 
       } catch (err) {
         console.error('[MediaDetail] Erreur chargement :', err);
@@ -487,13 +515,19 @@ export default function MediaDetailPage() {
 
     sauvegardeTimerRef.current = setInterval(async () => {
       if (positionRef.current > 0) {
-        await sauvegarderProgression(
-          currentUser.uid,
-          media.id,
-          positionRef.current,
-          positionRef.current,
-          media.duree
-        );
+        // ★ Phase 59 — try/catch : évite une promesse rejetée non gérée
+        // toutes les 30 s si l'écriture est refusée ou hors ligne.
+        try {
+          await sauvegarderProgression(
+            currentUser.uid,
+            media.id,
+            positionRef.current,
+            positionRef.current,
+            media.duree
+          );
+        } catch (e) {
+          console.warn('[MediaDetail] Progression non sauvegardée :', e);
+        }
       }
     }, 30_000);
 
