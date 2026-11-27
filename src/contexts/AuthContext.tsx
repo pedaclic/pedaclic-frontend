@@ -9,7 +9,7 @@
  * @version 1.0.0
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 // Phase 56 — redirection directe vers la page de connexion (ProtectedRoute)
 import { Navigate, useLocation } from 'react-router-dom';
 import {
@@ -40,6 +40,15 @@ const ERROR_MESSAGES: Record<string, string> = {
   'auth/wrong-password': 'Mot de passe incorrect.',
   'auth/too-many-requests': 'Trop de tentatives. Veuillez réessayer plus tard.',
   'auth/network-request-failed': 'Erreur de connexion. Vérifiez votre connexion internet.',
+  // Phase 60 — email non confirmé. NB : LoginPage détecte la sous-chaîne
+  // « Vérifiez votre adresse email » pour afficher le lien vers
+  // /verification-email : ne pas modifier ce début de phrase.
+  'pedaclic/email-non-verifie':
+    'Vérifiez votre adresse email : votre compte n\'est pas encore activé. ' +
+    'Cliquez sur le lien de confirmation reçu par email (pensez au dossier spam), puis reconnectez-vous.',
+  'pedaclic/email-non-verifie-renvoye':
+    'Vérifiez votre adresse email : votre compte n\'est pas encore activé. ' +
+    'Un nouveau lien de confirmation vient de vous être envoyé (pensez au dossier spam).',
   'default': 'Une erreur est survenue. Veuillez réessayer.'
 };
 
@@ -72,6 +81,73 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  /**
+   * Phase 60 — vrai pendant login()/register() : ces fonctions gèrent
+   * elles-mêmes la déconnexion d'un compte non vérifié (après avoir, le cas
+   * échéant, renvoyé l'email). L'écouteur onAuthStateChanged ne doit donc
+   * pas déconnecter l'utilisateur sous leurs pieds.
+   */
+  const operationAuthEnCoursRef = useRef<boolean>(false);
+
+  // ==================== VÉRIFICATION EMAIL (Phase 60) ====================
+
+  /**
+   * Indique si ce compte doit encore confirmer son adresse email avant
+   * d'accéder à l'application.
+   *
+   * Politique (n'affecte AUCUN compte existant) :
+   *  - email déjà vérifié (dont tous les comptes Google)  → accès autorisé ;
+   *  - compte non « mot de passe » (Google, etc.)          → accès autorisé ;
+   *  - compte sans drapeau `emailVerificationRequired`
+   *    (comptes anciens, comptes créés par l'admin)         → accès autorisé ;
+   *  - inscription autonome (drapeau = true) non vérifiée   → accès REFUSÉ.
+   *
+   * @param user             Utilisateur Firebase connecté
+   * @param bloquerSiErreur  Comportement si le profil est illisible :
+   *                         true  = refuser (connexion explicite, en ligne) ;
+   *                         false = tolérer (restauration de session, mode hors ligne PWA).
+   */
+  const verificationEmailEnAttente = async (
+    user: FirebaseUser,
+    bloquerSiErreur: boolean
+  ): Promise<boolean> => {
+    if (user.emailVerified) return false;
+
+    // Seuls les comptes email/mot de passe sont concernés
+    const estCompteMotDePasse = user.providerData.some(p => p.providerId === 'password');
+    if (!estCompteMotDePasse) return false;
+
+    // La valeur `emailVerified` mise en cache peut être périmée (lien cliqué
+    // depuis un autre appareil) : on la rafraîchit auprès de Firebase.
+    try {
+      await user.reload();
+      if (user.emailVerified) return false;
+    } catch {
+      /* hors ligne : on garde la valeur en cache */
+    }
+
+    try {
+      const snap = await getDoc(doc(db, 'users', user.uid));
+      return snap.exists() && snap.data().emailVerificationRequired === true;
+    } catch {
+      return bloquerSiErreur;
+    }
+  };
+
+  /**
+   * Renvoie l'email de vérification (au mieux : Firebase limite la fréquence
+   * des envois → `auth/too-many-requests`, que l'on ignore silencieusement).
+   * @returns true si un nouvel email est bien parti
+   */
+  const renvoyerEmailVerification = async (user: FirebaseUser): Promise<boolean> => {
+    try {
+      await sendEmailVerification(user);
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   // ==================== FONCTIONS UTILITAIRES ====================
 
@@ -194,11 +270,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * @param password - Mot de passe
    */
   const login = async (email: string, password: string): Promise<void> => {
+    operationAuthEnCoursRef.current = true;
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
+
+      // ── Phase 60 : email non confirmé → pas d'accès ─────────────────
+      //    On renvoie un lien (comme promis sur /verification-email),
+      //    puis on referme immédiatement la session.
+      if (await verificationEmailEnAttente(userCredential.user, true)) {
+        const renvoye = await renvoyerEmailVerification(userCredential.user);
+        await signOut(auth);
+        setCurrentUser(null);
+        throw Object.assign(new Error('Email non vérifié'), {
+          code: renvoye ? 'pedaclic/email-non-verifie-renvoye' : 'pedaclic/email-non-verifie',
+        });
+      }
+
       await createOrUpdateUserDoc(userCredential.user);
     } catch (error: any) {
       throw new Error(getErrorMessage(error.code));
+    } finally {
+      operationAuthEnCoursRef.current = false;
     }
   };
 
@@ -209,6 +301,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    * @returns { needsVerification: true } si l'utilisateur doit vérifier son email
    */
   const register = async (data: RegisterFormData): Promise<{ needsVerification: true } | void> => {
+    // Phase 60 : createUserWithEmailAndPassword connecte automatiquement le
+    // nouveau compte ; l'écouteur ne doit pas interférer pendant l'inscription.
+    operationAuthEnCoursRef.current = true;
     try {
       // Vérification des mots de passe
       if (data.password !== data.confirmPassword) {
@@ -252,6 +347,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw error;
       }
       throw new Error(getErrorMessage(error.code));
+    } finally {
+      operationAuthEnCoursRef.current = false;
     }
   };
 
@@ -311,9 +408,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Utilisateur connecté - récupérer ses données
-        const userData = await fetchUserData(firebaseUser.uid);
-        setCurrentUser(userData);
+        // Phase 60 — session ouverte mais email non confirmé (session
+        // antérieure au correctif, onglet resté ouvert, inscription…) :
+        // on n'expose jamais ce compte à l'application.
+        if (await verificationEmailEnAttente(firebaseUser, false)) {
+          setCurrentUser(null);
+          if (!operationAuthEnCoursRef.current) {
+            await signOut(auth).catch(() => undefined);
+          }
+        } else {
+          // Utilisateur connecté - récupérer ses données
+          const userData = await fetchUserData(firebaseUser.uid);
+          setCurrentUser(userData);
+        }
       } else {
         // Utilisateur déconnecté
         setCurrentUser(null);
