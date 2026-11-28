@@ -56,7 +56,15 @@ const ProfQuizAvanceEditPage: React.FC = () => {
             classe: d.classe || '',
           }))
         );
-        setGroupes(grps.filter((g) => !g.statut || g.statut === 'actif').map((g) => ({ id: g.id, nom: g.nom })));
+        // ★ Phase 60 — la classe déjà liée reste proposée même archivée
+        setGroupes(
+          grps
+            .filter((g) => !g.statut || g.statut === 'actif' || g.id === quiz.groupeId)
+            .map((g) => ({
+              id: g.id,
+              nom: g.statut && g.statut !== 'actif' ? `${g.nom} (archivée)` : g.nom,
+            }))
+        );
       } catch (err) {
         console.error('Erreur chargement:', err);
         setError('Erreur de chargement');
@@ -95,6 +103,7 @@ const ProfQuizAvanceEditPage: React.FC = () => {
       }}
       disciplines={disciplines}
       groupes={groupes}
+      classeObligatoire
       auteurId={currentUser?.uid || ''}
       onSave={() => navigate('/prof/quiz')}
       onSaveDraft={() => {

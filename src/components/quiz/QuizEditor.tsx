@@ -53,6 +53,22 @@ interface QuizEditorProps {
   auteurId: string;
   /** Groupes du prof (pour quiz de classe) — si fourni, affiche sélecteur */
   groupes?: { id: string; nom: string }[];
+  /**
+   * ★ Phase 60 — libellé de l'option « sans groupe » du sélecteur de classe.
+   * Défaut inchangé pour le prof ; l'admin passe « Tous les élèves (quiz global) ».
+   */
+  libelleSansGroupe?: string;
+  /**
+   * ★ Phase 60 (correctif) — vue PROFESSEUR : la classe cible est obligatoire
+   * pour PUBLIER. Avant, l'option « Toutes mes classes » enregistrait
+   * groupeId = null, ce qui rendait le quiz visible par TOUS les élèves de
+   * la plateforme (et non par les seules classes du prof). Le brouillon,
+   * invisible des élèves, reste enregistrable sans classe.
+   * Défaut false : comportement admin inchangé.
+   */
+  classeObligatoire?: boolean;
+  /** ★ Phase 60 — classe présélectionnée à la création (ex. depuis une séance de cahier). */
+  groupeIdParDefaut?: string | null;
   /** Callback après sauvegarde réussie (quiz publié) */
   onSave?: (quizId: string) => void;
   /** Callback après enregistrement en brouillon (quizId, isNew) */
@@ -68,6 +84,9 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   disciplines,
   auteurId,
   groupes,
+  libelleSansGroupe = '— Toutes mes classes —',
+  classeObligatoire = false,
+  groupeIdParDefaut = null,
   onSave,
   onSaveDraft,
   onCancel,
@@ -78,7 +97,7 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
   const [titre, setTitre] = useState(existingQuiz?.titre || '');
   const [description, setDescription] = useState(existingQuiz?.description || '');
   const [disciplineId, setDisciplineId] = useState(existingQuiz?.disciplineId || '');
-  const [groupeId, setGroupeId] = useState<string>(existingQuiz?.groupeId ?? '');
+  const [groupeId, setGroupeId] = useState<string>(existingQuiz?.groupeId ?? groupeIdParDefaut ?? '');
   const [duree, setDuree] = useState(existingQuiz?.duree || 30);
   const [isPremium, setIsPremium] = useState(existingQuiz?.isPremium ?? true);
   const [noteMinimale, setNoteMinimale] = useState(existingQuiz?.noteMinimale || 10);
@@ -225,6 +244,11 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
     if (!titre.trim()) { setError('Le titre est obligatoire'); return; }
     if (!disciplineId) { setError('Sélectionnez une discipline'); return; }
     if (questions.length === 0) { setError('Ajoutez au moins une question'); return; }
+    // ★ Phase 60 (correctif) — publication réservée à une classe précise (vue prof)
+    if (classeObligatoire && groupes && groupes.length > 0 && !groupeId) {
+      setError('Sélectionnez la classe à laquelle ce quiz est destiné');
+      return;
+    }
 
     // Vérifier que chaque question a un énoncé
     for (let i = 0; i < questions.length; i++) {
@@ -351,13 +375,34 @@ export const QuizEditor: React.FC<QuizEditorProps> = ({
                 onChange={(e) => setGroupeId(e.target.value)}
                 className="quiz-editor__select"
               >
-                <option value="">— Toutes mes classes —</option>
+                <option value="">
+                  {classeObligatoire ? '— Sélectionner une classe —' : libelleSansGroupe}
+                </option>
                 {groupes.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.nom}
                   </option>
                 ))}
               </select>
+              {/* ★ Phase 60 — portée du lien, explicitée */}
+              <small style={{ display: 'block', marginTop: '0.3rem', color: '#64748b' }}>
+                {groupeId
+                  ? 'Seuls les élèves inscrits à cette classe verront le quiz.'
+                  : classeObligatoire
+                    ? 'Obligatoire pour publier (facultatif pour un brouillon).'
+                    : 'Sans classe, le quiz est proposé à tous les élèves de PedaClic.'}
+              </small>
+            </div>
+          )}
+
+          {/* ★ Phase 60 — prof sans aucune classe : le quiz publié sera public */}
+          {classeObligatoire && (!groupes || groupes.length === 0) && (
+            <div className="quiz-editor__field quiz-editor__field--full">
+              <div style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '0.65rem 0.8rem', borderRadius: 8, fontSize: '0.85rem' }}>
+                ⚠️ Vous n'avez pas encore de classe. Une fois publié, ce quiz sera visible par
+                <strong> tous les élèves</strong> de PedaClic. Pour le réserver à vos élèves,
+                créez d'abord une classe depuis votre tableau de bord (« 📚 Mes groupes-classes »).
+              </div>
             </div>
           )}
 

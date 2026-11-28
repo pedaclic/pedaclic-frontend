@@ -13,6 +13,8 @@ import { getAllQuizzes, deleteQuizAvance } from '../services/quizAdvancedService
 import type { QuizAvance } from '../types/quiz-advanced';
 import { TYPE_QUESTION_LABELS } from '../types/quiz-advanced';
 import { useToast } from '../contexts/ToastContext';
+/* ★ Phase 60 — affichage de la classe / du groupe ciblé */
+import { getCiblesQuiz, libelleCible } from '../services/quizCibleService';
 
 const QuizAdvancedList: React.FC = () => {
   const navigate = useNavigate();
@@ -23,6 +25,8 @@ const QuizAdvancedList: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  /* ★ Phase 60 — table id du groupe → libellé (archivés inclus) */
+  const [libellesCibles, setLibellesCibles] = useState<Record<string, string>>({});
 
   // ==================== CHARGEMENT ====================
 
@@ -36,6 +40,15 @@ const QuizAdvancedList: React.FC = () => {
       setError(null);
       const data = await getAllQuizzes();
       setQuizzes(data);
+      // ★ Phase 60 — libellés des groupes liés (non bloquant)
+      const ids = data.map((q) => q.groupeId).filter(Boolean) as string[];
+      if (ids.length > 0) {
+        getCiblesQuiz({ inclureIds: ids })
+          .then((cibles) =>
+            setLibellesCibles(Object.fromEntries(cibles.map((c) => [c.id, libelleCible(c, true)])))
+          )
+          .catch(() => undefined);
+      }
     } catch (err: any) {
       console.error('Erreur chargement quiz:', err);
       setError('Impossible de charger les quiz');
@@ -193,6 +206,19 @@ const QuizAdvancedList: React.FC = () => {
                         border: '1px solid #fde68a'
                       }}>
                         🔒 Premium
+                      </span>
+                    )}
+                    {/* ★ Phase 60 — classe / groupe ciblé */}
+                    {quiz.groupeId && (
+                      <span
+                        title="Réservé aux élèves de ce groupe"
+                        style={{
+                          padding: '0.15rem 0.5rem', background: '#e0f2fe', color: '#075985',
+                          borderRadius: '12px', fontSize: '0.7rem', fontWeight: 600,
+                          border: '1px solid #bae6fd'
+                        }}
+                      >
+                        👥 {libellesCibles[quiz.groupeId] ?? (Object.keys(libellesCibles).length > 0 ? 'Classe supprimée' : 'Classe liée')}
                       </span>
                     )}
                   </div>

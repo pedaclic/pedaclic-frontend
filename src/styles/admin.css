@@ -6347,3 +6347,52 @@
     min-width: 80px;
   }
 }
+
+/* ============================================================================
+   ★ Phase 60 — Gestion des quiz : statut, classe / groupe ciblé, texte support
+   (ajout en fin de fichier — aucune règle existante modifiée)
+   ============================================================================ */
+
+/* Ligne de badges sous la discipline, sur les cartes de la liste */
+.quiz-card-cible {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+/* Badge « Brouillon » (ambre) */
+.quiz-badge-brouillon {
+  background: #fef3c7;
+  color: #92400e;
+}
+/* Badge de la classe / du groupe ciblé (bleu) */
+.quiz-badge-cible {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: #e0f2fe;
+  color: #075985;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+/* Texte d'aide sous un champ du formulaire */
+.quiz-form-aide {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+/* Case à cocher + libellé (texte support) */
+.quiz-form-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+[data-theme="dark"] .quiz-badge-brouillon { background: rgba(245, 158, 11, 0.2); color: #fcd34d; }
+[data-theme="dark"] .quiz-badge-cible { background: rgba(14, 165, 233, 0.2); color: #7dd3fc; }
+[data-theme="dark"] .quiz-form-aide { color: #94a3b8; }

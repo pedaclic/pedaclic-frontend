@@ -20,6 +20,10 @@ import DisciplineService from '../services/disciplineService';
 import { getGroupesProf } from '../services/cahierTextesService';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+/* ★ Phase 60 — éditeur de questions étendu, partagé avec l'admin */
+import EditeurQuestionsClassiques, {
+  validerQuestionsClassiques,
+} from '../components/quiz/EditeurQuestionsClassiques';
 
 const ProfQuizClassicEditPage: React.FC = () => {
   const { quizId } = useParams<{ quizId: string }>();
@@ -61,7 +65,16 @@ const ProfQuizClassicEditPage: React.FC = () => {
           return;
         }
         setDisciplines(discs.map((d: any) => ({ id: d.id, nom: d.nom || d.name })));
-        setGroupes(grps.filter((g) => !g.statut || g.statut === 'actif').map((g) => ({ id: g.id, nom: g.nom })));
+        // ★ Phase 60 — la classe déjà liée reste proposée même archivée
+        // (sinon le prof devait la remplacer pour pouvoir enregistrer).
+        setGroupes(
+          grps
+            .filter((g) => !g.statut || g.statut === 'actif' || g.id === quiz.groupeId)
+            .map((g) => ({
+              id: g.id,
+              nom: g.statut && g.statut !== 'actif' ? `${g.nom} (archivée)` : g.nom,
+            }))
+        );
         setTitre(quiz.titre);
         setDisciplineId(quiz.disciplineId || '');
         setGroupeId(quiz.groupeId || '');
@@ -148,8 +161,10 @@ const ProfQuizClassicEditPage: React.FC = () => {
     if (!titre.trim()) { setError('Le titre est obligatoire'); return; }
     if (!disciplineId) { setError('Sélectionnez une discipline'); return; }
     if (groupes.length > 0 && !groupeId) { setError('Sélectionnez une classe'); return; }
-    if (questions.some((q) => !q.question.trim())) {
-      setError('Chaque question doit avoir un énoncé');
+    // ★ Phase 60 — avant publication : énoncés, options non vides, bonne réponse
+    const erreurQuestions = validerQuestionsClassiques(questions);
+    if (erreurQuestions) {
+      setError(erreurQuestions);
       return;
     }
 
@@ -300,9 +315,23 @@ const ProfQuizClassicEditPage: React.FC = () => {
                     <option key={g.id} value={g.id}>{g.nom}</option>
                   ))}
                 </select>
+                {/* ★ Phase 60 — rappel de la portée du lien */}
+                <p style={{ margin: '0.3rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                  Seuls les élèves inscrits à cette classe verront le quiz.
+                </p>
               </div>
             )}
           </div>
+
+          {/* ★ Phase 60 — sans classe, le quiz publié est visible par tous les élèves
+              de la plateforme (comportement historique) : on le signale clairement. */}
+          {groupes.length === 0 && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '0.65rem 0.8rem', borderRadius: 8, fontSize: '0.85rem' }}>
+              ⚠️ Vous n'avez pas encore de classe. Une fois publié, ce quiz sera visible par
+              <strong> tous les élèves</strong> de PedaClic. Pour le réserver à vos élèves,
+              créez d'abord une classe depuis votre tableau de bord (« 📚 Mes groupes-classes »).
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div>
@@ -330,52 +359,16 @@ const ProfQuizClassicEditPage: React.FC = () => {
           </div>
         </div>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 600 }}>Questions</h2>
-            <button type="button" onClick={addQuestion} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: '0.9rem' }}>
-              <Plus size={16} /> Ajouter
-            </button>
-          </div>
-
-          {questions.map((q, idx) => (
-            <div key={q.id} style={{ background: '#f8fafc', padding: '1rem', borderRadius: 10, marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Question {idx + 1}</span>
-                {questions.length > 1 && (
-                  <button type="button" onClick={() => removeQuestion(idx)} style={{ color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer' }}>
-                    <Trash2 size={16} />
-                  </button>
-                )}
-              </div>
-              <input
-                type="text"
-                value={q.question}
-                onChange={(e) => updateQuestion(idx, 'question', e.target.value)}
-                placeholder="Énoncé de la question"
-                style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', border: '1px solid #e5e7eb', borderRadius: 8 }}
-              />
-              <div style={{ marginLeft: '0.5rem' }}>
-                {q.options.map((opt, oi) => (
-                  <div key={oi} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                    <input
-                      type="radio"
-                      name={`correct-${q.id}`}
-                      checked={q.reponseCorrecte === oi}
-                      onChange={() => updateQuestion(idx, 'reponseCorrecte', oi)}
-                    />
-                    <input
-                      type="text"
-                      value={opt}
-                      onChange={(e) => updateOption(idx, oi, e.target.value)}
-                      placeholder={`Option ${oi + 1}`}
-                      style={{ flex: 1, padding: '0.4rem', border: '1px solid #e5e7eb', borderRadius: 6 }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        {/* ★ Phase 60 — questions : réordonner, insérer, dupliquer, 2 à 6 options,
+            explication, difficulté, points, actions groupées */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem' }}>Questions</h2>
+          <EditeurQuestionsClassiques
+            questions={questions}
+            onChange={setQuestions}
+            minQuestions={1}
+            deplierParDefaut
+          />
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>

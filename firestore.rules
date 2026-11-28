@@ -82,19 +82,41 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────────────────
-    // COLLECTION: users — inchangée
+    // COLLECTION: users — ★ Phase 60 : création / mise à jour durcies
     // ──────────────────────────────────────────────────────────
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin() || isParent() || isProf();
       allow list: if isAdmin() || isProf();
       // Phase 57 : l'admin peut aussi créer le profil d'un compte qu'il inscrit
+      // ★ Phase 60 — CORRECTIF SÉCURITÉ (auto-promotion) :
+      //   Avant, un utilisateur pouvait créer ou modifier SON profil avec
+      //   n'importe quelles valeurs : role = 'admin', isPremium = true,
+      //   subscriptionEnd lointain… et s'octroyer ainsi les droits
+      //   d'administrateur ou un abonnement gratuit.
+      //   • Inscription autonome : rôle limité à élève / prof / parent
+      //     (les 3 choix de RegisterPage et de la connexion Google),
+      //     Premium forcément false, aucun champ d'abonnement.
+      //   • Mise à jour par l'utilisateur : tous les champs restent
+      //     modifiables (nom, photo, sexe, streak, compteurs d'usage,
+      //     cours choisis, code parent, lastLogin…) SAUF les champs de
+      //     privilège ci-dessous, réservés à l'admin.
+      //   • Admin : droits inchangés.
       allow create: if (isSignedIn() &&
                         request.auth.uid == userId &&
-                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium'])) ||
+                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']) &&
+                        request.resource.data.role in ['eleve', 'prof', 'parent'] &&
+                        request.resource.data.isPremium == false &&
+                        !request.resource.data.keys().hasAny(['subscriptionEnd', 'subscriptionPlan', 'isActive'])) ||
                        (isAdmin() &&
                         request.resource.data.keys().hasAll(['email', 'role', 'isPremium']));
-      allow update: if isOwner(userId) || isAdmin();
+      // (Ordre du « || » : le cas propriétaire, le plus fréquent — lastLogin à
+      //  chaque connexion —, est testé d'abord et évite une lecture du profil.)
+      allow update: if (isOwner(userId) &&
+                        !request.resource.data.diff(resource.data).affectedKeys()
+                           .hasAny(['role', 'isPremium', 'subscriptionEnd', 'subscriptionPlan',
+                                    'isActive', 'emailVerificationRequired', 'createdAt'])) ||
+                       isAdmin();
       allow delete: if isAdmin();
     }
 
@@ -161,13 +183,47 @@ service cloud.firestore {
     }
 
     // ──────────────────────────────────────────────────────────
-    // COLLECTION: quizzes / quizzes_v2 — inchangées
+    // COLLECTION: quizzes / quizzes_v2
+    // ★ Phase 60 — durcissement des ÉCRITURES professeur (lecture et
+    //   suppression inchangées ; l'admin garde tous ses droits) :
+    //   • création réservée au professeur PREMIUM actif (l'interface
+    //     l'exigeait déjà ; la règle l'impose désormais côté serveur),
+    //     et uniquement pour LUI-MÊME (profId / auteurId = son uid) :
+    //     avant, un prof pouvait créer un quiz « plateforme » sans
+    //     propriétaire, ou au nom d'un collègue ;
+    //   • mise à jour : le prof propriétaire ne peut plus céder ni
+    //     effacer la propriété (profId / auteurId inchangé) ; un prof
+    //     dont l'abonnement a expiré peut toujours modifier SES quiz ;
+    //   • lien classe / groupe : un prof ne peut lier un quiz qu'à un
+    //     groupe dont il est propriétaire (évaluée seulement si
+    //     groupeId est renseigné ET modifié ; un groupe supprimé ne
+    //     bloque pas l'enregistrement).
     // ──────────────────────────────────────────────────────────
+
+    // Groupe ciblable par le prof connecté : absent, inexistant, ou à lui.
+    function groupeQuizAutorise(gid) {
+      return gid == null || gid == '' ||
+             !exists(/databases/$(database)/documents/groupes_prof/$(gid)) ||
+             get(/databases/$(database)/documents/groupes_prof/$(gid)).data.profId == request.auth.uid;
+    }
+
+    // Contrôle du groupe uniquement s'il change (évite des lectures inutiles).
+    function groupeQuizInchangeOuAutorise() {
+      return request.resource.data.get('groupeId', null) == resource.data.get('groupeId', null) ||
+             groupeQuizAutorise(request.resource.data.get('groupeId', null));
+    }
 
     match /quizzes/{quizId} {
       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
-      allow create: if isAdmin() || isProf();
-      allow update: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
+      allow create: if isAdmin() ||
+                       (isProfPremiumActif() &&
+                        request.resource.data.get('profId', null) == request.auth.uid &&
+                        groupeQuizAutorise(request.resource.data.get('groupeId', null)));
+      allow update: if isAdmin() ||
+                       (isProf() &&
+                        resource.data.get('profId', null) == request.auth.uid &&
+                        request.resource.data.get('profId', null) == request.auth.uid &&
+                        groupeQuizInchangeOuAutorise());
       allow delete: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
     }
 
@@ -176,8 +232,15 @@ service cloud.firestore {
       // Élève / Parent : lecture des quiz publiés uniquement
       allow read: if isAdmin() || isProf()
                   || (isSignedIn() && resource.data.status == 'published');
-      allow create: if isAdmin() || isProf();
-      allow update: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
+      allow create: if isAdmin() ||
+                       (isProfPremiumActif() &&
+                        request.resource.data.get('auteurId', null) == request.auth.uid &&
+                        groupeQuizAutorise(request.resource.data.get('groupeId', null)));
+      allow update: if isAdmin() ||
+                       (isProf() &&
+                        resource.data.get('auteurId', null) == request.auth.uid &&
+                        request.resource.data.get('auteurId', null) == request.auth.uid &&
+                        groupeQuizInchangeOuAutorise());
       allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
     }
 

@@ -108,6 +108,8 @@ const ProfQuizAvanceCreatePage: React.FC = () => {
     <QuizEditor
       disciplines={disciplines}
       groupes={groupes}
+      classeObligatoire
+      groupeIdParDefaut={attachement?.groupeId ?? null}
       auteurId={currentUser?.uid || ''}
       onSave={async (quizId) => {
         // Phase 32 — auto-rattachement si contexte séance

@@ -17,6 +17,8 @@ import type { Quiz } from '../services/quizService';
 import type { QuizAvance } from '../types/quiz-advanced';
 import { Plus, FileQuestion, Layers, Lock, Pencil, Trash2, Play } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+/* ★ Phase 60 — affichage de la classe liée à chaque quiz */
+import { getCiblesQuiz } from '../services/quizCibleService';
 
 const ProfQuizPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -26,6 +28,8 @@ const ProfQuizPage: React.FC = () => {
   const [quizzesAvances, setQuizzesAvances] = useState<QuizAvance[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'classique' | 'avance'; id: string } | null>(null);
+  /* ★ Phase 60 — id de classe → nom (classes archivées incluses) */
+  const [nomsClasses, setNomsClasses] = useState<Record<string, string>>({});
 
   const isPremium = currentUser?.isPremium ?? false;
 
@@ -61,6 +65,12 @@ const ProfQuizPage: React.FC = () => {
         ]);
         setQuizzesClassiques(classiques);
         setQuizzesAvances(avances);
+        // ★ Phase 60 — noms des classes liées (non bloquant : en cas d'échec,
+        // la liste des quiz reste affichée normalement, sans les badges).
+        const idsLies = [...classiques, ...avances].map((q) => q.groupeId);
+        getCiblesQuiz({ profId: currentUser.uid, inclureIds: idsLies })
+          .then((cibles) => setNomsClasses(Object.fromEntries(cibles.map((c) => [c.id, c.nom]))))
+          .catch((err) => console.warn('[ProfQuizPage] Classes indisponibles :', err));
       } catch (err) {
         console.error('Erreur chargement quiz prof:', err);
       } finally {
@@ -168,6 +178,16 @@ const ProfQuizPage: React.FC = () => {
                           Brouillon
                         </span>
                       )}
+                      {/* ★ Phase 60 — classe liée, ou avertissement « tous les élèves » */}
+                      <span
+                        title={q.groupeId ? 'Réservé aux élèves de cette classe' : 'Visible par tous les élèves de la plateforme'}
+                        style={{
+                          fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 4, marginLeft: '0.5rem',
+                          background: q.groupeId ? '#e0f2fe' : '#f3f4f6', color: q.groupeId ? '#075985' : '#4b5563',
+                        }}
+                      >
+                        {q.groupeId ? `👥 ${nomsClasses[q.groupeId] ?? 'Classe'}` : '🌍 Tous les élèves'}
+                      </span>
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                         {q.questions?.length ?? 0} questions • {q.duree} min
                       </span>
@@ -233,6 +253,16 @@ const ProfQuizPage: React.FC = () => {
                           Brouillon
                         </span>
                       )}
+                      {/* ★ Phase 60 — classe liée, ou avertissement « tous les élèves » */}
+                      <span
+                        title={q.groupeId ? 'Réservé aux élèves de cette classe' : 'Visible par tous les élèves de la plateforme'}
+                        style={{
+                          fontSize: '0.7rem', padding: '0.15rem 0.4rem', borderRadius: 4, marginLeft: '0.5rem',
+                          background: q.groupeId ? '#e0f2fe' : '#f3f4f6', color: q.groupeId ? '#075985' : '#4b5563',
+                        }}
+                      >
+                        {q.groupeId ? `👥 ${nomsClasses[q.groupeId] ?? 'Classe'}` : '🌍 Tous les élèves'}
+                      </span>
                       <span style={{ fontSize: '0.8rem', color: '#6b7280', marginLeft: '0.5rem' }}>
                         {q.questions?.length ?? 0} questions • {q.duree} min
                       </span>

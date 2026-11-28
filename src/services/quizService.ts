@@ -68,6 +68,23 @@ export interface Quiz {
 }
 
 /* ──────────────────────────────────────────────
+   ★ Phase 60 — Utilitaire anti-undefined
+   Firestore (sans `ignoreUndefinedProperties`) rejette toute valeur
+   `undefined`. Les pages prof envoyaient `groupeId: undefined` quand le
+   professeur n'avait encore aucune classe → « Unsupported field value:
+   undefined » et quiz impossible à enregistrer. On retire ces clés au
+   premier niveau (les tableaux `questions` / `options` ne sont pas
+   concernés). `null` est conservé : il sert à DÉLIER un quiz d'une classe.
+   ────────────────────────────────────────────── */
+const retirerUndefined = <T extends Record<string, any>>(obj: T): T => {
+  const sortie: Record<string, any> = {};
+  Object.entries(obj).forEach(([cle, valeur]) => {
+    if (valeur !== undefined) sortie[cle] = valeur;
+  });
+  return sortie as T;
+};
+
+/* ──────────────────────────────────────────────
    Référence à la collection Firestore "quizzes"
    ────────────────────────────────────────────── */
 const quizzesRef = collection(db, 'quizzes');
@@ -148,7 +165,7 @@ export const createQuiz = async (
 ): Promise<string> => {
   try {
     const doc: Record<string, any> = {
-      ...quizData,
+      ...retirerUndefined(quizData as Record<string, any>), // ★ Phase 60
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -169,7 +186,10 @@ export const updateQuiz = async (
   options?: { asDraft?: boolean }
 ): Promise<void> => {
   try {
-    const updates: Record<string, any> = { ...quizData, updatedAt: Timestamp.now() };
+    const updates: Record<string, any> = {
+      ...retirerUndefined(quizData as Record<string, any>), // ★ Phase 60
+      updatedAt: Timestamp.now(),
+    };
     if (options?.asDraft !== undefined) {
       updates.status = options.asDraft ? 'draft' : 'published';
     }

@@ -1,0 +1,311 @@
+/* ============================================================================
+   PedaClic — Phase 60 : Éditeur de questions des quiz classiques
+   Fichier : src/styles/EditeurQuestionsClassiques.css
+   Importé par : src/components/quiz/EditeurQuestionsClassiques.tsx
+   Préfixe des classes : .eqc-  (aucun risque de collision avec admin.css,
+   prof.css ou quiz-advanced.css, qui restent inchangés)
+   ============================================================================ */
+
+/* ── Conteneur ─────────────────────────────────────────────────────────── */
+.eqc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* ── Barre d'outils (compteurs + déplier / replier) ───────────────────── */
+.eqc-barre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #475569;
+}
+.eqc-barre-infos {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.eqc-barre-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+/* Pastille « n incomplète(s) » */
+.eqc-alerte-resume {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* ── Actions groupées ─────────────────────────────────────────────────── */
+.eqc-groupe {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+}
+.eqc-groupe-titre {
+  font-weight: 600;
+  color: #334155;
+}
+.eqc-groupe-champ {
+  display: flex;
+  gap: 0.35rem;
+}
+.eqc-groupe-champ select,
+.eqc-groupe-champ input {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  background: #fff;
+  color: inherit;
+}
+.eqc-groupe-champ input { width: 90px; }
+
+/* ── Liste et éléments ────────────────────────────────────────────────── */
+.eqc-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.eqc-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.eqc-item--ouvert { border-color: #93c5fd; box-shadow: 0 2px 10px rgba(37, 99, 235, 0.08); }
+.eqc-item--incomplet { border-left: 4px solid #f59e0b; }        /* repère visuel */
+.eqc-item--glisse { opacity: 0.45; }                             /* élément en cours de glisser */
+.eqc-item--cible { border-color: #2563eb; border-style: dashed; } /* point de dépôt */
+
+/* En-tête : poignée | titre cliquable | ↑ ↓ */
+.eqc-entete {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.5rem;
+}
+.eqc-poignee {
+  display: inline-flex;
+  color: #94a3b8;
+  cursor: grab;
+  padding: 0.25rem;
+}
+.eqc-poignee:active { cursor: grabbing; }
+.eqc-entete-titre {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.25rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+.eqc-numero {
+  flex-shrink: 0;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.eqc-apercu {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.eqc-alerte { color: #d97706; display: inline-flex; }
+.eqc-points { font-size: 0.8rem; color: #64748b; white-space: nowrap; }
+.eqc-entete-ordre { display: flex; gap: 0.2rem; }
+
+/* Badges de difficulté */
+.eqc-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.eqc-badge--facile    { background: #dcfce7; color: #166534; }
+.eqc-badge--moyen     { background: #fef9c3; color: #854d0e; }
+.eqc-badge--difficile { background: #fee2e2; color: #991b1b; }
+
+/* ── Corps dépliable ──────────────────────────────────────────────────── */
+.eqc-corps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.25rem 1rem 1rem;
+  border-top: 1px solid #e2e8f0;
+}
+.eqc-label {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #334155;
+}
+.eqc-champ {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.9rem;
+  background: #fff;
+  color: inherit;
+}
+.eqc-champ:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Options de réponse */
+.eqc-options { display: flex; flex-direction: column; gap: 0.35rem; }
+.eqc-option {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border-radius: 8px;
+}
+.eqc-option--correcte { background: #f0fdf4; }
+.eqc-option-radio {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 50%;
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.eqc-option--correcte .eqc-option-radio {
+  border-color: #16a34a;
+  background: #16a34a;
+  color: #fff;
+}
+.eqc-ajout-option { align-self: flex-start; }
+
+/* Difficulté + points côte à côte */
+.eqc-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+.eqc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+/* ── Boutons ──────────────────────────────────────────────────────────── */
+.eqc-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: none;
+  color: inherit;
+}
+.eqc-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.eqc-btn--primaire { background: #2563eb; color: #fff; }
+.eqc-btn--primaire:hover { background: #1d4ed8; }
+.eqc-btn--contour { border-color: #cbd5e1; background: #fff; color: #334155; }
+.eqc-btn--contour:hover:not(:disabled) { border-color: #2563eb; color: #1d4ed8; }
+.eqc-btn--leger { color: #2563eb; }
+.eqc-btn--leger:hover { background: #eff6ff; }
+.eqc-btn--danger { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+.eqc-ajout { align-self: center; }
+
+/* Petits boutons-icônes (↑ ↓ ✕) */
+.eqc-icone {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+}
+.eqc-icone:hover:not(:disabled) { border-color: #2563eb; color: #2563eb; }
+.eqc-icone:disabled { opacity: 0.35; cursor: not-allowed; }
+.eqc-icone--danger:hover:not(:disabled) { border-color: #dc2626; color: #dc2626; }
+
+.eqc-vide {
+  padding: 1.5rem;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 10px;
+}
+
+/* ── Mobile (≤ 640 px) ────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .eqc-poignee { display: none; }          /* le glisser-déposer HTML5 n'existe pas au doigt : ↑ ↓ suffisent */
+  .eqc-badge,
+  .eqc-points { display: none; }           /* on libère la place pour l'énoncé */
+  .eqc-meta { grid-template-columns: 1fr; }
+  .eqc-corps { padding: 0.25rem 0.6rem 0.8rem; }
+}
+
+/* ── Mode sombre (convention du projet : [data-theme="dark"]) ─────────── */
+[data-theme="dark"] .eqc-barre { color: #cbd5e1; }
+[data-theme="dark"] .eqc-groupe { background: #1e293b; border-color: #475569; }
+[data-theme="dark"] .eqc-groupe-titre,
+[data-theme="dark"] .eqc-label { color: #e2e8f0; }
+[data-theme="dark"] .eqc-item { background: #0f172a; border-color: #334155; }
+[data-theme="dark"] .eqc-corps { border-top-color: #334155; }
+[data-theme="dark"] .eqc-champ,
+[data-theme="dark"] .eqc-groupe-champ select,
+[data-theme="dark"] .eqc-groupe-champ input,
+[data-theme="dark"] .eqc-icone,
+[data-theme="dark"] .eqc-option-radio,
+[data-theme="dark"] .eqc-btn--contour { background: #1e293b; border-color: #475569; color: #e2e8f0; }
+[data-theme="dark"] .eqc-option--correcte { background: rgba(22, 163, 74, 0.15); }
+[data-theme="dark"] .eqc-option--correcte .eqc-option-radio { background: #16a34a; border-color: #16a34a; color: #fff; }
+[data-theme="dark"] .eqc-vide { background: #1e293b; color: #94a3b8; }
+[data-theme="dark"] .eqc-btn--leger:hover { background: rgba(37, 99, 235, 0.15); }

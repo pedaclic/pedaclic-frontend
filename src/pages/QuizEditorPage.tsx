@@ -46,16 +46,25 @@ const QuizEditorPage: React.FC = () => {
             classe: d.classe || '',
           }))
         );
-        setGroupes(
-          groupesSnap.docs
-            .filter((d) => !d.data().statut || d.data().statut === 'actif')
-            .map((d) => ({ id: d.id, nom: d.data().nom }))
-        );
+        // ★ Phase 60 — libellé enrichi « Nom (niveau) · Prof » : l'admin voit
+        // les groupes de TOUS les professeurs, des homonymes sont fréquents.
+        const libelle = (data: any) =>
+          `${data.nom}${data.classeNiveau ? ` (${data.classeNiveau})` : ''}${data.profNom ? ` · ${data.profNom}` : ''}`;
+        const groupesActifs = groupesSnap.docs
+          .filter((d) => !d.data().statut || d.data().statut === 'actif')
+          .map((d) => ({ id: d.id, nom: libelle(d.data()) }));
+        setGroupes(groupesActifs);
 
         // Si modification, charger le quiz existant
         if (quizId) {
           const quiz = await getQuizAvance(quizId);
           if (quiz) {
+            // ★ Phase 60 — groupe lié mais archivé : on le garde dans la liste,
+            // sinon l'enregistrement délierait le quiz sans que l'admin le voie.
+            const lie = groupesSnap.docs.find((d) => d.id === quiz.groupeId);
+            if (quiz.groupeId && lie && !groupesActifs.some((g) => g.id === quiz.groupeId)) {
+              setGroupes([...groupesActifs, { id: lie.id, nom: `${libelle(lie.data())} — archivé` }]);
+            }
             setExistingQuiz(quiz);
           } else {
             setError('Quiz introuvable');
@@ -96,6 +105,7 @@ const QuizEditorPage: React.FC = () => {
       existingQuiz={existingQuiz ? { ...existingQuiz, id: existingQuiz.id } : undefined}
       disciplines={disciplines}
       groupes={groupes}
+      libelleSansGroupe="— Tous les élèves (quiz global) —"
       auteurId={currentUser?.uid || ''}
       onSave={(savedId) => {
         toast.success('Quiz avancé sauvegardé avec succès !');

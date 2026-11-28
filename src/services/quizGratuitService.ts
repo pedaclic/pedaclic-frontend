@@ -113,8 +113,16 @@ export async function getQuizGratuits(): Promise<QuizGratuit[]> {
     ),
   ]);
 
-  const quizzesOld = snapOld.docs.map(normaliserQuizAncien);
-  const quizzesV2  = snapV2.docs.map(normaliserQuizV2);
+  // ★ Phase 60 — La page publique « Quiz gratuits » ne doit lister que les
+  // quiz réellement publics : on écarte les BROUILLONS et les quiz LIÉS À
+  // UNE CLASSE / UN GROUPE (`groupeId` renseigné), réservés à leurs élèves.
+  // Filtre côté client : aucune requête ni aucun index modifié.
+  const estPublic = (d: QueryDocumentSnapshot): boolean => {
+    const data = d.data();
+    return data.status !== 'draft' && !data.groupeId;
+  };
+  const quizzesOld = snapOld.docs.filter(estPublic).map(normaliserQuizAncien);
+  const quizzesV2  = snapV2.docs.filter(estPublic).map(normaliserQuizV2);
 
   // Fusion + tri global par date décroissante
   return [...quizzesOld, ...quizzesV2].sort((a, b) => {

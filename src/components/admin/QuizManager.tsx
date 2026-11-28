@@ -33,6 +33,8 @@ import {
   GripVertical,
   Copy,
   Star,
+  Users,
+  FileText,
 } from 'lucide-react';
 
 /* ── Imports internes (corrigés) ── */
@@ -48,6 +50,13 @@ import {
   QuizFilters,
 } from '../../services/quizService';
 import DisciplineService from '../../services/disciplineService';
+/* ★ Phase 60 — ciblage classe/groupe + éditeur de questions étendu */
+import EditeurQuestionsClassiques, {
+  validerQuestionsClassiques,
+} from '../quiz/EditeurQuestionsClassiques';
+import { getCiblesQuiz, libelleCible } from '../../services/quizCibleService';
+import type { CibleQuiz } from '../../services/quizCibleService';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 /* ══════════════════════════════════════════════
    TYPES LOCAUX
@@ -59,6 +68,27 @@ interface DisciplineOption {
 }
 
 type ViewMode = 'list' | 'form' | 'preview';
+
+/**
+ * ★ Phase 60 — Valeurs par défaut d'un nouveau quiz.
+ * Nouveaux champs gérés par le formulaire admin (tous optionnels dans
+ * le type `Quiz`, donc 100 % compatibles avec les quiz existants) :
+ *   - status      : 'published' (visible) | 'draft' (masqué aux élèves)
+ *   - groupeId    : null = quiz global ; sinon ID d'une classe / d'un groupe
+ *   - afficherCorpus / corpusText : texte support affiché pendant le quiz
+ */
+const FORMULAIRE_VIDE: Omit<Quiz, 'id'> = {
+  disciplineId: '',
+  titre: '',
+  questions: [],
+  duree: 15,
+  isPremium: false,
+  noteMinimale: 50,
+  status: 'published',
+  groupeId: null,
+  afficherCorpus: false,
+  corpusText: '',
+};
 
 /* ══════════════════════════════════════════════
    COMPOSANT PRINCIPAL : QuizManager
@@ -95,6 +125,13 @@ const QuizManager: React.FC = () => {
   /* ── Confirmation de suppression ── */
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  /* ── ★ Phase 60 : ciblage classe / groupe ── */
+  const [cibles, setCibles] = useState<CibleQuiz[]>([]);
+  const [filterCible, setFilterCible] = useState(''); // '' | '__global__' | <groupeId>
+  /* ── ★ Phase 60 : instantané du formulaire à l'ouverture (détection des modifications non enregistrées) ── */
+  const [formInitial, setFormInitial] = useState('');
+  const confirmer = useConfirm();
+
   /* ── Prévisualisation ── */
   const [previewQuiz, setPreviewQuiz] = useState<Quiz | null>(null);
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, number>>({});
@@ -108,10 +145,17 @@ const QuizManager: React.FC = () => {
     setError(null);
     try {
       /* Chargement parallèle des quiz et disciplines */
-      const [quizData, discData] = await Promise.all([
+      const [quizData, discData, ciblesData] = await Promise.all([
         getQuizzes(),
         DisciplineService.getAll(),
+        // ★ Phase 60 — un échec de lecture des groupes ne doit jamais
+        // empêcher l'affichage des quiz : on retombe sur une liste vide.
+        getCiblesQuiz().catch((err) => {
+          console.warn('[QuizManager] Groupes indisponibles :', err);
+          return [] as CibleQuiz[];
+        }),
       ]);
+      setCibles(ciblesData);
       setQuizzes(quizData);
       setDisciplines(
         discData.map((d: any) => ({ id: d.id, nom: d.nom || d.name || d.id }))
@@ -147,6 +191,9 @@ const QuizManager: React.FC = () => {
     if (filterDiscipline && quiz.disciplineId !== filterDiscipline) return false;
     if (filterPremium === 'true' && !quiz.isPremium) return false;
     if (filterPremium === 'false' && quiz.isPremium) return false;
+    // ★ Phase 60 — filtre par cible
+    if (filterCible === '__global__' && quiz.groupeId) return false;
+    if (filterCible && filterCible !== '__global__' && quiz.groupeId !== filterCible) return false;
     if (filterDifficulte) {
       const hasLevel = quiz.questions?.some((q) => q.difficulte === filterDifficulte);
       if (!hasLevel) return false;
@@ -160,28 +207,37 @@ const QuizManager: React.FC = () => {
 
   const handleCreate = () => {
     setEditingQuiz(null);
-    setFormData({
-      disciplineId: '',
-      titre: '',
-      questions: [createEmptyQuestion()],
-      duree: 15,
-      isPremium: false,
-      noteMinimale: 50,
-    });
+    const initial = { ...FORMULAIRE_VIDE, questions: [createEmptyQuestion()] };
+    setFormData(initial);
+    setFormInitial(JSON.stringify(initial)); // ★ Phase 60
     setExpandedQuestion(null);
     setViewMode('form');
   };
 
   const handleEdit = (quiz: Quiz) => {
     setEditingQuiz(quiz);
-    setFormData({
+    const initial: Omit<Quiz, 'id'> = {
       disciplineId: quiz.disciplineId,
       titre: quiz.titre,
       questions: quiz.questions || [],
       duree: quiz.duree || 15,
       isPremium: quiz.isPremium || false,
       noteMinimale: quiz.noteMinimale || 50,
-    });
+      // ★ Phase 60 — champs désormais modifiables (absents = valeurs historiques)
+      status: quiz.status === 'draft' ? 'draft' : 'published',
+      groupeId: quiz.groupeId || null,
+      afficherCorpus: quiz.afficherCorpus === true,
+      corpusText: quiz.corpusText || '',
+    };
+    setFormData(initial);
+    setFormInitial(JSON.stringify(initial));
+    // Groupe lié mais archivé (donc absent de la liste) : on l'ajoute pour
+    // l'afficher correctement au lieu de le délier silencieusement.
+    if (quiz.groupeId && !cibles.some((c) => c.id === quiz.groupeId)) {
+      getCiblesQuiz({ inclureIds: [quiz.groupeId] })
+        .then(setCibles)
+        .catch(() => undefined);
+    }
     setExpandedQuestion(null);
     setViewMode('form');
   };
@@ -195,32 +251,38 @@ const QuizManager: React.FC = () => {
       setError('Veuillez sélectionner une discipline.');
       return;
     }
-    if (formData.questions.length === 0) {
-      setError('Le quiz doit contenir au moins une question.');
+    // ★ Phase 60 — validation complète pour un quiz PUBLIÉ (énoncés,
+    // options non vides, 2 à 6 options, bonne réponse définie). Un
+    // BROUILLON (invisible des élèves) peut être enregistré incomplet.
+    if (formData.status !== 'draft') {
+      const erreurQuestions = validerQuestionsClassiques(formData.questions);
+      if (erreurQuestions) {
+        setError(erreurQuestions);
+        return;
+      }
+    }
+    if (formData.afficherCorpus && !formData.corpusText?.trim()) {
+      setError('Saisissez le texte support, ou désactivez son affichage.');
       return;
     }
 
-    for (let i = 0; i < formData.questions.length; i++) {
-      const q = formData.questions[i];
-      if (!q.question.trim()) {
-        setError(`La question ${i + 1} n'a pas d'énoncé.`);
-        return;
-      }
-      const emptyOptions = q.options.filter((o) => !o.trim());
-      if (emptyOptions.length > 0) {
-        setError(`La question ${i + 1} a des options vides.`);
-        return;
-      }
-    }
+    // ★ Phase 60 — charge utile normalisée. `profId` n'est jamais envoyé :
+    // un quiz de professeur modifié par l'admin reste la propriété du prof.
+    const payload: Omit<Quiz, 'id'> = {
+      ...formData,
+      titre: formData.titre.trim(),
+      groupeId: formData.groupeId || null,
+      corpusText: formData.corpusText?.trim() || '',
+    };
 
     setSaving(true);
     setError(null);
     try {
       if (editingQuiz) {
-        await updateQuiz(editingQuiz.id, formData);
+        await updateQuiz(editingQuiz.id, payload);
         setSuccessMessage('Quiz mis à jour avec succès !');
       } else {
-        await createQuiz(formData);
+        await createQuiz(payload);
         setSuccessMessage('Quiz créé avec succès !');
       }
       await loadData();
@@ -231,6 +293,31 @@ const QuizManager: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  /**
+   * ★ Phase 60 — Fermeture du formulaire : demande confirmation si des
+   * modifications n'ont pas été enregistrées (évite les pertes accidentelles).
+   */
+  const handleCancelForm = async () => {
+    if (JSON.stringify(formData) !== formInitial) {
+      const ok = await confirmer({
+        title: 'Abandonner les modifications ?',
+        message: 'Les changements apportés à ce quiz ne seront pas enregistrés.',
+        confirmLabel: 'Abandonner',
+        variant: 'warning',
+      });
+      if (!ok) return;
+    }
+    setError(null);
+    setViewMode('list');
+  };
+
+  /** ★ Phase 60 — libellé de la cible d'un quiz (cartes de la liste). */
+  const getCibleLabel = (groupeId?: string | null): string | null => {
+    if (!groupeId) return null;
+    const c = cibles.find((x) => x.id === groupeId);
+    return c ? libelleCible(c) : 'Classe archivée ou supprimée';
   };
 
   const handleDelete = async (quizId: string) => {
@@ -247,59 +334,9 @@ const QuizManager: React.FC = () => {
 
   /* ══════════════════════════════════════════════
      HANDLERS DES QUESTIONS
+     ★ Phase 60 : ajout, duplication, suppression, réordonnancement et
+     options sont désormais gérés par <EditeurQuestionsClassiques />.
      ══════════════════════════════════════════════ */
-
-  const addQuestion = () => {
-    const newQuestion = createEmptyQuestion();
-    setFormData((prev) => ({
-      ...prev,
-      questions: [...prev.questions, newQuestion],
-    }));
-    setExpandedQuestion(newQuestion.id);
-  };
-
-  const duplicateQuestion = (questionId: string) => {
-    const source = formData.questions.find((q) => q.id === questionId);
-    if (!source) return;
-    const duplicate: Question = {
-      ...source,
-      id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      question: `${source.question} (copie)`,
-    };
-    const index = formData.questions.findIndex((q) => q.id === questionId);
-    const updated = [...formData.questions];
-    updated.splice(index + 1, 0, duplicate);
-    setFormData((prev) => ({ ...prev, questions: updated }));
-    setExpandedQuestion(duplicate.id);
-  };
-
-  const removeQuestion = (questionId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      questions: prev.questions.filter((q) => q.id !== questionId),
-    }));
-    if (expandedQuestion === questionId) setExpandedQuestion(null);
-  };
-
-  const updateQuestion = (questionId: string, field: keyof Question, value: any) => {
-    setFormData((prev) => ({
-      ...prev,
-      questions: prev.questions.map((q) =>
-        q.id === questionId ? { ...q, [field]: value } : q
-      ),
-    }));
-  };
-
-  const updateOption = (questionId: string, optionIndex: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      questions: prev.questions.map((q) =>
-        q.id === questionId
-          ? { ...q, options: q.options.map((o, i) => (i === optionIndex ? value : o)) }
-          : q
-      ),
-    }));
-  };
 
   /* ══════════════════════════════════════════════
      HANDLERS DE PRÉVISUALISATION
@@ -447,12 +484,28 @@ const QuizManager: React.FC = () => {
               <option value="difficile">Difficile</option>
             </select>
           </div>
+          {/* ★ Phase 60 — filtre par classe / groupe */}
+          <div className="admin-filter-group">
+            <label className="admin-filter-label">Classe / groupe</label>
+            <select
+              className="admin-select"
+              value={filterCible}
+              onChange={(e) => setFilterCible(e.target.value)}
+            >
+              <option value="">Tous les quiz</option>
+              <option value="__global__">Quiz globaux (sans classe)</option>
+              {cibles.map((c) => (
+                <option key={c.id} value={c.id}>{libelleCible(c, true)}</option>
+              ))}
+            </select>
+          </div>
           <button
             className="admin-btn admin-btn-ghost"
             onClick={() => {
               setFilterDiscipline('');
               setFilterPremium('');
               setFilterDifficulte('');
+              setFilterCible('');
               setSearchTerm('');
             }}
           >
@@ -500,6 +553,19 @@ const QuizManager: React.FC = () => {
                   <span className="quiz-card-discipline">
                     {getDisciplineName(quiz.disciplineId)}
                   </span>
+                  {/* ★ Phase 60 — statut et cible visibles d'un coup d'œil */}
+                  {(quiz.status === 'draft' || quiz.groupeId) && (
+                    <div className="quiz-card-cible">
+                      {quiz.status === 'draft' && (
+                        <span className="quiz-badge quiz-badge-brouillon">Brouillon</span>
+                      )}
+                      {quiz.groupeId && (
+                        <span className="quiz-badge quiz-badge-cible" title="Réservé aux élèves de ce groupe">
+                          <Users size={12} /> {getCibleLabel(quiz.groupeId)}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="quiz-card-stats">
                   <div className="quiz-stat">
@@ -584,7 +650,7 @@ const QuizManager: React.FC = () => {
           </p>
         </div>
         <div className="admin-header-actions">
-          <button className="admin-btn admin-btn-ghost" onClick={() => setViewMode('list')}>
+          <button className="admin-btn admin-btn-ghost" onClick={handleCancelForm}>
             <X size={18} /> Annuler
           </button>
           <button
@@ -656,164 +722,82 @@ const QuizManager: React.FC = () => {
               <span>{formData.isPremium ? 'Premium (2 000 FCFA/mois)' : 'Gratuit'}</span>
             </div>
           </div>
+
+          {/* ★ Phase 60 — Statut de publication */}
+          <div className="admin-form-group">
+            <label className="admin-label" htmlFor="quiz-statut">Statut</label>
+            <select
+              id="quiz-statut"
+              className="admin-select"
+              value={formData.status === 'draft' ? 'draft' : 'published'}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, status: e.target.value as 'draft' | 'published' }))
+              }
+            >
+              <option value="published">Publié (visible par les élèves)</option>
+              <option value="draft">Brouillon (masqué aux élèves)</option>
+            </select>
+          </div>
+
+          {/* ★ Phase 60 — Lien avec une classe / un groupe */}
+          <div className="admin-form-group quiz-form-full">
+            <label className="admin-label" htmlFor="quiz-cible">
+              <Users size={14} style={{ verticalAlign: '-2px' }} /> Classe / groupe ciblé
+            </label>
+            <select
+              id="quiz-cible"
+              className="admin-select"
+              value={formData.groupeId || ''}
+              onChange={(e) => setFormData((prev) => ({ ...prev, groupeId: e.target.value || null }))}
+            >
+              <option value="">Tous les élèves (quiz global)</option>
+              {cibles.map((c) => (
+                <option key={c.id} value={c.id}>{libelleCible(c, true)}</option>
+              ))}
+            </select>
+            <p className="quiz-form-aide">
+              {formData.groupeId
+                ? 'Seuls les élèves inscrits à ce groupe verront le quiz dans leur espace ; il n’apparaît plus dans la page publique « Quiz gratuits ».'
+                : 'Le quiz est proposé à tous les élèves (selon son accès Gratuit / Premium).'}
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* ── Section des questions ── */}
+      {/* ★ Phase 60 — Texte support (corpus) affiché pendant le quiz */}
       <div className="admin-card quiz-form-section">
-        <div className="quiz-questions-header">
-          <h3 className="quiz-form-section-title">
-            Questions ({formData.questions.length})
-          </h3>
-          <button className="admin-btn admin-btn-sm admin-btn-primary" onClick={addQuestion}>
-            <Plus size={14} /> Ajouter une question
-          </button>
-        </div>
-
-        {formData.questions.length === 0 ? (
-          <div className="admin-empty-state" style={{ padding: '2rem' }}>
-            <HelpCircle size={36} />
-            <p>Aucune question. Cliquez sur "Ajouter une question" pour commencer.</p>
-          </div>
-        ) : (
-          <div className="quiz-questions-list">
-            {formData.questions.map((question, index) => (
-              <div
-                key={question.id}
-                className={`quiz-question-item ${expandedQuestion === question.id ? 'expanded' : ''}`}
-              >
-                {/* En-tête cliquable */}
-                <div
-                  className="quiz-question-header"
-                  onClick={() =>
-                    setExpandedQuestion(expandedQuestion === question.id ? null : question.id)
-                  }
-                >
-                  <div className="quiz-question-header-left">
-                    <GripVertical size={16} className="quiz-grip-icon" />
-                    <span className="quiz-question-number">Q{index + 1}</span>
-                    <span className="quiz-question-preview">
-                      {question.question || 'Question sans énoncé...'}
-                    </span>
-                  </div>
-                  <div className="quiz-question-header-right">
-                    <DifficultyBadge level={question.difficulte || 'moyen'} />
-                    <span className="quiz-question-points">{question.points} pt(s)</span>
-                    {expandedQuestion === question.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                  </div>
-                </div>
-
-                {/* Corps dépliable */}
-                {expandedQuestion === question.id && (
-                  <div className="quiz-question-body">
-                    <div className="admin-form-group">
-                      <label className="admin-label">Énoncé de la question *</label>
-                      <textarea
-                        className="admin-textarea"
-                        rows={2}
-                        placeholder="Ex : Quel est le personnage principal du roman ?"
-                        value={question.question}
-                        onChange={(e) => updateQuestion(question.id, 'question', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="admin-form-group">
-                      <label className="admin-label">Options de réponse (cliquez sur la bonne réponse)</label>
-                      <div className="quiz-options-grid">
-                        {question.options.map((option, optIndex) => (
-                          <div
-                            key={optIndex}
-                            className={`quiz-option-item ${question.reponseCorrecte === optIndex ? 'quiz-option-correct' : ''}`}
-                          >
-                            <button
-                              type="button"
-                              className={`quiz-option-radio ${question.reponseCorrecte === optIndex ? 'active' : ''}`}
-                              onClick={() => updateQuestion(question.id, 'reponseCorrecte', optIndex)}
-                              title={question.reponseCorrecte === optIndex ? 'Bonne réponse' : 'Marquer comme bonne réponse'}
-                            >
-                              {question.reponseCorrecte === optIndex ? (
-                                <CheckCircle size={16} />
-                              ) : (
-                                <span className="quiz-option-letter">{String.fromCharCode(65 + optIndex)}</span>
-                              )}
-                            </button>
-                            <input
-                              type="text"
-                              className="admin-input"
-                              placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
-                              value={option}
-                              onChange={(e) => updateOption(question.id, optIndex, e.target.value)}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="admin-form-group">
-                      <label className="admin-label">Explication (affichée après réponse)</label>
-                      <textarea
-                        className="admin-textarea"
-                        rows={2}
-                        placeholder="Ex : Jean Valjean est le protagoniste du roman de Victor Hugo..."
-                        value={question.explication}
-                        onChange={(e) => updateQuestion(question.id, 'explication', e.target.value)}
-                      />
-                    </div>
-
-                    <div className="quiz-question-meta">
-                      <div className="admin-form-group">
-                        <label className="admin-label">Difficulté</label>
-                        <select
-                          className="admin-select"
-                          value={question.difficulte}
-                          onChange={(e) => updateQuestion(question.id, 'difficulte', e.target.value)}
-                        >
-                          <option value="facile">Facile</option>
-                          <option value="moyen">Moyen</option>
-                          <option value="difficile">Difficile</option>
-                        </select>
-                      </div>
-                      <div className="admin-form-group">
-                        <label className="admin-label">Points</label>
-                        <input
-                          type="number"
-                          className="admin-input"
-                          min={1}
-                          max={10}
-                          value={question.points}
-                          onChange={(e) => updateQuestion(question.id, 'points', parseInt(e.target.value) || 1)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="quiz-question-actions">
-                      <button
-                        className="admin-btn admin-btn-sm admin-btn-outline"
-                        onClick={() => duplicateQuestion(question.id)}
-                      >
-                        <Copy size={14} /> Dupliquer
-                      </button>
-                      <button
-                        className="admin-btn admin-btn-sm admin-btn-danger-outline"
-                        onClick={() => removeQuestion(question.id)}
-                      >
-                        <Trash2 size={14} /> Supprimer
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+        <h3 className="quiz-form-section-title">
+          <FileText size={18} style={{ verticalAlign: '-3px' }} /> Texte support (optionnel)
+        </h3>
+        <label className="quiz-form-check">
+          <input
+            type="checkbox"
+            checked={formData.afficherCorpus === true}
+            onChange={(e) => setFormData((prev) => ({ ...prev, afficherCorpus: e.target.checked }))}
+          />
+          <span>Afficher ce texte à l’élève pendant le quiz</span>
+        </label>
+        {(formData.afficherCorpus || formData.corpusText) && (
+          <textarea
+            className="admin-textarea"
+            rows={6}
+            placeholder="Collez ici l'extrait, le document ou l'énoncé commun aux questions…"
+            value={formData.corpusText || ''}
+            onChange={(e) => setFormData((prev) => ({ ...prev, corpusText: e.target.value }))}
+          />
         )}
+      </div>
 
-        {formData.questions.length > 0 && (
-          <div className="quiz-add-question-bottom">
-            <button className="admin-btn admin-btn-outline" onClick={addQuestion}>
-              <Plus size={16} /> Ajouter une question
-            </button>
-          </div>
-        )}
+      {/* ── Section des questions ── */}
+      {/* ★ Phase 60 — éditeur partagé : réordonner (↑ ↓ / glisser), insérer,
+          dupliquer, 2 à 6 options, actions groupées, questions incomplètes signalées */}
+      <div className="admin-card quiz-form-section">
+        <h3 className="quiz-form-section-title">Questions ({formData.questions.length})</h3>
+        <EditeurQuestionsClassiques
+          questions={formData.questions}
+          onChange={(questions) => setFormData((prev) => ({ ...prev, questions }))}
+          minQuestions={1}
+        />
       </div>
     </div>
   );
