@@ -488,6 +488,26 @@
         { "fieldPath": "destinataireId", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "quizzes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPremium", "order": "ASCENDING" },
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "quizzes_v2",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "isPremium", "order": "ASCENDING" },
+        { "fieldPath": "groupeId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

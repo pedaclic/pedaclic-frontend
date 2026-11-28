@@ -24,6 +24,9 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getGroupesEleve } from './profGroupeService';
+// ★ Phase 61 — requêtes scindées (compatibles règles Phase 60 et Phase 61)
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
+import { lireQuizClassiquesEleve } from './quizAccesService';
 
 /* ──────────────────────────────────────────────
    Types locaux (définis ici pour éviter
@@ -172,6 +175,11 @@ export const createQuiz = async (
     if (options?.asDraft !== undefined) {
       doc.status = options.asDraft ? 'draft' : 'published';
     }
+    // ★ Phase 61 — champs toujours présents, pour que les requêtes élèves
+    // where('groupeId','==',null) / where('status','==','published') les
+    // trouvent. Sans statut explicite, un quiz était déjà traité comme publié.
+    if (doc.groupeId === undefined || doc.groupeId === '') doc.groupeId = null;
+    if (!doc.status) doc.status = 'published';
     const docRef = await addDoc(quizzesRef, doc);
     return docRef.id;
   } catch (error) {
@@ -193,6 +201,8 @@ export const updateQuiz = async (
     if (options?.asDraft !== undefined) {
       updates.status = options.asDraft ? 'draft' : 'published';
     }
+    // ★ Phase 61 — « aucune classe » s'écrit null (undefined = champ inchangé)
+    if (updates.groupeId === '') updates.groupeId = null;
     await updateDoc(doc(db, 'quizzes', quizId), updates);
   } catch (error) {
     console.error('Erreur lors de la mise à jour du quiz :', error);
@@ -277,6 +287,15 @@ export const getQuizzesForEleve = async (
   isPremium: boolean
 ): Promise<Quiz[]> => {
   try {
+    // ★ Phase 61 — étape 2 : globaux + une requête par groupe de l'élève.
+    if (PHASE61_REQUETES_SCINDEES) {
+      const groupes = await getGroupesEleve(eleveId);
+      return (await lireQuizClassiquesEleve({
+        groupeIds: groupes.map((g) => g.id),
+        isPremium,
+      })) as Quiz[];
+    }
+
     const [groupes, allQuizzes] = await Promise.all([
       getGroupesEleve(eleveId),
       getQuizzes({ freeOnly: !isPremium, excludeDrafts: true }),

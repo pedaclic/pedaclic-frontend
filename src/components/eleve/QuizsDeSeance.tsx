@@ -18,11 +18,15 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type { QuizUnifie } from '../../services/quizUnifiedService';
-import { getQuizzesBySeance } from '../../services/quizUnifiedService';
+// ★ Phase 61 — lecture « élève » (requête incluant cahierId, vérifiée par les règles)
+import { getQuizzesBySeancePourEleve } from '../../services/quizUnifiedService';
+import { useAuth } from '../../contexts/AuthContext';
 
 export interface QuizsDeSeanceProps {
   /** Id de la séance affichée. */
   seanceId: string;
+  /** ★ Phase 61 — Id du cahier de textes de la séance (contrôle d'appartenance). */
+  cahierId?: string;
   /** Style compact (pour l'affichage dans une carte élève repliable). */
   compact?: boolean;
 }
@@ -34,14 +38,16 @@ function routePourQuiz(q: QuizUnifie): string {
     : `/quiz-avance/${q.id}`;    // Player Avancé
 }
 
-const QuizsDeSeance: React.FC<QuizsDeSeanceProps> = ({ seanceId, compact = false }) => {
+const QuizsDeSeance: React.FC<QuizsDeSeanceProps> = ({ seanceId, cahierId, compact = false }) => {
+  const { currentUser } = useAuth();
+  const estPremium = currentUser?.isPremium ?? false;
   const [quiz, setQuiz] = useState<QuizUnifie[]>([]);
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
     let annule = false;
     setChargement(true);
-    getQuizzesBySeance(seanceId)
+    getQuizzesBySeancePourEleve(seanceId, cahierId, estPremium)
       .then((liste) => {
         if (!annule) setQuiz(liste);
       })
@@ -54,7 +60,7 @@ const QuizsDeSeance: React.FC<QuizsDeSeanceProps> = ({ seanceId, compact = false
     return () => {
       annule = true;
     };
-  }, [seanceId]);
+  }, [seanceId, cahierId, estPremium]);
 
   if (chargement) {
     return (

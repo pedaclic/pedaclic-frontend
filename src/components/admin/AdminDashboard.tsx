@@ -24,6 +24,8 @@ import DisciplineService from '../../services/disciplineService';
 import { ChapitreService } from '../../services/chapitreService';
 import ResourceService from '../../services/ResourceService';
 import { getEffectifsClasses } from '../../services/profGroupeService';
+// ★ Phase 61 — carte « Maintenance » (migration des appartenances et des quiz)
+import MigrationPhase61Card from './MigrationPhase61Card';
 
 // ==================== INTERFACES ====================
 
@@ -546,6 +548,9 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
           </section>
+
+          {/* ====== ★ Phase 61 : Maintenance ====== */}
+          <MigrationPhase61Card />
         </>
       )}
 

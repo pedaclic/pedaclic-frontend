@@ -1,0 +1,90 @@
+/* ============================================================
+   PedaClic — Phase 61 : carte de migration (tableau de bord admin)
+   Préfixe .mig61- ; mobile ≤ 640 px ; mode sombre [data-theme="dark"]
+   ============================================================ */
+
+/* Texte d'aide sous le titre */
+.mig61-aide {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: var(--color-text-light, #64748b);
+  line-height: 1.5;
+}
+
+/* Bouton principal */
+.mig61-bouton {
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: 8px;
+  background: var(--color-primary, #2563eb);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.mig61-bouton:hover:not(:disabled) { opacity: 0.9; }
+.mig61-bouton:disabled { opacity: 0.6; cursor: wait; }
+
+/* Message d'erreur bloquante */
+.mig61-erreur {
+  margin-top: 0.75rem;
+  color: #b91c1c;
+  font-weight: 500;
+}
+
+/* Bloc du compte rendu */
+.mig61-rapport {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 10px;
+  background: var(--color-bg-secondary, #f8fafc);
+}
+.mig61-rapport h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+.mig61-duree { font-weight: 400; color: var(--color-text-light, #64748b); }
+
+/* Deux colonnes : appartenances / quiz */
+.mig61-colonnes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.mig61-colonnes ul { list-style: none; margin: 0; padding: 0; }
+.mig61-titre-liste {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-light, #64748b);
+}
+
+/* Ligne libellé ↔ valeur */
+.mig61-ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px dashed var(--color-border, #e2e8f0);
+  font-size: 0.9rem;
+}
+
+/* Liste des erreurs non bloquantes */
+.mig61-liste-erreurs {
+  margin: 0.75rem 0 0;
+  padding-left: 1.2rem;
+  color: #b45309;
+  font-size: 0.85rem;
+}
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+  .mig61-colonnes { grid-template-columns: 1fr; }
+  .mig61-bouton { width: 100%; }
+}
+
+/* ── Mode sombre ── */
+[data-theme="dark"] .mig61-rapport { background: rgba(255, 255, 255, 0.04); border-color: rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .mig61-ligne { border-bottom-color: rgba(255, 255, 255, 0.12); }
+[data-theme="dark"] .mig61-erreur { color: #fca5a5; }
+[data-theme="dark"] .mig61-liste-erreurs { color: #fcd34d; }

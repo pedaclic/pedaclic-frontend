@@ -21,6 +21,8 @@ import {
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase'; // Adapter selon votre config
+// ★ Phase 61 — appartenance déterministe aux groupes (règles Firestore)
+import { ajouterMembre, retirerMembreSiPlusInscrit } from './membresGroupeService';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -221,6 +223,11 @@ export async function inscrireEleveDirect(
     nombreInscrits: increment(1),
   });
 
+  // ── 5. ★ Phase 61 — appartenance (accès aux quiz de la classe) ──
+  //   Prof propriétaire du groupe ou admin (création de compte, Phase 57) :
+  //   la règle l'autorise sans code. Non bloquant.
+  await ajouterMembre({ groupeId, eleveId: eleve.uid, source: 'direct' });
+
   return ref.id;
 }
 
@@ -238,8 +245,21 @@ export async function desinscrireEleve(
   inscriptionId: string,
   groupeId: string
 ): Promise<void> {
+  // ★ Phase 61 — on mémorise l'élève AVANT la suppression du document
+  // (lecture tolérante : un échec n'empêche pas la désinscription).
+  let eleveIdRetire: string | undefined;
+  try {
+    const inscSnap = await getDoc(doc(db, COL_INSCRIPTIONS, inscriptionId));
+    eleveIdRetire = inscSnap.exists() ? (inscSnap.data()?.eleveId as string) : undefined;
+  } catch (e) {
+    console.warn('[inscriptionDirecteService] Lecture avant désinscription impossible :', e);
+  }
+
   // Supprimer le document d'inscription
   await deleteDoc(doc(db, COL_INSCRIPTIONS, inscriptionId));
+
+  // ★ Phase 61 — fin de l'accès aux quiz de la classe (non bloquant)
+  if (eleveIdRetire) await retirerMembreSiPlusInscrit(groupeId, eleveIdRetire);
 
   // Décrémenter le compteur (sans jamais descendre sous 0)
   const groupeSnap = await getDoc(doc(db, COL_GROUPES, groupeId));
@@ -313,6 +333,21 @@ export async function toggleStatutInscription(
   await updateDoc(doc(db, COL_INSCRIPTIONS, inscriptionId), {
     statut: nouveauStatut,
   });
+
+  // ★ Phase 61 — un élève suspendu perd l'accès aux quiz de la classe ;
+  // une réactivation le lui rend. Non bloquant.
+  try {
+    const snap = await getDoc(doc(db, COL_INSCRIPTIONS, inscriptionId));
+    if (!snap.exists()) return;
+    const { groupeId, eleveId } = snap.data() as { groupeId: string; eleveId: string };
+    if (nouveauStatut === 'actif') {
+      await ajouterMembre({ groupeId, eleveId, source: 'reactivation' });
+    } else {
+      await retirerMembreSiPlusInscrit(groupeId, eleveId);
+    }
+  } catch (e) {
+    console.warn('[inscriptionDirecteService] Appartenance non synchronisée :', e);
+  }
 }
 
 // ─────────────────────────────────────────────────────────────

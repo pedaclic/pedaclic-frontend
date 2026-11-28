@@ -39,6 +39,8 @@ import {
 import { getQuizById, Quiz, Question } from '../../services/quizService';
 import { saveQuizResult, QuizSubmission, formatTemps, getScoreColor, getScoreLabel } from '../../services/progressionService';
 import DisciplineService from '../../services/disciplineService';
+// ★ Phase 61 — accès d'un membre de la classe à un quiz de classe Premium
+import { getGroupesEleve } from '../../services/profGroupeService';
 import { useAuth } from '../../contexts/AuthContext';
 
 /* ══════════════════════════════════════════════
@@ -60,6 +62,9 @@ const QuizPlayer: React.FC = () => {
   const [disciplineNom, setDisciplineNom] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /* ★ Phase 61 — élève membre de la classe liée au quiz (accès sans Premium,
+     comme pour les quiz avancés) */
+  const [membreClasse, setMembreClasse] = useState(false);
 
   /* ── Phase du quiz ── */
   const [phase, setPhase] = useState<QuizPhase>('intro');
@@ -95,6 +100,17 @@ const QuizPlayer: React.FC = () => {
           setError('Quiz introuvable.');
           setLoading(false);
           return;
+        }
+
+        /* ★ Phase 61 — quiz de classe Premium : un élève inscrit à la classe
+           y accède sans abonnement (aligné sur le lecteur des quiz avancés). */
+        if (quizData.isPremium && quizData.groupeId && currentUser?.uid && !currentUser?.isPremium) {
+          try {
+            const groupes = await getGroupesEleve(currentUser.uid);
+            setMembreClasse(groupes.some((g) => g.id === quizData.groupeId));
+          } catch {
+            setMembreClasse(false);
+          }
         }
 
         setQuiz(quizData);
@@ -274,7 +290,7 @@ const QuizPlayer: React.FC = () => {
   }
 
   /* ── Vérification Premium ── */
-  if (quiz.isPremium && !currentUser?.isPremium) {
+  if (quiz.isPremium && !currentUser?.isPremium && !membreClasse) {
     return (
       <div className="quiz-player-locked">
         <div className="qp-locked-card">

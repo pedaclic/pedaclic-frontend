@@ -547,7 +547,7 @@ const ElveCahierPage: React.FC = () => {
             {/* Phase 32 — Quiz rattachés à cette séance.
                 Le composant gère son propre état (loading/vide) :
                 s'il n'y a aucun quiz, il ne rend rien. */}
-            <QuizsDeSeance seanceId={entree.id} compact />
+            <QuizsDeSeance seanceId={entree.id} cahierId={cahierId} compact />
           </div>
         )}
       </article>

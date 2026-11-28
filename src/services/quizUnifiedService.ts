@@ -34,6 +34,15 @@ import type { Quiz } from './quizService';
 import type { QuizAvance } from '../types/quiz-advanced';
 import { getGroupesEleve } from './profGroupeService';
 import { getCahiersPartagesForEleve } from './cahierTextesService';
+// ★ Phase 61 — requêtes scindées (compatibles règles Phase 60 et Phase 61)
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
+import {
+  lireQuizClassiquesEleve,
+  lireQuizAvancesEleve,
+  lireQuizDeSeanceEleve,
+  lireQuizParChampProf,
+} from './quizAccesService';
+import { auth } from '../firebase';
 
 // ─────────────────────────────────────────────────────────────
 // TYPE UNIFIÉ — base commune Classic + Avancé
@@ -197,10 +206,22 @@ export async function getQuizzesAccessiblesEleve(
   }
 
   // 2) Lecture parallèle des 2 collections quiz
-  const [classics, avances] = await Promise.all([
-    lireQuizClassicPublics(isPremium).catch(() => [] as Quiz[]),
-    lireQuizAvancePublies().catch(() => [] as QuizAvance[]),
-  ]);
+  //    ★ Phase 61 — étape 2 : globaux + une requête par groupe et par cahier
+  //    partagé (corrige aussi les quiz avancés jusqu'ici absents : l'ancienne
+  //    requête sans filtre `status` était refusée pour un élève).
+  const [classics, avances] = PHASE61_REQUETES_SCINDEES
+    ? await Promise.all([
+        lireQuizClassiquesEleve({ groupeIds, isPremium, cahierIds: [...cahierIds] })
+          .then((l) => l as unknown as Quiz[])
+          .catch(() => [] as Quiz[]),
+        lireQuizAvancesEleve({ groupeIds, cahierIds: [...cahierIds] })
+          .then((l) => l as unknown as QuizAvance[])
+          .catch(() => [] as QuizAvance[]),
+      ])
+    : await Promise.all([
+        lireQuizClassicPublics(isPremium).catch(() => [] as Quiz[]),
+        lireQuizAvancePublies().catch(() => [] as QuizAvance[]),
+      ]);
 
   // 3) Extraction des seanceIds : on prend tous les quiz liés à une
   //    séance dont le cahier appartient à `cahierIds`.
@@ -273,6 +294,19 @@ export async function getQuizzesAccessiblesEleve(
  * et par la vue élève (séance consultée).
  */
 export async function getQuizzesBySeance(seanceId: string): Promise<QuizUnifie[]> {
+  // ★ Phase 61 — étape 2 (vue PROF / ADMIN) : requête simple si autorisée,
+  // sinon « publiés » + « les miens » (brouillons réservés à leur auteur).
+  if (PHASE61_REQUETES_SCINDEES) {
+    const uid = auth.currentUser?.uid ?? null;
+    const [classiques, avancesBruts] = await Promise.all([
+      lireQuizParChampProf('quizzes', 'seanceId', seanceId, uid).catch(() => []),
+      lireQuizParChampProf('quizzes_v2', 'seanceId', seanceId, uid).catch(() => []),
+    ]);
+    return [
+      ...(classiques as unknown as Quiz[]).map((q) => normaliserQuizClassic(q, 'seance')),
+      ...(avancesBruts as unknown as QuizAvance[]).map((q) => normaliserQuizAvance(q, 'seance')),
+    ];
+  }
   const [snapC, snapA] = await Promise.all([
     getDocs(query(collection(db, 'quizzes'), where('seanceId', '==', seanceId))).catch(
       () => null
@@ -290,6 +324,25 @@ export async function getQuizzesBySeance(seanceId: string): Promise<QuizUnifie[]
   return [
     ...classics.map((q) => normaliserQuizClassic(q, 'seance')),
     ...avances.map((q) => normaliserQuizAvance(q, 'seance')),
+  ];
+}
+
+/**
+ * ★ Phase 61 — Quiz d'une séance vus par un ÉLÈVE (QuizsDeSeance).
+ * La requête inclut cahierId + status : la règle Phase 61 vérifie que
+ * l'élève est membre de l'une des classes du cahier.
+ * Sans l'interrupteur Phase 61, ou sans cahierId : comportement historique.
+ */
+export async function getQuizzesBySeancePourEleve(
+  seanceId: string,
+  cahierId: string | undefined,
+  isPremium: boolean
+): Promise<QuizUnifie[]> {
+  if (!PHASE61_REQUETES_SCINDEES || !cahierId) return getQuizzesBySeance(seanceId);
+  const { classiques, avances } = await lireQuizDeSeanceEleve({ seanceId, cahierId, isPremium });
+  return [
+    ...(classiques as unknown as Quiz[]).map((q) => normaliserQuizClassic(q, 'seance')),
+    ...(avances as unknown as QuizAvance[]).map((q) => normaliserQuizAvance(q, 'seance')),
   ];
 }
 

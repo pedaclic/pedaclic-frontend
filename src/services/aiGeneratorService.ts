@@ -625,6 +625,8 @@ export async function saveGeneratedQuiz(
       profId: userId,
       auteurId: userId,
       status: 'published' as const,
+      // ★ Phase 61 — quiz global : groupeId explicitement null (requêtes élèves)
+      groupeId: null,
       source: 'ia_generator',
       ...corpusFields,
       createdAt: Timestamp.now(),

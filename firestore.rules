@@ -213,6 +213,45 @@ service cloud.firestore {
              groupeQuizAutorise(request.resource.data.get('groupeId', null));
     }
 
+    // ──────────────────────────────────────────────────────────
+    // ★ Phase 61 — APPARTENANCE AUX GROUPES (lecture des quiz de classe)
+    //   membres_groupe/{groupeId}_{eleveId} : identifiant déterministe,
+    //   donc vérifiable par une règle (contrairement à inscriptions_groupe).
+    // ──────────────────────────────────────────────────────────
+
+    // L'utilisateur connecté est-il membre du groupe gid ?
+    function membreDe(gid) {
+      return exists(/databases/$(database)/documents/membres_groupe/$(gid + '_' + request.auth.uid));
+    }
+
+    // Quiz rattaché à une séance : membre de l'un des 3 premiers groupes du
+    // cahier de textes (un cahier peut être partagé à plusieurs classes alors
+    // que le quiz ne porte que le 1er groupe dans groupeId).
+    function membreDuCahier(cid) {
+      let g = get(/databases/$(database)/documents/cahiers_textes/$(cid)).data.get('groupeIds', []);
+      return (g.size() > 0 && membreDe(g[0])) ||
+             (g.size() > 1 && membreDe(g[1])) ||
+             (g.size() > 2 && membreDe(g[2]));
+    }
+
+    // Collection TÉMOIN (étape 3a) : même règle de lecture que celle prévue
+    // pour `quizzes_v2` à l'étape 3. Sert à vérifier, sans risque, que
+    // Firestore sait prouver les requêtes de liste par groupe / par cahier.
+    // Documents créés à la main par l'admin dans la console Firebase.
+    match /test_phase61/{docId} {
+      allow read: if isSignedIn() && (
+                     (resource.data.status == 'published' && (
+                        resource.data.groupeId == null ||
+                        (resource.data.groupeId != null && membreDe(resource.data.groupeId)) ||
+                        (resource.data.cahierId != null && membreDuCahier(resource.data.cahierId)) ||
+                        isProf()
+                     )) ||
+                     resource.data.auteurId == request.auth.uid ||
+                     isAdmin()
+                   );
+      allow write: if isAdmin();
+    }
+
     match /quizzes/{quizId} {
       allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
       allow create: if isAdmin() ||
@@ -420,6 +459,62 @@ service cloud.firestore {
               (isSignedIn() && isProf() &&
                get(/databases/$(database)/documents/groupes_prof/$(resource.data.groupeId))
                  .data.profId == request.auth.uid);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // ★ Phase 61 — membres_groupe/{groupeId}_{eleveId}
+    //   Reflet de inscriptions_groupe (statut 'actif', élèves avec compte),
+    //   écrit à chaque inscription / retrait / suspension.
+    //   • lecture : l'élève concerné, le prof propriétaire du groupe, l'admin ;
+    //   • création / mise à jour : admin, prof propriétaire du groupe, ou
+    //     l'élève LUI-MÊME uniquement avec le code d'invitation EN COURS
+    //     (groupe actif, code identique, échéance non dépassée) ;
+    //   • suppression : admin ou prof propriétaire (le groupe est lu à partir
+    //     de l'identifiant, ce qui permet aussi de « supprimer » un document
+    //     déjà absent sans erreur).
+    // ══════════════════════════════════════════════════════════
+    match /membres_groupe/{membreId} {
+
+      function groupeDuMembre(gid) {
+        return get(/databases/$(database)/documents/groupes_prof/$(gid)).data;
+      }
+      function proprietaireGroupe(gid) {
+        return exists(/databases/$(database)/documents/groupes_prof/$(gid)) &&
+               groupeDuMembre(gid).profId == request.auth.uid;
+      }
+      // Identifiant cohérent avec les champs + champs autorisés seulement
+      function donneesMembreValides(d) {
+        return d.groupeId is string && d.eleveId is string &&
+               membreId == d.groupeId + '_' + d.eleveId &&
+               d.source in ['code', 'direct', 'reactivation', 'migration'] &&
+               d.keys().hasOnly(['groupeId', 'eleveId', 'source', 'codeInvitation', 'dateAjout']);
+      }
+      // Code d'invitation valide au moment de l'écriture (Phase 59)
+      function codeInvitationValide(d) {
+        let g = groupeDuMembre(d.groupeId);
+        return g.get('statut', 'actif') == 'actif' &&
+               d.get('codeInvitation', '') == g.codeInvitation &&
+               (g.get('codeExpireLe', null) == null || g.codeExpireLe > request.time);
+      }
+
+      allow read: if isSignedIn() && (
+                     resource.data.eleveId == request.auth.uid ||
+                     proprietaireGroupe(resource.data.groupeId) ||
+                     isAdmin()
+                   );
+      allow create, update: if isSignedIn() &&
+                     donneesMembreValides(request.resource.data) && (
+                       proprietaireGroupe(request.resource.data.groupeId) ||
+                       isAdmin() ||
+                       (request.resource.data.eleveId == request.auth.uid &&
+                        request.resource.data.source == 'code' &&
+                        isEleve() &&
+                        codeInvitationValide(request.resource.data))
+                     );
+      allow delete: if isSignedIn() && (
+                     proprietaireGroupe(membreId.split('_')[0]) ||
+                     isAdmin()
+                   );
     }
 
     match /progressions/{progressionId} {

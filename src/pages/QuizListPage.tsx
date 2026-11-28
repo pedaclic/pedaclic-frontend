@@ -8,7 +8,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getAllQuizzes, getQuizzesAvanceForEleve } from '../services/quizAdvancedService';
+// ★ Phase 61 — getQuizzesAvanceSelonRole : admin = tout ; prof = publiés + les siens
+// si nécessaire ; parent = globaux publiés (interrupteur Phase 61).
+import { getQuizzesAvanceSelonRole, getQuizzesAvanceForEleve } from '../services/quizAdvancedService';
 import type { QuizAvance } from '../types/quiz-advanced';
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -50,7 +52,7 @@ const QuizListPage: React.FC = () => {
           setQuizzes(data);
           setGroupeIds(groupes.map((g) => g.id));
         } else {
-          const data = await getAllQuizzes();
+          const data = await getQuizzesAvanceSelonRole(currentUser?.role, currentUser?.uid);
           setQuizzes(data);
         }
       } catch {

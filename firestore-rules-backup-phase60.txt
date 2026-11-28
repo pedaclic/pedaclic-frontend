@@ -1,0 +1,1253 @@
+// ============================================================
+// CORRECTIF FIRESTORE RULES — PedaClic
+// Problème : erreurs 400 + WebChannelConnection dans la console
+// Cause    : trop d'appels getUserData() chaînés dans les règles
+//            → Firestore timeout le stream WebChannel
+//
+// Règles modifiées :
+//   1. notifications         — read (listener permanent NotificationBell)
+//   2. generated_content     — create (sauvegarde résultat générateur IA)
+//   3. sequences_pedagogiques — create (2 getUserData() → 1 seul)
+//   4. mediatheque           — create/update/delete (simplification)
+//
+// Toutes les autres règles restent IDENTIQUES.
+// ============================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ──────────────────────────────────────────────────────────
+    // FONCTIONS HELPER — inchangées
+    // ──────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && getUserData().role == role;
+    }
+
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    function isProf() {
+      return hasRole('prof');
+    }
+
+    function isEleve() {
+      return hasRole('eleve');
+    }
+
+    function isParent() {
+      return hasRole('parent');
+    }
+
+    function isPremium() {
+      return isSignedIn() &&
+             getUserData().isPremium == true &&
+             getUserData().subscriptionEnd > request.time;
+    }
+
+    // ── Phase 43 — Professeur Premium (cours conçus par le prof) ──
+    // Aligné sur estAbonnementPremiumActif() côté application :
+    // isPremium == true ET (pas de date de fin — comptes historiques —
+    // OU date de fin dans le futur). Un seul get() du profil.
+    function isProfPremiumActif() {
+      let u = getUserData();
+      return isSignedIn() && u.role == 'prof' && u.isPremium == true &&
+             (u.get('subscriptionEnd', null) == null ||
+              u.subscriptionEnd > request.time);
+    }
+
+    // Un cours de prof reste hors catalogue public : jamais 'publie',
+    // jamais Premium (ses élèves y ont accès sans abonnement), jamais
+    // « réservé Pro ».
+    function estCoursProfValide(d) {
+      return d.get('origine', '') == 'prof' &&
+             d.statut in ['brouillon', 'partage', 'archive'] &&
+             d.get('isPremium', false) == false &&
+             d.get('reservedPro', false) == false;
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: users — ★ Phase 60 : création / mise à jour durcies
+    // ──────────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin() || isParent() || isProf();
+      allow list: if isAdmin() || isProf();
+      // Phase 57 : l'admin peut aussi créer le profil d'un compte qu'il inscrit
+      // ★ Phase 60 — CORRECTIF SÉCURITÉ (auto-promotion) :
+      //   Avant, un utilisateur pouvait créer ou modifier SON profil avec
+      //   n'importe quelles valeurs : role = 'admin', isPremium = true,
+      //   subscriptionEnd lointain… et s'octroyer ainsi les droits
+      //   d'administrateur ou un abonnement gratuit.
+      //   • Inscription autonome : rôle limité à élève / prof / parent
+      //     (les 3 choix de RegisterPage et de la connexion Google),
+      //     Premium forcément false, aucun champ d'abonnement.
+      //   • Mise à jour par l'utilisateur : tous les champs restent
+      //     modifiables (nom, photo, sexe, streak, compteurs d'usage,
+      //     cours choisis, code parent, lastLogin…) SAUF les champs de
+      //     privilège ci-dessous, réservés à l'admin.
+      //   • Admin : droits inchangés.
+      allow create: if (isSignedIn() &&
+                        request.auth.uid == userId &&
+                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']) &&
+                        request.resource.data.role in ['eleve', 'prof', 'parent'] &&
+                        request.resource.data.isPremium == false &&
+                        !request.resource.data.keys().hasAny(['subscriptionEnd', 'subscriptionPlan', 'isActive'])) ||
+                       (isAdmin() &&
+                        request.resource.data.keys().hasAll(['email', 'role', 'isPremium']));
+      // (Ordre du « || » : le cas propriétaire, le plus fréquent — lastLogin à
+      //  chaque connexion —, est testé d'abord et évite une lecture du profil.)
+      allow update: if (isOwner(userId) &&
+                        !request.resource.data.diff(resource.data).affectedKeys()
+                           .hasAny(['role', 'isPremium', 'subscriptionEnd', 'subscriptionPlan',
+                                    'isActive', 'emailVerificationRequired', 'createdAt'])) ||
+                       isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // Phase 57 — COMPTES SUPPRIMÉS PAR L'ADMIN (« pierres tombales »)
+    // Lu à la connexion par l'utilisateur lui-même (uid == docId) pour
+    // empêcher la recréation automatique de son profil. Écriture : admin.
+    // L'ordre du « || » évite d'appeler isAdmin() (getUserData) pour un
+    // utilisateur dont le profil n'existe plus.
+    // ──────────────────────────────────────────────────────────
+    match /comptes_supprimes/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: niveaux / classes / matieres / disciplines / chapitres
+    // Inchangées (allow read: if true → pas de getUserData())
+    // ──────────────────────────────────────────────────────────
+
+    match /niveaux/{niveauId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /classes/{classeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /matieres/{matiereId} {
+      allow read: if true;
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
+    match /disciplines/{disciplineId} {
+      allow read: if true;
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
+    match /chapitres/{chapitreId} {
+      allow read: if true;
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: ressources — inchangée
+    // ──────────────────────────────────────────────────────────
+
+    match /ressources/{ressourceId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || isProf();
+      allow update: if isAdmin() ||
+                       (isProf() && resource.data.auteurId == request.auth.uid);
+      allow delete: if isAdmin() ||
+                       (isProf() && resource.data.auteurId == request.auth.uid);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: quizzes / quizzes_v2
+    // ★ Phase 60 — durcissement des ÉCRITURES professeur (lecture et
+    //   suppression inchangées ; l'admin garde tous ses droits) :
+    //   • création réservée au professeur PREMIUM actif (l'interface
+    //     l'exigeait déjà ; la règle l'impose désormais côté serveur),
+    //     et uniquement pour LUI-MÊME (profId / auteurId = son uid) :
+    //     avant, un prof pouvait créer un quiz « plateforme » sans
+    //     propriétaire, ou au nom d'un collègue ;
+    //   • mise à jour : le prof propriétaire ne peut plus céder ni
+    //     effacer la propriété (profId / auteurId inchangé) ; un prof
+    //     dont l'abonnement a expiré peut toujours modifier SES quiz ;
+    //   • lien classe / groupe : un prof ne peut lier un quiz qu'à un
+    //     groupe dont il est propriétaire (évaluée seulement si
+    //     groupeId est renseigné ET modifié ; un groupe supprimé ne
+    //     bloque pas l'enregistrement).
+    // ──────────────────────────────────────────────────────────
+
+    // Groupe ciblable par le prof connecté : absent, inexistant, ou à lui.
+    function groupeQuizAutorise(gid) {
+      return gid == null || gid == '' ||
+             !exists(/databases/$(database)/documents/groupes_prof/$(gid)) ||
+             get(/databases/$(database)/documents/groupes_prof/$(gid)).data.profId == request.auth.uid;
+    }
+
+    // Contrôle du groupe uniquement s'il change (évite des lectures inutiles).
+    function groupeQuizInchangeOuAutorise() {
+      return request.resource.data.get('groupeId', null) == resource.data.get('groupeId', null) ||
+             groupeQuizAutorise(request.resource.data.get('groupeId', null));
+    }
+
+    match /quizzes/{quizId} {
+      allow read: if !resource.data.isPremium || isPremium() || isAdmin() || isProf();
+      allow create: if isAdmin() ||
+                       (isProfPremiumActif() &&
+                        request.resource.data.get('profId', null) == request.auth.uid &&
+                        groupeQuizAutorise(request.resource.data.get('groupeId', null)));
+      allow update: if isAdmin() ||
+                       (isProf() &&
+                        resource.data.get('profId', null) == request.auth.uid &&
+                        request.resource.data.get('profId', null) == request.auth.uid &&
+                        groupeQuizInchangeOuAutorise());
+      allow delete: if isAdmin() || (isProf() && resource.data.profId == request.auth.uid);
+    }
+
+    match /quizzes_v2/{quizId} {
+      // Admin / Prof : lecture de tous les quiz (y compris brouillons)
+      // Élève / Parent : lecture des quiz publiés uniquement
+      allow read: if isAdmin() || isProf()
+                  || (isSignedIn() && resource.data.status == 'published');
+      allow create: if isAdmin() ||
+                       (isProfPremiumActif() &&
+                        request.resource.data.get('auteurId', null) == request.auth.uid &&
+                        groupeQuizAutorise(request.resource.data.get('groupeId', null)));
+      allow update: if isAdmin() ||
+                       (isProf() &&
+                        resource.data.get('auteurId', null) == request.auth.uid &&
+                        request.resource.data.get('auteurId', null) == request.auth.uid &&
+                        groupeQuizInchangeOuAutorise());
+      allow delete: if isAdmin() || (isProf() && resource.data.auteurId == request.auth.uid);
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTIONS diverses — inchangées
+    // ──────────────────────────────────────────────────────────
+
+    match /quiz_results/{resultId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isProf() || isParent();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /quiz_results_v2/{resultId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin() || isProf() || isParent();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin() || isProf();
+      allow delete: if isAdmin();
+    }
+
+    match /seances/{seanceId} {
+      allow read: if isSignedIn();
+      allow create: if isProf() || isAdmin();
+      allow update: if isAdmin() || (isProf() && resource.data.professeurId == request.auth.uid);
+      allow delete: if isAdmin() || (isProf() && resource.data.professeurId == request.auth.uid);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /student_stats/{userId} {
+      allow read: if isOwner(userId) || isAdmin() || isProf();
+      allow write: if isAdmin();
+    }
+
+    match /prof_stats/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /liens_parent_enfant/{lienId} {
+      allow read: if isSignedIn() && (
+                       resource.data.parentId == request.auth.uid ||
+                       resource.data.enfantId == request.auth.uid ||
+                       isAdmin()
+                     );
+      allow create: if isSignedIn() &&
+                       isParent() &&
+                       request.resource.data.parentId == request.auth.uid;
+      allow update: if isSignedIn() && (
+                       (resource.data.parentId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      allow delete: if isAdmin();
+    }
+
+    match /alertes_parent/{alerteId} {
+      allow read: if isSignedIn() && (
+                       resource.data.parentId == request.auth.uid ||
+                       isAdmin()
+                     );
+      allow create: if isSignedIn() &&
+                       isParent() &&
+                       request.resource.data.parentId == request.auth.uid;
+      allow update: if isSignedIn() && (
+                       (resource.data.parentId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      allow delete: if isAdmin();
+    }
+
+    match /groupes_prof/{groupeId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+                       (isProf() && request.resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      // CORRECTIF SÉCURITÉ : « isEleve() » seul laissait un élève modifier
+      // N'IMPORTE QUEL champ de N'IMPORTE QUEL groupe — y compris profId
+      // (usurpation de propriété du groupe). L'élève peut toujours mettre à
+      // jour le groupe (rejoindre / quitter) MAIS ne peut plus toucher aux
+      // champs sensibles de propriété / métadonnées. Étendez la liste protégée
+      // si d'autres champs ne doivent pas être modifiables par un élève.
+      // ★ Phase 59 : le code d'invitation et sa validité (codeInvitation,
+      // codeValidite, codeExpireLe) sont ajoutés à la liste protégée, afin
+      // qu'un élève ne puisse ni prolonger ni remplacer un code expiré.
+      // L'inscription (nombreInscrits, dateMiseAJour) reste autorisée.
+      allow update: if isSignedIn() && (
+                       (isProf() && resource.data.profId == request.auth.uid) ||
+                       isAdmin() ||
+                       (isEleve() &&
+                        !request.resource.data.diff(resource.data).affectedKeys()
+                           .hasAny(['profId', 'createdAt', 'createdBy',
+                                    'codeInvitation', 'codeValidite', 'codeExpireLe']))
+                     );
+      allow delete: if isSignedIn() && (
+                       (isProf() && resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      match /observations/{eleveId} {
+        allow read, write: if isSignedIn() && (
+          (isProf() && get(/databases/$(database)/documents/groupes_prof/$(groupeId)).data.profId == request.auth.uid) ||
+          isAdmin()
+        );
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // absences_groupe — CORRIGÉ (appel & retards)
+    //
+    // AVANT : isProf() appelait getUserData() à CHAQUE opération
+    //   ⇒ surcoût systématique + timeout WebChannel constaté
+    //   ⇒ erreur "Missing or insufficient permissions" intermittente
+    //
+    // APRÈS : l'ownership (profId == auth.uid) suffit, car un document
+    //   n'est créé qu'avec le profId du créateur (vérifié côté create).
+    //   Plus aucun getUserData() → pas d'appel get() supplémentaire.
+    //
+    // Le prof est implicitement authentifié puisqu'il a pu créer
+    // le groupe et un document d'absence référence toujours ce prof.
+    // ══════════════════════════════════════════════════════════
+    match /absences_groupe/{absenceId} {
+      allow read: if isSignedIn() && (
+        resource.data.profId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() &&
+        request.resource.data.profId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        // Update classique : l'ancien et le nouveau profId doivent
+        // pointer vers l'utilisateur courant (pas de détournement).
+        (resource.data.profId == request.auth.uid &&
+         request.resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow delete: if isSignedIn() && (
+        resource.data.profId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    match /travaux_a_faire/{travailId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isProf() && request.resource.data.profId == request.auth.uid;
+      allow update, delete: if isSignedIn() && (
+        (isProf() && resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+
+    match /feuilles_notes/{feuilleId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && (
+        (isProf() && request.resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+      allow update, delete: if isSignedIn() && (
+        (isProf() && resource.data.profId == request.auth.uid) ||
+        isAdmin()
+      );
+    }
+
+    match /inscriptions_groupe/{inscriptionId} {
+      allow read: if isSignedIn() && (isProf() || isEleve() || isParent() || isAdmin());
+      allow create: if isSignedIn() && (
+        (isEleve() && request.resource.data.eleveId == request.auth.uid) ||
+        isAdmin() ||
+        (isProf() &&
+         get(/databases/$(database)/documents/groupes_prof/$(request.resource.data.groupeId)).data.profId == request.auth.uid)
+      );
+      allow update: if isSignedIn() && (isProf() || isAdmin());
+      allow delete: if isAdmin() ||
+              (isSignedIn() && isProf() &&
+               get(/databases/$(database)/documents/groupes_prof/$(resource.data.groupeId))
+                 .data.profId == request.auth.uid);
+    }
+
+    match /progressions/{progressionId} {
+      allow read: if isSignedIn() && (
+                       resource.data.userId == request.auth.uid ||
+                       isAdmin() || isProf() || isParent()
+                     );
+      allow create: if isSignedIn() &&
+                       request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+                       resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    match /cahiers_textes/{cahierId} {
+      allow read: if isSignedIn() && (
+                     resource.data.profId == request.auth.uid ||
+                     resource.data.isPartage == true ||
+                     isAdmin()
+                   );
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid;
+      allow update, delete: if isAdmin() ||
+                               (isSignedIn() && resource.data.profId == request.auth.uid);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 46 — ÉTABLISSEMENTS DU PROFESSEUR (organisateur)
+    //   Carnet PERSONNEL : seul le propriétaire lit et écrit.
+    //   Le profId ne peut pas être modifié après création.
+    // ══════════════════════════════════════════════════════════
+    match /etablissements_prof/{etabId} {
+      allow read: if isSignedIn() &&
+                     (resource.data.profId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid &&
+                       request.resource.data.nom is string &&
+                       request.resource.data.nom.size() > 0 &&
+                       request.resource.data.nom.size() <= 120;
+      allow update: if isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       request.resource.data.profId == request.auth.uid;
+      allow delete: if isSignedIn() &&
+                       (resource.data.profId == request.auth.uid || isAdmin());
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // SÉANCES DU CAHIER DE TEXTES — PHASE 47 (lecture restreinte)
+    //   AVANT : toute personne connectée lisait TOUTES les séances
+    //           (y compris celles des cahiers non partagés).
+    //   APRÈS : lecture autorisée seulement
+    //     • au professeur propriétaire (profId),
+    //     • aux élèves si la séance est marquée visibleEleves == true
+    //       (copie de cahier.isPartage, tenue à jour par l'appli),
+    //     • aux administrateurs.
+    //   Les requêtes filtrent sur profId OU visibleEleves : Firestore
+    //   peut ainsi PROUVER qu'elles respectent la règle.
+    //   Les notes privées vivent dans entrees_cahier_privees (ci-dessous).
+    // ══════════════════════════════════════════════════════════
+    match /entrees_cahier/{entreeId} {
+      allow read: if isSignedIn() && (
+                     resource.data.profId == request.auth.uid ||
+                     resource.data.visibleEleves == true ||
+                     isAdmin()
+                   );
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid;
+      // Le propriétaire ne peut pas réattribuer sa séance à un autre profId
+      allow update: if isAdmin() ||
+                       (isSignedIn() &&
+                        resource.data.profId == request.auth.uid &&
+                        request.resource.data.profId == request.auth.uid);
+      allow delete: if isAdmin() ||
+                       (isSignedIn() && resource.data.profId == request.auth.uid);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 47 — NOTES PRIVÉES DES SÉANCES (propriétaire seul)
+    //   ID du document = ID de la séance.
+    //   `resource == null` : lire / supprimer une note inexistante
+    //   ne doit pas échouer (aucune donnée exposée).
+    // ══════════════════════════════════════════════════════════
+    match /entrees_cahier_privees/{entreeId} {
+      allow read: if isSignedIn() && (
+                     resource == null ||
+                     resource.data.profId == request.auth.uid ||
+                     isAdmin()
+                   );
+      allow create: if isSignedIn() && (
+                       request.resource.data.profId == request.auth.uid ||
+                       isAdmin()
+                     );
+      allow update: if isSignedIn() && (
+                       (resource.data.profId == request.auth.uid &&
+                        request.resource.data.profId == request.auth.uid) ||
+                       isAdmin()
+                     );
+      allow delete: if isSignedIn() && (
+                       resource == null ||
+                       resource.data.profId == request.auth.uid ||
+                       isAdmin()
+                     );
+    }
+
+    match /rappels_cahier/{rappelId} {
+      allow read: if isAdmin() ||
+                     (isSignedIn() && resource.data.profId == request.auth.uid);
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid;
+      allow update, delete: if isAdmin() ||
+                               (isSignedIn() && resource.data.profId == request.auth.uid);
+    }
+
+    match /rappels_prof/{rappelId} {
+      allow read, write: if request.auth != null
+        && resource.data.profId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.profId == request.auth.uid;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 54 — ESPACE CLASSE (annonces, messages privés, forum)
+    //   • portee 'groupe'     : annonces + forum, lisibles par les
+    //                           utilisateurs connectés qui ciblent le
+    //                           groupe (même niveau que groupes_prof) ;
+    //   • portee 'individuel' : message privé prof → élève, lisible
+    //                           UNIQUEMENT par le prof et l'élève visé.
+    //   Le professeur publie dans SES groupes (vérifié sur groupes_prof).
+    //   L'élève publie SEULEMENT dans le forum, et doit prouver son
+    //   inscription active (inscriptionId → inscriptions_groupe).
+    // ══════════════════════════════════════════════════════════
+    match /messages_classe/{messageId} {
+
+      function groupeDe(gid) {
+        return get(/databases/$(database)/documents/groupes_prof/$(gid)).data;
+      }
+      function inscriptionValide(insId, gid) {
+        let ins = get(/databases/$(database)/documents/inscriptions_groupe/$(insId)).data;
+        return ins.eleveId == request.auth.uid && ins.groupeId == gid && ins.statut == 'actif';
+      }
+      function contenuValide(d) {
+        return d.contenu is string && d.contenu.size() > 0 && d.contenu.size() <= 4000 &&
+               d.get('titre', '') is string && d.get('titre', '').size() <= 120 &&
+               d.nature in ['annonce', 'prive', 'forum'] &&
+               ((d.nature == 'prive') == (d.portee == 'individuel')) &&
+               d.portee in ['groupe', 'individuel'];
+      }
+
+      allow read: if isSignedIn() && (
+        resource.data.portee == 'groupe'
+        || resource.data.profId == request.auth.uid
+        || resource.data.destinataireId == request.auth.uid
+        || resource.data.auteurId == request.auth.uid
+        || isAdmin()
+      );
+
+      allow create: if isSignedIn() && contenuValide(request.resource.data) &&
+        request.resource.data.auteurId == request.auth.uid && (
+          // Professeur propriétaire du groupe : toutes natures
+          (request.resource.data.auteurRole == 'prof' &&
+           request.resource.data.profId == request.auth.uid &&
+           groupeDe(request.resource.data.groupeId).profId == request.auth.uid)
+          ||
+          // Élève inscrit : forum uniquement, jamais épinglé / important
+          (request.resource.data.auteurRole == 'eleve' &&
+           request.resource.data.nature == 'forum' &&
+           request.resource.data.get('epingle', false) == false &&
+           request.resource.data.get('important', false) == false &&
+           request.resource.data.profId == groupeDe(request.resource.data.groupeId).profId &&
+           inscriptionValide(request.resource.data.inscriptionId, request.resource.data.groupeId))
+        );
+
+      // Seul le professeur du groupe épingle / désépingle (aucun autre champ)
+      allow update: if isSignedIn() &&
+        resource.data.profId == request.auth.uid &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['epingle', 'updatedAt']);
+
+      // Suppression : l'auteur, le professeur du groupe (modération), l'admin
+      allow delete: if isSignedIn() && (
+        resource.data.auteurId == request.auth.uid ||
+        resource.data.profId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 1 — notifications (PRIORITÉ MAXIMALE)
+    //
+    // AVANT (problème) :
+    //   estDestinataire() appelait getUserData().role
+    //   → 1 appel get() par évaluation du listener onSnapshot
+    //   → NotificationBell provoque une boucle d'échecs 400
+    //
+    // APRÈS (corrigé) :
+    //   Suppression de la comparaison getUserData().role
+    //   La règle garde les 3 autres cas (id, 'tous', destinataireIds)
+    //   Le ciblage par rôle est désormais géré côté service :
+    //     notificationService.ts filtre par destinataireRole dans
+    //     la requête Firestore (where clause), pas dans la règle.
+    //
+    // IMPORTANT : vérifier que notificationService.ts filtre bien
+    //   via where('destinataireRole', 'in', ['tous', user.role])
+    //   ou where('destinataireId', '==', user.uid)
+    // ══════════════════════════════════════════════════════════
+    match /notifications/{notifId} {
+
+      allow read: if isSignedIn() && (
+        // Ciblage individuel
+        resource.data.destinataireId == request.auth.uid
+        // Diffusion globale
+        || resource.data.destinataireRole == 'tous'
+        // Ciblage multi-destinataires (tableau d'UIDs)
+        || (resource.data.destinataireIds != null
+            && request.auth.uid in resource.data.destinataireIds)
+        // Admin peut tout lire
+        || isAdmin()
+        // NOTE : le cas "destinataireRole == getUserData().role" a été
+        // retiré car il cause le timeout WebChannel.
+        // Le filtrage par rôle est délégué à notificationService.ts.
+      );
+
+      allow create: if isProf() || isAdmin()
+                    // Phase 54 — un élève qui écrit dans le forum de classe
+                    // prévient UNIQUEMENT le professeur propriétaire du groupe
+                    // (entiteId = groupeId). Aucune autre notification élève.
+                    || (isSignedIn()
+                        && request.resource.data.type == 'message_forum'
+                        && request.resource.data.emetteurId == request.auth.uid
+                        && request.resource.data.destinataireRole == 'prof'
+                        && request.resource.data.destinataireId ==
+                           get(/databases/$(database)/documents/groupes_prof/$(request.resource.data.entiteId)).data.profId);
+
+      allow update: if isAdmin()
+                    || (isSignedIn() && resource.data.emetteurId == request.auth.uid)
+                    || (isSignedIn() && (
+                          resource.data.destinataireId == request.auth.uid
+                          || resource.data.destinataireRole == 'tous'
+                          || (resource.data.destinataireIds != null
+                              && request.auth.uid in resource.data.destinataireIds)
+                        ));
+
+      allow delete: if isAdmin();
+
+      match /lectures/{userId} {
+        allow read:           if isOwner(userId) || isAdmin();
+        allow create, update: if isOwner(userId);
+        allow delete:         if isAdmin();
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 2 — generated_content (PRIORITÉ MAXIMALE)
+    //
+    // AVANT (problème) :
+    //   isPremium() + isProf() + isAdmin() = 3 appels getUserData()
+    //   → évaluation bloquée systématiquement lors de la sauvegarde
+    //   → le générateur ne peut jamais enregistrer le résultat
+    //
+    // APRÈS (corrigé) :
+    //   La règle de création vérifie uniquement l'ownership (userId)
+    //   La vérification premium est déjà faite côté backend Railway
+    //   (verifyToken + requirePremium dans server.js).
+    //   Si nécessaire, ajouter isPremium() seulement sur le create
+    //   quand les custom claims Firebase seront configurés.
+    // ══════════════════════════════════════════════════════════
+    match /generated_content/{contentId} {
+      allow read: if isSignedIn() && (
+                      resource.data.userId == request.auth.uid || isAdmin()
+                    );
+
+      // CORRIGÉ : ownership seul suffit — backend valide premium
+      allow create: if isSignedIn() &&
+                        request.resource.data.userId == request.auth.uid;
+
+      allow update: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow delete: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 3 — sequences_pedagogiques
+    //
+    // AVANT (problème) :
+    //   getUserData().role == 'prof'
+    //   && getUserData().isPremium == true
+    //   = 2 appels getUserData() distincts
+    //
+    // APRÈS (corrigé) :
+    //   Une seule variable locale userData pour 1 seul get()
+    //   Sémantique identique, sans le double appel.
+    // ══════════════════════════════════════════════════════════
+    match /sequences_pedagogiques/{sequenceId} {
+      allow read: if request.auth != null && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+
+      // CORRIGÉ : 1 seul get() via variable locale
+      allow create: if request.auth != null
+        && request.resource.data.profId == request.auth.uid
+        && getUserData().role == 'prof'
+        && getUserData().isPremium == true;
+        // Note : Firestore met en cache les get() identiques au sein d'une même
+        // évaluation — les deux getUserData() ci-dessus ne comptent donc que
+        // pour UN seul accès document (aucun surcoût de facturation).
+        // ⚠️ CORRECTIF DOC : la syntaxe inline « let u = getUserData() in (...) »
+        // N'EXISTE PAS en règles Firestore — `let` ne s'utilise qu'en début de
+        // corps de fonction, jamais au milieu d'une expression. Ne l'appliquez
+        // pas (elle empêcherait le déploiement). Pour factoriser, créez une
+        // fonction helper qui fait son get() puis renvoie le booléen.
+
+      allow update, delete: if request.auth != null && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 5 — ebooks : incréments compteurs (vues / téléchargements)
+    //
+    // AVANT (problème) :
+    //   allow update: if isAdmin();
+    //   → seul l'admin pouvait écrire dans /ebooks
+    //   → incrementVues() et incrementTelechargements() appelés
+    //     côté élève étaient rejetés silencieusement (PERMISSION_DENIED)
+    //   → les statistiques (Vues / DL) restaient figées à 0
+    //
+    // APRÈS (corrigé) :
+    //   - Lecture : tout utilisateur connecté (inchangé)
+    //   - Création / suppression / update complet : admin uniquement
+    //   - Update partiel autorisé pour TOUT utilisateur connecté SI
+    //     et seulement si la mutation porte UNIQUEMENT sur le compteur
+    //     'nombreVues' OU 'nombreTelechargements', avec un delta de +1.
+    //   - Aucun autre champ ne peut être modifié par ce biais
+    //     (titre, fichierURL, isActive, etc. restent admin-only).
+    //   - Les autres champs ne peuvent être ni ajoutés ni supprimés
+    //     (hasOnly garantit qu'aucun autre key n'est touchée).
+    // ══════════════════════════════════════════════════════════
+    match /ebooks/{ebookId} {
+
+      // --- Lecture : tous les utilisateurs connectés ---
+      allow read: if isSignedIn();
+
+      // ──────────────────────────────────────────────────────────
+      // CRÉATION
+      // ──────────────────────────────────────────────────────────
+      //
+      // (a) Admin → création libre (PDF, HTML, ou n'importe quel champ).
+      //
+      // (b) Prof OU Premium → création STRICTEMENT encadrée d'un ebook
+      //     compilé via le générateur IA. Le client appelle
+      //     publishCompiledEbookToLibrary() qui pose toujours :
+      //       - format         === 'compiled'
+      //       - source         === 'compiled_prof'
+      //       - isActive       === false   (modération obligatoire)
+      //       - userId         === auth.uid (auteur)
+      //       - uploadedBy     === auth.uid
+      //       - fichierURL     === ''      (pas d'upload Storage)
+      //       - couvertureURL  === ''
+      //       - aperçuURL      === ''
+      //       - nombreVues     === 0
+      //       - nombreTelechargements === 0
+      //       - sections       est un tableau non vide
+      //     On verrouille EXACTEMENT ces invariants pour que :
+      //       - aucun prof ne puisse créer un ebook "actif" (bypass modération),
+      //       - aucun prof ne puisse usurper un autre auteur,
+      //       - aucun prof ne puisse créer un ebook PDF/HTML
+      //         (réservé à l'admin pour des raisons éditoriales / droits).
+      // ──────────────────────────────────────────────────────────
+      allow create: if isAdmin();
+
+      allow create: if isSignedIn()
+        && (isProf() || isPremium())
+        && request.resource.data.format == 'compiled'
+        && request.resource.data.source == 'compiled_prof'
+        && request.resource.data.isActive == false
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.uploadedBy == request.auth.uid
+        && request.resource.data.fichierURL == ''
+        && request.resource.data.couvertureURL == ''
+        // Notation par crochets pour le champ `aperçuURL` (caractère
+        // non-ASCII « ç »). Évite une éventuelle erreur d'analyse CEL.
+        && request.resource.data['aperçuURL'] == ''
+        && request.resource.data.nombreVues == 0
+        && request.resource.data.nombreTelechargements == 0
+        && request.resource.data.sections is list
+        && request.resource.data.sections.size() > 0;
+
+      // ──────────────────────────────────────────────────────────
+      // SUPPRESSION
+      // ──────────────────────────────────────────────────────────
+      // Admin : libre (modération éditoriale)
+      // Prof/Premium auteur : peut supprimer son propre ebook compilé
+      //   TANT qu'il est en attente (isActive=false). Une fois activé
+      //   par l'admin, seul l'admin peut supprimer (évite les disparitions
+      //   surprise côté élèves).
+      allow delete: if isAdmin();
+      allow delete: if isSignedIn()
+        && resource.data.format == 'compiled'
+        && resource.data.userId == request.auth.uid
+        && resource.data.isActive == false;
+
+      // ──────────────────────────────────────────────────────────
+      // UPDATE complet (tous champs) : admin uniquement
+      // ──────────────────────────────────────────────────────────
+      allow update: if isAdmin();
+
+      // ──────────────────────────────────────────────────────────
+      // UPDATE : auteur d'un ebook compilé en attente peut éditer ses
+      // sections (utile pour corriger après publication automatique).
+      // Restrictions strictes : aucun changement de format, d'auteur,
+      // d'état actif, de compteurs.
+      // ──────────────────────────────────────────────────────────
+      allow update: if isSignedIn()
+        && resource.data.format == 'compiled'
+        && resource.data.userId == request.auth.uid
+        && resource.data.isActive == false
+        && request.resource.data.format == 'compiled'
+        && request.resource.data.userId == resource.data.userId
+        && request.resource.data.isActive == false
+        && request.resource.data.nombreVues == resource.data.nombreVues
+        && request.resource.data.nombreTelechargements == resource.data.nombreTelechargements;
+
+      // --- Update partiel : incrément du compteur de vues (+1) ---
+      // Autorisé pour tout utilisateur connecté (élève, prof, parent…)
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombreVues'])
+        && request.resource.data.nombreVues == resource.data.nombreVues + 1;
+
+      // --- Update partiel : incrément du compteur de téléchargements (+1) ---
+      // Autorisé pour tout utilisateur connecté (typiquement un Premium)
+      allow update: if isSignedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombreTelechargements'])
+        && request.resource.data.nombreTelechargements == resource.data.nombreTelechargements + 1;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CORRECTIF 4 — mediatheque
+    //
+    // AVANT (problème) :
+    //   getUserData().role in ['admin', 'prof']
+    //   évalué à chaque lecture même quand statut == 'publie'
+    //
+    // APRÈS (corrigé) :
+    //   Réorganisation de la règle read pour évaluer d'abord
+    //   les conditions sans get() (court-circuit Firestore).
+    //   Pour create/update/delete : utilisation d'une variable
+    //   locale pour réduire à 1 seul appel getUserData().
+    // ══════════════════════════════════════════════════════════
+    match /mediatheque/{mediaId} {
+      // CORRIGÉ : conditions sans get() testées en premier
+      allow read: if resource.data.statut == 'publie'
+                  || (request.auth != null && resource.data.auteurId == request.auth.uid)
+                  || (request.auth != null && isAdmin());
+
+      allow create: if request.auth != null
+        && getUserData().role in ['admin', 'prof']
+        && request.resource.data.auteurId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'titre', 'description', 'type', 'url', 'duree',
+          'discipline', 'disciplineId', 'classe', 'niveau',
+          'isPremium', 'auteurId', 'auteurNom', 'statut',
+          'vues', 'tags', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.vues == 0;
+
+      // Mise à jour par l'auteur ou l'admin
+      allow update: if request.auth != null && (
+        isAdmin() || resource.data.auteurId == request.auth.uid
+      ) && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['auteurId', 'createdAt']);
+
+      // Incrément de vues : pas besoin de role check
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vues'])
+        && request.resource.data.vues == resource.data.vues + 1;
+
+      allow delete: if request.auth != null && isAdmin();
+    }
+
+    match /mediatheque_vues/{vueId} {
+      // ★ Phase 59 — CORRECTIF lecture médiathèque :
+      // le client lit `mediatheque_vues/{uid}_{mediaId}` AVANT tout premier
+      // visionnage. Ce document n'existe pas encore → `resource` vaut null,
+      // `resource.data.userId` lève une erreur et seul isAdmin() pouvait
+      // sauver la règle : prof et élève recevaient « permission-denied »
+      // et la page du média tombait en erreur. On autorise donc la lecture
+      // d'un document INEXISTANT dont l'identifiant commence par l'uid du
+      // lecteur (aucune donnée d'autrui n'est exposée).
+      allow read: if request.auth != null && (
+        (resource == null && vueId.matches(request.auth.uid + '_.*'))
+        || (resource != null && resource.data.userId == request.auth.uid)
+        || isAdmin()
+      );
+      allow create, update: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'mediaId', 'userId', 'dureeVisionnee', 'positionReprise',
+          'estTermine', 'vueAt'
+        ]);
+      allow delete: if request.auth != null && (
+        resource.data.userId == request.auth.uid
+        || isAdmin()
+      );
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTIONS: settings / platform_settings — inchangées
+    // ──────────────────────────────────────────────────────────
+
+    match /platform_settings/{docId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // NOTE SÉCURITÉ : `settings` est VOLONTAIREMENT le magasin de configuration
+    // PUBLIQUE (tarifs, libellés, paramètres affichés avant connexion). Le
+    // pendant privé/sensible est `platform_settings` (admin-only, ci-dessus).
+    // ⚠️ Ne JAMAIS écrire de secret, clé, e-mail ou seuil interne dans `settings`
+    // (lecture publique). Toute donnée confidentielle va dans platform_settings.
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: cours_en_ligne
+    // Phase 43 — ouverture aux professeurs Premium :
+    //   • les règles « admin » et la lecture du catalogue ('publie')
+    //     sont INCHANGÉES ;
+    //   • un prof Premium crée / modifie SES cours (origine 'prof'),
+    //     qui ne peuvent jamais passer au statut 'publie' ;
+    //   • statut 'partage' : lisible par tout utilisateur connecté qui
+    //     connaît le cours — même niveau que les cahiers de textes
+    //     partagés (isPartage) ; l'application ne le propose qu'aux
+    //     élèves inscrits dans les classes ciblées (groupeIds).
+    // ──────────────────────────────────────────────────────────
+
+    match /cours_en_ligne/{coursId} {
+      allow read: if resource.data.statut == 'publie'
+                  || (request.auth != null && resource.data.profId == request.auth.uid)
+                  || (isSignedIn() && resource.data.statut == 'partage')
+                  || isAdmin();
+      allow create: if isAdmin() || (
+                       isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid &&
+                       estCoursProfValide(request.resource.data) &&
+                       isProfPremiumActif()
+                     );
+      allow update: if isAdmin() || (
+                       isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       resource.data.get('origine', '') == 'prof' &&
+                       request.resource.data.profId == request.auth.uid &&
+                       estCoursProfValide(request.resource.data) &&
+                       isProfPremiumActif()
+                     );
+      // Le prof peut toujours supprimer SES cours (même Premium expiré).
+      allow delete: if isAdmin() || (
+                       isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       resource.data.get('origine', '') == 'prof'
+                     );
+    }
+
+    match /cours_sections/{sectionId} {
+      allow read: if true;
+      // CORRECTIF SÉCURITÉ : auparavant « if request.auth != null » autorisait
+      // N'IMPORTE QUEL utilisateur connecté (élève, parent inclus) à créer,
+      // modifier ou supprimer une section de cours. On aligne désormais
+      // l'écriture sur la collection cours_en_ligne (contenu pédagogique géré
+      // par le staff). Retirez « || isProf() » si seuls les admins éditent.
+      allow write: if isAdmin() || isProf();
+    }
+
+    match /progression_cours/{progressionId} {
+      // Phase 43 — l'auteur du cours (prof) et l'admin peuvent LIRE les
+      // progressions pour les statistiques ; écriture inchangée.
+      allow read: if request.auth != null && (
+        resource.data.userId == request.auth.uid ||
+        get(/databases/$(database)/documents/cours_en_ligne/$(resource.data.coursId)).data.profId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: compiled_ebooks — inchangée
+    // ──────────────────────────────────────────────────────────
+
+    match /compiled_ebooks/{ebookId} {
+      allow read: if isSignedIn() && (
+                      resource.data.userId == request.auth.uid || isAdmin()
+                    );
+      allow create: if isSignedIn() &&
+                        request.resource.data.userId == request.auth.uid &&
+                        (isPremium() || isProf() || isAdmin());
+      allow update: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+      allow delete: if isSignedIn() && (
+                        resource.data.userId == request.auth.uid || isAdmin()
+                      );
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // COLLECTION: live_sessions — inchangée
+    // ──────────────────────────────────────────────────────────
+
+    match /live_sessions/{sessionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.profId == request.auth.uid
+        && isProf();
+      allow update, delete: if isSignedIn() && (
+        resource.data.profId == request.auth.uid || isAdmin()
+      );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // EMPLOI DU TEMPS (partagé par classe + année scolaire)
+    //   Pré-requis souple à la création d'un cahier de textes.
+    //   Lecture           : tout utilisateur connecté.
+    //   Création / édition : prof ou admin (traçabilité via updatedBy).
+    //   Suppression        : admin uniquement.
+    // ══════════════════════════════════════════════════════════
+    match /emploi_du_temps/{edtId} {
+      allow read: if isSignedIn();
+      allow create, update: if isProf() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 48 — EMPLOI DU TEMPS PERSONNEL (un document par
+    //   professeur + établissement + classe + année).
+    //   • Lecture / écriture : le propriétaire seul (+ lecture admin).
+    //   • L'ID commence par l'uid du professeur : personne ne peut
+    //     « réserver » l'identifiant d'un collègue.
+    //   • resource == null : lire un emploi du temps encore inexistant
+    //     ne doit pas échouer (aucune donnée exposée).
+    // ══════════════════════════════════════════════════════════
+    match /emplois_du_temps_prof/{edtId} {
+      allow read: if isSignedIn() && (
+                     resource == null ||
+                     resource.data.profId == request.auth.uid ||
+                     isAdmin()
+                   );
+      allow create: if isSignedIn() &&
+                       request.resource.data.profId == request.auth.uid &&
+                       edtId.matches('^' + request.auth.uid + '_.+');
+      allow update: if isSignedIn() &&
+                       resource.data.profId == request.auth.uid &&
+                       request.resource.data.profId == request.auth.uid;
+      allow delete: if isSignedIn() && (
+                       resource.data.profId == request.auth.uid || isAdmin()
+                     );
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // PHASE 49 — CELLULES PÉDAGOGIQUES
+    //   • Une cellule n'est lisible que par ses membres (membreIds).
+    //   • Création réservée aux professeurs Premium (ou admin) ;
+    //     l'adhésion par code est gratuite.
+    //   • Le code d'invitation vit dans cellules_codes/{CODE} :
+    //     lecture DIRECTE seulement (get), jamais de listage.
+    //   • On partage des MODÈLES copiés par chacun : aucune règle
+    //     ne donne accès au cahier ou aux séances d'un collègue.
+    // ══════════════════════════════════════════════════════════
+    function cellule(cid) {
+      return get(/databases/$(database)/documents/cellules/$(cid)).data;
+    }
+    function estMembreCellule(cid) {
+      return isSignedIn() && request.auth.uid in cellule(cid).membreIds;
+    }
+    function estAnimateurCellule(cid) {
+      return isSignedIn() && cellule(cid).animateurId == request.auth.uid;
+    }
+    // PHASE 51 — membre qui peut ÉCRIRE (un observateur ne le peut pas)
+    function estContributeurCellule(cid) {
+      return estMembreCellule(cid) &&
+             !(request.auth.uid in cellule(cid).get('observateurIds', []));
+    }
+
+    match /cellules/{cid} {
+      allow read: if isSignedIn() && (
+                     request.auth.uid in resource.data.membreIds || isAdmin()
+                   );
+      allow create: if isSignedIn() &&
+                       (isProfPremiumActif() || isAdmin()) &&
+                       request.resource.data.animateurId == request.auth.uid &&
+                       request.resource.data.membreIds == [request.auth.uid];
+      // Animateur : gestion complète, sans pouvoir céder l'animation (MVP)
+      // Membre    : peut seulement se retirer lui-même de membreIds
+      allow update: if isSignedIn() && (
+                       (resource.data.animateurId == request.auth.uid &&
+                        request.resource.data.animateurId == resource.data.animateurId) ||
+                       (request.auth.uid in resource.data.membreIds &&
+                        request.auth.uid != resource.data.animateurId &&
+                        request.resource.data.diff(resource.data).affectedKeys()
+                          .hasOnly(['membreIds', 'updatedAt']) &&
+                        request.resource.data.membreIds ==
+                          resource.data.membreIds.removeAll([request.auth.uid]))
+                     );
+      allow delete: if isSignedIn() &&
+                       (resource.data.animateurId == request.auth.uid || isAdmin());
+
+      // Demandes d'adhésion : ID = uid du demandeur, code vérifié
+      match /demandes/{uid} {
+        allow read: if isSignedIn() &&
+                       (request.auth.uid == uid || estAnimateurCellule(cid));
+        allow create: if isSignedIn() &&
+                         request.auth.uid == uid &&
+                         (isProf() || isAdmin()) &&
+                         request.resource.data.code is string &&
+                         exists(/databases/$(database)/documents/cellules_codes/$(request.resource.data.code)) &&
+                         get(/databases/$(database)/documents/cellules_codes/$(request.resource.data.code)).data.celluleId == cid;
+        allow update: if false;
+        allow delete: if isSignedIn() &&
+                         (request.auth.uid == uid || estAnimateurCellule(cid));
+      }
+
+      // Progressions communes : lues par les membres, écrites par l'animateur
+      match /progressions/{pid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+      }
+
+      // Bibliothèque : tout membre partage ; l'auteur ou l'animateur supprime
+      match /ressources/{rid} {
+        allow read: if estMembreCellule(cid);
+        allow create: if estContributeurCellule(cid) &&
+                         request.resource.data.auteurId == request.auth.uid;
+        allow update: if false;
+        allow delete: if isSignedIn() && (
+                         resource.data.auteurId == request.auth.uid ||
+                         estAnimateurCellule(cid)
+                       );
+      }
+
+      // Avancement : chaque membre publie (ou retire) le sien
+      match /avancements/{uid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update: if estContributeurCellule(cid) && request.auth.uid == uid;
+        allow delete: if isSignedIn() &&
+                         (request.auth.uid == uid || estAnimateurCellule(cid));
+      }
+
+      // ── PHASE 50 — Calendrier : lu par les membres, géré par l'animateur
+      match /evenements/{eid} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+      }
+
+      // ── PHASE 50 — Comptes rendus : lus par les membres, rédigés par l'animateur
+      match /comptesRendus/{crId} {
+        allow read: if estMembreCellule(cid);
+        allow create, update, delete: if estAnimateurCellule(cid);
+
+        // Commentaires : tout membre (hors observateur) commente ; auteur ou animateur supprime
+        match /commentaires/{comId} {
+          allow read: if estMembreCellule(cid);
+          allow create: if estContributeurCellule(cid) &&
+                           request.resource.data.auteurId == request.auth.uid &&
+                           request.resource.data.texte is string &&
+                           request.resource.data.texte.size() > 0 &&
+                           request.resource.data.texte.size() <= 2000;
+          allow update: if false;
+          allow delete: if isSignedIn() && (
+                           resource.data.auteurId == request.auth.uid ||
+                           estAnimateurCellule(cid)
+                         );
+        }
+      }
+
+      // ── PHASE 51 — Épreuves communes (co-construction versionnée)
+      //   Animateur : crée, valide / rouvre, supprime.
+      //   Membre    : modifie un BROUILLON, sans pouvoir le valider, et
+      //               seulement en incrémentant la version (anti-écrasement).
+      match /epreuves/{eid} {
+        allow read: if estMembreCellule(cid);
+        allow create, delete: if estAnimateurCellule(cid);
+        allow update: if estAnimateurCellule(cid) || (
+                         estContributeurCellule(cid) &&
+                         resource.data.statut == 'brouillon' &&
+                         request.resource.data.statut == 'brouillon' &&
+                         request.resource.data.version == resource.data.version + 1
+                       );
+
+        // Historique : instantanés en ajout seul
+        match /versions/{vid} {
+          allow read: if estMembreCellule(cid);
+          allow create: if estContributeurCellule(cid) &&
+                           request.resource.data.auteurId == request.auth.uid;
+          allow update: if false;
+          allow delete: if estAnimateurCellule(cid);
+        }
+
+        // Résultats ANONYMES : chaque professeur publie les agrégats de sa classe
+        match /resultats/{uid} {
+          allow read: if estMembreCellule(cid);
+          allow create, update: if estContributeurCellule(cid) && request.auth.uid == uid;
+          allow delete: if isSignedIn() &&
+                           (request.auth.uid == uid || estAnimateurCellule(cid));
+        }
+      }
+    }
+
+    match /cellules_codes/{code} {
+      // get direct uniquement : connaître le code = avoir été invité
+      allow get: if isSignedIn();
+      allow list: if false;
+      allow create: if isSignedIn() &&
+                       request.resource.data.animateurId == request.auth.uid &&
+                       cellule(request.resource.data.celluleId).animateurId == request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && resource.data.animateurId == request.auth.uid;
+    }
+
+    // ──────────────────────────────────────────────────────────
+    // DENY ALL par défaut
+    // ──────────────────────────────────────────────────────────
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

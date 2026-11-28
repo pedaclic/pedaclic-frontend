@@ -34,6 +34,8 @@ import {
   increment,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+// ★ Phase 61 — interrupteur des requêtes scindées
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
 
 /* ── Import des types Phase 14 ── */
 import type {
@@ -422,6 +424,26 @@ const countDocumentsInDiscipline = async (
   collectionName: string,
   disciplineId: string
 ): Promise<number> => {
+  // ★ Phase 61 — étape 2 : les quiz se comptent sur les quiz GLOBAUX publiés
+  // (requête prouvable par les règles). Si l'utilisateur n'est pas Premium,
+  // la 1re requête est refusée : repli sur les quiz gratuits.
+  // (Avant : requête refusée pour un élève non Premium → total à 0.)
+  if (PHASE61_REQUETES_SCINDEES && collectionName === 'quizzes') {
+    const base = [
+      where('disciplineId', '==', disciplineId),
+      where('groupeId', '==', null),
+      where('status', '==', 'published'),
+    ];
+    try {
+      return (await getDocs(query(collection(db, collectionName), ...base))).size;
+    } catch {
+      try {
+        return (await getDocs(query(collection(db, collectionName), ...base, where('isPremium', '==', false)))).size;
+      } catch {
+        return 0;
+      }
+    }
+  }
   try {
     const q = query(
       collection(db, collectionName),

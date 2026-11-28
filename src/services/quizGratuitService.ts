@@ -15,6 +15,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
+// ★ Phase 61 — requêtes compatibles règles Phase 60 et Phase 61
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
 
 // ─── Interfaces ──────────────────────────────────────────────
 
@@ -92,6 +94,9 @@ function normaliserQuizV2(d: QueryDocumentSnapshot): QuizGratuit {
  * Retourne les quiz triés par date de création décroissante.
  */
 export async function getQuizGratuits(): Promise<QuizGratuit[]> {
+  // ★ Phase 61 — étape 2 : version compatible avec les règles durcies.
+  if (PHASE61_REQUETES_SCINDEES) return getQuizGratuitsPhase61();
+
   const [snapOld, snapV2] = await Promise.all([
     // Collection quizzes (ancienne)
     getDocs(
@@ -125,6 +130,42 @@ export async function getQuizGratuits(): Promise<QuizGratuit[]> {
   const quizzesV2  = snapV2.docs.filter(estPublic).map(normaliserQuizV2);
 
   // Fusion + tri global par date décroissante
+  return [...quizzesOld, ...quizzesV2].sort((a, b) => {
+    const dateA = a.createdAt?.toMillis() ?? 0;
+    const dateB = b.createdAt?.toMillis() ?? 0;
+    return dateB - dateA;
+  });
+}
+
+/**
+ * ★ Phase 61 — Quiz gratuits, globaux et publiés, PROUVABLES par les règles :
+ *   where isPremium == false && groupeId == null && status == 'published'
+ *   (+ orderBy createdAt desc, limit) → index composites ajoutés dans
+ *   firestore.indexes.json (déployés dès l'étape 1).
+ * Promise.allSettled : si les quiz avancés sont refusés (visiteur non
+ * connecté : règle inchangée), les quiz classiques restent affichés —
+ * auparavant, l'échec d'une seule requête faisait échouer toute la page.
+ */
+async function getQuizGratuitsPhase61(): Promise<QuizGratuit[]> {
+  const filtres = [
+    where('isPremium', '==', false),
+    where('groupeId', '==', null),
+    where('status', '==', 'published'),
+    orderBy('createdAt', 'desc'),
+    limit(MAX_PAR_COL),
+  ];
+  const [resOld, resV2] = await Promise.allSettled([
+    getDocs(query(collection(db, COL_QUIZZES), ...filtres)),
+    getDocs(query(collection(db, COL_QUIZZES_V2), ...filtres)),
+  ]);
+  if (resOld.status === 'rejected' && resV2.status === 'rejected') {
+    throw resOld.reason; // les deux ont échoué : la page affiche son message d'erreur
+  }
+  if (resOld.status === 'rejected') console.warn('[quizGratuits] quiz classiques indisponibles :', resOld.reason);
+  if (resV2.status === 'rejected') console.warn('[quizGratuits] quiz avancés indisponibles :', resV2.reason);
+
+  const quizzesOld = resOld.status === 'fulfilled' ? resOld.value.docs.map(normaliserQuizAncien) : [];
+  const quizzesV2  = resV2.status === 'fulfilled' ? resV2.value.docs.map(normaliserQuizV2) : [];
   return [...quizzesOld, ...quizzesV2].sort((a, b) => {
     const dateA = a.createdAt?.toMillis() ?? 0;
     const dateB = b.createdAt?.toMillis() ?? 0;

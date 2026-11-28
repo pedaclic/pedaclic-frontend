@@ -21,6 +21,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import DisciplineService from './disciplineService';
+// ★ Phase 61 — requêtes scindées (compatibles règles Phase 60 et Phase 61)
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
+import {
+  lireQuizAvancesEleve,
+  lireQuizAvancesGlobauxPublies,
+  lireTousQuizVisiblesProf,
+  type QuizBrut,
+} from './quizAccesService';
 import type {
   QuizAvance,
   QuizAvanceFormData,
@@ -83,8 +91,12 @@ export async function createQuizAvance(
 ): Promise<string> {
   try {
     const status = asDraft ? 'draft' : (data.status || 'published');
+    const nettoye = nettoyerUndefined(data) as Record<string, any>;
+    // ★ Phase 61 — un quiz global porte TOUJOURS `groupeId: null` : la requête
+    // élève where('groupeId', '==', null) ignore les documents sans ce champ.
+    if (nettoye.groupeId === undefined || nettoye.groupeId === '') nettoye.groupeId = null;
     const docRef = await addDoc(collection(db, QUIZZES_COLLECTION), {
-      ...nettoyerUndefined(data),
+      ...nettoye,
       status,
       auteurId,
       createdAt: serverTimestamp(),
@@ -110,6 +122,8 @@ export async function updateQuizAvance(
   try {
     const docRef = doc(db, QUIZZES_COLLECTION, quizId);
     const updates: Record<string, any> = { ...nettoyerUndefined(data), updatedAt: serverTimestamp() };
+    // ★ Phase 61 — « aucune classe » s'écrit null (undefined = champ inchangé)
+    if (updates.groupeId === '') updates.groupeId = null;
     if (options?.asDraft !== undefined) {
       updates.status = options.asDraft ? 'draft' : 'published';
     }
@@ -255,21 +269,27 @@ export async function getQuizzesAvanceForEleve(
     const groupeIds = groupes.map((g) => g.id);
 
     // 2. Requête Firestore : quiz publiés uniquement (conforme aux règles de sécurité)
-    const q = query(
-      collection(db, QUIZZES_COLLECTION),
-      where('status', '==', 'published'),
-      orderBy('createdAt', 'desc'),
-    );
-    const snapshot = await getDocs(q);
-    const publishedQuizzes = snapshot.docs.map((docSnap) => {
-      const data = docSnap.data() as Record<string, any>;
-      return {
-        id: docSnap.id,
-        ...data,
-        createdAt: data.createdAt?.toDate() || new Date(),
-        updatedAt: data.updatedAt?.toDate() || undefined,
-      } as QuizAvance;
-    });
+    let publishedQuizzes: QuizAvance[];
+    if (PHASE61_REQUETES_SCINDEES) {
+      // ★ Phase 61 — étape 2 : globaux + une requête par groupe de l'élève
+      publishedQuizzes = (await lireQuizAvancesEleve({ groupeIds })).map(convertirQuizAvance);
+    } else {
+      const q = query(
+        collection(db, QUIZZES_COLLECTION),
+        where('status', '==', 'published'),
+        orderBy('createdAt', 'desc'),
+      );
+      const snapshot = await getDocs(q);
+      publishedQuizzes = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as Record<string, any>;
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          updatedAt: data.updatedAt?.toDate() || undefined,
+        } as QuizAvance;
+      });
+    }
 
     // 3. Filtrage côté client : Premium + Groupe
     return publishedQuizzes.filter((q) => {
@@ -287,6 +307,38 @@ export async function getQuizzesAvanceForEleve(
     console.error('❌ Erreur récupération quiz élève :', error);
     return [];
   }
+}
+
+// ==================== ★ PHASE 61 — LISTES SELON LE RÔLE ====================
+
+/** Convertit un document brut en QuizAvance (dates Firestore → Date). */
+function convertirQuizAvance(d: QuizBrut): QuizAvance {
+  return {
+    ...d,
+    createdAt: d.createdAt?.toDate?.() || new Date(),
+    updatedAt: d.updatedAt?.toDate?.() || undefined,
+  } as QuizAvance;
+}
+
+/**
+ * Liste des quiz avancés pour la page /quizzes, selon le rôle :
+ *   • admin  → tous (getAllQuizzes) ;
+ *   • prof   → tous si les règles le permettent, sinon publiés + les siens ;
+ *   • autres (parent…) → quiz globaux publiés.
+ * Sans l'interrupteur Phase 61 : comportement historique (getAllQuizzes).
+ */
+export async function getQuizzesAvanceSelonRole(
+  role: string | undefined,
+  uid: string | undefined
+): Promise<QuizAvance[]> {
+  if (!PHASE61_REQUETES_SCINDEES || role === 'admin') return getAllQuizzes();
+  const bruts =
+    role === 'prof' && uid
+      ? await lireTousQuizVisiblesProf('quizzes_v2', uid)
+      : await lireQuizAvancesGlobauxPublies();
+  return bruts
+    .map(convertirQuizAvance)
+    .sort((a, b) => (b.createdAt?.getTime?.() ?? 0) - (a.createdAt?.getTime?.() ?? 0));
 }
 
 // ==================== SOUMISSION & CORRECTION ====================

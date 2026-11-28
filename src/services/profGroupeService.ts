@@ -33,7 +33,18 @@ import {
   writeBatch,
   increment
 } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
+
+// ★ Phase 61 — requêtes compatibles avec les brouillons réservés à leur auteur
+import { PHASE61_REQUETES_SCINDEES } from '../config/phase61';
+import { lireQuizParChampProf, trierParDateDesc } from './quizAccesService';
+
+// ★ Phase 61 — appartenance déterministe aux groupes (règles Firestore)
+import {
+  ajouterMembre,
+  retirerMembreSiPlusInscrit,
+  retirerTousMembresGroupe
+} from './membresGroupeService';
 
 // ===== Imports depuis suiviService (Phase 9) =====
 import {
@@ -341,6 +352,11 @@ export async function modifierGroupe(
 
 export async function supprimerGroupe(groupeId: string): Promise<void> {
   try {
+    // ★ Phase 61 — retrait des appartenances AVANT la suppression du groupe :
+    // la règle de `membres_groupe` vérifie que l'auteur est propriétaire du
+    // groupe, ce qui suppose qu'il existe encore. Non bloquant.
+    await retirerTousMembresGroupe(groupeId);
+
     const batch = writeBatch(db);
 
     const inscriptionsQ = query(
@@ -496,6 +512,16 @@ export async function rejoindreGroupe(
     await updateDoc(doc(db, 'groupes_prof', groupeDoc.id), {
       nombreInscrits: increment(1),
       dateMiseAJour: new Date()
+    });
+
+    // ★ Phase 61 — appartenance déterministe (lecture des quiz de la classe).
+    // Le code saisi est transmis : la règle Firestore le compare au code en
+    // cours du groupe et à son échéance. Non bloquant.
+    await ajouterMembre({
+      groupeId: groupeDoc.id,
+      eleveId,
+      source: 'code',
+      codeInvitation: codeNormalise
     });
 
     console.log(`✅ Élève ${eleveNom} inscrit au groupe "${groupeData.nom}"`);
@@ -706,6 +732,16 @@ export async function retirerEleve(
   groupeId: string
 ): Promise<void> {
   try {
+    // ★ Phase 61 — on mémorise l'élève concerné avant le retrait, pour
+    // supprimer ensuite son appartenance (lecture tolérante aux erreurs).
+    let eleveIdRetire: string | undefined;
+    try {
+      const inscSnap = await getDoc(doc(db, 'inscriptions_groupe', inscriptionId));
+      eleveIdRetire = inscSnap.exists() ? (inscSnap.data().eleveId as string) : undefined;
+    } catch (e) {
+      console.warn('Lecture de l\'inscription avant retrait impossible :', e);
+    }
+
     await updateDoc(doc(db, 'inscriptions_groupe', inscriptionId), {
       statut: 'retire',
       dateRetrait: new Date()
@@ -715,6 +751,9 @@ export async function retirerEleve(
       nombreInscrits: increment(-1),
       dateMiseAJour: new Date()
     });
+
+    // ★ Phase 61 — fin de l'accès aux quiz de la classe (non bloquant)
+    if (eleveIdRetire) await retirerMembreSiPlusInscrit(groupeId, eleveIdRetire);
 
     console.log(`✅ Élève retiré du groupe`);
   } catch (error) {
@@ -1282,6 +1321,27 @@ export async function getQuizParMatiere(
 ): Promise<{ id: string; titre: string; source?: string }[]> {
   try {
     const resultats: { id: string; titre: string; source?: string }[] = [];
+
+    // ★ Phase 61 — étape 2 : sans orderBy (tri côté navigateur) et, si la
+    // liste complète est refusée (brouillons d'autres profs), repli sur
+    // « publiés » + « les miens ».
+    if (PHASE61_REQUETES_SCINDEES) {
+      const uid = auth.currentUser?.uid ?? null;
+      const [classiques, avances] = await Promise.all([
+        lireQuizParChampProf('quizzes', 'disciplineId', matiereId, uid).catch(() => []),
+        lireQuizParChampProf('quizzes_v2', 'disciplineId', matiereId, uid).catch(() => []),
+      ]);
+      // Filtre groupe : quiz sans groupeId ou lié à ce groupe (inchangé)
+      const garde = (data: Record<string, any>) =>
+        !groupeId || data.groupeId == null || data.groupeId === '' || data.groupeId === groupeId;
+      trierParDateDesc(classiques).filter(garde).forEach((d) =>
+        resultats.push({ id: d.id, titre: d.titre || 'Quiz sans titre', source: 'quizzes' })
+      );
+      trierParDateDesc(avances).filter(garde).forEach((d) =>
+        resultats.push({ id: d.id, titre: d.titre || 'Quiz avancé sans titre', source: 'quizzes_v2' })
+      );
+      return resultats;
+    }
 
     // 1. Chercher dans 'quizzes' (quiz simples Phase 6)
     try {
